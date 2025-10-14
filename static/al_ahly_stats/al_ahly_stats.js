@@ -1031,38 +1031,51 @@ function debounce(func, wait) {
 // GOOGLE SHEETS AUTO-SYNC FUNCTIONS
 // ============================================================================
 
-async function loadFromGoogleSheetsSync() {
+async function loadFromGoogleSheetsSync(forceRefresh = false) {
     /**
-     * Load data from Google Sheets Auto-Sync API
-     * This eliminates the need for manual Excel uploads
+     * Load data from Google Sheets Auto-Sync API with Browser Cache
+     * Cache Duration: 24 hours
+     * Force refresh on manual sync
      */
     try {
-        console.log('📡 Fetching data from Google Sheets Auto-Sync API...');
-        
-        const response = await fetch('/api/ahly-stats/sheets-data');
-        
-        if (!response.ok) {
-            console.warn('⚠️ Google Sheets Auto-Sync not available');
-            return false;
-        }
-        
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-            console.log('✅ Received data from Google Sheets Auto-Sync');
-            console.log('   Available sheets:', result.sheets);
+        // Use browser cache with 24h TTL
+        const fetchFunction = async () => {
+            console.log('📡 Fetching data from Google Sheets Auto-Sync API...');
             
+            const response = await fetch('/api/ahly-stats/sheets-data');
+            
+            if (!response.ok) {
+                console.warn('⚠️ Google Sheets Auto-Sync not available');
+                return null;
+            }
+            
+            const result = await response.json();
+            
+            if (result.success && result.data) {
+                console.log('✅ Received data from Google Sheets Auto-Sync');
+                console.log('   Available sheets:', result.sheets);
+                return result.data;
+            } else {
+                console.warn('⚠️ No data returned from Google Sheets Auto-Sync');
+                return null;
+            }
+        };
+        
+        // Fetch with browser cache (24h TTL)
+        const data = await fetchWithBrowserCache('al_ahly_stats', fetchFunction, forceRefresh);
+        
+        if (data) {
             // Store in global cache (same format as Excel upload)
-            window.__ahlySheetsJson = result.data;
+            window.__ahlySheetsJson = data;
             window.__ahlyExcelMode = true;
             
-            // Also save to localStorage
-            await saveSheetsDataToCache(result.data);
+            // Also save to localStorage (for backward compatibility)
+            await saveSheetsDataToCache(data);
             
-            console.log('💾 Data cached successfully');
+            console.log('💾 Data ready');
             return true;
         } else {
-            console.warn('⚠️ No data returned from Google Sheets Auto-Sync');
+            console.warn('⚠️ No data available');
             return false;
         }
         
@@ -1075,14 +1088,14 @@ async function loadFromGoogleSheetsSync() {
 async function manualSyncNow() {
     /**
      * Manually trigger sync from Google Sheets
-     * Useful for immediate updates
+     * Clears browser cache and forces fresh data fetch
      */
     const syncBtn = document.getElementById('sync-data-btn');
     const syncIcon = document.getElementById('sync-icon');
     const syncBtnText = document.getElementById('sync-btn-text');
     
     try {
-        console.log('🔄 Triggering manual sync...');
+        console.log('🔄 Triggering manual sync (clearing cache)...');
         
         // Show loading indicator on button
         if (syncBtn) {
@@ -1094,26 +1107,25 @@ async function manualSyncNow() {
         // Show loading indicator
         showLoadingState(true);
         
-        const response = await fetch('/api/ahly-stats/sync-now', {
-            method: 'POST'
-        });
+        // Clear browser cache for this page
+        const browserCache = new BrowserCache('al_ahly_stats');
+        browserCache.clear();
         
-        if (!response.ok) {
-            throw new Error('Sync request failed');
-        }
+        // Clear global cache
+        window.__ahlySheetsJson = null;
         
-        const result = await response.json();
+        // Reload data with force refresh
+        const success = await loadFromGoogleSheetsSync(true);
         
-        if (result.success) {
+        if (success) {
             console.log('✅ Manual sync completed successfully');
             
-            // Reload data
-            window.__ahlySheetsJson = null;  // Clear cache
+            // Reload the page display
             await loadAlAhlyStatsData();
             
             return true;
         } else {
-            throw new Error(result.message || 'Sync failed');
+            throw new Error('Sync failed');
         }
         
     } catch (error) {
