@@ -54,17 +54,22 @@ class CacheManager:
         
         Automatically detects:
         - Redis if REDIS_URL environment variable exists
+        - No cache mode for Vercel (if VERCEL=1 and no Redis)
         - File-based cache otherwise (perfect for Windows)
         
         Args:
             cache_dir: Directory for file-based cache. 
                       If None, uses AppData/Local/FootballDataManager/cache
         """
-        # Try Redis first (for Render deployment)
+        # Detect if running on Vercel
+        self.is_vercel = os.environ.get('VERCEL') == '1'
+        
+        # Try Redis first (for production deployments)
         self.redis_client = None
         self.using_redis = False
+        self.no_cache_mode = False
         
-        redis_url = os.environ.get('REDIS_URL')
+        redis_url = os.environ.get('REDIS_URL') or os.environ.get('KV_URL')
         if redis_url and REDIS_AVAILABLE:
             try:
                 self.redis_client = redis.from_url(
@@ -82,32 +87,41 @@ class CacheManager:
                     print(f"Using Redis cache: {redis_url.split('@')[-1] if '@' in redis_url else 'connected'}")
             except Exception as e:
                 try:
-                    print(f"⚠️ Redis not available ({e}), falling back to file-based cache")
+                    print(f"⚠️ Redis not available ({e})")
                 except UnicodeEncodeError:
-                    print(f"Redis not available ({e}), falling back to file-based cache")
+                    print(f"Redis not available ({e})")
                 self.redis_client = None
         
+        # If on Vercel without Redis, use no-cache mode
+        if self.is_vercel and not self.using_redis:
+            self.no_cache_mode = True
+            try:
+                print(f"⚡ Vercel detected: Running in NO-CACHE mode (direct Google Sheets access)")
+            except UnicodeEncodeError:
+                print(f"Vercel detected: Running in NO-CACHE mode")
+            return
+        
         # Setup file-based cache (fallback or primary on Windows)
-        if cache_dir is None:
-            # Use Windows AppData\Local for cache storage (standard location)
-            if os.name == 'nt':  # Windows
-                app_data_dir = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
-                cache_dir = os.path.join(app_data_dir, 'FootballDataManager', 'cache')
-            else:
-                # Fallback for other OS
-                if getattr(sys, 'frozen', False):
-                    # Running as compiled executable
-                    app_dir = os.path.dirname(sys.executable)
-                else:
-                    # Running as script
-                    app_dir = os.path.dirname(os.path.abspath(__file__))
-                
-                cache_dir = os.path.join(app_dir, 'cache')
-        
-        self.cache_dir = Path(cache_dir)
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
-        
         if not self.using_redis:
+            if cache_dir is None:
+                # Use Windows AppData\Local for cache storage (standard location)
+                if os.name == 'nt':  # Windows
+                    app_data_dir = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
+                    cache_dir = os.path.join(app_data_dir, 'FootballDataManager', 'cache')
+                else:
+                    # Fallback for other OS
+                    if getattr(sys, 'frozen', False):
+                        # Running as compiled executable
+                        app_dir = os.path.dirname(sys.executable)
+                    else:
+                        # Running as script
+                        app_dir = os.path.dirname(os.path.abspath(__file__))
+                    
+                    cache_dir = os.path.join(app_dir, 'cache')
+            
+            self.cache_dir = Path(cache_dir)
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+            
             try:
                 print(f"📁 Using file-based cache: {self.cache_dir}")
             except UnicodeEncodeError:
@@ -156,6 +170,10 @@ class CacheManager:
         Returns:
             Cached data if valid, None otherwise
         """
+        # If in no-cache mode, always return None (fetch fresh data)
+        if self.no_cache_mode:
+            return None
+            
         # Try Redis first
         if self.using_redis:
             return self._get_redis(key, ttl_hours)
@@ -242,6 +260,10 @@ class CacheManager:
             data: Data to cache
             metadata: Optional metadata to store with cache
         """
+        # If in no-cache mode, don't cache anything
+        if self.no_cache_mode:
+            return
+            
         # Use both Redis and File cache
         if self.using_redis:
             self._set_redis(key, data, metadata)
@@ -298,6 +320,11 @@ class CacheManager:
         Args:
             pattern: If provided, only clear cache keys matching this pattern
         """
+        # If in no-cache mode, nothing to clear
+        if self.no_cache_mode:
+            print("⚡ No-cache mode: Nothing to clear")
+            return
+            
         if self.using_redis:
             self._clear_redis(pattern)
         else:
@@ -345,6 +372,14 @@ class CacheManager:
     
     def get_cache_info(self):
         """Get information about cached data"""
+        # If in no-cache mode, return empty info
+        if self.no_cache_mode:
+            return {
+                'cache_type': 'No Cache (Direct Fetch)',
+                'total_items': 0,
+                'note': 'Running on Vercel without Redis - data fetched directly from Google Sheets'
+            }
+            
         if self.using_redis:
             return self._get_redis_info()
         else:
