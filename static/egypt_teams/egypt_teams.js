@@ -3197,8 +3197,8 @@ function displayEgyptMatchLineup(matchId) {
                 <thead>
                     <tr>
                         <th>Player</th>
-                        <th>Minutes</th>
                         <th>Status</th>
+                        <th>Minutes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -3223,8 +3223,8 @@ function displayEgyptMatchLineup(matchId) {
         html += `
             <tr>
                 <td><strong>${playerName}</strong></td>
-                <td>${minutes}'</td>
                 <td>${status}</td>
+                <td>${minutes}'</td>
             </tr>
         `;
     });
