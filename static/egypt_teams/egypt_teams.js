@@ -3199,6 +3199,8 @@ function displayEgyptMatchLineup(matchId) {
                         <th>Player</th>
                         <th>Status</th>
                         <th>Minutes</th>
+                        <th>Goals</th>
+                        <th>Assists</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -3220,11 +3222,27 @@ function displayEgyptMatchLineup(matchId) {
             }
         }
         
+        // Calculate goals and assists for this player in this match
+        const playerGoals = egyptGoals.filter(goal => goal['PLAYER NAME'] === playerName).length;
+        const playerAssists = egyptGoals.filter(goal => goal['ASSIST PLAYER'] === playerName).length;
+        
+        // Create goals display with icon
+        const goalsDisplay = playerGoals > 0 ? 
+            `<span style="color: #28a745; font-weight: bold;">${playerGoals} ⚽</span>` : 
+            '<span style="color: #ccc;">0 ⚽</span>';
+        
+        // Create assists display with icon
+        const assistsDisplay = playerAssists > 0 ? 
+            `<span style="color: #007bff; font-weight: bold;">${playerAssists} 🏈</span>` : 
+            '<span style="color: #ccc;">0 🏈</span>';
+        
         html += `
             <tr>
                 <td><strong>${playerName}</strong></td>
                 <td>${status}</td>
                 <td>${minutes}'</td>
+                <td style="text-align: center;">${goalsDisplay}</td>
+                <td style="text-align: center;">${assistsDisplay}</td>
             </tr>
         `;
     });
