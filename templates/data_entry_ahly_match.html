@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Ahly Match - Match Data Manager{% endblock %}
+
+{% block content %}
+<form id="ahly-match" method="POST" action="/save_data">
+    <input type="hidden" name="data_type" value="ahly_match">
+    
+
+    <!-- Basic Match Information Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Basic Match Information</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid five-columns">
+            <div class="form-group">
+                <label for="match_id">Match ID</label>
+                <input type="text" id="match_id" name="match_id" placeholder="Auto-generated" readonly>
+            </div>
+            <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" required onchange="generateMatchID()">
+            </div>
+            <div class="form-group">
+                <label for="h_a_n">H-A-N</label>
+                <select id="h_a_n" name="h_a_n">
+                    <option value="">Select</option>
+                    <option value="H">H</option>
+                    <option value="A">A</option>
+                    <option value="A - مصر">A - مصر</option>
+                    <option value="N">N</option>
+                    <option value="N - مصر">N - مصر</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="champion_system">Champion System</label>
+                <select id="champion_system" name="champion_system">
+                    <option value="">Select System</option>
+                    <option value="أفريقي">أفريقي</option>
+                    <option value="مصري">مصري</option>
+                    <option value="عربي">عربي</option>
+                    <option value="عالمي">عالمي</option>
+                    <option value="أفرو-أسيوي">أفرو-أسيوي</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="stadium">Stadium</label>
+                <div class="searchable-select-container">
+                    <input type="text" id="stadium" name="stadium" class="stadium-name-input" placeholder="Search stadium..." autocomplete="off">
+                    <div class="dropdown-options" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tournament Information Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Tournament Information</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="champion">Champion</label>
+                <div class="searchable-select-container">
+                    <input type="text" id="champion" name="champion" class="champion-name-input" placeholder="Search champion..." autocomplete="off">
+                    <div class="dropdown-options" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="season">Season</label>
+                <input type="text" id="season" name="season" placeholder="e.g., 2023-2024">
+            </div>
+            <div class="form-group">
+                <label for="round">Round</label>
+                <input type="text" id="round" name="round" placeholder="Enter round">
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff & Officials Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Staff & Officials</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="ahly_manager">Al Ahly Manager</label>
+                <div class="searchable-select-container">
+                    <input type="text" id="ahly_manager" name="ahly_manager" class="manager-name-input" placeholder="Search manager..." autocomplete="off">
+                    <div class="dropdown-options" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="opponent_manager">Opponent Manager</label>
+                <div class="searchable-select-container">
+                    <input type="text" id="opponent_manager" name="opponent_manager" class="manager-name-input" placeholder="Search manager..." autocomplete="off">
+                    <div class="dropdown-options" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="referee">Referee</label>
+                <div class="searchable-select-container">
+                    <input type="text" id="referee" name="referee" class="referee-name-input" placeholder="Search referee..." autocomplete="off">
+                    <div class="dropdown-options" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teams & Result Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Teams & Result</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid four-columns">
+            <div class="form-group">
+                <label for="ahly_team">Al Ahly Team</label>
+                <input type="text" id="ahly_team" name="ahly_team" value="الأهلي" readonly class="readonly">
+            </div>
+            <div class="form-group">
+                <label for="gf">Goals For (GF)</label>
+                <input type="number" id="gf" name="gf" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="ga">Goals Against (GA)</label>
+                <input type="number" id="ga" name="ga" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="opponent_team">Opponent Team</label>
+                <div class="searchable-select-container">
+                    <input type="text" id="opponent_team" name="opponent_team" class="team-name-input" placeholder="Search team..." autocomplete="off" oninput="generateMatchID()">
+                    <div class="dropdown-options" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Details Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Additional Details</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid four-columns">
+            <div class="form-group">
+                <label for="et">Extra Time (ET)</label>
+                <input type="text" id="et" name="et" placeholder="Enter ET details">
+            </div>
+            <div class="form-group">
+                <label for="pen">Penalties (PEN)</label>
+                <input type="text" id="pen" name="pen" placeholder="Enter PEN details">
+            </div>
+            <div class="form-group">
+                <label for="w_d_l">Result (W-D-L)</label>
+                <select id="w_d_l" name="w_d_l">
+                    <option value="">Select Result</option>
+                    <option value="W">W</option>
+                    <option value="D">D</option>
+                    <option value="D.">D.</option>
+                    <option value="L">L</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="clean_sheet">Clean Sheet</label>
+                <select id="clean_sheet" name="clean_sheet">
+                    <option value="">Select</option>
+                    <option value="F">F</option>
+                    <option value="A">A</option>
+                    <option value="BOTH">BOTH</option>
+                    <option value="-">-</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Notes</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-group full-width">
+            <label for="notes">Additional Notes</label>
+            <textarea id="notes" name="notes" rows="4" placeholder="Enter any additional notes about the match..."></textarea>
+        </div>
+    </div>
+
+    <!-- Goals & Assists Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Goals & Assists</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="goals-assists-container">
+            <div class="goals-assists-header">
+                <div class="form-group">
+                    <label>PLAYER NAME</label>
+                </div>
+                <div class="form-group">
+                    <label>TEAM</label>
+                </div>
+                <div class="form-group">
+                    <label>GA</label>
+                </div>
+                <div class="form-group">
+                    <label>TYPE</label>
+                </div>
+                <div class="form-group">
+                    <label>MINUTE</label>
+                </div>
+                <div class="form-group">
+                    <label>Action</label>
+                </div>
+            </div>
+            <div id="goals-assists-container">
+                <!-- Goals & Assists entries will be added here dynamically -->
+            </div>
+            <div class="goals-assists-actions">
+                <button type="button" class="btn btn-secondary" onclick="addGoalsAssistsEntry()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Goals & Assists Entry
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearGoalsAssists()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3,6 5,6 21,6"></polyline>
+                        <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                    </svg>
+                    Clear All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GKS Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>GKS</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="gks-container">
+            <div class="gks-header">
+                <div class="form-group">
+                    <label>PLAYER NAME</label>
+                </div>
+                <div class="form-group">
+                    <label>11/BAKEUP</label>
+                </div>
+                <div class="form-group">
+                    <label>SUBMIN</label>
+                </div>
+                <div class="form-group">
+                    <label>TEAM</label>
+                </div>
+                <div class="form-group">
+                    <label>GOALS CONCEDED</label>
+                </div>
+                <div class="form-group">
+                    <label>GOAL MINUTE</label>
+                </div>
+                <div class="form-group">
+                    <label>Action</label>
+                </div>
+            </div>
+            <div id="gks-container">
+                <!-- GKS entries will be added here dynamically -->
+            </div>
+            <div class="gks-actions">
+                <button type="button" class="btn btn-secondary" onclick="addGKSEntry()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add GKS Entry
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearGKS()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3,6 5,6 21,6"></polyline>
+                        <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                    </svg>
+                    Clear All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOWPENMISSED Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>HOWPENMISSED (Penalty Missed)</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="goals-assists-container">
+            <div class="goals-assists-header">
+                <div class="form-group">
+                    <label>PLAYER NAME</label>
+                </div>
+                <div class="form-group">
+                    <label>TEAM</label>
+                </div>
+                <div class="form-group">
+                    <label>MINUTE</label>
+                </div>
+                <div class="form-group">
+                    <label>Action</label>
+                </div>
+            </div>
+            <div id="howpenmissed-container">
+                <!-- HOWPENMISSED entries will be added here dynamically -->
+            </div>
+            <div class="goals-assists-actions">
+                <button type="button" class="btn btn-secondary" onclick="addHowPenMissedEntry()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Penalty Miss Entry
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearHowPenMissed()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3,6 5,6 21,6"></polyline>
+                        <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                    </svg>
+                    Clear All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="resetCurrentForm()">Reset Form</button>
+        <button type="button" class="btn btn-secondary" onclick="exportCurrentData()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Export to Excel
+        </button>
+        <button type="button" id="save-btn" class="btn btn-primary" onclick="saveCurrentForm()">
+            <svg class="icon icon-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <span id="save-btn-text">Save to Google Sheets</span>
+        </button>
+    </div>
+</form>
+
+<script>
+// Auto-generate Match ID from Date + Opponent Team
+function generateMatchID() {
+    const matchIdInput = document.getElementById('match_id');
+    const dateInput = document.getElementById('date');
+    const opponentTeamInput = document.getElementById('opponent_team');
+    
+    const dateValue = dateInput.value; // Format: YYYY-MM-DD
+    const opponentTeam = opponentTeamInput.value.trim();
+    
+    // Both date and opponent team must be filled
+    if (!dateValue || !opponentTeam) {
+        matchIdInput.value = '';
+        return;
+    }
+    
+    // Convert date to Excel serial number
+    // Excel serial date starts from 1900-01-01
+    // Note: Excel incorrectly treats 1900 as a leap year
+    const date = new Date(dateValue);
+    const excelEpoch = new Date(1899, 11, 30); // December 30, 1899
+    const diffTime = date.getTime() - excelEpoch.getTime();
+    const excelSerial = Math.floor(diffTime / 86400000);
+    
+    // Generate Match ID: Excel Serial + Team Name
+    matchIdInput.value = excelSerial + opponentTeam;
+}
+</script>
+
+{% endblock %}
+

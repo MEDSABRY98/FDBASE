@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al Ahly VS Zamalek Statistics - Football Data Entry System</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .zamalek-stats-container {
+            min-height: 100vh;
+            background: #ffffff;
+        }
+        
+        .main-tabs-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .back-to-main {
+            margin-bottom: 2rem;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .back-btn .icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .zamalek-stats-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* Filters Section */
+        .filters-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .filters-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+            margin: 0 0 1.5rem 0;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-item label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 0.5rem;
+        }
+        
+        .zamalek-filter-control {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            width: 100%;
+        }
+        
+        .zamalek-filter-control:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .filter-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .zamalek-filter-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+        }
+        
+        .zamalek-filter-btn:hover {
+            background: #5568d3;
+        }
+        
+        .finals-filter-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .finals-filter-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        
+        .clear-filters-btn {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+        }
+
+        .clear-filters-btn:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        }
+
+        .zamalek-refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .zamalek-refresh-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .filter-btn-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Searchable Select Styles */
+        .searchable-select-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        /* Fix width for BY Player search - container that contains the select */
+        .searchable-select-container:has(#by-player-search) {
+            width: 250px !important;
+            max-width: 250px !important;
+            display: inline-block;
+        }
+        
+        .searchable-select-container input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+            transition: border-color 0.3s ease;
+        }
+        
+        .searchable-select-container input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .dropdown-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            margin-top: 4px;
+        }
+        
+        .dropdown-options div {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .dropdown-options div:hover {
+            background: #f0f1ff;
+        }
+
+        /* Statistics Overview */
+        .zamalek-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        /* Smaller cards for BY Player overview */
+        #by-player-overview .zamalek-overview {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        #by-player-overview .zamalek-stat-card {
+            padding: 1.5rem;
+        }
+        
+        #by-player-overview .zamalek-stat-card h3 {
+            font-size: 1rem;
+        }
+        
+        #by-player-overview .zamalek-stat-value {
+            font-size: 2rem;
+        }
+        
+        #by-player-overview .zamalek-stat-label {
+            font-size: 0.85rem;
+        }
+        
+        .zamalek-stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+            border-left: 5px solid #667eea;
+        }
+        
+        .zamalek-stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        /* Positive stats - Green */
+        .zamalek-stat-card.positive {
+            border-left-color: #28a745;
+        }
+        
+        .zamalek-stat-card.positive .zamalek-stat-value {
+            color: #28a745;
+        }
+        
+        /* Negative stats - Red */
+        .zamalek-stat-card.negative {
+            border-left-color: #dc3545;
+        }
+        
+        .zamalek-stat-card.negative .zamalek-stat-value {
+            color: #dc3545;
+        }
+        
+        /* Neutral stats - Orange */
+        .zamalek-stat-card.neutral {
+            border-left-color: #fd7e14;
+        }
+        
+        .zamalek-stat-card.neutral .zamalek-stat-value {
+            color: #fd7e14;
+        }
+        
+        .zamalek-stat-card h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .zamalek-stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 0;
+            line-height: 1;
+        }
+        
+        .zamalek-stat-label {
+            color: #666;
+            font-size: 1rem;
+            margin: 0.5rem 0 0 0;
+        }
+        
+        .zamalek-stat-period {
+            color: #999;
+            font-size: 0.75rem;
+            margin: 0.25rem 0 0 0;
+            font-weight: 400;
+        }
+        
+        /* Managers Filter */
+        .zamalek-managers-filter {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+            width: 250px;
+        }
+        
+        .zamalek-managers-filter:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        /* Managers Search */
+        .zamalek-managers-search {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+            transition: border-color 0.3s ease;
+            width: 250px;
+        }
+        
+        .zamalek-managers-search:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        /* Total Row */
+        .zamalek-table tfoot tr {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .zamalek-table tfoot td {
+            padding: 1rem;
+            border: none;
+            text-align: center;
+        }
+
+        /* Table Styles */
+        .zamalek-table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .zamalek-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            background: white;
+        }
+
+        .zamalek-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .zamalek-table thead th {
+            padding: 1rem 1.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+        }
+
+        .zamalek-table thead th.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background-color 0.2s;
+        }
+
+        .zamalek-table thead th.sortable:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .zamalek-table thead th .sort-icon {
+            margin-left: 0.3rem;
+            opacity: 0.3;
+            font-size: 0.7rem;
+        }
+
+        .zamalek-table thead th .sort-icon::before {
+            content: '⇅';
+        }
+
+        .zamalek-table thead th.sort-asc .sort-icon {
+            opacity: 1;
+        }
+
+        .zamalek-table thead th.sort-asc .sort-icon::before {
+            content: '▲';
+        }
+
+        .zamalek-table thead th.sort-desc .sort-icon {
+            opacity: 1;
+        }
+
+        .zamalek-table thead th.sort-desc .sort-icon::before {
+            content: '▼';
+        }
+
+        .zamalek-table tbody tr {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .zamalek-table tbody tr:hover {
+            background: #f0f1ff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .zamalek-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .zamalek-table tbody td {
+            padding: 1rem 1.5rem;
+            color: #333;
+            font-weight: 500;
+            border: none;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .zamalek-table tbody td:first-child {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        /* Status badges */
+        .badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .zamalek-stats-section {
+            margin-bottom: 3rem;
+        }
+        
+        .zamalek-section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        /* Main Tabs Navigation */
+        .main-tabs-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 1rem;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .main-tabs-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .main-tab-btn {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            position: relative;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .main-tab-btn.active {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .main-tab-btn:hover:not(.active) {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        /* Sub Tabs Navigation */
+        .sub-tabs-nav {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 0.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .sub-tab-btn {
+            flex: 1;
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+            text-align: center;
+        }
+
+        .sub-tab-btn.active {
+            background: #f0f1ff;
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .sub-tab-btn:hover:not(.active) {
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .sub-tab-content {
+            display: none;
+        }
+
+        .sub-tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-actions {
+                flex-direction: column;
+            }
+            
+            .zamalek-filter-btn,
+            .clear-filters-btn,
+            .zamalek-refresh-btn {
+                width: 100%;
+            }
+
+            .zamalek-overview {
+                grid-template-columns: 1fr;
+            }
+
+            .main-tabs-nav {
+                width: 100%;
+                gap: 0.5rem;
+                padding: 0 0.5rem;
+            }
+            
+            .main-tabs-row {
+                flex-wrap: wrap;
+                gap: 0.25rem;
+            }
+
+            .main-tab-btn {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.85rem;
+                flex: 1 1 auto;
+                min-width: 80px;
+            }
+        }
+
+        /* Spinning animation */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body class="zamalek-stats-container">
+    <div class="main-tabs-container">
+        <!-- Back to Main Dashboard Button -->
+        <div class="back-to-main">
+            <a href="{{ url_for('index') }}" class="back-btn">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Main Dashboard
+            </a>
+        </div>
+
+        <div class="zamalek-stats-content">
+            <!-- Filter Controls Section -->
+            <div class="filters-section">
+                <h2 class="filters-title">Filters</h2>
+                
+                <!-- Row 1: MATCH_ID, CHAMPION SYSTEM, DATE, YEAR -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="match-id-filter">MATCH_ID</label>
+                        <select class="zamalek-filter-control" id="match-id-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="champion-system-filter">CHAMPION SYSTEM</label>
+                        <select class="zamalek-filter-control" id="champion-system-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="date-filter">DATE (From - To)</label>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="date" class="zamalek-filter-control" id="date-from-filter" 
+                                   style="flex: 1; padding: 8px; font-size: 0.9rem;">
+                            <span style="color: #666;">-</span>
+                            <input type="date" class="zamalek-filter-control" id="date-to-filter" 
+                                   style="flex: 1; padding: 8px; font-size: 0.9rem;">
+                        </div>
+                    </div>
+                    <div class="filter-item">
+                        <label for="year-filter">YEAR</label>
+                        <select class="zamalek-filter-control" id="year-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 2: SEASON, AHLY MANAGER, ZAMALEK MANAGER, REFEREE -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="season-filter">SEASON</label>
+                        <select class="zamalek-filter-control" id="season-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="ahly-manager-filter">AHLY MANAGER</label>
+                        <select class="zamalek-filter-control" id="ahly-manager-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="zamalek-manager-filter">ZAMALEK MANAGER</label>
+                        <select class="zamalek-filter-control" id="zamalek-manager-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="referee-filter">REFEREE</label>
+                        <select class="zamalek-filter-control" id="referee-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 3: CHAMPION, ROUND, H-A-N, STADIUM -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="champion-filter">CHAMPION</label>
+                        <select class="zamalek-filter-control" id="champion-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="round-filter">ROUND</label>
+                        <select class="zamalek-filter-control" id="round-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="han-filter">H-A-N</label>
+                        <select class="zamalek-filter-control" id="han-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="stadium-filter">STADIUM</label>
+                        <select class="zamalek-filter-control" id="stadium-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 4: AHLY, GF, GA, ET -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="ahly-filter">AHLY</label>
+                        <select class="zamalek-filter-control" id="ahly-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="gf-filter">GF</label>
+                        <select class="zamalek-filter-control" id="gf-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="ga-filter">GA</label>
+                        <select class="zamalek-filter-control" id="ga-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="et-filter">ET</label>
+                        <select class="zamalek-filter-control" id="et-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 5: PEN, ZAMALEK, W-D-L, CLEAN SHEET -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="pen-filter">PEN</label>
+                        <select class="zamalek-filter-control" id="pen-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="zamalek-filter">ZAMALEK</label>
+                        <select class="zamalek-filter-control" id="zamalek-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="wdl-filter">W-D-L</label>
+                        <select class="zamalek-filter-control" id="wdl-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="clean-sheet-filter">CLEAN SHEET</label>
+                        <select class="zamalek-filter-control" id="clean-sheet-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 6: FINALS, Q -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="finals-filter">FINALS</label>
+                        <select class="zamalek-filter-control" id="finals-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="q-filter">Q</label>
+                        <select class="zamalek-filter-control" id="q-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Filter Action Buttons -->
+                <div class="filter-actions">
+                    <button class="finals-filter-btn" onclick="applyZamalekFilters()">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Apply Filters
+                    </button>
+                    <button class="clear-filters-btn" onclick="clearZamalekFilters()">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        Clear All
+                    </button>
+                    <button class="zamalek-refresh-btn" onclick="refreshZamalekStats()">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        Sync Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Tabs Navigation -->
+            <div class="main-tabs-nav">
+                <!-- First Row (5 tabs) -->
+                <div class="main-tabs-row">
+                    <button class="main-tab-btn active" onclick="switchMainTab('overview')">Overview</button>
+                    <button class="main-tab-btn" onclick="switchMainTab('how-win')">HOW WIN</button>
+                    <button class="main-tab-btn" onclick="switchMainTab('matches')">Matches</button>
+                    <button class="main-tab-btn" onclick="switchMainTab('championships')">Championships</button>
+                    <button class="main-tab-btn" onclick="switchMainTab('seasons')">Seasons</button>
+                </div>
+                
+                <!-- Second Row (5 tabs) -->
+                <div class="main-tabs-row">
+                    <button class="main-tab-btn" onclick="switchMainTab('managers')">Coaches</button>
+                    <button class="main-tab-btn" onclick="switchMainTab('referees')">Referees</button>
+                    <button class="main-tab-btn" onclick="switchMainTab('players')">All Players</button>
+                    <button class="main-tab-btn" onclick="switchMainTab('h2h-player')">H2H Player</button>
+                    <button class="main-tab-btn" onclick="switchMainTab('by-player')">BY Player</button>
+                </div>
+            </div>
+
+            <!-- Overview Tab -->
+            <div id="overview-tab" class="tab-content active">
+                <!-- Sub Tabs for Overview -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('overview-ahly')">Al Ahly</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('overview-zamalek')">Zamalek</button>
+                </div>
+
+                <!-- Al Ahly Overview -->
+                <div id="overview-ahly" class="sub-tab-content active">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Al Ahly Overview vs Zamalek</h2>
+                        <div class="zamalek-overview">
+                            <div class="zamalek-stat-card">
+                                <h3>Total Matches</h3>
+                                <p class="zamalek-stat-value" id="ahly-total-matches">0</p>
+                                <p class="zamalek-stat-label">Matches Played</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Wins</h3>
+                                <p class="zamalek-stat-value" id="ahly-wins">0</p>
+                                <p class="zamalek-stat-label">Victories</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card neutral">
+                                <h3>Draws</h3>
+                                <p class="zamalek-stat-value" id="ahly-draws">0</p>
+                                <p class="zamalek-stat-label">Tied Games</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Losses</h3>
+                                <p class="zamalek-stat-value" id="ahly-losses">0</p>
+                                <p class="zamalek-stat-label">Defeats</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Win Rate</h3>
+                                <p class="zamalek-stat-value" id="ahly-win-rate">0%</p>
+                                <p class="zamalek-stat-label">Success Rate</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Goals For</h3>
+                                <p class="zamalek-stat-value" id="ahly-goals-for">0</p>
+                                <p class="zamalek-stat-label">Goals Scored</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Goals Against</h3>
+                                <p class="zamalek-stat-value" id="ahly-goals-against">0</p>
+                                <p class="zamalek-stat-label">Goals Conceded</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Clean Sheets For</h3>
+                                <p class="zamalek-stat-value" id="ahly-clean-sheets-for">0</p>
+                                <p class="zamalek-stat-label">No Goals Conceded</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Clean Sheets Against</h3>
+                                <p class="zamalek-stat-value" id="ahly-clean-sheets-against">0</p>
+                                <p class="zamalek-stat-label">No Goals Scored</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Longest Win Streak</h3>
+                                <p class="zamalek-stat-value" id="ahly-win-streak">0</p>
+                                <p class="zamalek-stat-label">Consecutive Wins</p>
+                                <p class="zamalek-stat-period" id="ahly-win-streak-period">-</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card neutral">
+                                <h3>Longest Draw Streak</h3>
+                                <p class="zamalek-stat-value" id="ahly-draw-streak">0</p>
+                                <p class="zamalek-stat-label">Consecutive Draws</p>
+                                <p class="zamalek-stat-period" id="ahly-draw-streak-period">-</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Longest Loss Streak</h3>
+                                <p class="zamalek-stat-value" id="ahly-loss-streak">0</p>
+                                <p class="zamalek-stat-label">Consecutive Losses</p>
+                                <p class="zamalek-stat-period" id="ahly-loss-streak-period">-</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Penalty Goals</h3>
+                                <p class="zamalek-stat-value" id="ahly-penalty-goals">0</p>
+                                <p class="zamalek-stat-label">Goals from Penalties</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Penalty Misses</h3>
+                                <p class="zamalek-stat-value" id="ahly-penalty-misses">0</p>
+                                <p class="zamalek-stat-label">Missed Penalties</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Zamalek Penalty Goals</h3>
+                                <p class="zamalek-stat-value" id="zamalek-penalty-goals-opponent" style="color: #fd7e14;">0</p>
+                                <p class="zamalek-stat-label">Opponent Penalties Scored</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Zamalek Penalty Misses</h3>
+                                <p class="zamalek-stat-value" id="zamalek-penalty-misses-opponent" style="color: #28a745;">0</p>
+                                <p class="zamalek-stat-label">Opponent Penalties Missed</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zamalek Overview -->
+                <div id="overview-zamalek" class="sub-tab-content">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Zamalek Overview vs Al Ahly</h2>
+                        <div class="zamalek-overview">
+                            <div class="zamalek-stat-card">
+                                <h3>Total Matches</h3>
+                                <p class="zamalek-stat-value" id="zamalek-total-matches">0</p>
+                                <p class="zamalek-stat-label">Matches Played</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Wins</h3>
+                                <p class="zamalek-stat-value" id="zamalek-wins">0</p>
+                                <p class="zamalek-stat-label">Victories</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card neutral">
+                                <h3>Draws</h3>
+                                <p class="zamalek-stat-value" id="zamalek-draws">0</p>
+                                <p class="zamalek-stat-label">Tied Games</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Losses</h3>
+                                <p class="zamalek-stat-value" id="zamalek-losses">0</p>
+                                <p class="zamalek-stat-label">Defeats</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Win Rate</h3>
+                                <p class="zamalek-stat-value" id="zamalek-win-rate">0%</p>
+                                <p class="zamalek-stat-label">Success Rate</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Goals For</h3>
+                                <p class="zamalek-stat-value" id="zamalek-goals-for">0</p>
+                                <p class="zamalek-stat-label">Goals Scored</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Goals Against</h3>
+                                <p class="zamalek-stat-value" id="zamalek-goals-against">0</p>
+                                <p class="zamalek-stat-label">Goals Conceded</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Clean Sheets For</h3>
+                                <p class="zamalek-stat-value" id="zamalek-clean-sheets-for">0</p>
+                                <p class="zamalek-stat-label">No Goals Conceded</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Clean Sheets Against</h3>
+                                <p class="zamalek-stat-value" id="zamalek-clean-sheets-against">0</p>
+                                <p class="zamalek-stat-label">No Goals Scored</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Longest Win Streak</h3>
+                                <p class="zamalek-stat-value" id="zamalek-win-streak">0</p>
+                                <p class="zamalek-stat-label">Consecutive Wins</p>
+                                <p class="zamalek-stat-period" id="zamalek-win-streak-period">-</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card neutral">
+                                <h3>Longest Draw Streak</h3>
+                                <p class="zamalek-stat-value" id="zamalek-draw-streak">0</p>
+                                <p class="zamalek-stat-label">Consecutive Draws</p>
+                                <p class="zamalek-stat-period" id="zamalek-draw-streak-period">-</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Longest Loss Streak</h3>
+                                <p class="zamalek-stat-value" id="zamalek-loss-streak">0</p>
+                                <p class="zamalek-stat-label">Consecutive Losses</p>
+                                <p class="zamalek-stat-period" id="zamalek-loss-streak-period">-</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card positive">
+                                <h3>Penalty Goals</h3>
+                                <p class="zamalek-stat-value" id="zamalek-penalty-goals">0</p>
+                                <p class="zamalek-stat-label">Goals from Penalties</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card negative">
+                                <h3>Penalty Misses</h3>
+                                <p class="zamalek-stat-value" id="zamalek-penalty-misses">0</p>
+                                <p class="zamalek-stat-label">Missed Penalties</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Ahly Penalty Goals</h3>
+                                <p class="zamalek-stat-value" id="ahly-penalty-goals-opponent" style="color: #fd7e14;">0</p>
+                                <p class="zamalek-stat-label">Opponent Penalties Scored</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Ahly Penalty Misses</h3>
+                                <p class="zamalek-stat-value" id="ahly-penalty-misses-opponent" style="color: #28a745;">0</p>
+                                <p class="zamalek-stat-label">Opponent Penalties Missed</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HOW WIN Tab -->
+            <div id="how-win-tab" class="tab-content">
+                <!-- Sub Tabs for HOW WIN -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('how-win-ahly')">Al Ahly</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('how-win-zamalek')">Zamalek</button>
+                </div>
+
+                <!-- Al Ahly HOW WIN -->
+                <div id="how-win-ahly" class="sub-tab-content active">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Al Ahly - How They Won</h2>
+                        <p id="how-win-excluded-note" style="text-align: center; color: #6c757d; font-size: 0.9rem; margin-bottom: 1rem;">
+                            <em>Excluded matches: <span id="how-win-excluded-count">0</span> (matches with unknown goal times)</em>
+                        </p>
+                        <div class="zamalek-overview">
+                            <div class="zamalek-stat-card">
+                                <h3>Lead First & Won</h3>
+                                <p class="zamalek-stat-value" id="ahly-lead-won" style="color: #28a745;">0</p>
+                                <p class="zamalek-stat-label">Scored First & Won</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Lead First & Drew</h3>
+                                <p class="zamalek-stat-value" id="ahly-lead-drew" style="color: #ffc107;">0</p>
+                                <p class="zamalek-stat-label">Scored First & Drew</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Lead First & Lost</h3>
+                                <p class="zamalek-stat-value" id="ahly-lead-lost" style="color: #dc3545;">0</p>
+                                <p class="zamalek-stat-label">Scored First & Lost</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Comeback Wins</h3>
+                                <p class="zamalek-stat-value" id="ahly-comeback-won" style="color: #17a2b8;">0</p>
+                                <p class="zamalek-stat-label">Behind First & Won</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Comeback Draws</h3>
+                                <p class="zamalek-stat-value" id="ahly-comeback-drew" style="color: #6c757d;">0</p>
+                                <p class="zamalek-stat-label">Behind First & Drew</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Behind & Lost</h3>
+                                <p class="zamalek-stat-value" id="ahly-behind-lost" style="color: #dc3545;">0</p>
+                                <p class="zamalek-stat-label">Behind First & Lost</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zamalek HOW WIN -->
+                <div id="how-win-zamalek" class="sub-tab-content">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Zamalek - How They Won</h2>
+                        <p style="text-align: center; color: #6c757d; font-size: 0.9rem; margin-bottom: 1rem;">
+                            <em>Excluded matches: <span id="how-win-excluded-count-zamalek">0</span> (matches with unknown goal times)</em>
+                        </p>
+                        <div class="zamalek-overview">
+                            <div class="zamalek-stat-card">
+                                <h3>Lead First & Won</h3>
+                                <p class="zamalek-stat-value" id="zamalek-lead-won" style="color: #28a745;">0</p>
+                                <p class="zamalek-stat-label">Scored First & Won</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Lead First & Drew</h3>
+                                <p class="zamalek-stat-value" id="zamalek-lead-drew" style="color: #ffc107;">0</p>
+                                <p class="zamalek-stat-label">Scored First & Drew</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Lead First & Lost</h3>
+                                <p class="zamalek-stat-value" id="zamalek-lead-lost" style="color: #dc3545;">0</p>
+                                <p class="zamalek-stat-label">Scored First & Lost</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Comeback Wins</h3>
+                                <p class="zamalek-stat-value" id="zamalek-comeback-won" style="color: #17a2b8;">0</p>
+                                <p class="zamalek-stat-label">Behind First & Won</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Comeback Draws</h3>
+                                <p class="zamalek-stat-value" id="zamalek-comeback-drew" style="color: #6c757d;">0</p>
+                                <p class="zamalek-stat-label">Behind First & Drew</p>
+                            </div>
+                            
+                            <div class="zamalek-stat-card">
+                                <h3>Behind & Lost</h3>
+                                <p class="zamalek-stat-value" id="zamalek-behind-lost" style="color: #dc3545;">0</p>
+                                <p class="zamalek-stat-label">Behind First & Lost</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matches Tab -->
+            <div id="matches-tab" class="tab-content">
+                <div class="zamalek-stats-section">
+                    <h2 class="zamalek-section-title">All Ahly VS Zamalek Matches</h2>
+                    <div class="zamalek-table-container">
+                        <div class="table-responsive">
+                            <table class="zamalek-table" id="zamalek-matches-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Season</th>
+                                        <th>Round</th>
+                                        <th>Ahly Manager</th>
+                                        <th>Zamalek Manager</th>
+                                        <th>GF</th>
+                                        <th>GA</th>
+                                        <th>Result</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Championships Tab -->
+            <div id="championships-tab" class="tab-content">
+                <div class="zamalek-stats-section">
+                    <h2 class="zamalek-section-title">Championships Statistics</h2>
+                    <div class="zamalek-table-container">
+                        <div class="table-responsive">
+                            <table class="zamalek-table" id="zamalek-championships-table">
+                                <thead>
+                                    <tr>
+                                        <th>Championship</th>
+                                        <th>P</th>
+                                        <th>W</th>
+                                        <th>D</th>
+                                        <th>L</th>
+                                        <th>GF</th>
+                                        <th>GA</th>
+                                        <th>GD</th>
+                                        <th>CSF</th>
+                                        <th>CSA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>TOTAL</td>
+                                        <td id="total-champ-p">0</td>
+                                        <td id="total-champ-w">0</td>
+                                        <td id="total-champ-d">0</td>
+                                        <td id="total-champ-l">0</td>
+                                        <td id="total-champ-gf">0</td>
+                                        <td id="total-champ-ga">0</td>
+                                        <td id="total-champ-gd">0</td>
+                                        <td id="total-champ-csf">0</td>
+                                        <td id="total-champ-csa">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seasons Tab -->
+            <div id="seasons-tab" class="tab-content">
+                <div class="zamalek-stats-section">
+                    <h2 class="zamalek-section-title">Seasons Statistics</h2>
+                    <div class="zamalek-table-container">
+                        <div class="table-responsive">
+                            <table class="zamalek-table" id="zamalek-seasons-table">
+                                <thead>
+                                    <tr>
+                                        <th>Season</th>
+                                        <th>P</th>
+                                        <th>W</th>
+                                        <th>D</th>
+                                        <th>L</th>
+                                        <th>GF</th>
+                                        <th>GA</th>
+                                        <th>GD</th>
+                                        <th>CSF</th>
+                                        <th>CSA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>TOTAL</td>
+                                        <td id="total-season-p">0</td>
+                                        <td id="total-season-w">0</td>
+                                        <td id="total-season-d">0</td>
+                                        <td id="total-season-l">0</td>
+                                        <td id="total-season-gf">0</td>
+                                        <td id="total-season-ga">0</td>
+                                        <td id="total-season-gd">0</td>
+                                        <td id="total-season-csf">0</td>
+                                        <td id="total-season-csa">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Managers Tab -->
+            <div id="managers-tab" class="tab-content">
+                <div class="zamalek-stats-section">
+                    <h2 class="zamalek-section-title">Managers Statistics</h2>
+                    
+                    <!-- Filter and Search Row -->
+                    <div style="margin-bottom: 2rem; display: flex; justify-content: center; align-items: center; gap: 2rem;">
+                        <select id="managers-filter" class="zamalek-managers-filter" onchange="filterManagers()">
+                            <option value="all">All Stats</option>
+                            <option value="ahly">With Ahly</option>
+                            <option value="zamalek">With Zamalek</option>
+                        </select>
+                        
+                        <input type="text" id="managers-search" class="zamalek-managers-search" placeholder="Search managers..." oninput="searchManagers()">
+                    </div>
+                    
+                    <div class="zamalek-table-container">
+                        <div class="table-responsive">
+                            <table class="zamalek-table" id="zamalek-managers-table">
+                                <thead>
+                                    <tr>
+                                        <th>Manager</th>
+                                        <th>P</th>
+                                        <th>W</th>
+                                        <th>D</th>
+                                        <th>L</th>
+                                        <th>GF</th>
+                                        <th>GA</th>
+                                        <th>GD</th>
+                                        <th>CSF</th>
+                                        <th>CSA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>TOTAL</td>
+                                        <td id="total-matches">0</td>
+                                        <td id="total-wins">0</td>
+                                        <td id="total-draws">0</td>
+                                        <td id="total-losses">0</td>
+                                        <td id="total-gf">0</td>
+                                        <td id="total-ga">0</td>
+                                        <td id="total-gd">0</td>
+                                        <td id="total-csf">0</td>
+                                        <td id="total-csa">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Referees Tab -->
+            <div id="referees-tab" class="tab-content">
+                <!-- Sub Tabs for Referees -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('referees-ahly')">Ahly Referees</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('referees-zamalek')">Zamalek Referees</button>
+                </div>
+
+                <!-- Ahly Referees -->
+                <div id="referees-ahly" class="sub-tab-content active">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Referees Statistics - Al Ahly</h2>
+                        
+                        <!-- Search Box -->
+                        <div style="margin-bottom: 2rem; display: flex; justify-content: center;">
+                            <input type="text" id="referees-ahly-search" class="zamalek-managers-search" placeholder="Search referees..." oninput="searchRefereesAhly()">
+                        </div>
+                        
+                        <div class="zamalek-table-container">
+                            <div class="table-responsive">
+                                <table class="zamalek-table" id="zamalek-referees-ahly-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Referee</th>
+                                            <th>P</th>
+                                            <th>W</th>
+                                            <th>D</th>
+                                            <th>L</th>
+                                            <th>PEN F</th>
+                                            <th>PEN A</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td id="total-ref-ahly-matches">0</td>
+                                            <td id="total-ref-ahly-wins">0</td>
+                                            <td id="total-ref-ahly-draws">0</td>
+                                            <td id="total-ref-ahly-losses">0</td>
+                                            <td id="total-ref-ahly-pen-for">0</td>
+                                            <td id="total-ref-ahly-pen-against">0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zamalek Referees -->
+                <div id="referees-zamalek" class="sub-tab-content">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Referees Statistics - Zamalek</h2>
+                        
+                        <!-- Search Box -->
+                        <div style="margin-bottom: 2rem; display: flex; justify-content: center;">
+                            <input type="text" id="referees-zamalek-search" class="zamalek-managers-search" placeholder="Search referees..." oninput="searchRefereesZamalek()">
+                        </div>
+                        
+                        <div class="zamalek-table-container">
+                            <div class="table-responsive">
+                                <table class="zamalek-table" id="zamalek-referees-zamalek-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Referee</th>
+                                            <th>P</th>
+                                            <th>W</th>
+                                            <th>D</th>
+                                            <th>L</th>
+                                            <th>PEN F</th>
+                                            <th>PEN A</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td id="total-ref-zamalek-matches">0</td>
+                                            <td id="total-ref-zamalek-wins">0</td>
+                                            <td id="total-ref-zamalek-draws">0</td>
+                                            <td id="total-ref-zamalek-losses">0</td>
+                                            <td id="total-ref-zamalek-pen-for">0</td>
+                                            <td id="total-ref-zamalek-pen-against">0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Players Tab -->
+            <div id="players-tab" class="tab-content">
+                <div class="zamalek-stats-section">
+                    <h2 class="zamalek-section-title">All Players Statistics</h2>
+                    
+                    <!-- Filter Dropdown -->
+                    <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+                        <select id="players-filter" class="zamalek-managers-filter" onchange="filterPlayers()">
+                            <option value="all">All Stats</option>
+                            <option value="ahly">With Ahly</option>
+                            <option value="zamalek">With Zamalek</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Search Box -->
+                    <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+                        <input type="text" id="players-search" class="zamalek-managers-search" placeholder="Search players..." oninput="searchPlayers()">
+                    </div>
+                    
+                    <div class="zamalek-table-container">
+                        <div class="table-responsive">
+                            <table class="zamalek-table" id="zamalek-players-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortPlayersTable('playerName')">Player Name <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('matches')">P <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('minutes')">Minutes <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('goals')">Goals <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('twoGoals')">2G <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('threeGoals')">3G <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('fourPlusGoals')">4G+ <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('assists')">Assists <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('twoAssists')">2A <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('threePlusAssists')">3A+ <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('penGoals')">PEN G <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortPlayersTable('penMisses')">PEN M <span class="sort-icon"></span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>TOTAL</td>
+                                        <td id="total-players-matches">0</td>
+                                        <td id="total-players-minutes">0</td>
+                                        <td id="total-players-goals">0</td>
+                                        <td id="total-players-2g">0</td>
+                                        <td id="total-players-3g">0</td>
+                                        <td id="total-players-4g">0</td>
+                                        <td id="total-players-assists">0</td>
+                                        <td id="total-players-2a">0</td>
+                                        <td id="total-players-3a">0</td>
+                                        <td id="total-players-pen-g">0</td>
+                                        <td id="total-players-pen-m">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- H2H Player Tab -->
+            <div id="h2h-player-tab" class="tab-content">
+                <div class="zamalek-stats-section">
+                    <h2 class="zamalek-section-title">Head to Head Player Statistics</h2>
+                    
+                    <!-- Filter Dropdown -->
+                    <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+                        <select id="h2h-filter" class="zamalek-managers-filter" onchange="filterH2HPlayers()">
+                            <option value="all">All Stats</option>
+                            <option value="ahly">With Ahly</option>
+                            <option value="zamalek">With Zamalek</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Search Boxes -->
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <select id="h2h-with-search" class="zamalek-managers-search" onchange="searchH2HWith()">
+                            <option value="">Search players WITH...</option>
+                        </select>
+                        <button onclick="clearH2HFilters()" class="zamalek-clear-btn" style="padding: 0.6rem 1.2rem; white-space: nowrap;">
+                            Clear Filters
+                        </button>
+                        <select id="h2h-against-search" class="zamalek-managers-search" onchange="searchH2HAgainst()">
+                            <option value="">Search players AGAINST...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="zamalek-table-container">
+                        <div class="table-responsive">
+                            <table class="zamalek-table" id="zamalek-h2h-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortH2HTable('playerName')">Player Name <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTable('matches')">P <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTable('minutes')">Minutes <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTable('wins')">W <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTable('draws')">D <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTable('losses')">L <span class="sort-icon"></span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>TOTAL</td>
+                                        <td id="total-h2h-matches">0</td>
+                                        <td id="total-h2h-minutes">0</td>
+                                        <td id="total-h2h-wins">0</td>
+                                        <td id="total-h2h-draws">0</td>
+                                        <td id="total-h2h-losses">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BY Players Tab -->
+            <div id="by-player-tab" class="tab-content">
+                <div class="zamalek-stats-section">
+                    <h2 class="zamalek-section-title">Player Individual Statistics</h2>
+                    
+                    <!-- Player Search and Filter -->
+                    <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem;">
+                        <select id="by-player-search" class="zamalek-managers-search" style="width: 250px; max-width: 250px;" onchange="selectByPlayer()">
+                            <option value="">Search for a player...</option>
+                        </select>
+                        <select id="by-player-filter" class="zamalek-managers-filter" style="width: 250px; max-width: 250px;" onchange="filterByPlayer()">
+                            <option value="all">All Stats</option>
+                            <option value="ahly">With Ahly</option>
+                            <option value="zamalek">With Zamalek</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Player not selected message -->
+                    <div id="by-player-no-selection" style="text-align: center; padding: 3rem; color: #6c757d; font-size: 1.1rem;">
+                        <p>Please select a player to view their statistics</p>
+                    </div>
+                    
+                    <!-- Player content (hidden until player is selected) -->
+                    <div id="by-player-content" style="display: none;">
+                        <!-- Sub Tabs for BY Player -->
+                        <div class="sub-tabs-nav">
+                            <button class="sub-tab-btn active" onclick="switchSubTab('by-player-overview')">Overview</button>
+                            <button class="sub-tab-btn" onclick="switchSubTab('by-player-matches-tab')">Matches</button>
+                            <button class="sub-tab-btn" onclick="switchSubTab('by-player-championships-tab')">Championships</button>
+                            <button class="sub-tab-btn" onclick="switchSubTab('by-player-seasons-tab')">Seasons</button>
+                        </div>
+                        
+                        <!-- Overview Sub Tab -->
+                        <div id="by-player-overview" class="sub-tab-content active">
+                            <div class="zamalek-stats-section">
+                                <h2 class="zamalek-section-title" id="by-player-name">Player Statistics</h2>
+                                <div class="zamalek-overview">
+                                    <div class="zamalek-stat-card">
+                                        <h3>Matches</h3>
+                                        <p class="zamalek-stat-value" id="by-player-matches">0</p>
+                                        <p class="zamalek-stat-label">Matches Played</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>Minutes</h3>
+                                        <p class="zamalek-stat-value" id="by-player-minutes">0</p>
+                                        <p class="zamalek-stat-label">Minutes Played</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card positive">
+                                        <h3>Wins</h3>
+                                        <p class="zamalek-stat-value" id="by-player-wins">0</p>
+                                        <p class="zamalek-stat-label">Victories</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card neutral">
+                                        <h3>Draws</h3>
+                                        <p class="zamalek-stat-value" id="by-player-draws">0</p>
+                                        <p class="zamalek-stat-label">Tied Games</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card negative">
+                                        <h3>Losses</h3>
+                                        <p class="zamalek-stat-value" id="by-player-losses">0</p>
+                                        <p class="zamalek-stat-label">Defeats</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>Goals</h3>
+                                        <p class="zamalek-stat-value" id="by-player-goals">0</p>
+                                        <p class="zamalek-stat-label">Total Goals</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>Assists</h3>
+                                        <p class="zamalek-stat-value" id="by-player-assists">0</p>
+                                        <p class="zamalek-stat-label">Total Assists</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>2 Goals</h3>
+                                        <p class="zamalek-stat-value" id="by-player-2g">0</p>
+                                        <p class="zamalek-stat-label">Braces</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>3 Goals</h3>
+                                        <p class="zamalek-stat-value" id="by-player-3g">0</p>
+                                        <p class="zamalek-stat-label">Hat-tricks</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>4+ Goals</h3>
+                                        <p class="zamalek-stat-value" id="by-player-4g">0</p>
+                                        <p class="zamalek-stat-label">Four or More</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>2 Assists</h3>
+                                        <p class="zamalek-stat-value" id="by-player-2a">0</p>
+                                        <p class="zamalek-stat-label">Double Assists</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>3+ Assists</h3>
+                                        <p class="zamalek-stat-value" id="by-player-3a">0</p>
+                                        <p class="zamalek-stat-label">Triple or More</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>Penalty Goals</h3>
+                                        <p class="zamalek-stat-value" id="by-player-pen-g">0</p>
+                                        <p class="zamalek-stat-label">PKs Scored</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>Penalty Assist Goals</h3>
+                                        <p class="zamalek-stat-value" id="by-player-pen-assist-g">0</p>
+                                        <p class="zamalek-stat-label">PK Assists</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card negative">
+                                        <h3>Penalty Misses</h3>
+                                        <p class="zamalek-stat-value" id="by-player-pen-m">0</p>
+                                        <p class="zamalek-stat-label">PKs Missed</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card negative">
+                                        <h3>Penalty Assist Missed</h3>
+                                        <p class="zamalek-stat-value" id="by-player-pen-assist-m">0</p>
+                                        <p class="zamalek-stat-label">PK Assists Missed</p>
+                                    </div>
+                                    
+                                    <div class="zamalek-stat-card">
+                                        <h3>Penalty Make Goal</h3>
+                                        <p class="zamalek-stat-value" id="by-player-pen-make-g">0</p>
+                                        <p class="zamalek-stat-label">PK Make Goals</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Matches Sub Tab -->
+                        <div id="by-player-matches-tab" class="sub-tab-content">
+                            <div class="zamalek-table-container">
+                                <div class="table-responsive">
+                                    <table class="zamalek-table" id="by-player-matches-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Season</th>
+                                                <th>Ahly Manager</th>
+                                                <th>Zamalek Manager</th>
+                                                <th>Result</th>
+                                                <th>Goals</th>
+                                                <th>Assists</th>
+                                                <th>Minutes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Championships Sub Tab -->
+                        <div id="by-player-championships-tab" class="sub-tab-content">
+                            <div class="zamalek-table-container">
+                                <div class="table-responsive">
+                                    <table class="zamalek-table" id="by-player-championships-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Championship</th>
+                                                <th>Matches</th>
+                                                <th>Minutes</th>
+                                                <th>G+A</th>
+                                                <th>Goals</th>
+                                                <th>Assists</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td>TOTAL</td>
+                                                <td id="total-champ-matches">0</td>
+                                                <td id="total-champ-minutes">0</td>
+                                                <td id="total-champ-ga">0</td>
+                                                <td id="total-champ-goals">0</td>
+                                                <td id="total-champ-assists">0</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Seasons Sub Tab -->
+                        <div id="by-player-seasons-tab" class="sub-tab-content">
+                            <div class="zamalek-table-container">
+                                <div class="table-responsive">
+                                    <table class="zamalek-table" id="by-player-seasons-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Season</th>
+                                                <th>Matches</th>
+                                                <th>Minutes</th>
+                                                <th>G+A</th>
+                                                <th>Goals</th>
+                                                <th>Assists</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td>TOTAL</td>
+                                                <td id="total-season-matches">0</td>
+                                                <td id="total-season-minutes">0</td>
+                                                <td id="total-season-ga">0</td>
+                                                <td id="total-season-goals">0</td>
+                                                <td id="total-season-assists">0</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='al_ahly_vs_zamalek/al_ahly_vs_zamalek.js') }}"></script>
+
+</body>
+</html>
+

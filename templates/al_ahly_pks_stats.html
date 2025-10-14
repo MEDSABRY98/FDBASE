@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al Ahly PKS Statistics - Football Data Entry System</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .pks-stats-container {
+            min-height: 100vh;
+            background: #ffffff;
+        }
+        
+        
+        .main-tabs-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .back-to-main {
+            margin-bottom: 2rem;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .back-btn .icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        
+        .pks-stats-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* Main Tabs Navigation */
+        .main-tabs-nav {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 1rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .main-tab-btn {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            position: relative;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .main-tab-btn.active {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .main-tab-btn:hover:not(.active) {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        /* Sub Tabs Navigation */
+        .sub-tabs-nav {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 0.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .sub-tab-btn {
+            flex: 1;
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+            text-align: center;
+        }
+
+        .sub-tab-btn.active {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-bottom-color: #1976d2;
+        }
+
+        .sub-tab-btn:hover:not(.active) {
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .sub-tab-content {
+            display: none;
+        }
+
+        .sub-tab-content.active {
+            display: block;
+        }
+
+        /* Enhanced Table Styles */
+        .pks-table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .pks-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            background: white;
+        }
+
+        .pks-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .pks-table thead th {
+            padding: 1rem 1.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+        }
+
+        .pks-table thead th:first-child {
+            border-top-left-radius: 12px;
+        }
+
+        .pks-table thead th:last-child {
+            border-top-right-radius: 12px;
+        }
+
+        .pks-table tbody tr {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .pks-table tbody tr:hover {
+            background: #f8f9ff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .pks-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .pks-table tbody td {
+            padding: 1rem 1.5rem;
+            color: #333;
+            font-weight: 500;
+            border: none;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .pks-table tbody td:first-child {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        /* Status badges */
+        .badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #6c757d;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 0.5rem;
+            color: #495057;
+        }
+
+        .empty-state p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive table */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Table footer styling */
+        .pks-table tfoot {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        .pks-table tfoot td {
+            padding: 1rem 1.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+        }
+
+        @media (max-width: 768px) {
+            .pks-table thead th,
+            .pks-table tbody td {
+                padding: 0.75rem 1rem;
+                font-size: 0.85rem;
+            }
+
+            .pks-table thead th {
+                font-size: 0.8rem;
+            }
+
+            .badge {
+                font-size: 0.7rem;
+                padding: 0.3rem 0.6rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .pks-table thead th,
+            .pks-table tbody td {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            .pks-table thead th {
+                font-size: 0.75rem;
+            }
+        }
+        
+        .pks-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .pks-stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+            border-left: 5px solid #667eea;
+        }
+        
+        .pks-stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .pks-stat-card h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .pks-stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 0;
+            line-height: 1;
+        }
+        
+        .pks-stat-label {
+            color: #666;
+            font-size: 1rem;
+            margin: 0.5rem 0 0 0;
+        }
+        
+        .pks-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        
+        .pks-stats-section {
+            margin-bottom: 3rem;
+        }
+        
+        .pks-section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+        
+        .pks-table-container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        
+        .pks-stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .pks-stats-table th,
+        .pks-stats-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .pks-stats-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .pks-stats-table tr:hover {
+            background: #f8f9ff;
+        }
+        
+        .filters-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .filters-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+            margin: 0 0 1.5rem 0;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-item label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 0.5rem;
+        }
+        
+        .pks-filter-control {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            width: 100%;
+        }
+        
+        .pks-filter-control:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .filter-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .pks-filter-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+        }
+        
+        .pks-filter-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .finals-filter-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .finals-filter-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        
+        .clear-filters-btn {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+        }
+
+        .clear-filters-btn:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        }
+
+        .pks-refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .pks-refresh-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .filter-btn-icon {
+            width: 18px;
+            height: 18px;
+        }
+        
+        /* Searchable Select Styles */
+        .searchable-select-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .searchable-select-container input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+            transition: border-color 0.3s ease;
+        }
+        
+        .searchable-select-container input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .dropdown-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 4px;
+        }
+        
+        .dropdown-options div {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .dropdown-options div:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-options div:hover {
+            background: #f8f9ff;
+            color: #667eea;
+        }
+        
+        .dropdown-options::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .dropdown-options::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .dropdown-options::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+        
+        .dropdown-options::-webkit-scrollbar-thumb:hover {
+            background: #5a6fd8;
+        }
+        
+        
+        @media (max-width: 768px) {
+            .pks-stats-title h1 {
+                font-size: 2rem;
+            }
+            
+            .pks-stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-actions {
+                flex-direction: column;
+            }
+            
+            .pks-filter-btn,
+            .clear-filters-btn,
+            .pks-refresh-btn {
+                width: 100%;
+            }
+
+            /* Responsive tabs */
+            .main-tabs-nav {
+                max-width: 100%;
+                gap: 0.25rem;
+                padding: 0 1rem;
+            }
+
+            .main-tab-btn {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.9rem;
+            }
+
+            .sub-tabs-nav {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 0.5rem;
+                max-width: 90%;
+            }
+
+            .sub-tab-btn {
+                flex: 1;
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+                min-width: 120px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-tabs-nav {
+                gap: 0.1rem;
+                padding: 0 0.5rem;
+            }
+
+            .main-tab-btn {
+                padding: 0.6rem 0.3rem;
+                font-size: 0.8rem;
+            }
+
+            .sub-tab-btn {
+                flex: 1;
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body class="pks-stats-container">
+    <!-- Flash Messages -->
+    {# Flash messages disabled #}
+
+
+    <!-- Main Tabs Container -->
+    <div class="main-tabs-container">
+        <!-- Back to Main Dashboard Button -->
+        <div class="back-to-main">
+            <a href="{{ url_for('index') }}" class="back-btn">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Main Dashboard
+            </a>
+        </div>
+
+
+        <!-- PKS Stats Content -->
+        <div class="pks-stats-content">
+            <!-- Filter Controls Section -->
+            <div class="filters-section">
+                <h2 class="filters-title">Filters</h2>
+                
+                <!-- Row 1: 4 filters -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="pks-system-filter">PKS System</label>
+                        <select class="pks-filter-control" id="pks-system-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="champion-system-filter">CHAMPION System</label>
+                        <select class="pks-filter-control" id="champion-system-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="match-id-filter">MATCH_ID</label>
+                        <select class="pks-filter-control" id="match-id-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="season-filter">SEASON</label>
+                        <select class="pks-filter-control" id="season-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 2: 4 filters -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="champion-filter">CHAMPION</label>
+                        <select class="pks-filter-control" id="champion-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="round-filter">ROUND</label>
+                        <select class="pks-filter-control" id="round-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="who-start-filter">WHO START?</label>
+                        <select class="pks-filter-control" id="who-start-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="opponent-team-filter">OPPONENT TEAM</label>
+                        <select class="pks-filter-control" id="opponent-team-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 3: 4 filters -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="opponent-player-filter">OPPONENT PLAYER</label>
+                        <select class="pks-filter-control" id="opponent-player-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="opponent-status-filter">OPPONENT STATUS</label>
+                        <select class="pks-filter-control" id="opponent-status-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="howmiss-opponent-filter">HOWMISS OPPONENT</label>
+                        <select class="pks-filter-control" id="howmiss-opponent-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="ahly-gk-filter">AHLY GK</label>
+                        <select class="pks-filter-control" id="ahly-gk-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 4: 4 filters -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="match-result-filter">MATCH RESULT</label>
+                        <select class="pks-filter-control" id="match-result-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="pks-result-filter">PKS RESULT</label>
+                        <select class="pks-filter-control" id="pks-result-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="pks-wl-filter">PKS W-L</label>
+                        <select class="pks-filter-control" id="pks-wl-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="ahly-team-filter">AHLY TEAM</label>
+                        <select class="pks-filter-control" id="ahly-team-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 5: 4 filters -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="ahly-player-filter">AHLY PLAYER</label>
+                        <select class="pks-filter-control" id="ahly-player-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="ahly-status-filter">AHLY STATUS</label>
+                        <select class="pks-filter-control" id="ahly-status-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="howmiss-ahly-filter">HOWMISS AHLY</label>
+                        <select class="pks-filter-control" id="howmiss-ahly-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="opponent-gk-filter">OPPONENT GK</label>
+                        <select class="pks-filter-control" id="opponent-gk-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Filter Action Buttons -->
+                <div class="filter-actions">
+                    <button class="finals-filter-btn" onclick="applyPKSFilters()">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Apply Filters
+                    </button>
+                    <button class="clear-filters-btn" onclick="clearPKSFilters()">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        Clear All
+                    </button>
+                    <button class="pks-refresh-btn" onclick="refreshPKSStats()">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        Sync Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Tabs Navigation -->
+            <div class="main-tabs-nav">
+                <button class="main-tab-btn active" onclick="switchMainTab('overview')">Overview</button>
+                <button class="main-tab-btn" onclick="switchMainTab('matches')">Matches</button>
+                <button class="main-tab-btn" onclick="switchMainTab('h2h-teams')">H2H Teams</button>
+                <button class="main-tab-btn" onclick="switchMainTab('players')">All Players</button>
+                <button class="main-tab-btn" onclick="switchMainTab('goalkeepers')">All Goalkeepers</button>
+            </div>
+
+            <!-- Tab Contents -->
+            
+            <!-- Overview Tab -->
+            <div id="overview-tab" class="tab-content active">
+                <!-- Sub Tabs for Overview -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('overview-ahly')">Al Ahly</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('overview-opponents')">Opponents</button>
+                </div>
+
+                <!-- Al Ahly Overview Sub Tab -->
+                <div id="overview-ahly" class="sub-tab-content active">
+                    <div class="pks-stats-section">
+                        <h2 class="pks-section-title">Al Ahly PKS Overview</h2>
+                        <div class="pks-overview">
+                            <div class="pks-stat-card">
+                                <h3>Total PKS Matches</h3>
+                                <p class="pks-stat-value" id="total-pks-matches">0</p>
+                                <p class="pks-stat-label">Penalty Shootouts</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>PKS Wins</h3>
+                                <p class="pks-stat-value" id="pks-wins">0</p>
+                                <p class="pks-stat-label">Shootouts Won</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Win Rate</h3>
+                                <p class="pks-stat-value" id="pks-win-rate">0%</p>
+                                <p class="pks-stat-label">Shootout Success</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>PKS Losses</h3>
+                                <p class="pks-stat-value" id="pks-losses">0</p>
+                                <p class="pks-stat-label">Shootouts Lost</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Total Penalties</h3>
+                                <p class="pks-stat-value" id="total-penalties">0</p>
+                                <p class="pks-stat-label">Penalties Taken</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Goals Scored</h3>
+                                <p class="pks-stat-value" id="penalty-goals">0</p>
+                                <p class="pks-stat-label">Penalties Converted</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Goals Missed</h3>
+                                <p class="pks-stat-value" id="penalty-misses">0</p>
+                                <p class="pks-stat-label">Penalties Missed</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Success Rate</h3>
+                                <p class="pks-stat-value" id="pks-success-rate">0%</p>
+                                <p class="pks-stat-label">Penalty Conversion</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opponents Overview Sub Tab -->
+                <div id="overview-opponents" class="sub-tab-content">
+                    <div class="pks-stats-section">
+                        <h2 class="pks-section-title">Opponents PKS Overview</h2>
+                        <div class="pks-overview">
+                            <div class="pks-stat-card">
+                                <h3>Total PKS Matches</h3>
+                                <p class="pks-stat-value" id="opponent-total-pks-matches">0</p>
+                                <p class="pks-stat-label">Penalty Shootouts</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>PKS Wins</h3>
+                                <p class="pks-stat-value" id="opponent-pks-wins">0</p>
+                                <p class="pks-stat-label">Shootouts Won</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Win Rate</h3>
+                                <p class="pks-stat-value" id="opponent-pks-win-rate">0%</p>
+                                <p class="pks-stat-label">Shootout Success</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>PKS Losses</h3>
+                                <p class="pks-stat-value" id="opponent-pks-losses">0</p>
+                                <p class="pks-stat-label">Shootouts Lost</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Total Penalties</h3>
+                                <p class="pks-stat-value" id="opponent-total-penalties">0</p>
+                                <p class="pks-stat-label">Penalties Taken</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Goals Scored</h3>
+                                <p class="pks-stat-value" id="opponent-goals">0</p>
+                                <p class="pks-stat-label">Penalties Converted</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Goals Missed</h3>
+                                <p class="pks-stat-value" id="opponent-misses">0</p>
+                                <p class="pks-stat-label">Penalties Missed</p>
+                            </div>
+                            
+                            <div class="pks-stat-card">
+                                <h3>Success Rate</h3>
+                                <p class="pks-stat-value" id="opponent-success-rate">0%</p>
+                                <p class="pks-stat-label">Penalty Conversion</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Matches Tab -->
+            <div id="matches-tab" class="tab-content">
+                <div class="pks-stats-section">
+                    <h2 class="pks-section-title">All PKS Matches</h2>
+                    <div class="pks-table-container">
+                        <div class="table-responsive">
+                            <table class="pks-table" id="recent-pks-table">
+                                <thead>
+                                    <tr>
+                                        <th>Match ID</th>
+                                        <th>Season</th>
+                                        <th>Champion</th>
+                                        <th>Opponent Team</th>
+                                        <th>Round</th>
+                                        <th>PKS Result</th>
+                                        <th>PKS W-L</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- H2H Teams Tab -->
+            <div id="h2h-teams-tab" class="tab-content">
+                <div class="pks-stats-section">
+                    <h2 class="pks-section-title">Head to Head Teams Statistics</h2>
+                    <div class="pks-table-container">
+                        <div class="table-responsive">
+                            <table class="pks-table" id="h2h-teams-pks-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortH2HTeamsPKSTable('team')">Opponent Team <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsPKSTable('matches')">Matches <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsPKSTable('wins')">Wins <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsPKSTable('losses')">Losses <span class="sort-icon"></span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>TOTAL</td>
+                                        <td id="h2h-pks-total-matches">0</td>
+                                        <td id="h2h-pks-total-wins">0</td>
+                                        <td id="h2h-pks-total-losses">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Players Tab -->
+            <div id="players-tab" class="tab-content">
+                <!-- Sub Tabs for Players -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('players-ahly')">Al Ahly</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('players-opponents')">Opponents</button>
+                </div>
+
+                <!-- Al Ahly Players Sub Tab -->
+                <div id="players-ahly" class="sub-tab-content active">
+                    <div class="pks-stats-section">
+                        <h2 class="pks-section-title">Top Al Ahly Penalty Takers</h2>
+                        <div class="pks-table-container">
+                            <div class="table-responsive">
+                                <table class="pks-table" id="top-penalty-takers-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Player Name</th>
+                                            <th>Penalties Taken</th>
+                                            <th>Goals Scored</th>
+                                            <th>Success Rate</th>
+                                            <th>Missed Penalties</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opponents Players Sub Tab -->
+                <div id="players-opponents" class="sub-tab-content">
+                    <div class="pks-stats-section">
+                        <h2 class="pks-section-title">Top Opponent Penalty Takers</h2>
+                        <div class="pks-table-container">
+                            <div class="table-responsive">
+                                <table class="pks-table" id="top-opponent-takers-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Player Name</th>
+                                            <th>Penalties Taken</th>
+                                            <th>Goals Scored</th>
+                                            <th>Success Rate</th>
+                                            <th>Missed Penalties</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Goalkeepers Tab -->
+            <div id="goalkeepers-tab" class="tab-content">
+                <!-- Sub Tabs for Goalkeepers -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('goalkeepers-ahly')">Al Ahly</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('goalkeepers-opponents')">Opponents</button>
+                </div>
+
+                <!-- Al Ahly Goalkeepers Sub Tab -->
+                <div id="goalkeepers-ahly" class="sub-tab-content active">
+                    <div class="pks-stats-section">
+                        <h2 class="pks-section-title">Al Ahly Goalkeepers PKS Stats</h2>
+                        <div class="pks-table-container">
+                            <div class="table-responsive">
+                                <table class="pks-table" id="goalkeeper-pks-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Goalkeeper</th>
+                                            <th>PKS Matches</th>
+                                            <th>Penalties Faced</th>
+                                            <th>Penalties Saved</th>
+                                            <th>Save Rate</th>
+                                            <th>Goals Conceded</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opponents Goalkeepers Sub Tab -->
+                <div id="goalkeepers-opponents" class="sub-tab-content">
+                    <div class="pks-stats-section">
+                        <h2 class="pks-section-title">Opponent Goalkeepers PKS Stats</h2>
+                        <div class="pks-table-container">
+                            <div class="table-responsive">
+                                <table class="pks-table" id="opponent-goalkeeper-pks-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Goalkeeper</th>
+                                            <th>PKS Matches</th>
+                                            <th>Penalties Faced</th>
+                                            <th>Penalties Saved</th>
+                                            <th>Save Rate</th>
+                                            <th>Goals Conceded</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='al_ahly_pks_stats/al_ahly_pks_stats.js') }}"></script>
+
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Desktop Application Requirements
+# Install with: pip install -r requirements-desktop.txt
+
+# Include all web requirements
+-r requirements.txt
+
+# Additional desktop-only dependencies
+pywebview==6.0
+

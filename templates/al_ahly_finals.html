@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al Ahly Finals Statistics - Football Data Entry System</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .finals-stats-container {
+            min-height: 100vh;
+            background: #ffffff;
+        }
+        
+        .main-tabs-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .back-to-main {
+            margin-bottom: 2rem;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .back-btn .icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .finals-stats-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* Filters Section */
+        .filters-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .filters-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+            margin: 0 0 1.5rem 0;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #ff0844;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-item label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 0.5rem;
+        }
+        
+        .finals-filter-control {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            width: 100%;
+        }
+        
+        .finals-filter-control:focus {
+            outline: none;
+            border-color: #ff0844;
+        }
+        
+        .filter-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .finals-filter-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+        }
+        
+        .finals-filter-btn:hover {
+            background: #0069d9;
+        }
+        
+        .finals-filter-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .finals-filter-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        
+        .clear-filters-btn {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+        }
+
+        .clear-filters-btn:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        }
+
+        .finals-refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .finals-refresh-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .filter-btn-icon {
+            width: 18px;
+            height: 18px;
+        }
+        
+        /* Searchable Select Styles */
+        .searchable-select-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .searchable-select-container input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+            transition: border-color 0.3s ease;
+        }
+        
+        .searchable-select-container input[type="text"]:focus {
+            outline: none;
+            border-color: #ff0844;
+        }
+        
+        .dropdown-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #ff0844;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 4px;
+        }
+        
+        .dropdown-options div {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .dropdown-options div:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-options div:hover {
+            background: #fff0f3;
+            color: #ff0844;
+        }
+        
+        .dropdown-options::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .dropdown-options::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .dropdown-options::-webkit-scrollbar-thumb {
+            background: #ff0844;
+            border-radius: 10px;
+        }
+        
+        .dropdown-options::-webkit-scrollbar-thumb:hover {
+            background: #e00739;
+        }
+
+        /* Statistics Overview */
+        .finals-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .finals-stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+            border-left: 5px solid #ff0844;
+        }
+        
+        .finals-stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .finals-stat-card h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .finals-stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #ff0844;
+            margin: 0;
+            line-height: 1;
+        }
+        
+        .finals-stat-label {
+            color: #666;
+            font-size: 1rem;
+            margin: 0.5rem 0 0 0;
+        }
+
+        /* Table Styles */
+        .finals-table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .finals-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            background: white;
+        }
+
+        .finals-table thead {
+            background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .finals-table thead th {
+            padding: 1rem 1.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+        }
+
+        .finals-table tfoot {
+            background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);
+            color: white;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        .finals-table tfoot td {
+            padding: 1rem 1.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+        }
+
+        .finals-table tbody tr {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .finals-table tbody tr:hover {
+            background: #fff0f3;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(255, 8, 68, 0.1);
+        }
+
+        .finals-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .finals-table tbody td {
+            padding: 1rem 1.5rem;
+            color: #333;
+            font-weight: 500;
+            border: none;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .finals-table tbody td:first-child {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        /* Status badges */
+        .badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #6c757d;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 0.5rem;
+            color: #495057;
+        }
+
+        .empty-state p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive table */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Positive/Negative values */
+        td.positive {
+            color: #28a745;
+            font-weight: 600;
+        }
+        
+        td.negative {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        
+        /* Positive/Negative values in tfoot (override for white background) */
+        .finals-table tfoot td.positive {
+            color: #90ee90;
+            font-weight: 700;
+        }
+        
+        .finals-table tfoot td.negative {
+            color: #ffb3ba;
+            font-weight: 700;
+        }
+
+        .finals-stats-section {
+            margin-bottom: 3rem;
+        }
+        
+        .finals-section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            border-bottom: 3px solid #ff0844;
+            padding-bottom: 0.5rem;
+        }
+
+        /* Main Tabs Navigation */
+        .main-tabs-nav {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 1rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .main-tab-btn {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            position: relative;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .main-tab-btn.active {
+            background: #ff0844;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .main-tab-btn:hover:not(.active) {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        /* Sub Tabs Navigation */
+        .sub-tabs-nav {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 0.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .sub-tab-btn {
+            flex: 1;
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+            text-align: center;
+        }
+
+        .sub-tab-btn.active {
+            background: #fff0f3;
+            color: #ff0844;
+            border-bottom-color: #ff0844;
+        }
+
+        .sub-tab-btn:hover:not(.active) {
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .sub-tab-content {
+            display: none;
+        }
+
+        .sub-tab-content.active {
+            display: block;
+        }
+
+        /* Nested Sub Tabs Navigation */
+        .sub-tabs-nav-nested {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            margin-top: 1rem;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 0.5rem;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .sub-tab-nested-btn {
+            flex: 1;
+            padding: 0.6rem 1.2rem;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+            text-align: center;
+        }
+
+        .sub-tab-nested-btn.active {
+            background: #ffe6ed;
+            color: #ff0844;
+            border-bottom-color: #ff0844;
+        }
+
+        .sub-tab-nested-btn:hover:not(.active) {
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        .sub-tab-nested-content {
+            display: none;
+        }
+
+        .sub-tab-nested-content.active {
+            display: block;
+        }
+
+        /* Player Search Container */
+        .player-search-container {
+            max-width: 600px;
+            margin: 0 auto 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .player-search-container label {
+            display: block;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.75rem;
+        }
+
+        .player-search-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            background: white;
+        }
+
+        .player-search-input:focus {
+            outline: none;
+            border-color: #ff0844;
+            box-shadow: 0 0 0 3px rgba(255, 8, 68, 0.1);
+        }
+
+        .player-dropdown {
+            position: absolute;
+            width: calc(100% - 3rem);
+            max-width: 552px;
+            background: white;
+            border: 2px solid #ff0844;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 4px;
+        }
+
+        .player-dropdown-item {
+            padding: 0.875rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .player-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .player-dropdown-item:hover {
+            background: #fff0f3;
+            color: #ff0844;
+        }
+
+        .player-dropdown-item .player-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .player-dropdown-item .player-team {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        /* Player Overview Cards */
+        .player-overview-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .player-overview-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-left: 4px solid #ff0844;
+        }
+
+        .player-overview-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+        }
+
+        .player-overview-card h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .player-overview-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #ff0844;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .player-overview-label {
+            color: #666;
+            font-size: 0.85rem;
+            margin: 0.5rem 0 0 0;
+        }
+
+        .no-player-selected {
+            text-align: center;
+            color: #6c757d;
+            font-size: 1.1rem;
+            padding: 3rem 2rem;
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 768px) {
+            .finals-table thead th,
+            .finals-table tbody td {
+                padding: 0.75rem 1rem;
+                font-size: 0.85rem;
+            }
+
+            .finals-table thead th {
+                font-size: 0.8rem;
+            }
+
+            .badge {
+                font-size: 0.7rem;
+                padding: 0.3rem 0.6rem;
+            }
+
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-actions {
+                flex-direction: column;
+            }
+            
+            .finals-filter-btn,
+            .clear-filters-btn,
+            .finals-refresh-btn {
+                width: 100%;
+            }
+
+            .finals-overview {
+                grid-template-columns: 1fr;
+            }
+
+            /* Responsive tabs */
+            .main-tabs-nav {
+                max-width: 100%;
+                gap: 0.25rem;
+                padding: 0 1rem;
+            }
+
+            .main-tab-btn {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.9rem;
+            }
+
+            .sub-tabs-nav {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 0.5rem;
+                max-width: 90%;
+            }
+
+            .sub-tab-btn {
+                flex: 1;
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+                min-width: 120px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .finals-table thead th,
+            .finals-table tbody td {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            .finals-table thead th {
+                font-size: 0.75rem;
+            }
+
+            .main-tabs-nav {
+                gap: 0.1rem;
+                padding: 0 0.5rem;
+            }
+
+            .main-tab-btn {
+                padding: 0.6rem 0.3rem;
+                font-size: 0.8rem;
+            }
+
+            .sub-tab-btn {
+                flex: 1;
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+                min-width: 100px;
+            }
+
+            .sub-tabs-nav-nested {
+                max-width: 100%;
+            }
+
+            .sub-tab-nested-btn {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.85rem;
+            }
+
+            .player-search-container {
+                padding: 1rem;
+            }
+
+            .player-overview-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .player-dropdown {
+                width: calc(100% - 2rem);
+            }
+        }
+    </style>
+</head>
+<body class="finals-stats-container">
+    <!-- Main Tabs Container -->
+    <div class="main-tabs-container">
+        <!-- Back to Main Dashboard Button -->
+        <div class="back-to-main">
+            <a href="{{ url_for('index') }}" class="back-btn">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Main Dashboard
+            </a>
+        </div>
+
+        <!-- Finals Stats Content -->
+        <div class="finals-stats-content">
+            <!-- Filter Controls Section -->
+            <div class="filters-section">
+                <h2 class="filters-title">Filters</h2>
+                
+                <!-- Row 1: MATCH_ID, CHAMPION System, SEASON, TIMING -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="match-id-filter">MATCH_ID</label>
+                        <select class="finals-filter-control" id="match-id-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="champion-system-filter">CHAMPION System</label>
+                        <select class="finals-filter-control" id="champion-system-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="season-filter">SEASON</label>
+                        <select class="finals-filter-control" id="season-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="timing-filter">TIMING</label>
+                        <select class="finals-filter-control" id="timing-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 2: DATE RANGE, CHAMPION, AHLY MANAGER, OPPONENT MANAGER -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="date-from-filter">DATE From</label>
+                        <input type="date" class="finals-filter-control" id="date-from-filter" placeholder="From Date">
+                    </div>
+                    <div class="filter-item">
+                        <label for="date-to-filter">DATE To</label>
+                        <input type="date" class="finals-filter-control" id="date-to-filter" placeholder="To Date">
+                    </div>
+                    <div class="filter-item">
+                        <label for="champion-filter">CHAMPION</label>
+                        <select class="finals-filter-control" id="champion-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="ahly-manager-filter">AHLY MANAGER</label>
+                        <select class="finals-filter-control" id="ahly-manager-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Row 3: OPPONENT MANAGER, H/A/N, AHLY TEAM, GF -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="opponent-manager-filter">OPPONENT MANAGER</label>
+                        <select class="finals-filter-control" id="opponent-manager-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="han-filter">H/A/N</label>
+                        <select class="finals-filter-control" id="han-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="ahly-team-filter">AHLY TEAM</label>
+                        <select class="finals-filter-control" id="ahly-team-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="gf-filter">GF</label>
+                        <select class="finals-filter-control" id="gf-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 4: GA, ET, PEN, OPPONENT TEAM -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="ga-filter">GA</label>
+                        <select class="finals-filter-control" id="ga-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="et-filter">ET</label>
+                        <select class="finals-filter-control" id="et-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="pen-filter">PEN</label>
+                        <select class="finals-filter-control" id="pen-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="opponent-team-filter">OPPONENT TEAM</label>
+                        <select class="finals-filter-control" id="opponent-team-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="wl-match-filter">W-L MATCH</label>
+                        <select class="finals-filter-control" id="wl-match-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 5: C.S, W-L FINAL -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="cs-filter">C.S</label>
+                        <select class="finals-filter-control" id="cs-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="wl-final-filter">W-L FINAL</label>
+                        <select class="finals-filter-control" id="wl-final-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Filter Action Buttons -->
+                <div class="filter-actions">
+                    <button class="finals-filter-btn" onclick="applyFinalsFilters()">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Apply Filters
+                    </button>
+                    <button class="clear-filters-btn" onclick="clearFinalsFilters()">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        Clear All
+                    </button>
+                    <button class="finals-refresh-btn" onclick="refreshFinalsStats()">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        Sync Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Tabs Navigation -->
+            <div class="main-tabs-nav">
+                <button class="main-tab-btn active" onclick="switchMainTab('overview')">Overview</button>
+                <button class="main-tab-btn" onclick="switchMainTab('matches')">Matches</button>
+                <button class="main-tab-btn" onclick="switchMainTab('h2h-teams')">H2H Teams</button>
+                <button class="main-tab-btn" onclick="switchMainTab('managers')">Coaches</button>
+                <button class="main-tab-btn" onclick="switchMainTab('all-players')">All Players</button>
+                <button class="main-tab-btn" onclick="switchMainTab('by-players')">BY Player</button>
+            </div>
+
+            <!-- Tab Contents -->
+            
+            <!-- Overview Tab -->
+            <div id="overview-tab" class="tab-content active">
+                <!-- Sub Tabs for Overview -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('overview-ahly')">Al Ahly</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('overview-opponents')">Opponents</button>
+                </div>
+
+                <!-- Al Ahly Overview Sub Tab -->
+                <div id="overview-ahly" class="sub-tab-content active">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Al Ahly Finals Overview</h2>
+                        <div class="finals-overview">
+                            <div class="finals-stat-card">
+                                <h3>Total Finals</h3>
+                                <p class="finals-stat-value" id="total-finals-matches">0</p>
+                                <p class="finals-stat-label">Finals Played</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Finals Won</h3>
+                                <p class="finals-stat-value" id="finals-won">0</p>
+                                <p class="finals-stat-label">Championships</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Finals Lost</h3>
+                                <p class="finals-stat-value" id="finals-lost">0</p>
+                                <p class="finals-stat-label">Runner-up</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Win Rate</h3>
+                                <p class="finals-stat-value" id="final-win-rate">0%</p>
+                                <p class="finals-stat-label">Finals Success</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Match Wins</h3>
+                                <p class="finals-stat-value" id="match-wins">0</p>
+                                <p class="finals-stat-label">Won in 90/120 min</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Match Draws</h3>
+                                <p class="finals-stat-value" id="match-draws">0</p>
+                                <p class="finals-stat-label">Draws</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Match Losses</h3>
+                                <p class="finals-stat-value" id="match-losses">0</p>
+                                <p class="finals-stat-label">Lost in 90/120 min</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Goals For</h3>
+                                <p class="finals-stat-value" id="total-goals-for">0</p>
+                                <p class="finals-stat-label">Goals Scored</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Goals Against</h3>
+                                <p class="finals-stat-value" id="total-goals-against">0</p>
+                                <p class="finals-stat-label">Goals Conceded</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Clean Sheets</h3>
+                                <p class="finals-stat-value" id="clean-sheets">0</p>
+                                <p class="finals-stat-label">No Goals Conceded</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opponents Overview Sub Tab -->
+                <div id="overview-opponents" class="sub-tab-content">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Opponents Finals Overview</h2>
+                        <div class="finals-overview">
+                            <div class="finals-stat-card">
+                                <h3>Total Finals</h3>
+                                <p class="finals-stat-value" id="opponent-total-finals">0</p>
+                                <p class="finals-stat-label">Finals Played</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Finals Won</h3>
+                                <p class="finals-stat-value" id="opponent-finals-won">0</p>
+                                <p class="finals-stat-label">Championships</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Finals Lost</h3>
+                                <p class="finals-stat-value" id="opponent-finals-lost">0</p>
+                                <p class="finals-stat-label">Runner-up</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Win Rate</h3>
+                                <p class="finals-stat-value" id="opponent-win-rate">0%</p>
+                                <p class="finals-stat-label">Finals Success</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Match Wins</h3>
+                                <p class="finals-stat-value" id="opponent-match-wins">0</p>
+                                <p class="finals-stat-label">Won in 90/120 min</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Match Draws</h3>
+                                <p class="finals-stat-value" id="opponent-match-draws">0</p>
+                                <p class="finals-stat-label">Draws</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Match Losses</h3>
+                                <p class="finals-stat-value" id="opponent-match-losses">0</p>
+                                <p class="finals-stat-label">Lost in 90/120 min</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Goals For</h3>
+                                <p class="finals-stat-value" id="opponent-goals-for">0</p>
+                                <p class="finals-stat-label">Goals Scored</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Goals Against</h3>
+                                <p class="finals-stat-value" id="opponent-goals-against">0</p>
+                                <p class="finals-stat-label">Goals Conceded</p>
+                            </div>
+                            
+                            <div class="finals-stat-card">
+                                <h3>Clean Sheets</h3>
+                                <p class="finals-stat-value" id="opponent-clean-sheets">0</p>
+                                <p class="finals-stat-label">No Goals Conceded</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matches Tab -->
+            <div id="matches-tab" class="tab-content">
+                <div class="finals-stats-section">
+                    <h2 class="finals-section-title">All Finals Matches</h2>
+                    <div class="finals-table-container">
+                        <div class="table-responsive">
+                            <table class="finals-table" id="finals-matches-table">
+                                <thead>
+                                    <tr>
+                                        <th>Match ID</th>
+                                        <th>Season</th>
+                                        <th>Champion</th>
+                                        <th>Timing</th>
+                                        <th>Opponent</th>
+                                        <th>H/A/N</th>
+                                        <th>Score</th>
+                                        <th>ET</th>
+                                        <th>PEN</th>
+                                        <th>Match</th>
+                                        <th>Final</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- H2H Teams Tab -->
+            <div id="h2h-teams-tab" class="tab-content">
+                <div class="finals-stats-section">
+                    <h2 class="finals-section-title">Head to Head Teams Statistics</h2>
+                    <div class="finals-table-container">
+                        <div class="table-responsive">
+                            <table class="finals-table" id="h2h-teams-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('team')">Opponent Team <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('finals')">Finals <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('finalsWon')">Finals Won <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('finalsLost')">Finals Lost <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('matches')">Total Matches <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('wins')">W <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('draws')">D <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('losses')">L <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('goalsFor')">GF <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('goalsAgainst')">GA <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTeamsTable('goalDifference')">GD <span class="sort-icon"></span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>TOTAL</td>
+                                        <td id="h2h-total-finals">0</td>
+                                        <td id="h2h-total-finals-won">0</td>
+                                        <td id="h2h-total-finals-lost">0</td>
+                                        <td id="h2h-total-matches">0</td>
+                                        <td id="h2h-total-wins">0</td>
+                                        <td id="h2h-total-draws">0</td>
+                                        <td id="h2h-total-losses">0</td>
+                                        <td id="h2h-total-gf">0</td>
+                                        <td id="h2h-total-ga">0</td>
+                                        <td id="h2h-total-gd">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Managers Tab -->
+            <div id="managers-tab" class="tab-content">
+                <!-- Sub Tabs for Managers -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('managers-ahly')">Ahly Managers</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('managers-opponents')">Opponent Managers</button>
+                </div>
+
+                <!-- Ahly Managers Sub Tab -->
+                <div id="managers-ahly" class="sub-tab-content active">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Ahly Managers in Finals</h2>
+                        <div class="finals-table-container">
+                            <div class="table-responsive">
+                                <table class="finals-table" id="ahly-managers-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('manager')">Manager Name <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('finals')">Finals <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('finalsWon')">Finals Won <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('finalsLost')">Finals Lost <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('matches')">Total Matches <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('wins')">W <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('draws')">D <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('losses')">L <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('goalsFor')">GF <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('goalsAgainst')">GA <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAhlyManagersTable('goalDifference')">GD <span class="sort-icon"></span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td id="ahly-mgr-total-finals">0</td>
+                                            <td id="ahly-mgr-total-finals-won">0</td>
+                                            <td id="ahly-mgr-total-finals-lost">0</td>
+                                            <td id="ahly-mgr-total-matches">0</td>
+                                            <td id="ahly-mgr-total-wins">0</td>
+                                            <td id="ahly-mgr-total-draws">0</td>
+                                            <td id="ahly-mgr-total-losses">0</td>
+                                            <td id="ahly-mgr-total-gf">0</td>
+                                            <td id="ahly-mgr-total-ga">0</td>
+                                            <td id="ahly-mgr-total-gd">0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opponent Managers Sub Tab -->
+                <div id="managers-opponents" class="sub-tab-content">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Opponent Managers in Finals</h2>
+                        <div class="finals-table-container">
+                            <div class="table-responsive">
+                                <table class="finals-table" id="opponent-managers-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('manager')">Manager Name <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('finals')">Finals <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('finalsWon')">Finals Won <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('finalsLost')">Finals Lost <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('matches')">Total Matches <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('wins')">W <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('draws')">D <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('losses')">L <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('goalsFor')">GF <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('goalsAgainst')">GA <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortOpponentManagersTable('goalDifference')">GD <span class="sort-icon"></span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td id="opp-mgr-total-finals">0</td>
+                                            <td id="opp-mgr-total-finals-won">0</td>
+                                            <td id="opp-mgr-total-finals-lost">0</td>
+                                            <td id="opp-mgr-total-matches">0</td>
+                                            <td id="opp-mgr-total-wins">0</td>
+                                            <td id="opp-mgr-total-draws">0</td>
+                                            <td id="opp-mgr-total-losses">0</td>
+                                            <td id="opp-mgr-total-gf">0</td>
+                                            <td id="opp-mgr-total-ga">0</td>
+                                            <td id="opp-mgr-total-gd">0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Players Tab -->
+            <div id="all-players-tab" class="tab-content">
+                <!-- Sub Tabs for All Players -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('all-players-ahly')">Al Ahly</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('all-players-opponents')">Opponents</button>
+                </div>
+
+                <!-- Al Ahly Players Stats -->
+                <div id="all-players-ahly" class="sub-tab-content active">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Al Ahly Players in Finals</h2>
+                        <div class="finals-table-container">
+                            <div class="table-responsive">
+                                <table class="finals-table" id="ahly-players-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Player Name</th>
+                                            <th>Finals Played</th>
+                                            <th>Finals Won</th>
+                                            <th>Win Rate</th>
+                                            <th>Finals Lost</th>
+                                            <th>G+A</th>
+                                            <th>Goals</th>
+                                            <th>Assists</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opponent Players Stats -->
+                <div id="all-players-opponents" class="sub-tab-content">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Opponent Players in Finals</h2>
+                        <div class="finals-table-container">
+                            <div class="table-responsive">
+                                <table class="finals-table" id="opponent-players-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Player Name</th>
+                                            <th>Finals Played</th>
+                                            <th>Finals Won</th>
+                                            <th>Win Rate</th>
+                                            <th>G+A</th>
+                                            <th>Goals</th>
+                                            <th>Assists</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- By Players Tab -->
+            <div id="by-players-tab" class="tab-content">
+                <!-- Player Search with Team Filter -->
+                <div class="player-search-container">
+                    <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                        <div style="flex: 1;">
+                            <label for="unified-player-search">Search Player:</label>
+                            <input type="text" id="unified-player-search" class="player-search-input" placeholder="Search for any player...">
+                            <div id="unified-player-dropdown" class="player-dropdown" style="display: none;"></div>
+                        </div>
+                        <div style="min-width: 200px;">
+                            <label for="player-team-filter">Filter by Team:</label>
+                            <select id="player-team-filter" class="finals-filter-control" style="width: 100%;">
+                                <option value="">All Teams</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub Tabs for By Players -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('player-overview')">Player Overview</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('player-matches')">Matches</button>
+                </div>
+
+                <!-- Player Overview Sub Tab -->
+                <div id="player-overview" class="sub-tab-content active">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Player Overview</h2>
+                        
+                        <!-- Player Overview Cards -->
+                        <div id="unified-player-overview-cards" class="player-overview-cards">
+                            <p class="no-player-selected">Please select a player to view their overview</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Player Matches Sub Tab -->
+                <div id="player-matches" class="sub-tab-content">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Player Matches</h2>
+                        <div class="finals-table-container">
+                            <div class="table-responsive">
+                                <table class="finals-table" id="player-matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Season</th>
+                                            <th>H/A/N</th>
+                                            <th>Opponent Team</th>
+                                            <th>Goals</th>
+                                            <th>Assists</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='al_ahly_finals/al_ahly_finals.js') }}"></script>
+
+</body>
+</html>

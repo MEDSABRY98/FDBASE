@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Data OS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #4a5568;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .dashboard-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .dashboard-header h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            letter-spacing: -1px;
+        }
+
+        .dashboard-header h1 .highlight {
+            color: #60a5fa;
+        }
+
+        .dashboard-header h1 .normal {
+            color: #ffffff;
+        }
+
+        .dashboard-header p {
+            font-size: 1.125rem;
+            color: #cbd5e0;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .app-card {
+            background: #3a4556;
+            border-radius: 16px;
+            padding: 2.5rem 1.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .app-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .app-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+
+        .app-card:hover::before {
+            opacity: 1;
+        }
+
+        .app-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            background: rgba(59, 130, 246, 0.15);
+            border: 2px solid rgba(96, 165, 250, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-card:hover .app-icon {
+            transform: scale(1.1);
+            background: rgba(59, 130, 246, 0.25);
+            border-color: rgba(96, 165, 250, 0.5);
+        }
+
+        .app-icon svg {
+            width: 40px;
+            height: 40px;
+            fill: #60a5fa;
+        }
+
+        .app-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        @media (max-width: 1400px) {
+            .apps-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-header h1 {
+                font-size: 3rem;
+            }
+
+            .apps-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.25rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1.5rem;
+            }
+
+            .dashboard-header {
+                margin-bottom: 2.5rem;
+            }
+
+            .dashboard-header h1 {
+                font-size: 2.5rem;
+            }
+
+            .dashboard-header p {
+                font-size: 1rem;
+            }
+
+            .apps-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .app-card {
+                padding: 2rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .dashboard-header h1 {
+                font-size: 2rem;
+            }
+
+            .app-icon {
+                width: 60px;
+                height: 60px;
+            }
+
+            .app-icon svg {
+                width: 30px;
+                height: 30px;
+            }
+
+            .app-title {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>
+                <span class="highlight">Football</span> <span class="normal">Data OS</span>
+            </h1>
+            <p>Navigate through the core modules of our advanced football statistics platform.</p>
+        </div>
+
+        <div class="apps-grid">
+            <!-- Data Entry Application -->
+            <a href="{{ url_for('data_entry_login') }}" class="app-card">
+                <div class="app-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19L12,15H9V10L7,14H10V19Z"/>
+                    </svg>
+                </div>
+                <h3 class="app-title">Data Entry System</h3>
+            </a>
+
+            <!-- Al Ahly Main Statistics -->
+            <a href="{{ url_for('al_ahly_stats') }}" class="app-card">
+                <div class="app-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M9,17H7V10H9M13,17H11V7H13M17,17H15V13H17M19.5,19.1H4.5V5H19.5M19.5,3H4.5C3.4,3 2.5,3.9 2.5,5V19.1C2.5,20.2 3.4,21.1 4.5,21.1H19.5C20.6,21.1 21.5,20.2 21.5,19.1V5C21.5,3.9 20.6,3 19.5,3Z"/>
+                    </svg>
+                </div>
+                <h3 class="app-title">Al Ahly Main Statistics</h3>
+            </a>
+
+            <!-- Al Ahly Finals Statistics -->
+            <a href="{{ url_for('al_ahly_finals') }}" class="app-card">
+                <div class="app-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M12,15A2,2 0 0,1 10,13C10,11.89 10.9,11 12,11A2,2 0 0,1 14,13A2,2 0 0,1 12,15M7,22V19H9V22H15V19H17V22H19V17L21,15V3H3V15L5,17V22H7M5,5H19V13.17L18,14.17V17H16V14H8V17H6V14.17L5,13.17V5M11,6V8.5H10V9.5H11V11H12V9.5H13V8.5H12V6H11Z"/>
+                    </svg>
+                </div>
+                <h3 class="app-title">Al Ahly Finals Statistics</h3>
+            </a>
+
+            <!-- Al Ahly PKS Statistics -->
+            <a href="{{ url_for('al_ahly_pks_stats') }}" class="app-card">
+                <div class="app-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4C14.86,4 17.34,5.61 18.58,8H13.85C13.63,7.42 13.08,7 12.43,7H11.57C10.92,7 10.37,7.42 10.15,8H5.42C6.66,5.61 9.14,4 12,4M4,12C4,11.31 4.1,10.64 4.26,10H7.64L6.18,11.46C6.45,12.11 7.05,12.57 7.76,12.67L9.74,12.91C9.5,13.21 9.12,13.4 8.71,13.4C8.53,13.4 8.35,13.36 8.19,13.27L4.65,14.91C4.23,14.08 4,13.13 4,12.13V12M12,20C9.14,20 6.66,18.39 5.42,16H10.15C10.37,16.58 10.92,17 11.57,17H12.43C13.08,17 13.63,16.58 13.85,16H18.58C17.34,18.39 14.86,20 12,20M19.35,14.91L15.81,13.27C15.65,13.36 15.47,13.4 15.29,13.4C14.88,13.4 14.5,13.21 14.26,12.91L16.24,12.67C16.95,12.57 17.55,12.11 17.82,11.46L16.36,10H19.74C19.9,10.64 20,11.31 20,12C20,13.13 19.77,14.08 19.35,14.91Z"/>
+                    </svg>
+                </div>
+                <h3 class="app-title">Al Ahly PKS Statistics</h3>
+            </a>
+
+            <!-- Al Ahly vs Zamalek -->
+            <a href="{{ url_for('ahly_vs_zamalek') }}" class="app-card">
+                <div class="app-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M20.5,3L20.34,3.03L15,5.1L9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0,0 3.5,21L3.66,20.97L9,18.9L15,21L20.64,19.1C20.85,19.03 21,18.85 21,18.62V3.5A0.5,0.5 0 0,0 20.5,3M10,5.47L14,6.87V18.53L10,17.13V5.47M5,6.46L8,5.45V17.15L5,18.31V6.46M19,17.54L16,18.55V6.86L19,5.7V17.54Z"/>
+                    </svg>
+                </div>
+                <h3 class="app-title">Al Ahly vs Zamalek</h3>
+            </a>
+
+            <!-- Egypt National Teams -->
+            <a href="{{ url_for('egypt_teams') }}" class="app-card">
+                <div class="app-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M14.4,6L14,4H5V21H7V14H12.6L13,16H20V6H14.4Z"/>
+                    </svg>
+                </div>
+                <h3 class="app-title">Egypt National Teams 🇪🇬</h3>
+            </a>
+
+            <!-- Youth Egypt National Teams -->
+            <a href="{{ url_for('youth_egypt_teams') }}" class="app-card">
+                <div class="app-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <h3 class="app-title">Youth Egypt National Teams 🌟</h3>
+            </a>
+
+            <!-- PKS Egypt National Teams -->
+            <a href="{{ url_for('pks_egypt') }}" class="app-card">
+                <div class="app-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4C14.86,4 17.34,5.61 18.58,8H13.85C13.63,7.42 13.08,7 12.43,7H11.57C10.92,7 10.37,7.42 10.15,8H5.42C6.66,5.61 9.14,4 12,4M4,12C4,11.31 4.1,10.64 4.26,10H7.64L6.18,11.46C6.45,12.11 7.05,12.57 7.76,12.67L9.74,12.91C9.5,13.21 9.12,13.4 8.71,13.4C8.53,13.4 8.35,13.36 8.19,13.27L4.65,14.91C4.23,14.08 4,13.13 4,12.13V12M12,20C9.14,20 6.66,18.39 5.42,16H10.15C10.37,16.58 10.92,17 11.57,17H12.43C13.08,17 13.63,16.58 13.85,16H18.58C17.34,18.39 14.86,20 12,20M19.35,14.91L15.81,13.27C15.65,13.36 15.47,13.4 15.29,13.4C14.88,13.4 14.5,13.21 14.26,12.91L16.24,12.67C16.95,12.57 17.55,12.11 17.82,11.46L16.36,10H19.74C19.9,10.64 20,11.31 20,12C20,13.13 19.77,14.08 19.35,14.91Z"/>
+                    </svg>
+                </div>
+                <h3 class="app-title">PKS Egypt National Teams</h3>
+            </a>
+
+            <!-- Egyptian Clubs -->
+            <a href="{{ url_for('egyptian_clubs') }}" class="app-card">
+                <div class="app-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M17,13H13V17H11V13H7V11H11V7H13V11H17M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+                    </svg>
+                </div>
+                <h3 class="app-title">Egyptian Clubs 🏆</h3>
+            </a>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

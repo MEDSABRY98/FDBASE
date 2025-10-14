@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Ahly PKs - Match Data Manager{% endblock %}
+
+{% block content %}
+<!-- Ahly PKs specific scripts -->
+<form id="ahly-pks" method="POST" action="/save_data">
+    <input type="hidden" name="data_type" value="ahly_pks">
+    
+    <!-- Basic Match Information -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Basic Match Information</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid two-columns">
+            <div class="form-group">
+                <label for="match_id">MATCH_ID</label>
+                <input type="text" id="match_id" name="match_id" placeholder="Enter match ID">
+            </div>
+            <div class="form-group">
+                <label for="pks_system">PKS System</label>
+                <select id="pks_system" name="pks_system">
+                    <option value="">Select</option>
+                    <option value="K.O">K.O</option>
+                    <option value="FINAL">FINAL</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="champion_system">CHAMPION System</label>
+                <select id="champion_system" name="champion_system">
+                    <option value="">Select</option>
+                    <option value="أفريقي">أفريقي</option>
+                    <option value="عالمي">عالمي</option>
+                    <option value="عربي">عربي</option>
+                    <option value="مصري">مصري</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="champion">CHAMPION</label>
+                <input type="text" id="champion" name="champion" placeholder="e.g., دوري أبطال أفريقيا">
+            </div>
+            <div class="form-group">
+                <label for="season">SEASON</label>
+                <input type="text" id="season" name="season" placeholder="e.g., 1987">
+            </div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="round">ROUND</label>
+                <input type="text" id="round" name="round" placeholder="e.g., 8">
+            </div>
+            <div class="form-group">
+                <label for="who_start">WHO START?</label>
+                <select id="who_start" name="who_start">
+                    <option value="">Select</option>
+                    <option value="الأهلي اللي بدأ">الأهلي اللي بدأ</option>
+                    <option value="المنافس اللي بدأ">المنافس اللي بدأ</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <!-- Empty space for alignment -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Teams & Results -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Teams & Results</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid four-columns">
+            <div class="form-group">
+                <label for="opponent_team">OPPONENT TEAM</label>
+                <input type="text" id="opponent_team" name="opponent_team" placeholder="Team name">
+            </div>
+            <div class="form-group">
+                <label for="ahly_team">AHLY TEAM</label>
+                <input type="text" id="ahly_team" name="ahly_team" value="الأهلي" readonly class="readonly">
+            </div>
+            <div class="form-group">
+                <label for="match_result">MATCH RESULT</label>
+                <input type="text" id="match_result" name="match_result" placeholder="e.g., 0-2">
+            </div>
+            <div class="form-group">
+                <label for="pks_result">PKS RESULT</label>
+                <input type="text" id="pks_result" name="pks_result" placeholder="e.g., 2-4">
+            </div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="pks_w_l">PKS W-L</label>
+                <select id="pks_w_l" name="pks_w_l">
+                    <option value="">Select</option>
+                    <option value="W">W</option>
+                    <option value="L">L</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="ahly_gk">AHLY GK</label>
+                <input type="text" id="ahly_gk" name="ahly_gk" placeholder="Goalkeeper name">
+            </div>
+            <div class="form-group">
+                <label for="opponent_gk">OPPONENT GK</label>
+                <input type="text" id="opponent_gk" name="opponent_gk" placeholder="Goalkeeper name">
+            </div>
+        </div>
+    </div>
+
+    <!-- Players Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Players Details</h2>
+            <div class="section-line"></div>
+        </div>
+        
+        <!-- Ahly Players Section -->
+        <div class="team-section">
+            <h3>الأهلي</h3>
+            <div class="players-grid">
+                <!-- Ahly Headers -->
+                <div class="player-header ahly-header pks-header">
+                    <div class="header-cell">AHLY PLAYER</div>
+                    <div class="header-cell">AHLY STATUS</div>
+                    <div class="header-cell">HOWMISS AHLY</div>
+                    <div class="header-cell">Action</div>
+                </div>
+                
+                <!-- Ahly Player Rows Container -->
+                <div id="ahly-players-container">
+                    <!-- Ahly player rows will be added here dynamically -->
+                </div>
+            </div>
+            
+            <!-- Add Ahly Player Button -->
+            <div class="team-actions">
+                <button type="button" class="btn btn-secondary" onclick="addAhlyPlayerRow()">
+                    <span class="material-icons">add</span>
+                    Add Ahly Player
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearAllAhlyPlayers()">
+                    <span class="material-icons">clear</span>
+                    Clear Ahly
+                </button>
+            </div>
+        </div>
+        
+        <!-- Opponent Players Section -->
+        <div class="team-section">
+            <h3>الخصم</h3>
+            <div class="players-grid">
+                <!-- Opponent Headers -->
+                <div class="player-header opponent-header pks-header">
+                    <div class="header-cell">OPPONENT PLAYER</div>
+                    <div class="header-cell">OPPONENT STATUS</div>
+                    <div class="header-cell">HOWMISS OPPONENT</div>
+                    <div class="header-cell">Action</div>
+                </div>
+                
+                <!-- Opponent Player Rows Container -->
+                <div id="opponent-players-container">
+                    <!-- Opponent player rows will be added here dynamically -->
+                </div>
+            </div>
+            
+            <!-- Add Opponent Player Button -->
+            <div class="team-actions">
+                <button type="button" class="btn btn-secondary" onclick="addOpponentPlayerRow()">
+                    <span class="material-icons">add</span>
+                    Add Opponent Player
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearAllOpponentPlayers()">
+                    <span class="material-icons">clear</span>
+                    Clear Opponent
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="resetCurrentForm()">Reset Form</button>
+        <button type="button" class="btn btn-secondary" onclick="exportCurrentData()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Export to Excel
+        </button>
+        <button type="button" id="save-btn" class="btn btn-primary" onclick="saveCurrentForm()">
+            <svg class="icon icon-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <span id="save-btn-text">Save to Google Sheets</span>
+        </button>
+    </div>
+</form>
+
+{% block scripts %}
+<script>
+    // Initialize players when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add initial player rows
+        addAhlyPlayerRow();
+        addOpponentPlayerRow();
+    });
+</script>
+{% endblock %}
+{% endblock %}
+

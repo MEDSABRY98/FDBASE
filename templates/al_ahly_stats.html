@@ -1,0 +1,3875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al Ahly Main Statistics - Football Data Entry System</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .stats-container {
+            min-height: 100vh;
+            background: #ffffff;
+        }
+        
+        
+        .main-tabs-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .back-to-main {
+            margin-bottom: 2rem;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .back-btn .icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        
+        .stats-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* Main Filter Section */
+        .main-filter-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .filter-section-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .filter-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 200px;
+            max-width: 250px;
+        }
+
+        .filter-field label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .filter-field input,
+        .filter-field select {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            width: 100%;
+            min-height: 45px;
+            box-sizing: border-box;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .filter-field input:focus,
+        .filter-field select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Ensure consistent field heights and prevent layout shifts */
+        .filter-field select option {
+            padding: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Make sure all fields maintain same height */
+        .filter-field input,
+        .filter-field select {
+            height: 45px;
+            line-height: 1.2;
+        }
+
+        /* Prevent text overflow and maintain layout */
+        .filter-field select {
+            background-size: 20px 20px;
+            background-position: right 10px center;
+            background-repeat: no-repeat;
+            padding-right: 35px;
+        }
+
+        /* Ensure consistent spacing */
+        .filter-field {
+            margin-bottom: 0;
+        }
+
+        /* Searchable Select (custom) ensures same layout */
+        .searchable-select-container {
+            position: relative;
+            width: 100%;
+        }
+        .searchable-select-container input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            height: 45px;
+            line-height: 1.2;
+            box-sizing: border-box;
+        }
+        .searchable-select-container .dropdown-options {
+            position: absolute;
+            z-index: 20;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .searchable-select-container .dropdown-options div {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .searchable-select-container .dropdown-options div:hover {
+            background: #f5f7ff;
+        }
+
+        /* Enhanced text input styling */
+        .filter-field input[type="text"] {
+            padding: 0.75rem 2.5rem 0.75rem 0.75rem;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.25rem 1.25rem;
+        }
+
+        .filter-field input[type="text"]:focus {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z'/%3e%3c/svg%3e");
+        }
+
+        /* Enhanced number input styling */
+        .filter-field input[type="number"] {
+            padding: 0.75rem 2.5rem 0.75rem 0.75rem;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.25rem 1.25rem;
+        }
+
+        .filter-field input[type="number"]:focus {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'/%3e%3c/svg%3e");
+        }
+
+        /* Enhanced date input styling */
+        .filter-field input[type="date"] {
+            padding: 0.75rem 2.5rem 0.75rem 0.75rem;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.25rem 1.25rem;
+        }
+
+        .filter-field input[type="date"]:focus {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/%3e%3c/svg%3e");
+        }
+
+        .filter-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .filter-btn,
+        .clear-btn,
+        .refresh-btn,
+        .sync-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            width: 180px;
+            flex: 0 0 180px;
+        }
+
+        .filter-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .filter-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
+        .clear-btn {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+        }
+
+        .clear-btn:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .refresh-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .sync-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .sync-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .filter-btn .icon,
+        .clear-btn .icon,
+        .refresh-btn .icon,
+        .sync-btn .icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        .sync-btn .icon.spinning {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Disabled button styles */
+        .filter-btn:disabled,
+        .clear-btn:disabled,
+        .refresh-btn:disabled,
+        .sync-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+            min-width: 180px;
+            width: 180px;
+            flex: 0 0 180px;
+        }
+
+        .filter-btn:disabled:hover,
+        .clear-btn:disabled:hover,
+        .refresh-btn:disabled:hover,
+        .sync-btn:disabled:hover {
+            transform: none;
+        }
+
+        /* Loading animation for icons */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading .icon {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Responsive button styles */
+        @media (max-width: 768px) {
+            .filter-actions {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            
+            .filter-btn,
+            .clear-btn,
+            .refresh-btn,
+            .sync-btn {
+                min-width: 160px;
+                width: 160px;
+                flex: 0 0 160px;
+                font-size: 0.875rem;
+                padding: 0.625rem 1rem;
+            }
+            
+            .filter-btn:disabled,
+            .clear-btn:disabled,
+            .refresh-btn:disabled,
+            .sync-btn:disabled {
+                min-width: 160px;
+                width: 160px;
+                flex: 0 0 160px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .filter-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .filter-btn,
+            .clear-btn,
+            .refresh-btn,
+            .sync-btn {
+                min-width: 220px;
+                width: 220px;
+                flex: none;
+            }
+            
+            .filter-btn:disabled,
+            .clear-btn:disabled,
+            .refresh-btn:disabled,
+            .sync-btn:disabled {
+                min-width: 220px;
+                width: 220px;
+                flex: none;
+            }
+        }
+
+        /* Statistics Tabs */
+        .stats-tabs-container {
+            margin-bottom: 2rem;
+        }
+
+        .stats-tabs-row {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .stats-tabs-row:last-child {
+            margin-bottom: 2rem;
+        }
+
+        .stats-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .stats-tab {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: #f8f9fa;
+            color: #495057;
+            border: none;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 150px;
+            max-width: 250px;
+            text-align: center;
+        }
+
+        .stats-tab:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .stats-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .stats-tab .icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Sub-tabs */
+        .stats-subtabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .stats-subtab {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #f8f9fa;
+            color: #495057;
+            border: none;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 160px;
+            width: 160px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+
+        .stats-subtab:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .stats-subtab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .stats-subtab-content {
+            display: none;
+        }
+
+        .stats-subtab-content.active {
+            display: block;
+        }
+
+        /* Stats Content */
+        .stats-section {
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .stats-table-container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        /* Table Search Box */
+        .table-search-container {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .table-search-box {
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .table-search-input {
+            width: 100%;
+            padding: 0.75rem 2.5rem 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .table-search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .table-search-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            pointer-events: none;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .stats-table th,
+        .stats-table td {
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stats-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stats-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+
+        .stats-table th.sortable:hover {
+            background: #e9ecef;
+        }
+
+        .stats-table th.sortable.active {
+            background: #dee2e6;
+        }
+
+        .stats-table th .sort-icon {
+            font-size: 0.8em;
+            opacity: 0.5;
+            margin-left: 4px;
+        }
+
+        .stats-table th.sortable.active .sort-icon {
+            opacity: 1;
+        }
+
+        .stats-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .highlight-value {
+            background-color: #e3f2fd !important;
+            font-weight: 600;
+            color: #1976d2;
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #664d03;
+        }
+
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+
+        .badge-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* Hide sections by default */
+        .stats-tab-content {
+            display: none;
+        }
+
+        /* Sub-tab content styles */
+        .stats-subtab-content {
+            display: none;
+        }
+
+        .stats-subtab-content.active {
+            display: block;
+        }
+
+        /* Player Search Section */
+        .player-search-section {
+            margin-bottom: 2rem;
+        }
+
+        .player-search-container {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-end;
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .search-field, .teams-field {
+            flex: 1;
+        }
+
+        .search-field label, .teams-field label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .searchable-select-container {
+            position: relative;
+        }
+
+        .searchable-select-container input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .searchable-select-container input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .dropdown-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .option-item {
+            padding: 0.75rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background-color 0.2s ease;
+        }
+
+        .option-item:hover {
+            background-color: #f8fafc;
+        }
+
+        .option-item:last-child {
+            border-bottom: none;
+        }
+
+        .option-item.no-results {
+            color: #9ca3af;
+            font-style: italic;
+            cursor: default;
+        }
+
+        .option-item.no-results:hover {
+            background-color: transparent;
+        }
+
+        .teams-dropdown-container {
+            position: relative;
+        }
+
+        .teams-dropdown-container select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+
+        .teams-dropdown-container select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .teams-dropdown-container select:disabled {
+            background: #f9fafb;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* Responsive design for main stats tabs */
+        @media (max-width: 768px) {
+            .stats-tabs-row {
+                margin-bottom: 0.5rem;
+            }
+            
+            .stats-tabs {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .stats-tab {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .stats-tab {
+                flex: 1;
+                min-width: 120px;
+                max-width: 200px;
+                font-size: 0.85rem;
+                padding: 0.75rem 1.5rem;
+            }
+        }
+
+        /* Player Stats Cards Styling */
+        .player-stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Trophy Cards Grid */
+        .trophy-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+            padding: 1rem;
+        }
+
+        .trophy-card {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            border-radius: 16px;
+            padding: 2rem 1.5rem;
+            color: #1a1a1a;
+            box-shadow: 0 8px 24px rgba(255, 215, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .trophy-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 12px 32px rgba(255, 215, 0, 0.5);
+        }
+
+        .trophy-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        .trophy-card-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            display: block;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .trophy-card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .trophy-card-count {
+            font-size: 3rem;
+            font-weight: 800;
+            margin: 0.5rem 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            background: linear-gradient(180deg, #1a1a1a 0%, #4a4a4a 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .trophy-card-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* Trophy card color variations - Elegant Gold, Red, Silver theme */
+        .trophy-card:nth-child(5n+1) {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            box-shadow: 0 8px 24px rgba(255, 215, 0, 0.3);
+        }
+
+        .trophy-card:nth-child(5n+1):hover {
+            box-shadow: 0 12px 32px rgba(255, 215, 0, 0.5);
+        }
+
+        .trophy-card:nth-child(5n+2) {
+            background: linear-gradient(135deg, #DC143C 0%, #8B0000 100%);
+            color: white;
+            box-shadow: 0 8px 24px rgba(220, 20, 60, 0.3);
+        }
+
+        .trophy-card:nth-child(5n+2):hover {
+            box-shadow: 0 12px 32px rgba(220, 20, 60, 0.5);
+        }
+
+        .trophy-card:nth-child(5n+2) .trophy-card-count {
+            background: linear-gradient(180deg, #ffffff 0%, #ffcccc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .trophy-card:nth-child(5n+3) {
+            background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+            color: #1a1a1a;
+            box-shadow: 0 8px 24px rgba(192, 192, 192, 0.3);
+        }
+
+        .trophy-card:nth-child(5n+3):hover {
+            box-shadow: 0 12px 32px rgba(192, 192, 192, 0.5);
+        }
+
+        .trophy-card:nth-child(5n+4) {
+            background: linear-gradient(135deg, #4169E1 0%, #1E3A8A 100%);
+            color: white;
+            box-shadow: 0 8px 24px rgba(65, 105, 225, 0.3);
+        }
+
+        .trophy-card:nth-child(5n+4):hover {
+            box-shadow: 0 12px 32px rgba(65, 105, 225, 0.5);
+        }
+
+        .trophy-card:nth-child(5n+4) .trophy-card-count {
+            background: linear-gradient(180deg, #ffffff 0%, #93c5fd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .trophy-card:nth-child(5n) {
+            background: linear-gradient(135deg, #10B981 0%, #047857 100%);
+            color: white;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+        }
+
+        .trophy-card:nth-child(5n):hover {
+            box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5);
+        }
+
+        .trophy-card:nth-child(5n) .trophy-card-count {
+            background: linear-gradient(180deg, #ffffff 0%, #6ee7b7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Trophy Seasons Display */
+        .trophy-seasons {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid rgba(255, 255, 255, 0.3);
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .trophy-seasons-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .trophy-seasons-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .trophy-season-badge {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+
+        .trophy-season-badge:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: scale(1.05);
+        }
+
+        .trophy-season-separator {
+            font-size: 1rem;
+            font-weight: 700;
+            opacity: 0.6;
+            display: inline-block;
+            margin: 0 0.3rem;
+        }
+
+        /* Adjust trophy card for clickable cursor */
+        .trophy-card {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Goal Details Sub-tabs */
+        .goal-details-sub-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0;
+        }
+
+        .goal-details-tab {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #64748b;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: -2px;
+        }
+
+        .goal-details-tab .icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        .goal-details-tab:hover {
+            color: #3b82f6;
+            background: #f8fafc;
+        }
+
+        .goal-details-tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .goal-details-content {
+            margin-top: 1.5rem;
+        }
+
+        .goal-details-tab-content {
+            display: none;
+        }
+
+        .goal-details-tab-content.active {
+            display: block;
+        }
+
+        /* Goal Effect Clickable Cards */
+        .goal-effect-clickable {
+            transition: all 0.3s ease;
+        }
+
+        .goal-effect-clickable:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .goal-effect-clickable:active {
+            transform: translateY(0);
+        }
+
+        /* Goal Effect Tables */
+        .goal-effect-table {
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Goal Timeline Cards */
+        #goal-timeline-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .timeline-card {
+            background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+            border: 2px solid #C7D2FE;
+            border-radius: 10px;
+            padding: 1.25rem 1rem;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .timeline-card:hover {
+            border-color: #818CF8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(129, 140, 248, 0.2);
+        }
+
+        .timeline-card h4 {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin: 0 0 0.75rem 0;
+            padding: 0.35rem 0.75rem;
+            background: #818CF8;
+            color: white;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .timeline-card .timeline-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0.25rem 0;
+            color: #4338CA;
+        }
+
+        .timeline-card .timeline-label {
+            font-size: 0.7rem;
+            color: #6366F1;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        /* Goal Minute Cards - 5 per row */
+        #goal-minute-cards-container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Responsive: 3 cards per row on tablets */
+        @media (max-width: 1200px) {
+            #goal-minute-cards-container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* Responsive: 2 cards per row on mobile */
+        @media (max-width: 768px) {
+            #goal-minute-cards-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Responsive: 1 card per row on small mobile */
+        @media (max-width: 480px) {
+            #goal-minute-cards-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .player-stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .player-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .stat-icon svg {
+            width: 24px;
+            height: 24px;
+            color: white;
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-content h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-content .stat-value {
+            margin: 0 0 0.25rem 0;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+            line-height: 1;
+        }
+
+        .stat-content .stat-label {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #9ca3af;
+            font-weight: 500;
+        }
+
+        /* Responsive design for player stats cards */
+        @media (max-width: 768px) {
+            .player-stats-cards {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .player-stat-card {
+                padding: 1rem;
+            }
+            
+            .stat-content .stat-value {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .player-stats-cards {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+            }
+        }
+
+        /* Player Sub-tabs Styling */
+        .stats-sub-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stats-sub-tab {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            color: #6b7280;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+            flex: 1;
+            min-width: 120px;
+            max-width: 150px;
+            text-align: center;
+        }
+
+        .stats-sub-tab:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background: #f8fafc;
+        }
+
+        .stats-sub-tab.active {
+            border-color: #3b82f6;
+            background: #3b82f6;
+            color: white;
+        }
+
+        .stats-sub-tab .icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .player-sub-content {
+            position: relative;
+        }
+
+        .player-sub-tab-content {
+            display: none;
+        }
+
+        .player-sub-tab-content.active {
+            display: block;
+        }
+
+        /* Responsive design for sub-tabs */
+        @media (max-width: 768px) {
+            .stats-sub-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .stats-sub-tab {
+                width: 100%;
+                max-width: 250px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .stats-sub-tab {
+                flex: 1;
+                min-width: 100px;
+                max-width: 130px;
+                font-size: 0.8rem;
+            }
+        }
+
+        .stats-tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 1024px) {
+            .filter-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-field {
+                min-width: 100%;
+                max-width: 100%;
+            }
+            
+            .stats-tabs-row {
+                margin-bottom: 0.5rem;
+            }
+            
+            .stats-tabs {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .filter-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .filter-btn,
+            .clear-btn,
+            .refresh-btn,
+            .sync-btn {
+                width: 100%;
+                max-width: 200px;
+            }
+            
+            .stats-overview {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="stats-container">
+    <!-- Flash Messages -->
+    {# Flash messages disabled #}
+
+
+    <!-- Main Tabs Container -->
+    <div class="main-tabs-container">
+        <!-- Header Actions -->
+        <div class="back-to-main">
+            <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between;">
+                <a href="{{ url_for('index') }}" class="back-btn">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Back to Main Dashboard
+                </a>
+                
+                <!-- Excel Upload Section moved to filters -->
+                <div id="excel-status" style="font-size: 0.9rem; color: #666;"></div>
+            </div>
+        </div>
+
+        <!-- Main Filter Section -->
+        <div class="main-filter-section">
+            <h2 class="filter-section-title">Match Filters</h2>
+            <div class="filter-grid">
+                <!-- Row 1 -->
+                <div class="filter-row">
+                    <div class="filter-field">
+                        <label>Match ID</label>
+                        <input type="text" id="match-id-filter" placeholder="Search by Match ID...">
+                    </div>
+                    <div class="filter-field">
+                        <label>Champion System</label>
+                        <select id="champion-system-filter">
+                            <option value="">All Systems</option>
+                            <option value="أفريقي">أفريقي</option>
+                            <option value="مصري">مصري</option>
+                            <option value="عربي">عربي</option>
+                            <option value="عالمي">عالمي</option>
+                            <option value="أفرو-أسيوي">أفرو-أسيوي</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Date From</label>
+                        <input type="date" id="date-from-filter" title="Select start date">
+                    </div>
+                    <div class="filter-field">
+                        <label>Date To</label>
+                        <input type="date" id="date-to-filter" title="Select end date">
+                    </div>
+                </div>
+                
+                <!-- Row 2 -->
+                <div class="filter-row">
+                    <div class="filter-field">
+                        <label>Champion</label>
+                        <select id="champion-filter">
+                            <option value="">All Champions</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Season</label>
+                        <select id="season-filter">
+                            <option value="">All Seasons</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Ahly Manager</label>
+                        <select id="ahly-manager-filter">
+                            <option value="">All Managers</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Opponent Manager</label>
+                        <select id="opponent-manager-filter">
+                            <option value="">All Managers</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Row 3 -->
+                <div class="filter-row">
+                    <div class="filter-field">
+                        <label>Referee</label>
+                        <select id="referee-filter">
+                            <option value="">All Referees</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Round</label>
+                        <select id="round-filter">
+                            <option value="">All Rounds</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>H-A-N</label>
+                        <select id="h-a-n-filter">
+                            <option value="">All</option>
+                            <option value="H">Home</option>
+                            <option value="A">Away</option>
+                            <option value="A - مصر">Away - مصر</option>
+                            <option value="N">Neutral</option>
+                            <option value="N - مصر">Neutral - مصر</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Stadium</label>
+                        <select id="stadium-filter">
+                            <option value="">All Stadiums</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Row 4 -->
+                <div class="filter-row">
+                    <div class="filter-field">
+                        <label>Ahly Team</label>
+                        <select id="ahly-team-filter">
+                            <option value="">All Teams</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Goals For</label>
+                        <input type="number" id="goals-for-filter" placeholder="Min Goals..." min="0">
+                    </div>
+                    <div class="filter-field">
+                        <label>Goals Against</label>
+                        <input type="number" id="goals-against-filter" placeholder="Max Goals..." min="0">
+                    </div>
+                    <div class="filter-field">
+                        <label>Opponent Team</label>
+                        <select id="opponent-team-filter">
+                            <option value="">All Opponents</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Row 5 -->
+                <div class="filter-row">
+                    <div class="filter-field">
+                        <label>Result (W-D-L)</label>
+                        <select id="result-filter">
+                            <option value="">All Results</option>
+                            <option value="W">Win</option>
+                            <option value="D">Draw</option>
+                            <option value="D WITH G">Draw with Goals</option>
+                            <option value="D NO G">Draw No Goals</option>
+                            <option value="L">Loss</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Clean Sheet</label>
+                        <select id="clean-sheet-filter">
+                            <option value="">All</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Extra Time</label>
+                        <select id="extra-time-filter">
+                            <option value="">All</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Penalties</label>
+                        <select id="penalties-filter">
+                            <option value="">All</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filter Actions -->
+            <div class="filter-actions">
+                <button class="filter-btn" onclick="applyFilters()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Apply Filters
+                </button>
+                
+                <button class="clear-btn" onclick="clearFilters()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Clear All
+                </button>
+                
+                <button class="sync-btn" id="sync-data-btn" onclick="manualSyncNow()" title="Sync data from Google Sheets now">
+                    <svg class="icon" id="sync-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    <span id="sync-btn-text">Sync Data</span>
+                </button>
+                
+                <button class="clear-btn" onclick="clearCacheAndReload()" title="Clear cached data and reset page">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3,6 5,6 21,6"/>
+                        <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                    </svg>
+                    Clear Cache
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistics Tabs -->
+        <div class="stats-tabs-container">
+            <!-- First Row of Tabs -->
+            <div class="stats-tabs-row">
+                <div class="stats-tabs">
+                    <button class="stats-tab active" onclick="showStatsTab(event, 'search-match')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        Search Match
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'overview')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 20V10M18 20V4M6 20v-4"/>
+                        </svg>
+                        Overview
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'main-stats')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="9" x2="15" y2="9"/>
+                            <line x1="9" y1="15" x2="15" y2="15"/>
+                        </svg>
+                        Main Stats
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'how-win')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"/>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                        </svg>
+                        HOW WIN
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'matches')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        </svg>
+                        Matches
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'h2h')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        H2H Teams
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'coaches')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <circle cx="16" cy="7" r="4"/>
+                        </svg>
+                        Coaches
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'referees')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                            <line x1="6" y1="6" x2="6.01" y2="6"/>
+                            <line x1="6" y1="18" x2="6.01" y2="18"/>
+                        </svg>
+                        Referees
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Second Row of Tabs -->
+            <div class="stats-tabs-row">
+                <div class="stats-tabs">
+                    <button class="stats-tab" onclick="showStatsTab(event, 'all-players')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3z"/>
+                            <path d="M8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3z"/>
+                        </svg>
+                        All Players
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'players')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        BY Player
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'all-goalkeepers')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                        All Goalkeepers
+                    </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'gk')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                        GKS Stats
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Content -->
+        <div class="stats-content">
+            <!-- Search Match Tab -->
+            <div id="search-match-tab" class="stats-tab-content active">
+                <div class="stats-section">
+                    <h2 class="section-title">Search Match by ID</h2>
+                    
+                    <!-- Search Box -->
+                    <div style="max-width: 600px; margin: 2rem auto;">
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <input type="text" id="match-id-search" placeholder="Enter Match ID (e.g., ah1, ah100...)" 
+                                   style="flex: 1; padding: 0.75rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;"
+                                   onkeypress="if(event.key==='Enter') searchMatchById()">
+                            <button onclick="searchMatchById()" style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                                    <circle cx="11" cy="11" r="8"/>
+                                    <path d="m21 21-4.35-4.35"/>
+                                </svg>
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Match Details Container -->
+                    <div id="match-details-container" style="display: none; max-width: 1000px; margin: 0 auto;">
+                        <!-- Match Header -->
+                        <div id="match-header" style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 12px; margin-bottom: 2rem;">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                        
+                        <!-- Match Sub-tabs -->
+                        <div class="goal-details-sub-tabs">
+                            <button class="goal-details-tab active" onclick="showMatchSubTab(event, 'lineup')">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                Match Lineup
+                            </button>
+                            <button class="goal-details-tab" onclick="showMatchSubTab(event, 'goals')">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 6v6l4 2"/>
+                                </svg>
+                                Goals Scored
+                            </button>
+                            <button class="goal-details-tab" onclick="showMatchSubTab(event, 'goalkeepers')">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                                    <path d="M2 17l10 5 10-5"/>
+                                    <path d="M2 12l10 5 10-5"/>
+                                </svg>
+                                Goalkeepers
+                            </button>
+                        </div>
+                        
+                        <!-- Match Sub-tab Contents -->
+                        <div class="goal-details-content">
+                            <!-- Lineup Content -->
+                            <div id="match-lineup-content" class="goal-details-tab-content active">
+                                <div id="match-lineup-container"></div>
+                            </div>
+                            
+                            <!-- Goals Content -->
+                            <div id="match-goals-content" class="goal-details-tab-content">
+                                <div id="match-goals-container"></div>
+                            </div>
+                            
+                            <!-- Goalkeepers Content -->
+                            <div id="match-goalkeepers-content" class="goal-details-tab-content">
+                                <div id="match-goalkeepers-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- No Results Message -->
+                    <div id="no-match-found" style="display: none; text-align: center; padding: 3rem; color: #999;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 64px; height: 64px; margin: 0 auto 1rem; opacity: 0.5;">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M16 16s-1.5-2-4-2-4 2-4 2"/>
+                            <line x1="9" y1="9" x2="9.01" y2="9"/>
+                            <line x1="15" y1="9" x2="15.01" y2="9"/>
+                        </svg>
+                        <h3 style="margin: 0 0 0.5rem 0;">No match found</h3>
+                        <p>Please check the Match ID and try again</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Overview Statistics Tab -->
+            <div id="overview-tab" class="stats-tab-content">
+                <div class="stats-section">
+                    <h2 class="section-title">Overview Statistics</h2>
+                    <div class="stats-overview">
+                        <div class="stat-card">
+                            <h3>Total Matches</h3>
+                            <p class="stat-value" id="total-matches">0</p>
+                            <p class="stat-label">Matches Played</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Total Wins</h3>
+                            <p class="stat-value" id="total-wins">0</p>
+                            <p class="stat-label">Victories</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Win Rate</h3>
+                            <p class="stat-value" id="win-rate">0%</p>
+                            <p class="stat-label">Success Rate</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Draws with Goals</h3>
+                            <p class="stat-value" id="draws-with-goals">0</p>
+                            <p class="stat-label">D</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Draws No Goals</h3>
+                            <p class="stat-value" id="draws-no-goals">0</p>
+                            <p class="stat-label">D.</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Total Losses</h3>
+                            <p class="stat-value" id="total-losses">0</p>
+                            <p class="stat-label">Defeats</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Goals For</h3>
+                            <p class="stat-value" id="total-goals-for">0</p>
+                            <p class="stat-label">Goals Scored</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Goals Against</h3>
+                            <p class="stat-value" id="total-goals-against">0</p>
+                            <p class="stat-label">Goals Conceded</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>CSF</h3>
+                            <p class="stat-value" id="clean-sheets">0</p>
+                            <p class="stat-label">Clean Sheets For</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>CSA</h3>
+                            <p class="stat-value" id="clean-sheets-against">0</p>
+                            <p class="stat-label">Clean Sheets Against</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Stats Tab -->
+            <div id="main-stats-tab" class="stats-tab-content">
+                <!-- Sub Tabs for Main Stats -->
+                <div class="stats-subtabs">
+                    <button class="stats-subtab active" onclick="switchMainStatsSubTab(event, 'championships')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="8" r="6"/>
+                            <path d="M9 21v-6a3 3 0 0 1 6 0v6"/>
+                        </svg>
+                        Championships
+                    </button>
+                    <button class="stats-subtab" onclick="switchMainStatsSubTab(event, 'seasons')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        Seasons
+                    </button>
+                </div>
+
+                <!-- Championships Sub-tab -->
+                <div id="main-stats-championships" class="stats-subtab-content active">
+                    <div class="stats-section">
+                        <h2 class="section-title">Championships Statistics</h2>
+                        <div class="stats-table-container">
+                            <table class="stats-table" id="main-stats-championships-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'name')">Championship <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'P')">P <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'W')">W <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'D')">D <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'L')">L <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'GF')">GF <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'GA')">GA <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'GD')">GD <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'CSF')">CSF <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('championships', 'CSA')">CSA <span class="sort-icon"></span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td style="font-weight: 700; text-transform: uppercase;">TOTAL</td>
+                                        <td id="champ-total-p" style="font-weight: 700;">0</td>
+                                        <td id="champ-total-w" style="font-weight: 700;">0</td>
+                                        <td id="champ-total-d" style="font-weight: 700;">0</td>
+                                        <td id="champ-total-l" style="font-weight: 700;">0</td>
+                                        <td id="champ-total-gf" style="font-weight: 700;">0</td>
+                                        <td id="champ-total-ga" style="font-weight: 700;">0</td>
+                                        <td id="champ-total-gd" style="font-weight: 700;">0</td>
+                                        <td id="champ-total-csf" style="font-weight: 700;">0</td>
+                                        <td id="champ-total-csa" style="font-weight: 700;">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seasons Sub-tab -->
+                <div id="main-stats-seasons" class="stats-subtab-content">
+                    <div class="stats-section">
+                        <h2 class="section-title">Seasons Statistics</h2>
+                        <div class="stats-table-container">
+                            <table class="stats-table" id="main-stats-seasons-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'name')">Season <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'P')">P <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'W')">W <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'D')">D <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'L')">L <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'GF')">GF <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'GA')">GA <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'GD')">GD <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'CSF')">CSF <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortMainStatsTable('seasons', 'CSA')">CSA <span class="sort-icon"></span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td style="font-weight: 700; text-transform: uppercase;">TOTAL</td>
+                                        <td id="season-total-p" style="font-weight: 700;">0</td>
+                                        <td id="season-total-w" style="font-weight: 700;">0</td>
+                                        <td id="season-total-d" style="font-weight: 700;">0</td>
+                                        <td id="season-total-l" style="font-weight: 700;">0</td>
+                                        <td id="season-total-gf" style="font-weight: 700;">0</td>
+                                        <td id="season-total-ga" style="font-weight: 700;">0</td>
+                                        <td id="season-total-gd" style="font-weight: 700;">0</td>
+                                        <td id="season-total-csf" style="font-weight: 700;">0</td>
+                                        <td id="season-total-csa" style="font-weight: 700;">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HOW WIN Tab -->
+            <div id="how-win-tab" class="stats-tab-content">
+                <div class="stats-section">
+                    <h2 class="section-title">HOW WIN</h2>
+                    
+                    <!-- Sub-tabs for Al Ahly and Opponents -->
+                    <div class="stats-subtabs">
+                        <button class="stats-subtab active" onclick="showHowWinSubTab(event, 'ahly-how-win')">
+                            Al Ahly
+                        </button>
+                        <button class="stats-subtab" onclick="showHowWinSubTab(event, 'opponents-how-win')">
+                            Opponents
+                        </button>
+                    </div>
+                    
+                    <!-- Al Ahly How Win -->
+                    <div id="ahly-how-win" class="stats-subtab-content active">
+                        <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">How Al Ahly Wins</h3>
+                        <p style="text-align: center; color: #6c757d; font-size: 0.9rem; margin-bottom: 1rem;">
+                            <em>Excluded matches: <span id="how-win-excluded-count">0</span> (matches with unknown goal times)</em>
+                        </p>
+                        <div class="stats-overview">
+                            <div class="stat-card">
+                                <h3>Lead First & Won</h3>
+                                <p class="stat-value" id="lead-won" style="color: #28a745;">0</p>
+                                <p class="stat-label">Scored First & Won</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Lead First & Drew</h3>
+                                <p class="stat-value" id="lead-drew" style="color: #ffc107;">0</p>
+                                <p class="stat-label">Scored First & Drew</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Lead First & Lost</h3>
+                                <p class="stat-value" id="lead-lost" style="color: #dc3545;">0</p>
+                                <p class="stat-label">Scored First & Lost</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Comeback Wins</h3>
+                                <p class="stat-value" id="comeback-won" style="color: #17a2b8;">0</p>
+                                <p class="stat-label">Behind First & Won</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Comeback Draws</h3>
+                                <p class="stat-value" id="comeback-drew" style="color: #6c757d;">0</p>
+                                <p class="stat-label">Behind First & Drew</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Behind & Lost</h3>
+                                <p class="stat-value" id="behind-lost" style="color: #dc3545;">0</p>
+                                <p class="stat-label">Behind First & Lost</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Opponents How Win -->
+                    <div id="opponents-how-win" class="stats-subtab-content">
+                        <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">How Opponents Win Against Al Ahly</h3>
+                        <p style="text-align: center; color: #6c757d; font-size: 0.9rem; margin-bottom: 1rem;">
+                            <em>Excluded matches: <span id="opponents-how-win-excluded-count">0</span> (matches with unknown goal times)</em>
+                        </p>
+                        <div class="stats-overview">
+                            <div class="stat-card">
+                                <h3>Lead First & Won</h3>
+                                <p class="stat-value" id="opp-lead-won" style="color: #28a745;">0</p>
+                                <p class="stat-label">Scored First & Won</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Lead First & Drew</h3>
+                                <p class="stat-value" id="opp-lead-drew" style="color: #ffc107;">0</p>
+                                <p class="stat-label">Scored First & Drew</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Lead First & Lost</h3>
+                                <p class="stat-value" id="opp-lead-lost" style="color: #dc3545;">0</p>
+                                <p class="stat-label">Scored First & Lost</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Comeback Wins</h3>
+                                <p class="stat-value" id="opp-comeback-won" style="color: #17a2b8;">0</p>
+                                <p class="stat-label">Behind First & Won</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Comeback Draws</h3>
+                                <p class="stat-value" id="opp-comeback-drew" style="color: #6c757d;">0</p>
+                                <p class="stat-label">Behind First & Drew</p>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <h3>Behind & Lost</h3>
+                                <p class="stat-value" id="opp-behind-lost" style="color: #dc3545;">0</p>
+                                <p class="stat-label">Behind First & Lost</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Match History Tab -->
+            <div id="matches-tab" class="stats-tab-content">
+                <div class="stats-section">
+                    <h2 class="section-title">Match History <span id="match-count-badge" class="badge badge-info">0 matches</span></h2>
+                    <div class="stats-table-container">
+                        <table class="stats-table" id="all-matches-table">
+                            <thead>
+                                <tr>
+                                    <th>DATE</th>
+                                    <th>SEASON</th>
+                                    <th>AHLY MANAGER</th>
+                                    <th>OPPONENT MANAGER</th>
+                                    <th>REFREE</th>
+                                    <th>ROUND</th>
+                                    <th>H-A-N</th>
+                                    <th>GF</th>
+                                    <th>GA</th>
+                                    <th>OPPONENT TEAM</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- H2H Teams Tab -->
+            <div id="h2h-tab" class="stats-tab-content">
+                <div class="stats-section">
+                    <h2 class="section-title">Head to Head - Teams Statistics</h2>
+                    
+                    <!-- Search Box -->
+                    <div class="stats-table-container">
+                        <!-- Search Box -->
+                        <div class="table-search-container">
+                            <div class="table-search-box">
+                                <input type="text" class="table-search-input" id="h2h-teams-search" placeholder="Search teams by name..." oninput="searchTable('h2h-teams-table', this.value)">
+                                <svg class="table-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        
+                        <table class="stats-table" id="h2h-teams-table">
+                            <thead>
+                                <tr>
+                                    <th>Opponent Team</th>
+                                    <th>Matches</th>
+                                    <th>Wins</th>
+                                    <th>Draws</th>
+                                    <th>Losses</th>
+                                    <th>Goals For</th>
+                                    <th>Goals Against</th>
+                                    <th>Clean Sheets For</th>
+                                    <th>Clean Sheets Against</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coaches Tab -->
+            <div id="coaches-tab" class="stats-tab-content">
+                <div class="stats-section">
+                    <h2 class="section-title">Coaches Statistics</h2>
+                    
+                    <!-- Filter and Search Container -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 20px;">
+                        <!-- Team Filter Dropdown -->
+                        <div class="coaches-filter-container">
+                            <label style="margin-right: 10px; font-weight: 600;">Filter by Team:</label>
+                            <select id="coaches-team-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 200px;">
+                                <option value="">All Coaches</option>
+                                <option value="WITH_AHLY">With Al Ahly</option>
+                                <option value="AGAINST_AHLY">Against Al Ahly</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Search Box -->
+                        <div class="coaches-search-container">
+                            <input type="text" id="coaches-search" placeholder="Search coach name..." 
+                                   style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 300px;">
+                        </div>
+                    </div>
+                    
+                    <div class="stats-table-container">
+                        <table class="stats-table" id="coaches-table">
+                            <thead>
+                                <tr>
+                                    <th>Coach Name</th>
+                                    <th>Matches</th>
+                                    <th>Wins</th>
+                                    <th>Draws</th>
+                                    <th>Losses</th>
+                                    <th>Goals For</th>
+                                    <th>Goals Against</th>
+                                    <th>Clean Sheets For</th>
+                                    <th>Clean Sheets Against</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Referees Tab -->
+            <div id="referees-tab" class="stats-tab-content">
+                <!-- Main Referee Sub-tabs -->
+                <div class="stats-sub-tabs" style="margin-bottom: 20px;">
+                    <button class="stats-sub-tab active" onclick="showRefereeMainSubTab(event, 'all-referees')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        All Referees
+                    </button>
+                    <button class="stats-sub-tab" onclick="showRefereeMainSubTab(event, 'by-referee')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        By Referee
+                    </button>
+                </div>
+
+                <!-- All Referees Sub-tab -->
+                <div id="all-referees-sub" class="referee-main-sub-content active">
+                    <div class="stats-section">
+                        <h2 class="section-title">All Referees Statistics</h2>
+                        
+                        <!-- Search Box -->
+                        <div class="stats-table-container">
+                            <!-- Search Box -->
+                            <div class="table-search-container">
+                                <div class="table-search-box">
+                                    <input type="text" class="table-search-input" id="all-referees-search" placeholder="Search referees by name..." oninput="searchTable('all-referees-table', this.value)">
+                                    <svg class="table-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <path d="m21 21-4.35-4.35"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <table class="stats-table" id="all-referees-table">
+                                <thead>
+                                    <tr>
+                                        <th>Referee Name</th>
+                                        <th>Matches</th>
+                                        <th>Wins</th>
+                                        <th>Draws</th>
+                                        <th>Losses</th>
+                                        <th>Goals For</th>
+                                        <th>Goals Against</th>
+                                        <th>Penalties For</th>
+                                        <th>Penalties Against</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- By Referee Sub-tab -->
+                <div id="by-referee-sub" class="referee-main-sub-content">
+                    <!-- Referee Search Section -->
+                    <div class="player-search-section">
+                        <div class="player-search-container">
+                            <div class="search-field">
+                                <label>Search Referee:</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="referee-search" placeholder="Type to search referees..." autocomplete="off">
+                                    <div class="dropdown-options" id="referee-search-options"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Referee Sub-tabs -->
+                    <div class="stats-sub-tabs">
+                        <button class="stats-sub-tab active" onclick="showRefereeSubTab(event, 'matches')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        </svg>
+                        Matches
+                    </button>
+                    <button class="stats-sub-tab" onclick="showRefereeSubTab(event, 'championships')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="8" r="6"/>
+                            <path d="M9 21v-6a3 3 0 0 1 6 0v6"/>
+                        </svg>
+                        Championships
+                    </button>
+                    <button class="stats-sub-tab" onclick="showRefereeSubTab(event, 'seasons')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        Seasons
+                    </button>
+                </div>
+
+                <!-- Referee Sub-tab Contents -->
+                <div class="player-sub-content">
+                    <!-- Matches Sub-tab -->
+                    <div id="referee-matches-sub" class="player-sub-tab-content active">
+                        <div class="stats-section">
+                            <h2 class="section-title">Referee Match Statistics</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="referee-matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>DATE</th>
+                                            <th>SEASON</th>
+                                            <th>OPPONENT TEAM</th>
+                                            <th>GF</th>
+                                            <th>GA</th>
+                                            <th>RESULT</th>
+                                            <th>Penalties For</th>
+                                            <th>Penalties Against</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Championships Sub-tab -->
+                    <div id="referee-championships-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Referee Championship Statistics</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="referee-championships-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Championship</th>
+                                            <th>Matches</th>
+                                            <th>Wins</th>
+                                            <th>Draws</th>
+                                            <th>Losses</th>
+                                            <th>Penalties For</th>
+                                            <th>Penalties Against</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seasons Sub-tab -->
+                    <div id="referee-seasons-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Referee Season Statistics</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="referee-seasons-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Season</th>
+                                            <th>Matches</th>
+                                            <th>Wins</th>
+                                            <th>Draws</th>
+                                            <th>Losses</th>
+                                            <th>Penalties For</th>
+                                            <th>Penalties Against</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <!-- All Players Tab -->
+            <div id="all-players-tab" class="stats-tab-content">
+                <div class="stats-section">
+                    <h2 class="section-title">All Players Statistics</h2>
+                    
+                    <!-- Sub-tabs for All Players -->
+                    <div class="stats-sub-tabs" style="margin-bottom: 2rem;">
+                        <button class="stats-sub-tab active" onclick="showAllPlayersSubTab(event, 'main-stats')">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="9" y1="9" x2="15" y2="9"/>
+                                <line x1="9" y1="15" x2="15" y2="15"/>
+                            </svg>
+                            Main Stats
+                        </button>
+                        <button class="stats-sub-tab" onclick="showAllPlayersSubTab(event, 'variety-goals')">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="2" y1="12" x2="22" y2="12"/>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                            </svg>
+                            Variety Goals
+                        </button>
+                        <button class="stats-sub-tab" onclick="showAllPlayersSubTab(event, 'penalty-details')">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <circle cx="12" cy="12" r="3"/>
+                                <line x1="12" y1="2" x2="12" y2="5"/>
+                            </svg>
+                            Penalty Details
+                        </button>
+                    </div>
+                    
+                    <!-- Main Stats Sub-tab -->
+                    <div id="main-stats-subtab" class="stats-subtab-content active">
+                        <!-- Team Filter Dropdown -->
+                        <div class="all-players-filter-container" style="margin-bottom: 20px;">
+                            <label style="margin-right: 10px; font-weight: 600;">Filter by Team:</label>
+                            <select id="all-players-team-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 200px;">
+                                <option value="">All Players</option>
+                                <option value="WITH_AHLY">With Al Ahly</option>
+                                <option value="AGAINST_AHLY">Against Al Ahly</option>
+                            </select>
+                        </div>
+                        
+                        <div class="stats-table-container">
+                            <!-- Search Box -->
+                            <div class="table-search-container">
+                                <div class="table-search-box">
+                                    <input type="text" class="table-search-input" id="all-players-search" placeholder="Search players by name..." oninput="searchTable('all-players-table', this.value)">
+                                    <svg class="table-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <path d="m21 21-4.35-4.35"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <table class="stats-table" id="all-players-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortAllPlayersTable('name')">
+                                            Player Name <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortAllPlayersTable('matches')">
+                                            Matches <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortAllPlayersTable('minutes')">
+                                            Minutes <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortAllPlayersTable('goalsAssists')">
+                                            G+A <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortAllPlayersTable('goals')">
+                                            Goals <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortAllPlayersTable('assists')">
+                                            Assists <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortAllPlayersTable('winningMatches')">
+                                            Winning Matches <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortAllPlayersTable('equalizingMatches')">
+                                            Equalizing Matches <span class="sort-icon">⇅</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Variety Goals Sub-tab -->
+                    <div id="variety-goals-subtab" class="stats-subtab-content">
+                        <!-- Team Filter Dropdown -->
+                        <div class="variety-goals-filter-container" style="margin-bottom: 20px;">
+                            <label style="margin-right: 10px; font-weight: 600;">Filter by Team:</label>
+                            <select id="variety-goals-team-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 200px;">
+                                <option value="">All Players</option>
+                                <option value="WITH_AHLY">With Al Ahly</option>
+                                <option value="AGAINST_AHLY">Against Al Ahly</option>
+                            </select>
+                        </div>
+                        
+                        <div class="stats-table-container">
+                            <!-- Search Box -->
+                            <div class="table-search-container">
+                                <div class="table-search-box">
+                                    <input type="text" class="table-search-input" id="variety-goals-search" placeholder="Search players by name..." oninput="searchTable('variety-goals-table', this.value)">
+                                    <svg class="table-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <path d="m21 21-4.35-4.35"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <table class="stats-table" id="variety-goals-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortVarietyGoalsTable('name')">
+                                            Player Name <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortVarietyGoalsTable('goalBraces')">
+                                            2G <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortVarietyGoalsTable('goalHattricks')">
+                                            3G <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortVarietyGoalsTable('goal4Plus')">
+                                            4G+ <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortVarietyGoalsTable('assistBraces')">
+                                            2A <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortVarietyGoalsTable('assistHattricks')">
+                                            3A <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortVarietyGoalsTable('assist4Plus')">
+                                            4A+ <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortVarietyGoalsTable('ownGoals')">
+                                            OG <span class="sort-icon">⇅</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Penalty Details Sub-tab -->
+                    <div id="penalty-details-subtab" class="stats-subtab-content">
+                        <!-- Team Filter Dropdown -->
+                        <div class="penalty-details-filter-container" style="margin-bottom: 20px;">
+                            <label style="margin-right: 10px; font-weight: 600;">Filter by Team:</label>
+                            <select id="penalty-details-team-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 200px;">
+                                <option value="">All Players</option>
+                                <option value="WITH_AHLY">With Al Ahly</option>
+                                <option value="AGAINST_AHLY">Against Al Ahly</option>
+                            </select>
+                        </div>
+                        
+                        <div class="stats-table-container">
+                            <!-- Search Box -->
+                            <div class="table-search-container">
+                                <div class="table-search-box">
+                                    <input type="text" class="table-search-input" id="penalty-details-search" placeholder="Search players by name..." oninput="searchTable('penalty-details-table', this.value)">
+                                    <svg class="table-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <path d="m21 21-4.35-4.35"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <table class="stats-table" id="penalty-details-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('name')">
+                                            Player Name <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('totalPenalty')">
+                                            TP <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('penaltyGoals')">
+                                            PEN G <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('penaltyMissed')">
+                                            PEN M <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('totalAssist')">
+                                            TA <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('assistGoals')">
+                                            PEN GA <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('assistMissed')">
+                                            PEN MA <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('totalMake')">
+                                            TM <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('makeGoal')">
+                                            PMG <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortPenaltyDetailsTable('makeMissed')">
+                                            PMM <span class="sort-icon">⇅</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player Statistics Tab -->
+            <div id="players-tab" class="stats-tab-content">
+                <!-- Player Search Section -->
+                <div class="player-search-section">
+                    <div class="player-search-container">
+                        <div class="search-field">
+                            <label>Search Player:</label>
+                            <div class="searchable-select-container">
+                                <input type="text" id="player-search" placeholder="Type to search players..." autocomplete="off">
+                                <div class="dropdown-options" id="player-search-options"></div>
+                            </div>
+                        </div>
+                        <div class="teams-field">
+                            <label>Filter by Team:</label>
+                            <div class="teams-dropdown-container">
+                                <select id="player-team-filter" disabled>
+                                    <option value="">All Teams</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Player Statistics Sub-tabs -->
+                <div class="stats-sub-tabs">
+                    <button class="stats-sub-tab active" onclick="showPlayerSubTab(event, 'overview')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                        </svg>
+                        Overview
+                    </button>
+                    <button class="stats-sub-tab" onclick="showPlayerSubTab(event, 'matches')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        </svg>
+                        Matches
+                    </button>
+                    <button class="stats-sub-tab" onclick="showPlayerSubTab(event, 'championships')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="8" r="6"/>
+                            <path d="M9 21v-6a3 3 0 0 1 6 0v6"/>
+                        </svg>
+                        Championships
+                    </button>
+                    <button class="stats-sub-tab" onclick="showPlayerSubTab(event, 'seasons')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        Seasons
+                    </button>
+                    <button class="stats-sub-tab" onclick="showPlayerSubTab(event, 'vs-teams')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        VS Teams
+                    </button>
+                    <button class="stats-sub-tab" onclick="showPlayerSubTab(event, 'vs-gks')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                        VS GKs
+                    </button>
+                    <button class="stats-sub-tab" onclick="showPlayerSubTab(event, 'goal-details')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12,6 12,12 16,14"/>
+                        </svg>
+                        Goal Details
+                    </button>
+                    <button class="stats-sub-tab" onclick="showPlayerSubTab(event, 'trophy')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                            <path d="M4 22h16"/>
+                            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                        </svg>
+                        Trophy
+                    </button>
+                    <button class="stats-sub-tab" onclick="showPlayerSubTab(event, 'assist-details')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        Assist Details
+                    </button>
+                </div>
+
+                <!-- Player Sub-tab Contents -->
+                <div class="player-sub-content">
+                <!-- Overview Sub-tab -->
+                <div id="player-overview-sub" class="player-sub-tab-content active">
+                    <div class="stats-section">
+                        <h2 class="section-title">Player Overview Statistics</h2>
+                        
+                        <!-- Player Stats Cards -->
+                        <div class="player-stats-cards" id="player-stats-cards">
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14,2 14,8 20,8"/>
+                                        <line x1="16" y1="13" x2="8" y2="13"/>
+                                        <line x1="16" y1="17" x2="8" y2="17"/>
+                                        <polyline points="10,9 9,9 8,9"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Total Matches</h3>
+                                    <p class="stat-value" id="player-total-matches">0</p>
+                                    <p class="stat-label">Matches Played</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12,6 12,12 16,14"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Total Minutes</h3>
+                                    <p class="stat-value" id="player-total-minutes">0</p>
+                                    <p class="stat-label">Minutes Played</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M9 12l2 2 4-4"/>
+                                        <circle cx="12" cy="12" r="10"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Matches with Goals</h3>
+                                    <p class="stat-value" id="player-matches-with-goals">0</p>
+                                    <p class="stat-label">Scored At Least 1 Goal</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <line x1="15" y1="9" x2="9" y2="15"/>
+                                        <line x1="9" y1="9" x2="15" y2="15"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Matches without Goals</h3>
+                                    <p class="stat-value" id="player-matches-without-goals">0</p>
+                                    <p class="stat-label">No Goals Scored</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 12h4l3 9 4-18 3 9h4"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Consecutive Scoring Streak</h3>
+                                    <p class="stat-value" id="player-consecutive-goals">0</p>
+                                    <p class="stat-label">Most Matches in a Row</p>
+                                    <p class="stat-label" id="player-consecutive-goals-period" style="font-size: 0.75rem; color: #999; margin-top: 4px; display: none;"></p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 12h18"/>
+                                        <path d="M3 6h18"/>
+                                        <path d="M3 18h18"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Consecutive No-Goal Streak</h3>
+                                    <p class="stat-value" id="player-consecutive-no-goals">0</p>
+                                    <p class="stat-label">Most Matches in a Row</p>
+                                    <p class="stat-label" id="player-consecutive-no-goals-period" style="font-size: 0.75rem; color: #999; margin-top: 4px; display: none;"></p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 6v6l4 2"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Total Goals</h3>
+                                    <p class="stat-value" id="player-total-goals">0</p>
+                                    <p class="stat-label">Goals Scored</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Total Assists</h3>
+                                    <p class="stat-value" id="player-total-assists">0</p>
+                                    <p class="stat-label">Assists Made</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Brace Goals</h3>
+                                    <p class="stat-value" id="player-brace-goals">0</p>
+                                    <p class="stat-label">2 Goals in Match</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Brace Assists</h3>
+                                    <p class="stat-value" id="player-brace-assists">0</p>
+                                    <p class="stat-label">2 Assists in Match</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                                        <path d="M12 6v6"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Hat Trick Goals</h3>
+                                    <p class="stat-value" id="player-hat-trick-goals">0</p>
+                                    <p class="stat-label">3 Goals in Match</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                                        <path d="M12 6v6"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Hat Trick Assists</h3>
+                                    <p class="stat-value" id="player-hat-trick-assists">0</p>
+                                    <p class="stat-label">3 Assists in Match</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                                        <path d="M12 6v6"/>
+                                        <path d="M8 6h8"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>3+ Goals</h3>
+                                    <p class="stat-value" id="player-three-plus-goals">0</p>
+                                    <p class="stat-label">More than 3 Goals</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                                        <path d="M12 6v6"/>
+                                        <path d="M8 6h8"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>3+ Assists</h3>
+                                    <p class="stat-value" id="player-three-plus-assists">0</p>
+                                    <p class="stat-label">More than 3 Assists</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Penalty-related cards -->
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M9 12l2 2 4-4"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>PEN Goal</h3>
+                                    <p class="stat-value" id="player-pen-goal">0</p>
+                                    <p class="stat-label">PENGOAL (TYPE)</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 6v6l4 2"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>PEN Ast Goal</h3>
+                                    <p class="stat-value" id="player-pen-assist-goal">0</p>
+                                    <p class="stat-label">PENASSISTGOAL (GA)</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M15 9l-6 6"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>PEN Missed</h3>
+                                    <p class="stat-value" id="player-pen-missed">0</p>
+                                    <p class="stat-label">PENMISSED (GA)</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M15 9l-6 6"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>PEN Ast Miss</h3>
+                                    <p class="stat-value" id="player-pen-assist-missed">0</p>
+                                    <p class="stat-label">PENASSISTMISSED (GA)</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M9 12l2 2 4-4"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>PEN Make G</h3>
+                                    <p class="stat-value" id="player-pen-make-goal">0</p>
+                                    <p class="stat-label">PENMAKEGOAL (GA)</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M15 9l-6 6"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>PEN Make M</h3>
+                                    <p class="stat-value" id="player-pen-make-missed">0</p>
+                                    <p class="stat-label">PENMAKEMISSED (GA)</p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M15 9l-6 6M9 9l6 6"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <p class="stat-value" id="player-own-goal">0</p>
+                                    <p class="stat-label">OWN GOAL</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                    <!-- Matches Sub-tab -->
+                    <div id="player-matches-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Player Match Statistics</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="player-matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>DATE</th>
+                                            <th>SEASON</th>
+                                            <th>AHLY MANAGER</th>
+                                            <th>OPPONENT TEAM</th>
+                                            <th>GOALS</th>
+                                            <th>ASSISTS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Championships Sub-tab -->
+                    <div id="player-championships-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Player Championship Statistics</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="player-championships-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Championship</th>
+                                            <th>Matches</th>
+                                            <th>Minutes</th>
+                                            <th>G+A</th>
+                                            <th>Goals</th>
+                                            <th>Assists</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seasons Sub-tab -->
+                    <div id="player-seasons-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Player Season Statistics</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="player-seasons-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Season</th>
+                                            <th>Matches</th>
+                                            <th>Minutes</th>
+                                            <th>G+A</th>
+                                            <th>Goals</th>
+                                            <th>Assists</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VS Teams Sub-tab -->
+                    <div id="player-vs-teams-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Player Performance vs Teams</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="player-vs-teams-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Team</th>
+                                            <th>Matches</th>
+                                            <th>Minutes</th>
+                                            <th>G+A</th>
+                                            <th>Goals</th>
+                                            <th>Assists</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VS GKs Sub-tab -->
+                    <div id="player-vs-gks-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Player Performance vs Goalkeepers</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="player-vs-gks-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Goalkeeper</th>
+                                            <th>Goals</th>
+                                            <th>PEN Goals</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Goal Details Sub-tab -->
+                    <div id="player-goal-details-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Goal Details</h2>
+                            
+                            <!-- Goal Details Sub-tabs -->
+                            <div class="goal-details-sub-tabs">
+                                <button class="goal-details-tab active" onclick="showGoalDetailsTab(event, 'minute')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12,6 12,12 16,14"/>
+                                    </svg>
+                                    Goal Minute
+                                </button>
+                                <button class="goal-details-tab" onclick="showGoalDetailsTab(event, 'effect')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                        <polyline points="22 4 12 14.01 9 11.01"/>
+                                    </svg>
+                                    Goal Effect
+                                </button>
+                                <button class="goal-details-tab" onclick="showGoalDetailsTab(event, 'round')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="7" height="7"/>
+                                        <rect x="14" y="3" width="7" height="7"/>
+                                        <rect x="3" y="14" width="7" height="7"/>
+                                        <rect x="14" y="14" width="7" height="7"/>
+                                    </svg>
+                                    Goal By Round
+                                </button>
+                            </div>
+
+                            <!-- Goal Details Sub-tab Contents -->
+                            <div class="goal-details-content">
+                                <!-- Goal Minute Content -->
+                                <div id="goal-minute-content" class="goal-details-tab-content active">
+                                    <!-- Timeline Summary Cards -->
+                                    <div id="goal-timeline-container" style="margin-bottom: 2rem;">
+                                        <!-- Timeline cards will be loaded dynamically -->
+                                    </div>
+                                    
+                                    <!-- Individual Minute Cards -->
+                                    <div class="player-stats-cards" id="goal-minute-cards-container">
+                                        <!-- Goal minute cards will be loaded dynamically -->
+                                    </div>
+                                </div>
+
+                                <!-- Goal Effect Content -->
+                                <div id="goal-effect-content" class="goal-details-tab-content">
+                                    <div id="goal-effect-cards-container" style="display: flex; flex-direction: column; gap: 2rem; max-width: 1000px; margin: 0 auto;">
+                                        <!-- Goal effect cards will be loaded dynamically -->
+                                    </div>
+                                </div>
+
+                                <!-- Goal By Round Content -->
+                                <div id="goal-round-content" class="goal-details-tab-content">
+                                    <div id="goal-round-cards-container" style="display: flex; flex-direction: column; gap: 2rem; max-width: 1000px; margin: 0 auto;">
+                                        <!-- Goal by round cards will be loaded dynamically -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trophy Sub-tab -->
+                    <div id="player-trophy-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Player Trophies</h2>
+                            
+                            <div id="trophy-cards-container" class="trophy-cards-grid">
+                                <!-- Trophy cards will be inserted here dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Assist Details Sub-tab -->
+                    <div id="player-assist-details-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Assist Details</h2>
+                            
+                            <!-- Search Box -->
+                            <div style="margin-bottom: 2rem; text-align: center;">
+                                <input type="text" 
+                                       id="assist-details-search" 
+                                       class="filter-control" 
+                                       placeholder="🔍 Search player name..." 
+                                       oninput="searchAssistDetailsTable(this.value)"
+                                       style="max-width: 500px; margin: 0 auto; display: inline-block; padding: 0.875rem 1rem; font-size: 1rem;">
+                            </div>
+                            
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="assist-details-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" onclick="sortAssistDetailsTable('player')">Player Name <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAssistDetailsTable('makeAssist')" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">Make Assist 🎯 <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortAssistDetailsTable('takeAssist')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">Take Assist ⚽ <span class="sort-icon"></span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td style="font-weight: 700; text-transform: uppercase;">TOTAL</td>
+                                            <td id="assist-details-total-make" style="font-weight: 700; font-size: 1.2rem;">0</td>
+                                            <td id="assist-details-total-take" style="font-weight: 700; font-size: 1.2rem;">0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+
+            <!-- All Goalkeepers Tab -->
+            <div id="all-goalkeepers-tab" class="stats-tab-content">
+                <div class="stats-section">
+                    <h2 class="section-title">All Goalkeepers Statistics</h2>
+                    
+                    <!-- Team Filter Dropdown -->
+                    <div class="all-goalkeepers-filter-container" style="margin-bottom: 20px;">
+                        <label style="margin-right: 10px; font-weight: 600;">Filter by Team:</label>
+                        <select id="all-gk-team-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 200px;">
+                            <option value="">All Goalkeepers</option>
+                            <option value="WITH_AHLY">With Al Ahly</option>
+                            <option value="AGAINST_AHLY">Against Al Ahly</option>
+                        </select>
+                    </div>
+
+                    <!-- Goalkeepers Table -->
+                    <div class="stats-table-container">
+                        <!-- Search Box -->
+                        <div class="table-search-container">
+                            <div class="table-search-box">
+                                <input type="text" class="table-search-input" id="all-goalkeepers-search" placeholder="Search goalkeepers by name..." oninput="searchTable('all-goalkeepers-table', this.value)">
+                                <svg class="table-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        
+                        <table class="stats-table" id="all-goalkeepers-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center;">Goalkeeper Name</th>
+                                    <th>Matches</th>
+                                    <th>Goals Conceded</th>
+                                    <th>Clean Sheets</th>
+                                    <th>Penalty Goals</th>
+                                    <th>Penalty Saves</th>
+                                    <th>Penalties Missed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GK Statistics Tab -->
+            <div id="gk-tab" class="stats-tab-content">
+                <!-- GK Search Section -->
+                <div class="player-search-section">
+                    <div class="player-search-container">
+                        <div class="search-field">
+                            <label>Search Goalkeeper:</label>
+                            <div class="searchable-select-container">
+                                <input type="text" id="gk-search" placeholder="Type to search goalkeepers..." autocomplete="off">
+                                <div class="dropdown-options" id="gk-search-options"></div>
+                            </div>
+                        </div>
+                        <div class="teams-field">
+                            <label>Filter by Team:</label>
+                            <div class="teams-dropdown-container">
+                                <select id="gk-team-filter" disabled>
+                                    <option value="">All Teams</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GK Sub-tabs -->
+                <div class="stats-sub-tabs">
+                    <button class="stats-sub-tab active" onclick="showGKSubTab(event, 'overview')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                        </svg>
+                        Overview
+                    </button>
+                    <button class="stats-sub-tab" onclick="showGKSubTab(event, 'matches')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        </svg>
+                        Matches
+                    </button>
+                    <button class="stats-sub-tab" onclick="showGKSubTab(event, 'championships')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        Championships
+                    </button>
+                    <button class="stats-sub-tab" onclick="showGKSubTab(event, 'seasons')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        Seasons
+                    </button>
+                    <button class="stats-sub-tab" onclick="showGKSubTab(event, 'vs-teams')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12h18M3 6h18M3 18h18"/>
+                        </svg>
+                        VS Teams
+                    </button>
+                    <button class="stats-sub-tab" onclick="showGKSubTab(event, 'vs-players')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zM8 13c-2.33 0-7 1.17-7 3.5V20h14v-3.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V20h6v-3.5c0-2.33-4.67-3.5-7-3.5z"/>
+                        </svg>
+                        VS Players
+                    </button>
+                </div>
+
+
+                <!-- GK Sub-tab Contents -->
+                <div class="player-sub-content">
+                    <!-- Overview Sub-tab -->
+                    <div id="gk-overview-sub" class="player-sub-tab-content active">
+                        <div class="stats-section">
+                            <h2 class="section-title">Goalkeeper Overview Statistics</h2>
+                            
+                            <!-- GK Stats Cards -->
+                            <div class="player-stats-cards" id="gk-stats-cards">
+                                <div class="player-stat-card">
+                                    <div class="stat-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14,2 14,8 20,8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                            <polyline points="10,9 9,9 8,9"/>
+                                        </svg>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3>Total Matches</h3>
+                                        <p class="stat-value" id="gk-total-matches">0</p>
+                                        <p class="stat-label">Matches Played</p>
+                                    </div>
+                                </div>
+
+                                <div class="player-stat-card">
+                                    <div class="stat-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M9 12l2 2 4-4"/>
+                                        </svg>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3>Clean Sheets</h3>
+                                        <p class="stat-value" id="gk-clean-sheets">0</p>
+                                        <p class="stat-label">Shutouts</p>
+                                    </div>
+                                </div>
+
+                                <div class="player-stat-card">
+                                    <div class="stat-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M15 9l-6 6"/>
+                                        </svg>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3>Goals Conceded</h3>
+                                        <p class="stat-value" id="gk-goals-conceded">0</p>
+                                        <p class="stat-label">Goals Against</p>
+                                    </div>
+                                </div>
+
+                                <div class="player-stat-card">
+                                    <div class="stat-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M12 6v6l4 2"/>
+                                        </svg>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3>Clean Sheet %</h3>
+                                        <p class="stat-value" id="gk-clean-sheet-percentage">0%</p>
+                                        <p class="stat-label">CS Percentage</p>
+                                    </div>
+                                </div>
+
+
+                                <div class="player-stat-card">
+                                    <div class="stat-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M9 12l2 2 4-4"/>
+                                            <path d="M12 6v6"/>
+                                        </svg>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3>Penalty Goals</h3>
+                                        <p class="stat-value" id="gk-penalty-goals">0</p>
+                                        <p class="stat-label">Penalties Conceded</p>
+                                    </div>
+                                </div>
+
+                                <div class="player-stat-card">
+                                    <div class="stat-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M9 12l2 2 4-4"/>
+                                            <path d="M12 6v6"/>
+                                        </svg>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3>Penalty Saves</h3>
+                                        <p class="stat-value" id="gk-penalty-saves">0</p>
+                                        <p class="stat-label">Penalties Saved</p>
+                                    </div>
+                                </div>
+
+                                <div class="player-stat-card">
+                                    <div class="stat-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M15 9l-6 6"/>
+                                            <path d="M9 9l6 6"/>
+                                        </svg>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3>Penalties Missed</h3>
+                                        <p class="stat-value" id="gk-penalties-missed">0</p>
+                                        <p class="stat-label">Missed in his presence</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Matches Sub-tab -->
+                    <div id="gk-matches-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Goalkeeper Match Statistics</h2>
+                            
+                            <!-- GK Matches Table -->
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="gk-matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>DATE</th>
+                                            <th>SEASON</th>
+                                            <th>OPPONENT TEAM</th>
+                                            <th>GOALS CONCEDED</th>
+                                            <th>PENALTY GOALS</th>
+                                            <th>PENALTY SAVES</th>
+                                            <th>CLEAN SHEET</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Championships Sub-tab -->
+                    <div id="gk-championships-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Goalkeeper Championship Statistics</h2>
+                            
+                            <!-- GK Championships Table -->
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="gk-championships-table">
+                                    <thead>
+                                        <tr>
+                                            <th>CHAMPIONSHIP</th>
+                                            <th>MATCHES</th>
+                                            <th>GOALS CONCEDED</th>
+                                            <th>CLEAN SHEETS</th>
+                                            <th>PENALTY GOALS</th>
+                                            <th>PENALTY SAVES</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seasons Sub-tab -->
+                    <div id="gk-seasons-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Goalkeeper Season Statistics</h2>
+                            
+                            <!-- GK Seasons Table -->
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="gk-seasons-table">
+                                    <thead>
+                                        <tr>
+                                            <th>SEASON</th>
+                                            <th>MATCHES</th>
+                                            <th>GOALS CONCEDED</th>
+                                            <th>CLEAN SHEETS</th>
+                                            <th>PENALTY GOALS</th>
+                                            <th>PENALTY SAVES</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VS Teams Sub-tab -->
+                    <div id="gk-vs-teams-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Goalkeeper vs Teams</h2>
+                            
+                            <!-- GK VS Teams Table -->
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="gk-vs-teams-table">
+                                    <thead>
+                                        <tr>
+                                            <th>TEAM</th>
+                                            <th>MATCHES</th>
+                                            <th>GOALS CONCEDED</th>
+                                            <th>CLEAN SHEETS</th>
+                                            <th>PENALTY GOALS</th>
+                                            <th>PENALTY SAVES</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VS Players Sub-tab -->
+                    <div id="gk-vs-players-sub" class="player-sub-tab-content">
+                        <div class="stats-section">
+                            <h2 class="section-title">Goalkeeper vs Players</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="gk-vs-players-table">
+                                    <thead>
+                                        <tr>
+                                            <th>PLAYER</th>
+                                            <th>GOALS</th>
+                                            <th>PEN GOALS</th>
+                                            <th>PEN SAVED</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="{{ url_for('static', filename='al_ahly_stats/al_ahly_stats.js') }}"></script>
+    <script>
+        // Load data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAlAhlyStats();
+            checkDataStatus();
+            // Ensure player search is populated from Excel when page loads
+            if (typeof loadPlayersData === 'function') {
+                try { loadPlayersData(); } catch (e) { console.error(e); }
+            }
+            // Update sync status display
+            if (typeof updateSyncStatusDisplay === 'function') {
+                updateSyncStatusDisplay();
+                // Update status every 5 minutes
+                setInterval(updateSyncStatusDisplay, 5 * 60 * 1000);
+            }
+        });
+
+        // Tab switching functionality
+        function showStatsTab(evt, tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.stats-tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.stats-tab').forEach(tab => tab.classList.remove('active'));
+            
+            // Resolve target content element; fallback to overview to avoid empty screen
+            const targetId = (tabName ? (tabName + '-tab') : 'overview-tab');
+            let targetEl = document.getElementById(targetId);
+            if (!targetEl) {
+                console.warn('Tab not found, falling back to overview:', targetId);
+                targetEl = document.getElementById('overview-tab');
+            }
+            if (targetEl) {
+                targetEl.classList.add('active');
+            }
+            
+            // Add active class to the clicked button (support clicks on nested SVG)
+            const clickedBtn = evt && evt.target && evt.target.closest ? evt.target.closest('button.stats-tab') : null;
+            if (clickedBtn) {
+                clickedBtn.classList.add('active');
+            } else {
+                // Programmatic activation: mark the corresponding button if available
+                const btn = document.querySelector(tabName ? `.stats-tab[onclick*="'${tabName}'"]` : `.stats-tab[onclick*="'overview'"]`);
+                if (btn) btn.classList.add('active');
+            }
+            
+            // Load specific data for GK tab (guard against undefined globals)
+            if (tabName === 'gk') {
+                try { if (typeof loadGoalkeeperStats === 'function') loadGoalkeeperStats(); } catch (e) { console.error(e); }
+                try {
+                    if (typeof goalkeepersData !== 'undefined' && goalkeepersData && Array.isArray(goalkeepersData.goalkeepers) && goalkeepersData.goalkeepers.length === 0) {
+                        if (typeof loadGoalkeepersData === 'function') loadGoalkeepersData();
+                    }
+                } catch (e) { /* ignore */ }
+            }
+        }
+
+        // Player Sub-tab switching functionality
+        function showPlayerSubTab(evt, subTabName) {
+            // Hide all player sub-tab contents
+            const subTabContents = document.querySelectorAll('.player-sub-tab-content');
+            subTabContents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all player sub-tabs
+            const subTabs = document.querySelectorAll('.stats-sub-tab');
+            subTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected sub-tab content
+            document.getElementById('player-' + subTabName + '-sub').classList.add('active');
+            
+            // Add active class to clicked sub-tab
+            if (evt && evt.target) {
+                evt.target.classList.add('active');
+            }
+        }
+
+
+        // Enhance main tabs to support URL hash navigation and reliable active state
+        (function initHashRouting() {
+            const tabNameFromHash = (hash) => {
+                const h = (hash || '').replace('#', '').trim();
+                if (!h) return '';
+                // Accept both names and "-tab" suffixes
+                return h.replace('-tab', '');
+            };
+
+            // Update active class on the actual button (even if clicking SVG/path inside)
+            function setActiveButtonFromEvent(evt) {
+                if (!evt) return;
+                const btn = evt.target && evt.target.closest ? evt.target.closest('button.stats-tab') : null;
+                if (btn) {
+                    document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+                    btn.classList.add('active');
+                }
+            }
+
+            // Wrap original showStatsTab to also update hash and ensure active state
+            const _showStatsTab = window.showStatsTab;
+            window.showStatsTab = function(evt, tabName) {
+                _showStatsTab(evt, tabName);
+                // push hash for routing
+                if (tabName) {
+                    const newHash = '#' + tabName;
+                    if (location.hash !== newHash) {
+                        history.pushState({ tab: tabName }, '', newHash);
+                    }
+                }
+                setActiveButtonFromEvent(evt);
+            };
+
+            // On load, open tab from hash if present
+            const initial = tabNameFromHash(location.hash) || 'overview';
+            if (initial && initial !== 'overview') {
+                // Simulate click-less activation
+                document.querySelectorAll('.stats-tab-content').forEach(c => c.classList.remove('active'));
+                const el = document.getElementById(initial + '-tab');
+                if (el) {
+                    el.classList.add('active');
+                }
+                document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+                const btn = document.querySelector(`.stats-tab[onclick*="'${initial}'"]`);
+                if (btn) btn.classList.add('active');
+            }
+
+            // Handle back/forward
+            window.addEventListener('popstate', function() {
+                const name = tabNameFromHash(location.hash) || 'overview';
+                document.querySelectorAll('.stats-tab-content').forEach(c => c.classList.remove('active'));
+                const el = document.getElementById(name + '-tab');
+                if (el) el.classList.add('active');
+                document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+                const btn = document.querySelector(`.stats-tab[onclick*="'${name}'"]`);
+                if (btn) btn.classList.add('active');
+            });
+        })();

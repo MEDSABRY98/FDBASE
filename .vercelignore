@@ -1,0 +1,49 @@
+# Vercel Ignore File
+# Files and folders to exclude from Vercel deployment
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Build files
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Desktop app files (not needed for web deployment)
+app_desktop.py
+build_desktop.spec
+requirements-desktop.txt
+
+# Render specific files
+render.yaml
+
+# Development files
+.env
+*.log
+app.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (optional - uncomment if you don't want them on Vercel)
+# *.md
+# README*.md
+# PRODUCTION_DEPLOYMENT_README.md
+

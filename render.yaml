@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: football-data-entry
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: GOOGLE_CREDENTIALS_JSON_AHLY_MATCH
+        sync: false
+      - key: GOOGLE_CREDENTIALS_JSON_AHLY_FINALS
+        sync: false
+      - key: GOOGLE_CREDENTIALS_JSON_AHLY_PKS
+        sync: false
+      - key: AHLY_MATCH_SHEET_ID
+        value: 1zeSlEN7VS2S6KPZH7_uvQeeY3Iu5INUyi12V0_Wi9G4
+      - key: AHLY_FINALS_SHEET_ID
+        value: 18lO8QMRqNUifGmFRZDTL58fwbb2k03HvkKyvzAq9HJc
+      - key: AHLY_PKS_SHEET_ID
+        value: 1NM06fKzqEQc-K9XLgaIgd0PyQQAMHmOCVBKttQicZwY
+      - key: AHLY_LINEUP_SHEET_ID
+        value: 1xNBqgK5q5GRAfMn-teH64WFLvGNVtBXppxLgzWi8GeY
+      - key: AHLY_GOALS_ASSISTS_SHEET_ID
+        value: 1zeSlEN7VS2S6KPZH7_uvQeeY3Iu5INUyi12V0_Wi9G4
+      - key: AHLY_GKS_SHEET_ID
+        value: 1zeSlEN7VS2S6KPZH7_uvQeeY3Iu5INUyi12V0_Wi9G4
+      - key: EGYPT_MATCH_SHEET_ID
+        value: 1xNBqgK5q5GRAfMn-teH64WFLvGNVtBXppxLgzWi8GeY
+      - key: EGYPT_LINEUP_SHEET_ID
+        value: 1xNBqgK5q5GRAfMn-teH64WFLvGNVtBXppxLgzWi8GeY
+      - key: EGYPT_TEAMS_SHEET_ID
+        value: 10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8
+      - key: AHLY_VS_ZAMALEK_SHEET_ID
+        value: 1jxRPyUQdqa38byIzorTfowbVUzL1pWLo2_KRLrvHN60
+      - key: GOOGLE_CREDENTIALS_JSON_AHLY_VS_ZAMALEK
+        sync: false
+      - key: GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS
+        sync: false
+      - key: GOOGLE_APPS_SCRIPT_URL
+        value: https://script.google.com/macros/s/AKfycbwQvXQfornyh09ooGBpSGVDk-fgkPgOnbTfT1IbIxsJ7yN4ViLkwUT1uytMx5R_I3eC/exec
+      - key: GOOGLE_APPS_SCRIPT_PKS_URL
+        value: https://script.google.com/macros/s/AKfycbwZSSm87FRLr4Pez8-CiSZ_cN1Q5JQKBkw-oNOEQeNGvedNM77z19CFspt_xJMADXU/exec
+      - key: SECRET_KEY
+        sync: false

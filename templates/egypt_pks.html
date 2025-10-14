@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PKS Egypt - Football Data Entry System</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .stats-container {
+            min-height: 100vh;
+            background: #ffffff;
+        }
+        
+        .main-tabs-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .back-to-main {
+            margin-bottom: 2rem;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .back-btn .icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .stats-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        /* Loading Spinner */
+        .loading-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #dc143c;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Stats Overview Cards */
+        .overview-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .stat-card.blue {
+            border-left-color: #667eea;
+        }
+
+        .stat-card.green {
+            border-left-color: #10b981;
+        }
+
+        .stat-card.orange {
+            border-left-color: #f97316;
+        }
+
+        .stat-card.red {
+            border-left-color: #ef4444;
+        }
+
+        .stat-card.purple {
+            border-left-color: #8b5cf6;
+        }
+
+        .stat-card.cyan {
+            border-left-color: #06b6d4;
+        }
+
+        .stat-card.indigo {
+            border-left-color: #6366f1;
+        }
+
+        .stat-card.pink {
+            border-left-color: #ec4899;
+        }
+
+        .stat-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            line-height: 1;
+        }
+
+        .stat-description {
+            font-size: 0.85rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        /* Filters Section */
+        .filters-section {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .filters-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-item label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .filter-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .filter-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .action-btn {
+            padding: 0.9rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: white;
+            min-width: 180px;
+        }
+
+        .apply-btn {
+            background: #28a745;
+        }
+
+        .apply-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
+        .clear-btn {
+            background: #ff6b35;
+        }
+
+        .clear-btn:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        }
+
+        .refresh-btn {
+            background: #667eea;
+        }
+
+        .refresh-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Main Tabs */
+        .main-tabs-header {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e0e0e0;
+            justify-content: center;
+        }
+
+        .main-tab-btn {
+            padding: 1rem 2rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .main-tab-btn:hover {
+            color: #667eea;
+        }
+
+        .main-tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Sub Tabs */
+        .sub-tabs-header {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e0e0e0;
+            justify-content: center;
+        }
+
+        .sub-tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .sub-tab-btn:hover {
+            color: #667eea;
+        }
+
+        .sub-tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .sub-tab-content {
+            display: none;
+        }
+
+        .sub-tab-content.active {
+            display: block;
+        }
+
+        /* Table Styles */
+        .matches-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .matches-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .matches-table th {
+            padding: 1rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .matches-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f0f0f0;
+            text-align: center;
+        }
+
+        .matches-table tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-win {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-loss {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-scored {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-missed {
+            background: #fce7f3;
+            color: #9f1239;
+        }
+
+        /* Searchable Select */
+        .searchable-select-container {
+            position: relative;
+        }
+
+        .dropdown-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 2px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .dropdown-option {
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dropdown-option:hover {
+            background: #f3f4f6;
+        }
+
+        .dropdown-option.selected {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="stats-container">
+        <div class="main-tabs-container">
+            <!-- Back to Main Button -->
+            <div class="back-to-main">
+                <a href="{{ url_for('index') }}" class="back-btn">
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Back to Main Dashboard
+                </a>
+            </div>
+
+            <div class="stats-content">
+
+                <!-- Loading State -->
+                <div id="pks-loading" class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Loading PKS data...</p>
+                </div>
+
+                <!-- Main Content (Hidden initially) -->
+                <div id="pks-main-content" style="display: none;">
+                    
+                    <!-- Filters Section -->
+                    <div class="filters-section">
+                        <h3 class="filters-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                            </svg>
+                            Filters
+                        </h3>
+
+                        <!-- Row 1 -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Match ID</label>
+                                <input type="text" id="filter-match-id" class="filter-control" placeholder="All">
+                            </div>
+                            <div class="filter-item">
+                                <label>PKS System</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-pks-system" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Champion System</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-champion-system" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Egypt Team</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-egypt-team" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 2 -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Egypt Player</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-egypt-player" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Egypt Status</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-egypt-status" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Opponent Team</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-opponent-team" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Opponent Player</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-opponent-player" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 3 -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Opponent Status</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-opponent-status" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Egypt Goalkeeper</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-egypt-gk" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Opponent Goalkeeper</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-opponent-gk" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Result (W-D-L PKS)</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-result" class="filter-control" placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="filter-actions">
+                            <button class="action-btn apply-btn" onclick="applyPKSFilters()">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Apply Filters
+                            </button>
+                            <button class="action-btn clear-btn" onclick="clearPKSFilters()">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                                Clear All
+                            </button>
+                            <button class="action-btn refresh-btn" onclick="refreshPKSData()">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Sync Data
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Tabs -->
+                    <div class="main-tabs-header">
+                        <button class="main-tab-btn active" onclick="switchPKSTab('overview')">Overview</button>
+                        <button class="main-tab-btn" onclick="switchPKSTab('matches')">Matches</button>
+                        <button class="main-tab-btn" onclick="switchPKSTab('h2h')">H2H Teams</button>
+                        <button class="main-tab-btn" onclick="switchPKSTab('players')">All Players</button>
+                        <button class="main-tab-btn" onclick="switchPKSTab('goalkeepers')">GKS Stats</button>
+                    </div>
+
+                    <!-- Overview Tab -->
+                    <div id="overview-tab" class="tab-content active">
+                        <div class="overview-stats">
+                            <!-- Row 1 -->
+                            <div class="stat-card blue">
+                                <div class="stat-label">Total PKS Matches</div>
+                                <div class="stat-value" id="stat-total-matches">0</div>
+                                <div class="stat-description">Penalty Shootouts</div>
+                            </div>
+                            <div class="stat-card green">
+                                <div class="stat-label">PKS Wins</div>
+                                <div class="stat-value" id="stat-wins">0</div>
+                                <div class="stat-description">Shootouts Won</div>
+                            </div>
+                            <div class="stat-card cyan">
+                                <div class="stat-label">Win Rate</div>
+                                <div class="stat-value" id="stat-win-rate">0%</div>
+                                <div class="stat-description">Shootout Success</div>
+                            </div>
+                            <div class="stat-card red">
+                                <div class="stat-label">PKS Losses</div>
+                                <div class="stat-value" id="stat-losses">0</div>
+                                <div class="stat-description">Shootouts Lost</div>
+                            </div>
+                            
+                            <!-- Row 2 -->
+                            <div class="stat-card purple">
+                                <div class="stat-label">Total Penalties</div>
+                                <div class="stat-value" id="stat-total-penalties">0</div>
+                                <div class="stat-description">Penalties Taken</div>
+                            </div>
+                            <div class="stat-card indigo">
+                                <div class="stat-label">Goals Scored</div>
+                                <div class="stat-value" id="stat-goals">0</div>
+                                <div class="stat-description">Penalties Converted</div>
+                            </div>
+                            <div class="stat-card orange">
+                                <div class="stat-label">Goals Missed</div>
+                                <div class="stat-value" id="stat-misses">0</div>
+                                <div class="stat-description">Penalties Missed</div>
+                            </div>
+                            <div class="stat-card pink">
+                                <div class="stat-label">Success Rate</div>
+                                <div class="stat-value" id="stat-success-rate">0%</div>
+                                <div class="stat-description">Penalty Conversion</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Players Stats Tab -->
+                    <div id="players-tab" class="tab-content">
+                        <!-- Sub Tabs -->
+                        <div class="sub-tabs-header">
+                            <button class="sub-tab-btn active" onclick="switchPlayersSubTab('egypt')">Egypt Players</button>
+                            <button class="sub-tab-btn" onclick="switchPlayersSubTab('opponent')">Opponent Players</button>
+                        </div>
+
+                        <!-- Egypt Players Sub Tab -->
+                        <div id="egypt-players-subtab" class="sub-tab-content active">
+                            <div style="overflow-x: auto;">
+                                <table class="matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Player Name</th>
+                                            <th>Total Penalties</th>
+                                            <th>Goals</th>
+                                            <th>Success Rate</th>
+                                            <th>Misses</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="egypt-players-tbody">
+                                        <!-- Data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Opponent Players Sub Tab -->
+                        <div id="opponent-players-subtab" class="sub-tab-content">
+                            <div style="overflow-x: auto;">
+                                <table class="matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Player Name</th>
+                                            <th>Total Penalties</th>
+                                            <th>Goals</th>
+                                            <th>Success Rate</th>
+                                            <th>Misses</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opponent-players-tbody">
+                                        <!-- Data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- H2H Teams Tab -->
+                    <div id="h2h-tab" class="tab-content">
+                        <div style="overflow-x: auto;">
+                            <table class="matches-table">
+                                <thead>
+                                    <tr>
+                                        <th>Team Name</th>
+                                        <th>Matches</th>
+                                        <th>Wins</th>
+                                        <th>Losses</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="h2h-tbody">
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Matches Tab -->
+                    <div id="matches-tab" class="tab-content">
+                        <div style="overflow-x: auto;">
+                            <table class="matches-table">
+                                <thead>
+                                    <tr>
+                                        <th>Match ID</th>
+                                        <th>Egypt Team</th>
+                                        <th>Egypt Player</th>
+                                        <th>Status</th>
+                                        <th>How Miss</th>
+                                        <th>Opponent Team</th>
+                                        <th>Opponent Player</th>
+                                        <th>Status</th>
+                                        <th>How Miss</th>
+                                        <th>Egypt GK</th>
+                                        <th>Opponent GK</th>
+                                        <th>Result</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pks-tbody">
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Goalkeepers Stats Tab -->
+                    <div id="goalkeepers-tab" class="tab-content">
+                        <!-- Sub Tabs -->
+                        <div class="sub-tabs-header">
+                            <button class="sub-tab-btn active" onclick="switchGKSubTab('egypt')">Egypt Goalkeepers</button>
+                            <button class="sub-tab-btn" onclick="switchGKSubTab('opponent')">Opponent Goalkeepers</button>
+                        </div>
+
+                        <!-- Egypt Goalkeepers Sub Tab -->
+                        <div id="egypt-gk-subtab" class="sub-tab-content active">
+                            <div style="overflow-x: auto;">
+                                <table class="matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Goalkeeper</th>
+                                            <th>PKS Matches</th>
+                                            <th>Penalties Faced</th>
+                                            <th>Penalties Saved</th>
+                                            <th>Save Rate</th>
+                                            <th>Goals Conceded</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="egypt-gk-tbody">
+                                        <!-- Data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Opponent Goalkeepers Sub Tab -->
+                        <div id="opponent-gk-subtab" class="sub-tab-content">
+                            <div style="overflow-x: auto;">
+                                <table class="matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Goalkeeper</th>
+                                            <th>PKS Matches</th>
+                                            <th>Penalties Faced</th>
+                                            <th>Penalties Saved</th>
+                                            <th>Save Rate</th>
+                                            <th>Goals Conceded</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opponent-gk-tbody">
+                                        <!-- Data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='egypt_teams_pks/egypt_teams_pks.js') }}"></script>
+</body>
+</html>

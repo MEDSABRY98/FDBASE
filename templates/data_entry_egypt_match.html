@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Egypt Match - Match Data Manager{% endblock %}
+
+{% block content %}
+<form id="egypt-match" method="POST" action="/save_data">
+    <input type="hidden" name="data_type" value="egypt_match">
+    <input type="hidden" id="match_id" name="match_id" value="">
+    
+    <!-- Basic Match Information Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Basic Match Information</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="champion_system">Champion System</label>
+                <input type="text" id="champion_system" name="champion_system" placeholder="Enter champion system">
+            </div>
+            <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" required onchange="generateMatchID()">
+            </div>
+            <div class="form-group">
+                <label for="h_a_n">H-A-N</label>
+                <input type="text" id="h_a_n" name="h_a_n" placeholder="Enter H-A-N">
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff & Officials Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Staff & Officials</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="manager_egy">Manager Egypt</label>
+                <input type="text" id="manager_egy" name="manager_egy" placeholder="Enter manager name">
+            </div>
+            <div class="form-group">
+                <label for="manager_opponent">Manager Opponent</label>
+                <input type="text" id="manager_opponent" name="manager_opponent" placeholder="Enter manager name">
+            </div>
+            <div class="form-group">
+                <label for="referee">Referee</label>
+                <input type="text" id="referee" name="referee" placeholder="Enter referee name">
+            </div>
+        </div>
+    </div>
+
+    <!-- Tournament Information Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Tournament Information</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="champion">Champion</label>
+                <input type="text" id="champion" name="champion" placeholder="Enter champion name">
+            </div>
+            <div class="form-group">
+                <label for="season">Season</label>
+                <input type="text" id="season" name="season" placeholder="e.g., 2023-2024">
+            </div>
+            <div class="form-group">
+                <label for="round">Round</label>
+                <input type="text" id="round" name="round" placeholder="Enter round">
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Details Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Match Details</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="place">Place</label>
+                <input type="text" id="place" name="place" placeholder="Enter place name">
+            </div>
+            <div class="form-group">
+                <label for="egypt">Egypt</label>
+                <input type="text" id="egypt" name="egypt" value="Egypt" readonly>
+            </div>
+            <div class="form-group">
+                <label for="opponent">Opponent</label>
+                <input type="text" id="opponent" name="opponent" placeholder="Enter opponent name" onchange="generateMatchID()">
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Result Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Match Result</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="gf">Goals For (GF)</label>
+                <input type="number" id="gf" name="gf" placeholder="Goals for" min="0" max="20">
+            </div>
+            <div class="form-group">
+                <label for="ga">Goals Against (GA)</label>
+                <input type="number" id="ga" name="ga" placeholder="Goals against" min="0" max="20">
+            </div>
+            <div class="form-group">
+                <label for="et">Extra Time (ET)</label>
+                <input type="text" id="et" name="et" placeholder="Enter ET (Yes/No)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Information Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Additional Information</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-grid three-columns">
+            <div class="form-group">
+                <label for="pen">Penalties (PEN)</label>
+                <input type="text" id="pen" name="pen" placeholder="Enter PEN (Yes/No)">
+            </div>
+            <div class="form-group">
+                <label for="w_d_l">W-D-L</label>
+                <input type="text" id="w_d_l" name="w_d_l" placeholder="Enter W-D-L (W/D/L)">
+            </div>
+            <div class="form-group">
+                <label for="cs">Clean Sheet (CS)</label>
+                <input type="text" id="cs" name="cs" placeholder="Enter CS (Yes/No)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes Section -->
+    <div class="form-section">
+        <div class="section-header">
+            <h2>Notes</h2>
+            <div class="section-line"></div>
+        </div>
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note" placeholder="Enter any additional notes..." rows="4"></textarea>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="resetCurrentForm()">Reset Form</button>
+        <button type="button" class="btn btn-secondary" onclick="exportCurrentData()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Export to Excel
+        </button>
+        <button type="button" id="save-btn" class="btn btn-primary" onclick="saveCurrentForm()">
+            <svg class="icon icon-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <span id="save-btn-text">Save to Google Sheets</span>
+        </button>
+    </div>
+</form>
+
+<script>
+// Auto-generate Match ID from Date + Opponent
+function generateMatchID() {
+    const matchIdInput = document.getElementById('match_id');
+    const dateInput = document.getElementById('date');
+    const opponentInput = document.getElementById('opponent');
+    
+    const dateValue = dateInput.value; // Format: YYYY-MM-DD
+    const opponent = opponentInput.value.trim();
+    
+    // Both date and opponent must be filled
+    if (!dateValue || !opponent) {
+        matchIdInput.value = '';
+        return;
+    }
+    
+    // Convert date to Excel serial number
+    const date = new Date(dateValue);
+    const excelEpoch = new Date(1899, 11, 30); // December 30, 1899
+    const diffTime = date.getTime() - excelEpoch.getTime();
+    const excelSerial = Math.floor(diffTime / 86400000);
+    
+    // Generate Match ID: Excel Serial + Opponent Name
+    matchIdInput.value = excelSerial + opponent;
+}
+</script>
+
+{% endblock %}
+

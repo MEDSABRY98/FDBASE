@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Egypt Lineup - Match Data Manager{% endblock %}
+
+{% block content %}
+<!-- Egypt Lineup specific scripts -->
+<form id="egypt-lineup" method="POST" action="/save_data">
+    <input type="hidden" name="data_type" value="egypt_lineup">
+    
+    <!-- Match Information -->
+    <div class="form-grid two-columns">
+        <div class="form-group">
+            <label>Match Date</label>
+            <input type="date" name="match_date" required>
+        </div>
+        <div class="form-group">
+            <label>Match ID</label>
+            <input type="text" name="match_id" placeholder="Match ID" required>
+        </div>
+    </div>
+
+    <div class="players-grid" style="margin-top: 20px;">
+        <!-- Headers -->
+        <div class="player-header">
+            <div class="header-cell">MINMAT</div>
+            <div class="header-cell">Player Name</div>
+            <div class="header-cell">Status</div>
+            <div class="header-cell">Player Out</div>
+            <div class="header-cell">Min Out</div>
+            <div class="header-cell">Min Total</div>
+            <div class="header-cell">Action</div>
+        </div>
+        
+        <!-- Player Rows Container -->
+        <div id="egypt-players-container">
+            <!-- Player rows will be added here dynamically -->
+        </div>
+    </div>
+    
+    <div class="form-actions" style="margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" onclick="addEgyptPlayerRow()">Add Player</button>
+        <button type="button" class="btn btn-secondary" onclick="clearAllEgyptPlayers()">Clear All</button>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="resetCurrentForm()">Reset Form</button>
+        <button type="button" class="btn btn-secondary" onclick="exportCurrentData()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Export to Excel
+        </button>
+        <button type="button" id="save-btn" class="btn btn-primary" onclick="saveCurrentForm()">
+            <svg class="icon icon-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <span id="save-btn-text">Save to Google Sheets</span>
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize players when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof egyptPlayerCount !== 'undefined' && egyptPlayerCount === 0) {
+            initializeEgyptPlayers();
+        }
+    });
+</script>
+{% endblock %}
+
