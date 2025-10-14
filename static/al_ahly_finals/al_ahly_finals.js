@@ -49,134 +49,84 @@ let alAhlyFinalsStatsData = {
 // ============================================================================
 
 /**
- * Fetch Finals data from Backend API (with backend cache)
+ * Fetch Finals data from Backend API (with Browser Cache - 24h TTL)
  */
 async function fetchFinalsDataFromGoogleSheets(forceRefresh = false) {
     try {
-        console.log('🔄 Fetching Finals data...');
-        
-        // Call API directly (backend handles caching)
-        const url = forceRefresh ? '/api/finals-stats-data?force_refresh=true' : '/api/finals-stats-data';
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to fetch Finals data');
-        }
-        
-        const records = data.records || [];
-        
-        console.log(`✅ Successfully fetched ${records.length} records`);
-        
-        return records;
-        
+        const fetchFunction = async () => {
+            console.log('🔄 Fetching Finals data from server...');
+            const response = await fetch('/api/finals-stats-data');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error || 'Failed to fetch Finals data');
+            console.log(`✅ Successfully fetched ${data.records?.length || 0} records`);
+            return data.records || [];
+        };
+        return await fetchWithBrowserCache('al_ahly_finals_stats', fetchFunction, forceRefresh) || [];
     } catch (error) {
         console.error('❌ Error fetching Finals data:', error);
-        console.error('Error details:', error.message);
         return [];
     }
 }
 
 /**
- * Fetch Players data from Backend API (with backend cache)
+ * Fetch Players data from Backend API (with Browser Cache - 24h TTL)
  */
 async function fetchPlayersDataFromGoogleSheets(forceRefresh = false) {
     try {
-        console.log('🔄 Fetching Players data...');
-        
-        // Call API directly (backend handles caching)
-        const response = await fetch('/api/finals-players-data');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to fetch Players data');
-        }
-        
-        const records = data.records || [];
-        
-        console.log(`✅ Successfully fetched ${records.length} player records`);
-        
-        return records;
-        
+        const fetchFunction = async () => {
+            console.log('🔄 Fetching Players data from server...');
+            const response = await fetch('/api/finals-players-data');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error || 'Failed to fetch Players data');
+            console.log(`✅ Successfully fetched ${data.records?.length || 0} player records`);
+            return data.records || [];
+        };
+        return await fetchWithBrowserCache('al_ahly_finals_players', fetchFunction, forceRefresh) || [];
     } catch (error) {
         console.error('❌ Error fetching Players data:', error);
-        console.error('Error details:', error.message);
         return [];
     }
 }
 
 /**
- * Fetch Lineup data from Backend API (with backend cache)
+ * Fetch Lineup data from Backend API (with Browser Cache - 24h TTL)
  */
 async function fetchLineupDataFromGoogleSheets(forceRefresh = false) {
     try {
-        console.log('🔄 Fetching Lineup data...');
-        
-        // Call API directly (backend handles caching)
-        const response = await fetch('/api/finals-lineup-data');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to fetch Lineup data');
-        }
-        
-        const records = data.records || [];
-        
-        console.log(`✅ Successfully fetched ${records.length} lineup records`);
-        
-        return records;
-        
+        const fetchFunction = async () => {
+            console.log('🔄 Fetching Lineup data from server...');
+            const response = await fetch('/api/finals-lineup-data');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error || 'Failed to fetch Lineup data');
+            console.log(`✅ Successfully fetched ${data.records?.length || 0} lineup records`);
+            return data.records || [];
+        };
+        return await fetchWithBrowserCache('al_ahly_finals_lineup', fetchFunction, forceRefresh) || [];
     } catch (error) {
         console.error('❌ Error fetching Lineup data:', error);
-        console.error('Error details:', error.message);
         return [];
     }
 }
 
 /**
- * Fetch Player Database from Backend API (with backend cache)
+ * Fetch Player Database from Backend API (with Browser Cache - 24h TTL)
  */
 async function fetchPlayerDatabaseFromGoogleSheets(forceRefresh = false) {
     try {
-        console.log('🔄 Fetching Player Database...');
-        
-        // Call API directly (backend handles caching)
-        const response = await fetch('/api/finals-playerdatabase-data');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to fetch Player Database');
-        }
-        
-        const records = data.records || [];
-        
-        console.log(`✅ Successfully fetched ${records.length} player database records`);
-        
-        return records;
-        
+        const fetchFunction = async () => {
+            console.log('🔄 Fetching Player Database from server...');
+            const response = await fetch('/api/finals-playerdatabase-data');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error || 'Failed to fetch Player Database');
+            return data.records || [];
+        };
+        return await fetchWithBrowserCache('al_ahly_finals_playerdb', fetchFunction, forceRefresh) || [];
     } catch (error) {
         console.error('❌ Error fetching Player Database:', error);
-        console.error('Error details:', error.message);
         return [];
     }
 }

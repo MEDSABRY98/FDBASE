@@ -47,31 +47,37 @@ let alAhlyPKSStatsData = {
 // ============================================================================
 
 /**
- * Fetch PKS data from Backend API (with backend cache)
+ * Fetch PKS data from Backend API (with Browser Cache - 24h TTL)
  */
 async function fetchPKSDataFromGoogleSheets(forceRefresh = false) {
     try {
-        console.log('🔄 Fetching PKS data...');
+        // Use browser cache with 24h TTL
+        const fetchFunction = async () => {
+            console.log('🔄 Fetching PKS data from server...');
+            
+            const url = '/api/pks-stats-data';
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to fetch PKS data');
+            }
+            
+            const records = data.records || [];
+            console.log(`✅ Successfully fetched ${records.length} records`);
+            
+            return records;
+        };
         
-        // Call API directly (backend handles caching)
-        const url = forceRefresh ? '/api/pks-stats-data?force_refresh=true' : '/api/pks-stats-data';
-        const response = await fetch(url);
+        // Fetch with browser cache (24h TTL)
+        const records = await fetchWithBrowserCache('al_ahly_pks', fetchFunction, forceRefresh);
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to fetch PKS data');
-        }
-        
-        const records = data.records || [];
-        
-        console.log(`✅ Successfully fetched ${records.length} records`);
-        
-        return records;
+        return records || [];
         
     } catch (error) {
         console.error('❌ Error fetching PKS data:', error);
