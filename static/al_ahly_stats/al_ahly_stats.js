@@ -11653,10 +11653,26 @@ function displayMatchDetails(match) {
 function displayMatchLineup(matchId) {
     const container = document.getElementById('match-lineup-container');
     const lineupRows = getSheetRowsByCandidates(['LINEUPDETAILS']);
+    const playerDetailsRows = getSheetRowsByCandidates(['PLAYERDETAILS']);
     
     const matchLineup = lineupRows.filter(l => {
         const mid = normalizeStr(l.MATCH_ID || l['MATCH ID']);
         return mid.toLowerCase() === matchId.toLowerCase();
+    });
+    
+    // Get goals and assists data for this match
+    const matchPlayerDetails = playerDetailsRows.filter(p => {
+        const mid = normalizeStr(p.MATCH_ID || p['MATCH ID']);
+        return mid.toLowerCase() === matchId.toLowerCase();
+    });
+    
+    // Separate Al Ahly goals and assists
+    const ahlyGoals = matchPlayerDetails.filter(g => {
+        const ga = (g.GA || '').toUpperCase();
+        const team = (g.TEAM || '').toLowerCase();
+        const isAhly = team.includes('ahly') || team.includes('الأهلي');
+        const isGoalOrAssist = ga === 'GOAL' || ga === 'ASSIST';
+        return isAhly && isGoalOrAssist;
     });
     
     if (matchLineup.length === 0) {
@@ -11672,8 +11688,10 @@ function displayMatchLineup(matchId) {
                 <thead>
                     <tr>
                         <th>Player</th>
-                        <th>Minutes</th>
                         <th>Status</th>
+                        <th>Minutes</th>
+                        <th>Goals</th>
+                        <th>Assists</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -11682,32 +11700,67 @@ function displayMatchLineup(matchId) {
     matchLineup.forEach((player, index) => {
         const playerName = player.PLAYER || player['PLAYER NAME'] || 'Unknown';
         const minutes = player.MINTOTAL || player['MIN TOTAL'] || player.MINUTES || 0;
+        const playerOut = player['PLAYER NAME OUT'] || player.PLAYEROUT || '';
+        const minOut = player.MINOUT || player['MIN OUT'] || '';
         
         let status = '';
         if (index < 11) {
             // First 11 players are starters
-            status = 'Starting XI';
+            status = '<span class="badge badge-success">Starting XI</span>';
         } else {
             // Substitutes
-            const playerOut = player['PLAYER NAME OUT'] || player.PLAYEROUT || '';
-            const minOut = player.MINOUT || player['MIN OUT'] || '';
-            
-            if (playerOut && minOut) {
-                status = `Substitute (in for ${playerOut} at ${minOut}')`;
-            } else if (playerOut) {
-                status = `Substitute (in for ${playerOut})`;
-            } else if (minOut) {
-                status = `Substitute (at ${minOut}')`;
-            } else {
-                status = 'Substitute';
+            status = `<span class="badge badge-warning">Substitute</span>`;
+            if (playerOut) {
+                status += `<br><small style="color: #666;">(Replaced ${playerOut} at ${minOut}')</small>`;
             }
+        }
+        
+        // Calculate goals and assists for this player in this match
+        const playerGoalRecords = ahlyGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'GOAL');
+        const playerAssistRecords = ahlyGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'ASSIST');
+        
+        // Sum up GATOTAL for multiple goals/assists
+        const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
+        const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
+        
+        // Create goals display with icon (only show icon if player scored)
+        const goalsDisplay = playerGoals > 0 ? 
+            `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
+            '<span style="color: #999;">-</span>';
+        
+        // Create assists display with icon (only show icon if player assisted)
+        const assistsDisplay = playerAssists > 0 ? 
+            `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🏈</span>` : 
+            '<span style="color: #999;">-</span>';
+        
+        // Add substitution arrows and GK indicator
+        let playerNameWithArrows = `<strong>${playerName}</strong>`;
+        
+        // Check if this player is a goalkeeper (first player in lineup is usually GK)
+        const isGoalkeeper = index === 0;
+        if (isGoalkeeper) {
+            playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
+        }
+        
+        // Check if this player was substituted out (red arrow down)
+        const wasSubstitutedOut = matchLineup.some(p => p['PLAYER NAME OUT'] === playerName);
+        if (wasSubstitutedOut) {
+            playerNameWithArrows += ` <span style="color: #dc3545; font-size: 1.5em;" title="Substituted Out">↓</span>`;
+        }
+        
+        // Check if this player was substituted in (green arrow up)
+        const wasSubstitutedIn = index >= 11; // Substitutes start from index 11
+        if (wasSubstitutedIn) {
+            playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
         }
         
         html += `
             <tr>
-                <td><strong>${playerName}</strong></td>
+                <td>${playerNameWithArrows}</td>
+                <td>${status}</td>
                 <td>${minutes}'</td>
-                <td style="color: ${index < 11 ? '#059669' : '#f59e0b'};">${status}</td>
+                <td style="text-align: center;">${goalsDisplay}</td>
+                <td style="text-align: center;">${assistsDisplay}</td>
             </tr>
         `;
     });

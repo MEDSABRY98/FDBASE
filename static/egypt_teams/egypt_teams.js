@@ -3102,7 +3102,7 @@ async function searchEgyptMatchById() {
     }
     
     // Make sure player data is loaded
-    if (!egyptTeamsData.playersLoaded) {
+    if (!egyptTeamsData.playerDetailsLoaded) {
         try {
             await loadPlayersData();
         } catch (error) {
@@ -3180,10 +3180,26 @@ function displayEgyptMatchDetails(match) {
 function displayEgyptMatchLineup(matchId) {
     const container = document.getElementById('egypt-match-lineup-container');
     const lineupDetails = egyptTeamsData.lineupDetails || [];
+    const playerDetails = egyptTeamsData.playerDetails || [];
     
     const matchLineup = lineupDetails.filter(player => {
         const mid = player.MATCH_ID || player['MATCH ID'] || '';
         return mid.toString().toLowerCase() === matchId.toLowerCase();
+    });
+    
+    // Get goals data for this match
+    const matchGoals = playerDetails.filter(player => {
+        const mid = player.MATCH_ID || player['MATCH ID'] || '';
+        return mid.toString().toLowerCase() === matchId.toLowerCase();
+    });
+    
+    // Separate Egypt goals and assists
+    const egyptGoals = matchGoals.filter(g => {
+        const ga = (g.GA || '').toUpperCase();
+        const team = (g.TEAM || '').toLowerCase();
+        const isEgypt = team.includes('egypt') || team.includes('مصر');
+        const isGoalOrAssist = ga === 'GOAL' || ga === 'ASSIST';
+        return isEgypt && isGoalOrAssist;
     });
     
     if (matchLineup.length === 0) {
@@ -3223,22 +3239,48 @@ function displayEgyptMatchLineup(matchId) {
         }
         
         // Calculate goals and assists for this player in this match
-        const playerGoals = egyptGoals.filter(goal => goal['PLAYER NAME'] === playerName).length;
-        const playerAssists = egyptGoals.filter(goal => goal['ASSIST PLAYER'] === playerName).length;
+        const playerGoalRecords = egyptGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'GOAL');
+        const playerAssistRecords = egyptGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'ASSIST');
         
-        // Create goals display with icon
+        // Sum up GATOTAL for multiple goals/assists
+        const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
+        const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
+        
+        // Create goals display with icon (only show icon if player scored)
         const goalsDisplay = playerGoals > 0 ? 
-            `<span style="color: #28a745; font-weight: bold;">${playerGoals} ⚽</span>` : 
-            '<span style="color: #ccc;">0 ⚽</span>';
+            `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
+            '<span style="color: #999;">-</span>';
         
-        // Create assists display with icon
+        // Create assists display with icon (only show icon if player assisted)
         const assistsDisplay = playerAssists > 0 ? 
-            `<span style="color: #007bff; font-weight: bold;">${playerAssists} 🏈</span>` : 
-            '<span style="color: #ccc;">0 🏈</span>';
+            `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🏈</span>` : 
+            '<span style="color: #999;">-</span>';
+        
+        // Add substitution arrows and GK indicator
+        let playerNameWithArrows = `<strong>${playerName}</strong>`;
+        
+        // Check if this player is a goalkeeper (first player in lineup is usually GK)
+        const isGoalkeeper = index === 0;
+        if (isGoalkeeper) {
+            playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
+        }
+        
+        // Check if this player was substituted out (red arrow down)
+        const wasSubstitutedOut = matchLineup.some(p => p['PLAYER NAME OUT'] === playerName);
+        if (wasSubstitutedOut) {
+            playerNameWithArrows += ` <span style="color: #dc3545; font-size: 1.5em;" title="Substituted Out">↓</span>`;
+        }
+        
+        // Check if this player was substituted in (green arrow up)
+        // For substitutes, they are the ones who came in (not in starting XI)
+        const wasSubstitutedIn = index >= 11; // Substitutes start from index 11
+        if (wasSubstitutedIn) {
+            playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
+        }
         
         html += `
             <tr>
-                <td><strong>${playerName}</strong></td>
+                <td>${playerNameWithArrows}</td>
                 <td>${status}</td>
                 <td>${minutes}'</td>
                 <td style="text-align: center;">${goalsDisplay}</td>
