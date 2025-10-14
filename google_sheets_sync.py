@@ -185,7 +185,7 @@ class GoogleSheetsSync:
         Main sync function: Fetch data from Google Sheets and save to cache
         
         Returns:
-            True if successful, False otherwise
+            dict with fetched data if successful, None otherwise
         """
         safe_print("\n" + "="*60)
         safe_print("[SYNC] Starting Google Sheets Auto-Sync")
@@ -199,7 +199,7 @@ class GoogleSheetsSync:
             
             if not all_sheets_data:
                 safe_print("[ERROR] No data fetched from Google Sheets")
-                return False
+                return None
             
             # Save to cache
             cache_key = f"{CACHE_KEY_PREFIX}all_sheets"
@@ -215,7 +215,7 @@ class GoogleSheetsSync:
                 }
             }
             
-            # Save to cache
+            # Save to cache (will be skipped in no-cache mode)
             self.cache_manager.set(cache_key, all_sheets_data, metadata)
             
             # Update last sync time
@@ -230,11 +230,12 @@ class GoogleSheetsSync:
             safe_print(f"   Last sync: {self.last_sync_time.strftime('%Y-%m-%d %H:%M:%S')}")
             safe_print("="*60 + "\n")
             
-            return True
+            # Return the data directly (important for no-cache mode)
+            return all_sheets_data
             
         except Exception as e:
             safe_print(f"[ERROR] Sync failed: {e}")
-            return False
+            return None
     
     def get_cached_data(self):
         """
@@ -269,10 +270,12 @@ class GoogleSheetsSync:
         
         # Cache miss or expired - sync now
         safe_print("[SYNC] Cache miss - syncing from Google Sheets")
-        if self.sync_to_cache():
-            return self.get_cached_data()
+        synced_data = self.sync_to_cache()
         
-        return None
+        # Return synced data directly (important for no-cache mode)
+        # In no-cache mode, sync_to_cache returns data but doesn't cache it
+        # In cache mode, sync_to_cache caches data and we can also return it directly
+        return synced_data
     
     def get_sync_status(self):
         """
