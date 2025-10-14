@@ -1069,9 +1069,6 @@ async function loadFromGoogleSheetsSync(forceRefresh = false) {
             window.__ahlySheetsJson = data;
             window.__ahlyExcelMode = true;
             
-            // Also save to localStorage (for backward compatibility)
-            await saveSheetsDataToCache(data);
-            
             console.log('💾 Data ready');
             return true;
         } else {
