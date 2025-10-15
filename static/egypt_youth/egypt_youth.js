@@ -664,18 +664,28 @@ function loadYouthPlayersStats() {
         const playerName = record['PLAYER NAME'];
         const matchId = record['MATCH_ID'];
         const gaTotal = parseInt(record['GATOTAL']) || 0;
+        const elnadyName = record['ELNADY'];
         
         // Only include players from filtered matches
         if (!playerName || !filteredMatchIds.has(matchId)) return;
         
         if (!playerStats[playerName]) {
             playerStats[playerName] = {
-                gaTotal: 0
+                gaTotal: 0,
+                elnadyGoals: {} // Store goals per elnady
             };
         }
         
         const stats = playerStats[playerName];
         stats.gaTotal += gaTotal;
+        
+        // Track goals per elnady
+        if (elnadyName && gaTotal > 0) {
+            if (!stats.elnadyGoals[elnadyName]) {
+                stats.elnadyGoals[elnadyName] = 0;
+            }
+            stats.elnadyGoals[elnadyName] += gaTotal;
+        }
     });
     
     renderYouthPlayersTable(playerStats);
@@ -727,8 +737,21 @@ function renderYouthPlayersTable(playerStats) {
     sortedPlayers.forEach(([playerName, stats]) => {
         const row = document.createElement('tr');
         
+        // Create elnady display with goals in parentheses
+        let elnadyDisplay = '';
+        if (stats.elnadyGoals && Object.keys(stats.elnadyGoals).length > 0) {
+            const elnadyEntries = Object.entries(stats.elnadyGoals)
+                .sort((a, b) => b[1] - a[1]) // Sort by goals descending
+                .map(([elnady, goals]) => `${elnady} (${goals})`)
+                .join(', ');
+            elnadyDisplay = elnadyEntries;
+        } else {
+            elnadyDisplay = '-';
+        }
+        
         row.innerHTML = `
             <td><a href="#" class="player-link" onclick="showPlayerChampionStats('${playerName}')">${playerName}</a></td>
+            <td>${elnadyDisplay}</td>
             <td>${stats.gaTotal}</td>
         `;
         
@@ -1045,7 +1068,7 @@ function showPlayerChampionStats(playerName) {
         }
     });
     
-    // Get player goals grouped by SEASON
+    // Get player goals grouped by SEASON and ELNADY
     const seasonStats = {};
     
     if (!youthEgyptData.youthPlayers || youthEgyptData.youthPlayers.length === 0) {
@@ -1057,6 +1080,7 @@ function showPlayerChampionStats(playerName) {
         const name = player['PLAYER NAME'];
         const matchId = player['MATCH_ID'] || player['Match Id'] || player['match_id'] || player['ID'];
         const gaTotal = parseInt(player['GATOTAL']) || 0;
+        const elnadyName = player['ELNADY'];
         
         if (name === playerName && filteredMatchIds.has(matchId) && gaTotal > 0) {
             // Find the match record to get SEASON
@@ -1070,11 +1094,20 @@ function showPlayerChampionStats(playerName) {
                 
                 if (!seasonStats[season]) {
                     seasonStats[season] = {
-                        goals: 0
+                        goals: 0,
+                        elnadyGoals: {}
                     };
                 }
                 
                 seasonStats[season].goals += gaTotal;
+                
+                // Track goals per elnady for this season
+                if (elnadyName) {
+                    if (!seasonStats[season].elnadyGoals[elnadyName]) {
+                        seasonStats[season].elnadyGoals[elnadyName] = 0;
+                    }
+                    seasonStats[season].elnadyGoals[elnadyName] += gaTotal;
+                }
             }
         }
     });
@@ -1110,6 +1143,7 @@ function showPlayerChampionStats(playerName) {
                         <thead>
                             <tr>
                                 <th>الموسم</th>
+                                <th>النادي</th>
                                 <th>الأهداف</th>
                             </tr>
                         </thead>
@@ -1117,9 +1151,22 @@ function showPlayerChampionStats(playerName) {
     `;
     
     sortedSeasons.forEach(([season, stats]) => {
+        // Create elnady display with goals in parentheses
+        let elnadyDisplay = '';
+        if (stats.elnadyGoals && Object.keys(stats.elnadyGoals).length > 0) {
+            const elnadyEntries = Object.entries(stats.elnadyGoals)
+                .sort((a, b) => b[1] - a[1]) // Sort by goals descending
+                .map(([elnady, goals]) => `${elnady} (${goals})`)
+                .join(', ');
+            elnadyDisplay = elnadyEntries;
+        } else {
+            elnadyDisplay = '-';
+        }
+        
         modalContent += `
             <tr>
                 <td><strong>${season}</strong></td>
+                <td>${elnadyDisplay}</td>
                 <td>${stats.goals}</td>
             </tr>
         `;
@@ -1129,6 +1176,7 @@ function showPlayerChampionStats(playerName) {
     modalContent += `
         <tr class="total-row">
             <td><strong>المجموع</strong></td>
+            <td><strong>-</strong></td>
             <td><strong>${totalGoals}</strong></td>
         </tr>
     `;

@@ -3704,13 +3704,21 @@ function displayZamalekMatchLineup(match) {
     if (ahlyLineup.length > 0) {
         ahlyLineup.forEach((player, index) => {
             const playerName = player['PLAYER NAME'] || 'Unknown';
-            const minutes = player.MINTOTAL || 0;
+            const minutes = player.MINTOTAL || player.MINMAT || 0;
+            const playerOut = player.PLAYEROUT || player['PLAYER NAME OUT'] || '';
+            const minOut = player.MINOUT || '';
+            
+            const isSubFromStatus = typeof player.STATU === 'string' && player.STATU.toUpperCase().includes('SUB');
+            const isSubstitute = isSubFromStatus || index >= 11;
             
             let status = '';
-            if (index < 11) {
+            if (!isSubstitute) {
                 status = '<span class="badge badge-success">Starting XI</span>';
             } else {
                 status = '<span class="badge badge-warning">Substitute</span>';
+                if (playerOut) {
+                    status += `<br><small style="color: #666;">(Replaced ${playerOut} at ${minOut}')</small>`;
+                }
             }
             
             // Calculate goals and assists for this player
@@ -3782,13 +3790,21 @@ function displayZamalekMatchLineup(match) {
     if (zamalekLineup.length > 0) {
         zamalekLineup.forEach((player, index) => {
             const playerName = player['PLAYER NAME'] || 'Unknown';
-            const minutes = player.MINTOTAL || 0;
+            const minutes = player.MINTOTAL || player.MINMAT || 0;
+            const playerOut = player.PLAYEROUT || player['PLAYER NAME OUT'] || '';
+            const minOut = player.MINOUT || '';
+            
+            const isSubFromStatus = typeof player.STATU === 'string' && player.STATU.toUpperCase().includes('SUB');
+            const isSubstitute = isSubFromStatus || index >= 11;
             
             let status = '';
-            if (index < 11) {
+            if (!isSubstitute) {
                 status = '<span class="badge badge-success">Starting XI</span>';
             } else {
                 status = '<span class="badge badge-warning">Substitute</span>';
+                if (playerOut) {
+                    status += `<br><small style=\"color: #666;\">(Replaced ${playerOut} at ${minOut}')` + `</small>`;
+                }
             }
             
             // Calculate goals and assists for this player
