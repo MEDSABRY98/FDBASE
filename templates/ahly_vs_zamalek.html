@@ -650,6 +650,103 @@
             display: block;
         }
 
+        /* Tabs Header for Search Match */
+        .tabs-header {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 2rem;
+            justify-content: center;
+        }
+
+        .tab-button {
+            padding: 1rem 2rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #666;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            bottom: -2px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tab-button:hover {
+            color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Matches Table for Search Match */
+        .matches-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .matches-table thead {
+            background: #f8f9fa;
+        }
+
+        .matches-table th {
+            padding: 1rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .matches-table td {
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .matches-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .badge-success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #664d03;
+        }
+
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+
         /* Search Match Responsive Styles */
         @media (max-width: 768px) {
             #zamalek-match-lineup-container > div {
@@ -658,6 +755,15 @@
             
             #zamalek-match-goals-container > div {
                 grid-template-columns: 1fr !important;
+            }
+
+            .tab-button {
+                padding: 0.75rem 1rem;
+                font-size: 1rem;
+            }
+
+            .tabs-header {
+                gap: 0.25rem;
             }
         }
 
