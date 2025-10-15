@@ -799,7 +799,7 @@ function populateMatchesTable() {
     tbody.innerHTML = '';
     
     if (matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found</td></tr>';
         return;
     }
     
@@ -816,6 +816,7 @@ function populateMatchesTable() {
         const resultBadge = getResultBadge(match['W-D-L']);
         
         row.innerHTML = `
+            <td><strong>${match.MATCH_ID || ''}</strong></td>
             <td>${match.DATE || ''}</td>
             <td>${match.SEASON || ''}</td>
             <td>${match.ROUND || ''}</td>
