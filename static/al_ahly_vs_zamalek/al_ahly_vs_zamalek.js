@@ -3630,8 +3630,8 @@ function displayZamalekMatchHeader(match) {
     const championship = match.CHAMPION || '';
     const round = match.ROUND || '';
     const stadium = match.STADIUM || '';
-    const ahlyScore = match.AHLY || 0;
-    const zamalekScore = match.ZAMALEK || 0;
+    const ahlyScore = match.GF || 0;
+    const zamalekScore = match.GA || 0;
     
     headerContainer.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; gap: 3rem; margin-bottom: 1.5rem;">
