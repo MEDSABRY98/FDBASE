@@ -172,6 +172,7 @@ function displayMatches() {
     matches.forEach(match => {
         const row = document.createElement('tr');
         
+        const matchId = match['MATCH_ID'] || '';
         const date = match['DATE'] || '';
         const managerEgy = match['MANAGER EGY'] || '';
         const managerOpponent = match['MANAGER OPPONENT'] || '';
@@ -181,7 +182,6 @@ function displayMatches() {
         const ga = match['GA'] || 0;
         const opponent = match['OPPONENT TEAM'] || '';
         const result = match['W-D-L'] || '';
-        const cs = match['CLEAN SHEET'] || '';
         
         let resultBadge = '';
         if (result === 'W') {
@@ -193,6 +193,7 @@ function displayMatches() {
         }
         
         row.innerHTML = `
+            <td><strong>${matchId}</strong></td>
             <td>${date}</td>
             <td>${managerEgy}</td>
             <td>${managerOpponent}</td>
@@ -202,7 +203,6 @@ function displayMatches() {
             <td><strong>${ga}</strong></td>
             <td>${opponent}</td>
             <td>${resultBadge}</td>
-            <td>${cs}</td>
         `;
         
         tbody.appendChild(row);
