@@ -4945,11 +4945,17 @@ def api_egypt_teams_player_details():
         except gspread.WorksheetNotFound:
             return jsonify({'error': 'PLAYERDETAILS worksheet not found', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
         
-        # Get LINEUPDETAILS worksheet
+        # Get LINEUPEGYPT worksheet
         try:
-            lineup_details_worksheet = spreadsheet.worksheet('LINEUPDETAILS')
+            lineup_egypt_worksheet = spreadsheet.worksheet('LINEUPEGYPT')
         except gspread.WorksheetNotFound:
-            return jsonify({'error': 'LINEUPDETAILS worksheet not found', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
+            return jsonify({'error': 'LINEUPEGYPT worksheet not found', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
+        
+        # Get LINEUPOPPONENT worksheet
+        try:
+            lineup_opponent_worksheet = spreadsheet.worksheet('LINEUPOPPONENT')
+        except gspread.WorksheetNotFound:
+            return jsonify({'error': 'LINEUPOPPONENT worksheet not found', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
         
         # Get GKDETAILS worksheet (optional)
         try:
@@ -4970,7 +4976,20 @@ def api_egypt_teams_player_details():
         # Get all records
         player_db_records = player_db_worksheet.get_all_records()
         player_details_records = player_details_worksheet.get_all_records()
-        lineup_details_records = lineup_details_worksheet.get_all_records()
+        
+        # Get records from both lineup sheets
+        lineup_egypt_records = lineup_egypt_worksheet.get_all_records()
+        lineup_opponent_records = lineup_opponent_worksheet.get_all_records()
+        
+        # Add source team identifier to each record
+        for record in lineup_egypt_records:
+            record['SOURCE_TEAM'] = 'EGYPT'
+        
+        for record in lineup_opponent_records:
+            record['SOURCE_TEAM'] = 'OPPONENT'
+        
+        # Combine both lineup records
+        lineup_details_records = lineup_egypt_records + lineup_opponent_records
         
         # Clean data
         cleaned_player_db = []

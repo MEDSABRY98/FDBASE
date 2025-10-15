@@ -1238,7 +1238,7 @@ function loadPlayerChampionships(playerName, playerMatchIds) {
         
         const stats = championshipStats.get(championship);
         
-        // Get ALL matches and minutes from LINEUPDETAILS for this championship
+        // Get ALL matches and minutes from LINEUPEGYPT for this championship
         egyptTeamsData.lineupDetails.forEach(lineup => {
             const name = (lineup['PLAYER NAME'] || '').trim();
             const lineupMatchId = (lineup['MATCH_ID'] || '').trim();
@@ -1279,7 +1279,7 @@ function loadPlayerChampionships(playerName, playerMatchIds) {
         const totalGA = stats.officialGoals + stats.friendlyGoals + stats.officialAssists + stats.friendlyAssists;
         return {
             championship,
-            matches: stats.matchesInLineup.size,  // Count only matches from LINEUPDETAILS
+            matches: stats.matchesInLineup.size,  // Count only matches from LINEUPEGYPT
             minutes: stats.minutes,
             totalGA,
             officialGoals: stats.officialGoals,
@@ -1372,7 +1372,7 @@ function loadPlayerSeasons(playerName, playerMatchIds) {
         
         const stats = seasonStats.get(season);
         
-        // Get ALL matches and minutes from LINEUPDETAILS for this season
+        // Get ALL matches and minutes from LINEUPEGYPT for this season
         egyptTeamsData.lineupDetails.forEach(lineup => {
             const name = (lineup['PLAYER NAME'] || '').trim();
             const lineupMatchId = (lineup['MATCH_ID'] || '').trim();
@@ -1510,7 +1510,7 @@ function loadPlayerVsTeams(playerName, playerMatchIds) {
         
         const stats = teamStats.get(opponent);
         
-        // Get ALL matches and minutes from LINEUPDETAILS for this opponent
+        // Get ALL matches and minutes from LINEUPEGYPT for this opponent
         egyptTeamsData.lineupDetails.forEach(lineup => {
             const name = (lineup['PLAYER NAME'] || '').trim();
             const lineupMatchId = (lineup['MATCH_ID'] || '').trim();
@@ -3101,12 +3101,19 @@ async function searchEgyptMatchById() {
         return;
     }
     
+    console.log('🔍 Searching for match ID:', matchId);
+    console.log('🔍 Player details loaded before search:', egyptTeamsData.playerDetailsLoaded);
+    
     // Make sure player data is loaded
     if (!egyptTeamsData.playerDetailsLoaded) {
+        console.log('🔄 Loading player data...');
         try {
             await loadPlayersData();
+            console.log('✅ Player data loaded successfully');
         } catch (error) {
-            console.error('Error loading player data:', error);
+            console.error('❌ Error loading player data:', error);
+            showError('Failed to load player data. Please try again.');
+            return;
         }
     }
     
@@ -3115,6 +3122,11 @@ async function searchEgyptMatchById() {
         const mid = m.MATCH_ID || m['MATCH ID'] || '';
         return mid.toString().toLowerCase() === matchId.toLowerCase();
     });
+    
+    console.log('🔍 Match found:', !!match);
+    if (match) {
+        console.log('🔍 Match details:', match);
+    }
     
     const detailsContainer = document.getElementById('egypt-match-details-container');
     const noMatchFound = document.getElementById('egypt-no-match-found');
@@ -3182,9 +3194,32 @@ function displayEgyptMatchLineup(matchId) {
     const lineupDetails = egyptTeamsData.lineupDetails || [];
     const playerDetails = egyptTeamsData.playerDetails || [];
     
-    const matchLineup = lineupDetails.filter(player => {
+    console.log('🔍 Match ID:', matchId);
+    console.log('🔍 Total lineup details available:', lineupDetails.length);
+    console.log('🔍 Total player details available:', playerDetails.length);
+    console.log('🔍 Player details loaded:', egyptTeamsData.playerDetailsLoaded);
+    console.log('🔍 Players loaded:', egyptTeamsData.playersLoaded);
+    
+    // Debug: Show first few lineup records to understand structure
+    if (lineupDetails.length > 0) {
+        console.log('🔍 Sample lineup record:', lineupDetails[0]);
+        console.log('🔍 Available lineup fields:', Object.keys(lineupDetails[0]));
+    }
+    
+    // Get Egypt lineup from LINEUPEGYPT data (Egypt players only)
+    const egyptLineup = lineupDetails.filter(player => {
         const mid = player.MATCH_ID || player['MATCH ID'] || '';
-        return mid.toString().toLowerCase() === matchId.toLowerCase();
+        const sourceTeam = player.SOURCE_TEAM || '';
+        return mid.toString().toLowerCase() === matchId.toLowerCase() && 
+               sourceTeam === 'EGYPT';
+    });
+    
+    // Get Opponent lineup from LINEUPOPPONENT data (Opponent players only)
+    const opponentLineup = lineupDetails.filter(player => {
+        const mid = player.MATCH_ID || player['MATCH ID'] || '';
+        const sourceTeam = player.SOURCE_TEAM || '';
+        return mid.toString().toLowerCase() === matchId.toLowerCase() && 
+               sourceTeam === 'OPPONENT';
     });
     
     // Get goals data for this match
@@ -3202,98 +3237,236 @@ function displayEgyptMatchLineup(matchId) {
         return isEgypt && isGoalOrAssist;
     });
     
-    if (matchLineup.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No lineup data available for this match</p>';
+    // Separate Opponent goals and assists
+    const opponentGoals = matchGoals.filter(g => {
+        const ga = (g.GA || '').toUpperCase();
+        const team = (g.TEAM || '').toLowerCase();
+        const isOpponent = !team.includes('egypt') && !team.includes('مصر');
+        const isGoalOrAssist = ga === 'GOAL' || ga === 'ASSIST';
+        return isOpponent && isGoalOrAssist;
+    });
+    
+    console.log('🔍 Egypt lineup found:', egyptLineup.length);
+    console.log('🔍 Opponent lineup found:', opponentLineup.length);
+    console.log('🔍 Egypt lineup data:', egyptLineup);
+    console.log('🔍 Opponent lineup data:', opponentLineup);
+    
+    // Check if data is not loaded yet
+    if (!egyptTeamsData.playerDetailsLoaded) {
+        container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">Loading lineup data...</p>';
         return;
     }
     
-    let html = `
-        <div style="overflow-x: auto;">
-            <table class="matches-table">
-                <thead>
-                    <tr>
-                        <th>Player</th>
-                        <th>Status</th>
-                        <th>Minutes</th>
-                        <th>Goals</th>
-                        <th>Assists</th>
-                    </tr>
-                </thead>
-                <tbody>
+    if (egyptLineup.length === 0 && opponentLineup.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; color: #999; padding: 2rem;">
+                <p>No lineup data available for this match</p>
+                <p style="font-size: 0.9rem; margin-top: 1rem;">
+                    Total lineup records: ${lineupDetails.length}<br>
+                    Match ID searched: ${matchId}
+                </p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; width: 100%;">';
+    
+    // Egypt Lineup (Left Side)
+    html += `
+        <div>
+            <h3 style="color: #dc143c; margin-bottom: 1rem;">🇪🇬 Egypt</h3>
+            <div style="overflow-x: auto;">
+                <table class="matches-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Status</th>
+                            <th>Minutes</th>
+                            <th>Goals</th>
+                            <th>Assists</th>
+                        </tr>
+                    </thead>
+                    <tbody>
     `;
     
-    matchLineup.forEach((player, index) => {
-        const playerName = player['PLAYER NAME'] || 'Unknown';
-        const minutes = player.MINTOTAL || player.MINMAT || 0;
-        const playerOut = player['PLAYER NAME OUT'] || '';
-        const minOut = player.MINOUT || '';
-        
-        let status = '';
-        if (index < 11) {
-            status = '<span class="badge badge-success">Starting XI</span>';
-        } else {
-            status = `<span class="badge badge-warning">Substitute</span>`;
-            if (playerOut) {
-                status += `<br><small style="color: #666;">(Replaced ${playerOut} at ${minOut}')</small>`;
+    // Display Egypt players
+    if (egyptLineup.length > 0) {
+        egyptLineup.forEach((player, index) => {
+            const playerName = player['PLAYER NAME'] || 'Unknown';
+            const minutes = player.MINTOTAL || player.MINMAT || 0;
+            const playerOut = player['PLAYER NAME OUT'] || '';
+            const minOut = player.MINOUT || '';
+            
+            let status = '';
+            if (index < 11) {
+                status = '<span class="badge badge-success">Starting XI</span>';
+            } else {
+                status = `<span class="badge badge-warning">Substitute</span>`;
+                if (playerOut) {
+                    status += `<br><small style="color: #666;">(Replaced ${playerOut} at ${minOut}')</small>`;
+                }
             }
-        }
-        
-        // Calculate goals and assists for this player in this match
-        const playerGoalRecords = egyptGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'GOAL');
-        const playerAssistRecords = egyptGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'ASSIST');
-        
-        // Sum up GATOTAL for multiple goals/assists
-        const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
-        const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
-        
-        // Create goals display with icon (only show icon if player scored)
-        const goalsDisplay = playerGoals > 0 ? 
-            `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
-            '<span style="color: #999;">-</span>';
-        
-        // Create assists display with icon (only show icon if player assisted)
-        const assistsDisplay = playerAssists > 0 ? 
-            `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🏈</span>` : 
-            '<span style="color: #999;">-</span>';
-        
-        // Add substitution arrows and GK indicator
-        let playerNameWithArrows = `<strong>${playerName}</strong>`;
-        
-        // Check if this player is a goalkeeper (first player in lineup is usually GK)
-        const isGoalkeeper = index === 0;
-        if (isGoalkeeper) {
-            playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
-        }
-        
-        // Check if this player was substituted out (red arrow down)
-        const wasSubstitutedOut = matchLineup.some(p => p['PLAYER NAME OUT'] === playerName);
-        if (wasSubstitutedOut) {
-            playerNameWithArrows += ` <span style="color: #dc3545; font-size: 1.5em;" title="Substituted Out">↓</span>`;
-        }
-        
-        // Check if this player was substituted in (green arrow up)
-        // For substitutes, they are the ones who came in (not in starting XI)
-        const wasSubstitutedIn = index >= 11; // Substitutes start from index 11
-        if (wasSubstitutedIn) {
-            playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
-        }
-        
-        html += `
-            <tr>
-                <td>${playerNameWithArrows}</td>
-                <td>${status}</td>
-                <td>${minutes}'</td>
-                <td style="text-align: center;">${goalsDisplay}</td>
-                <td style="text-align: center;">${assistsDisplay}</td>
-            </tr>
-        `;
-    });
+            
+            // Calculate goals and assists for this player in this match
+            const playerGoalRecords = egyptGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'GOAL');
+            const playerAssistRecords = egyptGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'ASSIST');
+            
+            // Sum up GATOTAL for multiple goals/assists
+            const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
+            const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
+            
+            // Create goals display with icon (only show icon if player scored)
+            const goalsDisplay = playerGoals > 0 ? 
+                `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
+                '<span style="color: #999;">-</span>';
+            
+            // Create assists display with icon (only show icon if player assisted)
+            const assistsDisplay = playerAssists > 0 ? 
+                `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🎯</span>` : 
+                '<span style="color: #999;">-</span>';
+            
+            // Add substitution arrows and GK indicator
+            let playerNameWithArrows = `<strong>${playerName}</strong>`;
+            
+            // Check if this player is a goalkeeper (first player in lineup is usually GK)
+            const isGoalkeeper = index === 0;
+            if (isGoalkeeper) {
+                playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
+            }
+            
+            // Check if this player was substituted out (red arrow down)
+            const wasSubstitutedOut = egyptLineup.some(p => p['PLAYER NAME OUT'] === playerName);
+            if (wasSubstitutedOut) {
+                playerNameWithArrows += ` <span style="color: #dc3545; font-size: 1.5em;" title="Substituted Out">↓</span>`;
+            }
+            
+            // Check if this player was substituted in (green arrow up)
+            // For substitutes, they are the ones who came in (not in starting XI)
+            const wasSubstitutedIn = index >= 11; // Substitutes start from index 11
+            if (wasSubstitutedIn) {
+                playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
+            }
+            
+            html += `
+                <tr>
+                    <td>${playerNameWithArrows}</td>
+                    <td>${status}</td>
+                    <td>${minutes}'</td>
+                    <td style="text-align: center;">${goalsDisplay}</td>
+                    <td style="text-align: center;">${assistsDisplay}</td>
+                </tr>
+            `;
+        });
+    } else {
+        html += '<tr><td colspan="5" style="text-align: center; color: #999;">No Egypt lineup</td></tr>';
+    }
     
     html += `
                 </tbody>
             </table>
         </div>
+    </div>
     `;
+    
+    // Opponent Lineup (Right Side)
+    html += `
+        <div>
+            <h3 style="color: #333; margin-bottom: 1rem;">⚽ Opponent</h3>
+            <div style="overflow-x: auto;">
+                <table class="matches-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Status</th>
+                            <th>Minutes</th>
+                            <th>Goals</th>
+                            <th>Assists</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    // Display Opponent players
+    if (opponentLineup.length > 0) {
+        opponentLineup.forEach((player, index) => {
+            const playerName = player['PLAYER NAME'] || 'Unknown';
+            const minutes = player.MINTOTAL || player.MINMAT || 0;
+            const playerOut = player['PLAYER NAME OUT'] || '';
+            const minOut = player.MINOUT || '';
+            
+            let status = '';
+            if (index < 11) {
+                status = '<span class="badge badge-success">Starting XI</span>';
+            } else {
+                status = `<span class="badge badge-warning">Substitute</span>`;
+                if (playerOut) {
+                    status += `<br><small style="color: #666;">(Replaced ${playerOut} at ${minOut}')</small>`;
+                }
+            }
+            
+            // Calculate goals and assists for this player in this match
+            const playerGoalRecords = opponentGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'GOAL');
+            const playerAssistRecords = opponentGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'ASSIST');
+            
+            // Sum up GATOTAL for multiple goals/assists
+            const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
+            const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
+            
+            // Create goals display with icon (only show icon if player scored)
+            const goalsDisplay = playerGoals > 0 ? 
+                `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
+                '<span style="color: #999;">-</span>';
+            
+            // Create assists display with icon (only show icon if player assisted)
+            const assistsDisplay = playerAssists > 0 ? 
+                `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🎯</span>` : 
+                '<span style="color: #999;">-</span>';
+            
+            // Add substitution arrows and GK indicator
+            let playerNameWithArrows = `<strong>${playerName}</strong>`;
+            
+            // Check if this player is a goalkeeper (first player in lineup is usually GK)
+            const isGoalkeeper = index === 0;
+            if (isGoalkeeper) {
+                playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
+            }
+            
+            // Check if this player was substituted out (red arrow down)
+            const wasSubstitutedOut = opponentLineup.some(p => p['PLAYER NAME OUT'] === playerName);
+            if (wasSubstitutedOut) {
+                playerNameWithArrows += ` <span style="color: #dc3545; font-size: 1.5em;" title="Substituted Out">↓</span>`;
+            }
+            
+            // Check if this player was substituted in (green arrow up)
+            // For substitutes, they are the ones who came in (not in starting XI)
+            const wasSubstitutedIn = index >= 11; // Substitutes start from index 11
+            if (wasSubstitutedIn) {
+                playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
+            }
+            
+            html += `
+                <tr>
+                    <td>${playerNameWithArrows}</td>
+                    <td>${status}</td>
+                    <td>${minutes}'</td>
+                    <td style="text-align: center;">${goalsDisplay}</td>
+                    <td style="text-align: center;">${assistsDisplay}</td>
+                </tr>
+            `;
+        });
+    } else {
+        html += '<tr><td colspan="5" style="text-align: center; color: #999;">No Opponent lineup</td></tr>';
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    </div>
+    `;
+    
+    html += '</div>';
     
     container.innerHTML = html;
 }

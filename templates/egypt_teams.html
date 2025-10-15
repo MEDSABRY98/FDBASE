@@ -608,6 +608,25 @@
             }
         }
 
+        /* Search Match Lineup Styles */
+        #egypt-match-lineup-container > div {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 2rem !important;
+            align-items: start !important;
+        }
+
+        /* Search Match Responsive Styles */
+        @media (max-width: 768px) {
+            #egypt-match-lineup-container > div {
+                grid-template-columns: 1fr !important;
+            }
+            
+            #egypt-match-goals-container > div {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
         @media (max-width: 768px) {
             .filter-row {
                 grid-template-columns: 1fr;
