@@ -3631,6 +3631,7 @@ function displayZamalekMatchHeader(match) {
     const championship = match.CHAMPION || '';
     const round = match.ROUND || '';
     const stadium = match.STADIUM || '';
+    const referee = match.REFREE || '';
     const ahlyScore = match.GF || 0;
     const zamalekScore = match.GA || 0;
     
@@ -3654,6 +3655,7 @@ function displayZamalekMatchHeader(match) {
             ${stadium ? `<span><strong>Stadium:</strong> ${stadium}</span>` : ''}
             ${round ? `<span><strong>Round:</strong> ${round}</span>` : ''}
             ${championship ? `<span><strong>Championship:</strong> ${championship}</span>` : ''}
+            ${referee ? `<span><strong>Referee:</strong> ${referee}</span>` : ''}
         </div>
     `;
 }
