@@ -3569,6 +3569,281 @@ function updateTotalsByPlayerChampionships(championships, isEmpty) {
     document.getElementById('total-champ-assists').textContent = totals.assists;
 }
 
+// ============================================
+// SEARCH MATCH FUNCTIONALITY
+// ============================================
+
+// Search for a match by ID
+function searchZamalekMatchById() {
+    const searchInput = document.getElementById('zamalek-match-search-input');
+    const matchId = searchInput.value.trim();
+    
+    console.log('🔍 Searching for match ID:', matchId);
+    
+    if (!matchId) {
+        alert('Please enter a Match ID');
+        return;
+    }
+    
+    // Find match in data
+    const match = zamalekMatchesData.find(m => String(m.MATCH_ID) === String(matchId));
+    
+    if (!match) {
+        console.log('❌ No match found with ID:', matchId);
+        document.getElementById('zamalek-match-details-container').style.display = 'none';
+        document.getElementById('zamalek-no-match-found').style.display = 'block';
+        return;
+    }
+    
+    console.log('✅ Match found:', match);
+    
+    // Hide no results message
+    document.getElementById('zamalek-no-match-found').style.display = 'none';
+    
+    // Show match details
+    displayZamalekMatchDetails(match);
+    
+    // Show details container
+    document.getElementById('zamalek-match-details-container').style.display = 'block';
+}
+
+// Display match details
+function displayZamalekMatchDetails(match) {
+    console.log('📋 Displaying match details for:', match.MATCH_ID);
+    
+    // Display match header
+    displayZamalekMatchHeader(match);
+    
+    // Display lineup (default tab)
+    displayZamalekMatchLineup(match);
+    
+    // Display goals
+    displayZamalekMatchGoals(match);
+}
+
+// Display match header
+function displayZamalekMatchHeader(match) {
+    const headerContainer = document.getElementById('zamalek-match-header');
+    
+    const date = match.DATE || 'Unknown Date';
+    const season = match.SEASON || 'Unknown Season';
+    const championship = match.CHAMPION || 'Unknown Championship';
+    const round = match.ROUND || '';
+    const stadium = match.STADIUM || '';
+    const ahlyScore = match.AHLY || 0;
+    const zamalekScore = match.ZAMALEK || 0;
+    const result = match['W-D-L'] || '';
+    
+    let resultBadge = '';
+    if (result === 'W') {
+        resultBadge = '<span style="background: #d4edda; color: #155724; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600;">Al Ahly Win</span>';
+    } else if (result === 'D') {
+        resultBadge = '<span style="background: #fff3cd; color: #856404; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600;">Draw</span>';
+    } else if (result === 'L') {
+        resultBadge = '<span style="background: #f8d7da; color: #721c24; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600;">Zamalek Win</span>';
+    }
+    
+    headerContainer.innerHTML = `
+        <div style="margin-bottom: 1rem;">
+            <h2 style="font-size: 2rem; font-weight: 700; color: #333; margin-bottom: 0.5rem;">
+                Match #${match.MATCH_ID}
+            </h2>
+            <p style="font-size: 1.1rem; color: #666;">${date} • ${season}</p>
+        </div>
+        
+        <div style="display: flex; justify-content: center; align-items: center; gap: 2rem; margin: 2rem 0;">
+            <div style="text-align: center;">
+                <h3 style="font-size: 1.5rem; color: #dc143c; margin-bottom: 0.5rem;">🔴 Al Ahly</h3>
+                <p style="font-size: 3rem; font-weight: 700; color: #dc143c;">${ahlyScore}</p>
+            </div>
+            
+            <div style="font-size: 2rem; color: #666;">VS</div>
+            
+            <div style="text-align: center;">
+                <h3 style="font-size: 1.5rem; color: #333; margin-bottom: 0.5rem;">⚪ Zamalek</h3>
+                <p style="font-size: 3rem; font-weight: 700; color: #333;">${zamalekScore}</p>
+            </div>
+        </div>
+        
+        <div style="margin-top: 1.5rem;">
+            ${resultBadge}
+        </div>
+        
+        <div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; font-size: 0.9rem; color: #666;">
+            <div><strong>Championship:</strong> ${championship}</div>
+            ${round ? `<div><strong>Round:</strong> ${round}</div>` : ''}
+            ${stadium ? `<div><strong>Stadium:</strong> ${stadium}</div>` : ''}
+            <div><strong>Manager Ahly:</strong> ${match['MANAGER AHLY'] || 'Unknown'}</div>
+            <div><strong>Manager Zamalek:</strong> ${match['MANAGER ZAMALEK'] || 'Unknown'}</div>
+        </div>
+    `;
+}
+
+// Display match lineup (Ahly on left, Zamalek on right)
+function displayZamalekMatchLineup(match) {
+    const matchId = String(match.MATCH_ID);
+    
+    console.log('👥 Displaying lineup for match:', matchId);
+    
+    // Get lineups for this match
+    const ahlyLineup = zamalekLineupAhly.filter(l => String(l.MATCH_ID) === matchId);
+    const zamalekLineup = zamalekLineupZamalek.filter(l => String(l.MATCH_ID) === matchId);
+    
+    console.log('Al Ahly lineup:', ahlyLineup.length, 'players');
+    console.log('Zamalek lineup:', zamalekLineup.length, 'players');
+    
+    // Display Ahly lineup
+    const ahlyContainer = document.getElementById('zamalek-match-ahly-lineup-container');
+    if (ahlyLineup.length === 0) {
+        ahlyContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No lineup data available</p>';
+    } else {
+        ahlyContainer.innerHTML = createLineupTable(ahlyLineup);
+    }
+    
+    // Display Zamalek lineup
+    const zamalekContainer = document.getElementById('zamalek-match-zamalek-lineup-container');
+    if (zamalekLineup.length === 0) {
+        zamalekContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No lineup data available</p>';
+    } else {
+        zamalekContainer.innerHTML = createLineupTable(zamalekLineup);
+    }
+}
+
+// Create lineup table HTML
+function createLineupTable(lineup) {
+    let html = `
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <thead>
+                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                    <th style="padding: 0.75rem; text-align: left;">#</th>
+                    <th style="padding: 0.75rem; text-align: left;">Player Name</th>
+                    <th style="padding: 0.75rem; text-align: center;">Position</th>
+                    <th style="padding: 0.75rem; text-align: center;">Minutes</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    lineup.forEach((player, index) => {
+        const playerName = player['PLAYER NAME'] || 'Unknown';
+        const position = player.POS || '-';
+        const minutes = player.MINTOTAL || 0;
+        
+        html += `
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 0.75rem;">${index + 1}</td>
+                <td style="padding: 0.75rem; font-weight: 500;">${playerName}</td>
+                <td style="padding: 0.75rem; text-align: center;">${position}</td>
+                <td style="padding: 0.75rem; text-align: center;">${minutes}'</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+    `;
+    
+    return html;
+}
+
+// Display match goals
+function displayZamalekMatchGoals(match) {
+    const matchId = String(match.MATCH_ID);
+    const goalsContainer = document.getElementById('zamalek-match-goals-container');
+    
+    console.log('⚽ Displaying goals for match:', matchId);
+    
+    // Get goals for this match
+    const goals = zamalekPlayerDetails.filter(detail => 
+        String(detail.MATCH_ID) === matchId && detail.GA === 'GOAL'
+    );
+    
+    console.log('Goals found:', goals.length);
+    
+    if (goals.length === 0) {
+        goalsContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 3rem;">No goals data available</p>';
+        return;
+    }
+    
+    // Sort goals by time (if available)
+    goals.sort((a, b) => {
+        const timeA = parseInt(a.TIME) || 0;
+        const timeB = parseInt(b.TIME) || 0;
+        return timeA - timeB;
+    });
+    
+    let html = `
+        <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <h3 style="text-align: center; font-size: 1.5rem; margin-bottom: 1.5rem; color: #333;">⚽ Goals Scored</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <th style="padding: 1rem; text-align: left;">Time</th>
+                        <th style="padding: 1rem; text-align: left;">Player</th>
+                        <th style="padding: 1rem; text-align: center;">Team</th>
+                        <th style="padding: 1rem; text-align: left;">Type</th>
+                        <th style="padding: 1rem; text-align: left;">Assist By</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    goals.forEach(goal => {
+        const time = goal.TIME ? `${goal.TIME}'` : '-';
+        const playerName = goal['PLAYER NAME'] || 'Unknown';
+        const team = goal.TEAM || '-';
+        const type = goal.TYPE || '-';
+        const assistBy = goal['ASSIST BY'] || '-';
+        
+        const teamColor = team === 'AHLY' ? '#dc143c' : '#333';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 1rem; font-weight: 600; color: ${teamColor};">${time}</td>
+                <td style="padding: 1rem; font-weight: 500;">${playerName}</td>
+                <td style="padding: 1rem; text-align: center;">
+                    <span style="background: ${team === 'AHLY' ? '#ffe5e5' : '#f0f0f0'}; color: ${teamColor}; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 500;">
+                        ${team}
+                    </span>
+                </td>
+                <td style="padding: 1rem;">${type}</td>
+                <td style="padding: 1rem; color: #666;">${assistBy}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    goalsContainer.innerHTML = html;
+}
+
+// Switch between match sub-tabs (lineup, goals)
+function showZamalekMatchSubTab(event, tabName) {
+    console.log('🔄 Switching to match sub-tab:', tabName);
+    
+    // Remove active class from all sub-tab buttons
+    const buttons = document.querySelectorAll('#zamalek-match-details-container .sub-tab-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    
+    // Add active class to clicked button
+    event.currentTarget.classList.add('active');
+    
+    // Hide all sub-tab contents
+    const contents = document.querySelectorAll('#zamalek-match-details-container .sub-tab-content');
+    contents.forEach(content => content.classList.remove('active'));
+    
+    // Show selected sub-tab content
+    const selectedContent = document.getElementById(`zamalek-match-${tabName}-content`);
+    if (selectedContent) {
+        selectedContent.classList.add('active');
+    }
+}
+
 // Make functions globally accessible
 window.initializeZamalekStats = initializeZamalekStats;
 window.applyZamalekFilters = applyZamalekFilters;
@@ -3590,6 +3865,8 @@ window.searchH2HAgainst = searchH2HAgainst;
 window.sortH2HTable = sortH2HTable;
 window.selectByPlayer = selectByPlayer;
 window.filterByPlayer = filterByPlayer;
+window.searchZamalekMatchById = searchZamalekMatchById;
+window.showZamalekMatchSubTab = showZamalekMatchSubTab;
 
 console.log('✅ Al Ahly VS Zamalek JavaScript loaded');
 
