@@ -3865,11 +3865,12 @@ function displayZamalekMatchGoals(match) {
     // Helper function to find assist for a goal
     const findAssist = (minute, isAhlyGoal) => {
         return matchGoals.find(g => {
-            const gMin = g.MINUTE || g.MIN || 0;
+            const gMin = parseInt(g.MINUTE || g.MIN || 0, 10); // Convert assist minute to integer
+            const goalMinute = parseInt(minute, 10); // Convert goal minute to integer
             const gGA = (g.GA || '').toUpperCase();
             const gTeam = (g.TEAM || '').toUpperCase();
             const gIsAhly = gTeam === 'AHLY';
-            return gGA === 'ASSIST' && gMin === minute && gIsAhly === isAhlyGoal;
+            return gGA === 'ASSIST' && gMin === goalMinute && gIsAhly === isAhlyGoal;
         });
     };
     
@@ -3895,11 +3896,10 @@ function displayZamalekMatchGoals(match) {
             <div style="overflow-x: auto;">
                 <table class="matches-table">
                     <thead>
-                        <tr>
-                            <th>Player</th>
-                            <th>Club</th>
-                            <th>Type</th>
-                        </tr>
+                                <tr>
+                                    <th>Player</th>
+                                    <th>Type</th>
+                                </tr>
                     </thead>
                     <tbody>
     `;
@@ -3914,19 +3914,18 @@ function displayZamalekMatchGoals(match) {
         const assistPlayer = assist ? assist['PLAYER NAME'] : null;
         
         html += `
-            <tr>
-                <td>
-                    <strong>${player}</strong> <span style="color: #dc143c; font-weight: 600;">(${gatotal})</span>
-                    ${assistPlayer ? `<div style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">↳ Assist: ${assistPlayer}</div>` : ''}
-                </td>
-                <td>${elnady}</td>
-                <td>${type}</td>
-            </tr>
+                    <tr>
+                        <td>
+                            <strong>${player}</strong> <span style="color: #dc143c; font-weight: 600;">(${gatotal})</span>
+                            ${assistPlayer ? `<div style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">↳ Assist: ${assistPlayer}</div>` : ''}
+                        </td>
+                        <td>${type}</td>
+                    </tr>
         `;
     });
     
     if (ahlyGoals.length === 0) {
-        html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
+        html += '<tr><td colspan="2" style="text-align: center; color: #999;">No goals</td></tr>';
     }
     
     html += `
@@ -3943,11 +3942,10 @@ function displayZamalekMatchGoals(match) {
             <div style="overflow-x: auto;">
                 <table class="matches-table">
                     <thead>
-                        <tr>
-                            <th>Player</th>
-                            <th>Club</th>
-                            <th>Type</th>
-                        </tr>
+                                <tr>
+                                    <th>Player</th>
+                                    <th>Type</th>
+                                </tr>
                     </thead>
                     <tbody>
     `;
@@ -3967,14 +3965,13 @@ function displayZamalekMatchGoals(match) {
                     <strong>${player}</strong> <span style="color: #333; font-weight: 600;">(${gatotal})</span>
                     ${assistPlayer ? `<div style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">↳ Assist: ${assistPlayer}</div>` : ''}
                 </td>
-                <td>${elnady}</td>
                 <td>${type}</td>
             </tr>
         `;
     });
     
     if (zamalekGoals.length === 0) {
-        html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
+        html += '<tr><td colspan="2" style="text-align: center; color: #999;">No goals</td></tr>';
     }
     
     html += `
