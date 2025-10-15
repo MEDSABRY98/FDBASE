@@ -3682,6 +3682,7 @@ function displayZamalekMatchHeader(match) {
 // Display match lineup (Ahly on left, Zamalek on right)
 function displayZamalekMatchLineup(match) {
     const matchId = String(match.MATCH_ID);
+    const container = document.getElementById('zamalek-match-lineup-container');
     
     console.log('👥 Displaying lineup for match:', matchId);
     
@@ -3692,152 +3693,340 @@ function displayZamalekMatchLineup(match) {
     console.log('Al Ahly lineup:', ahlyLineup.length, 'players');
     console.log('Zamalek lineup:', zamalekLineup.length, 'players');
     
-    // Display Ahly lineup
-    const ahlyContainer = document.getElementById('zamalek-match-ahly-lineup-container');
-    if (ahlyLineup.length === 0) {
-        ahlyContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No lineup data available</p>';
-    } else {
-        ahlyContainer.innerHTML = createLineupTable(ahlyLineup);
+    // Get goals data for this match
+    const matchGoals = zamalekPlayerDetails.filter(detail => 
+        String(detail.MATCH_ID) === matchId && (detail.GA === 'GOAL' || detail.GA === 'ASSIST')
+    );
+    
+    if (ahlyLineup.length === 0 && zamalekLineup.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No lineup data available for this match</p>';
+        return;
     }
     
-    // Display Zamalek lineup
-    const zamalekContainer = document.getElementById('zamalek-match-zamalek-lineup-container');
-    if (zamalekLineup.length === 0) {
-        zamalekContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No lineup data available</p>';
-    } else {
-        zamalekContainer.innerHTML = createLineupTable(zamalekLineup);
-    }
-}
-
-// Create lineup table HTML
-function createLineupTable(lineup) {
-    let html = `
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-            <thead>
-                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                    <th style="padding: 0.75rem; text-align: left;">#</th>
-                    <th style="padding: 0.75rem; text-align: left;">Player Name</th>
-                    <th style="padding: 0.75rem; text-align: center;">Position</th>
-                    <th style="padding: 0.75rem; text-align: center;">Minutes</th>
-                </tr>
-            </thead>
-            <tbody>
+    let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">';
+    
+    // Ahly Lineup
+    html += `
+        <div>
+            <h3 style="color: #dc143c; margin-bottom: 1rem;">🔴 Al Ahly</h3>
+            <div style="overflow-x: auto;">
+                <table class="matches-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Status</th>
+                            <th>Minutes</th>
+                            <th>Goals</th>
+                            <th>Assists</th>
+                        </tr>
+                    </thead>
+                    <tbody>
     `;
     
-    lineup.forEach((player, index) => {
-        const playerName = player['PLAYER NAME'] || 'Unknown';
-        const position = player.POS || '-';
-        const minutes = player.MINTOTAL || 0;
-        
-        html += `
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 0.75rem;">${index + 1}</td>
-                <td style="padding: 0.75rem; font-weight: 500;">${playerName}</td>
-                <td style="padding: 0.75rem; text-align: center;">${position}</td>
-                <td style="padding: 0.75rem; text-align: center;">${minutes}'</td>
-            </tr>
-        `;
-    });
+    if (ahlyLineup.length > 0) {
+        ahlyLineup.forEach((player, index) => {
+            const playerName = player['PLAYER NAME'] || 'Unknown';
+            const minutes = player.MINTOTAL || 0;
+            
+            let status = '';
+            if (index < 11) {
+                status = '<span class="badge badge-success">Starting XI</span>';
+            } else {
+                status = '<span class="badge badge-warning">Substitute</span>';
+            }
+            
+            // Calculate goals and assists for this player
+            const playerGoalRecords = matchGoals.filter(g => g['PLAYER NAME'] === playerName && g.GA === 'GOAL' && g.TEAM === 'AHLY');
+            const playerAssistRecords = matchGoals.filter(g => g['PLAYER NAME'] === playerName && g.GA === 'ASSIST' && g.TEAM === 'AHLY');
+            
+            const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
+            const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
+            
+            const goalsDisplay = playerGoals > 0 ? 
+                `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
+                '<span style="color: #999;">-</span>';
+            
+            const assistsDisplay = playerAssists > 0 ? 
+                `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🎯</span>` : 
+                '<span style="color: #999;">-</span>';
+            
+            let playerNameWithArrows = `<strong>${playerName}</strong>`;
+            
+            const isGoalkeeper = index === 0;
+            if (isGoalkeeper) {
+                playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
+            }
+            
+            const wasSubstitutedIn = index >= 11;
+            if (wasSubstitutedIn) {
+                playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
+            }
+            
+            html += `
+                <tr>
+                    <td>${playerNameWithArrows}</td>
+                    <td>${status}</td>
+                    <td>${minutes}'</td>
+                    <td style="text-align: center;">${goalsDisplay}</td>
+                    <td style="text-align: center;">${assistsDisplay}</td>
+                </tr>
+            `;
+        });
+    } else {
+        html += '<tr><td colspan="5" style="text-align: center; color: #999;">No lineup</td></tr>';
+    }
     
     html += `
-            </tbody>
-        </table>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     `;
     
-    return html;
+    // Zamalek Lineup
+    html += `
+        <div>
+            <h3 style="color: #333; margin-bottom: 1rem;">⚪ Zamalek</h3>
+            <div style="overflow-x: auto;">
+                <table class="matches-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Status</th>
+                            <th>Minutes</th>
+                            <th>Goals</th>
+                            <th>Assists</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    if (zamalekLineup.length > 0) {
+        zamalekLineup.forEach((player, index) => {
+            const playerName = player['PLAYER NAME'] || 'Unknown';
+            const minutes = player.MINTOTAL || 0;
+            
+            let status = '';
+            if (index < 11) {
+                status = '<span class="badge badge-success">Starting XI</span>';
+            } else {
+                status = '<span class="badge badge-warning">Substitute</span>';
+            }
+            
+            // Calculate goals and assists for this player
+            const playerGoalRecords = matchGoals.filter(g => g['PLAYER NAME'] === playerName && g.GA === 'GOAL' && g.TEAM === 'ZAMALEK');
+            const playerAssistRecords = matchGoals.filter(g => g['PLAYER NAME'] === playerName && g.GA === 'ASSIST' && g.TEAM === 'ZAMALEK');
+            
+            const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
+            const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
+            
+            const goalsDisplay = playerGoals > 0 ? 
+                `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
+                '<span style="color: #999;">-</span>';
+            
+            const assistsDisplay = playerAssists > 0 ? 
+                `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🎯</span>` : 
+                '<span style="color: #999;">-</span>';
+            
+            let playerNameWithArrows = `<strong>${playerName}</strong>`;
+            
+            const isGoalkeeper = index === 0;
+            if (isGoalkeeper) {
+                playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
+            }
+            
+            const wasSubstitutedIn = index >= 11;
+            if (wasSubstitutedIn) {
+                playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
+            }
+            
+            html += `
+                <tr>
+                    <td>${playerNameWithArrows}</td>
+                    <td>${status}</td>
+                    <td>${minutes}'</td>
+                    <td style="text-align: center;">${goalsDisplay}</td>
+                    <td style="text-align: center;">${assistsDisplay}</td>
+                </tr>
+            `;
+        });
+    } else {
+        html += '<tr><td colspan="5" style="text-align: center; color: #999;">No lineup</td></tr>';
+    }
+    
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
 }
 
 // Display match goals
 function displayZamalekMatchGoals(match) {
     const matchId = String(match.MATCH_ID);
-    const goalsContainer = document.getElementById('zamalek-match-goals-container');
+    const container = document.getElementById('zamalek-match-goals-container');
     
     console.log('⚽ Displaying goals for match:', matchId);
     
-    // Get goals for this match
-    const goals = zamalekPlayerDetails.filter(detail => 
-        String(detail.MATCH_ID) === matchId && detail.GA === 'GOAL'
-    );
+    const matchGoals = zamalekPlayerDetails.filter(detail => {
+        const mid = String(detail.MATCH_ID);
+        const ga = (detail.GA || '').toUpperCase();
+        return mid === matchId && (ga === 'GOAL' || ga === 'ASSIST');
+    });
     
-    console.log('Goals found:', goals.length);
-    
-    if (goals.length === 0) {
-        goalsContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 3rem;">No goals data available</p>';
+    if (matchGoals.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No goals data available for this match</p>';
         return;
     }
     
-    // Sort goals by time (if available)
-    goals.sort((a, b) => {
-        const timeA = parseInt(a.TIME) || 0;
-        const timeB = parseInt(b.TIME) || 0;
-        return timeA - timeB;
+    // Helper function to find assist for a goal
+    const findAssist = (minute, isAhlyGoal) => {
+        return matchGoals.find(g => {
+            const gMin = g.MINUTE || g.MIN || 0;
+            const gGA = (g.GA || '').toUpperCase();
+            const gTeam = (g.TEAM || '').toUpperCase();
+            const gIsAhly = gTeam === 'AHLY';
+            return gGA === 'ASSIST' && gMin === minute && gIsAhly === isAhlyGoal;
+        });
+    };
+    
+    // Separate Ahly and Zamalek goals
+    const ahlyGoals = matchGoals.filter(g => {
+        const ga = (g.GA || '').toUpperCase();
+        const team = (g.TEAM || '').toUpperCase();
+        return ga === 'GOAL' && team === 'AHLY';
     });
     
-    let html = `
-        <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <h3 style="text-align: center; font-size: 1.5rem; margin-bottom: 1.5rem; color: #333;">⚽ Goals Scored</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                        <th style="padding: 1rem; text-align: left;">Time</th>
-                        <th style="padding: 1rem; text-align: left;">Player</th>
-                        <th style="padding: 1rem; text-align: center;">Team</th>
-                        <th style="padding: 1rem; text-align: left;">Type</th>
-                        <th style="padding: 1rem; text-align: left;">Assist By</th>
-                    </tr>
-                </thead>
-                <tbody>
+    const zamalekGoals = matchGoals.filter(g => {
+        const ga = (g.GA || '').toUpperCase();
+        const team = (g.TEAM || '').toUpperCase();
+        return ga === 'GOAL' && team === 'ZAMALEK';
+    });
+    
+    let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">';
+    
+    // Ahly Goals
+    html += `
+        <div>
+            <h3 style="color: #dc143c; margin-bottom: 1rem;">🔴 Al Ahly Goals</h3>
+            <div style="overflow-x: auto;">
+                <table class="matches-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Club</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
     `;
     
-    goals.forEach(goal => {
-        const time = goal.TIME ? `${goal.TIME}'` : '-';
-        const playerName = goal['PLAYER NAME'] || 'Unknown';
-        const team = goal.TEAM || '-';
-        const type = goal.TYPE || '-';
-        const assistBy = goal['ASSIST BY'] || '-';
-        
-        const teamColor = team === 'AHLY' ? '#dc143c' : '#333';
+    ahlyGoals.forEach(goal => {
+        const minute = goal.MINUTE || goal.MIN || 0;
+        const player = goal['PLAYER NAME'] || 'Unknown';
+        const gatotal = goal.GATOTAL || 1;
+        const type = goal.TYPE || 'Regular';
+        const elnady = goal.ELNADY || '-';
+        const assist = findAssist(minute, true);
+        const assistPlayer = assist ? assist['PLAYER NAME'] : null;
         
         html += `
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 1rem; font-weight: 600; color: ${teamColor};">${time}</td>
-                <td style="padding: 1rem; font-weight: 500;">${playerName}</td>
-                <td style="padding: 1rem; text-align: center;">
-                    <span style="background: ${team === 'AHLY' ? '#ffe5e5' : '#f0f0f0'}; color: ${teamColor}; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: 500;">
-                        ${team}
-                    </span>
+            <tr>
+                <td>
+                    <strong>${player}</strong> <span style="color: #dc143c; font-weight: 600;">(${gatotal})</span>
+                    ${assistPlayer ? `<div style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">↳ Assist: ${assistPlayer}</div>` : ''}
                 </td>
-                <td style="padding: 1rem;">${type}</td>
-                <td style="padding: 1rem; color: #666;">${assistBy}</td>
+                <td>${elnady}</td>
+                <td>${type}</td>
             </tr>
         `;
     });
     
+    if (ahlyGoals.length === 0) {
+        html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
+    }
+    
     html += `
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
     `;
     
-    goalsContainer.innerHTML = html;
+    // Zamalek Goals
+    html += `
+        <div>
+            <h3 style="color: #333; margin-bottom: 1rem;">⚪ Zamalek Goals</h3>
+            <div style="overflow-x: auto;">
+                <table class="matches-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Club</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    zamalekGoals.forEach(goal => {
+        const minute = goal.MINUTE || goal.MIN || 0;
+        const player = goal['PLAYER NAME'] || 'Unknown';
+        const gatotal = goal.GATOTAL || 1;
+        const type = goal.TYPE || 'Regular';
+        const elnady = goal.ELNADY || '-';
+        const assist = findAssist(minute, false);
+        const assistPlayer = assist ? assist['PLAYER NAME'] : null;
+        
+        html += `
+            <tr>
+                <td>
+                    <strong>${player}</strong> <span style="color: #333; font-weight: 600;">(${gatotal})</span>
+                    ${assistPlayer ? `<div style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">↳ Assist: ${assistPlayer}</div>` : ''}
+                </td>
+                <td>${elnady}</td>
+                <td>${type}</td>
+            </tr>
+        `;
+    });
+    
+    if (zamalekGoals.length === 0) {
+        html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
+    }
+    
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
 }
 
 // Switch between match sub-tabs (lineup, goals)
 function showZamalekMatchSubTab(event, tabName) {
     console.log('🔄 Switching to match sub-tab:', tabName);
     
-    // Remove active class from all sub-tab buttons
-    const buttons = document.querySelectorAll('#zamalek-match-details-container .sub-tab-btn');
+    // Remove active class from all tab buttons
+    const buttons = document.querySelectorAll('#zamalek-match-details-container .tab-button');
     buttons.forEach(btn => btn.classList.remove('active'));
     
     // Add active class to clicked button
     event.currentTarget.classList.add('active');
     
-    // Hide all sub-tab contents
-    const contents = document.querySelectorAll('#zamalek-match-details-container .sub-tab-content');
+    // Hide all tab contents
+    const contents = document.querySelectorAll('#zamalek-match-details-container .tab-content');
     contents.forEach(content => content.classList.remove('active'));
     
-    // Show selected sub-tab content
+    // Show selected tab content
     const selectedContent = document.getElementById(`zamalek-match-${tabName}-content`);
     if (selectedContent) {
         selectedContent.classList.add('active');

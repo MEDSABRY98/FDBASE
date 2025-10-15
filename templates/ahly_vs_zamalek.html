@@ -652,7 +652,11 @@
 
         /* Search Match Responsive Styles */
         @media (max-width: 768px) {
-            #zamalek-match-lineup-content > div {
+            #zamalek-match-lineup-container > div {
+                grid-template-columns: 1fr !important;
+            }
+            
+            #zamalek-match-goals-container > div {
                 grid-template-columns: 1fr !important;
             }
         }
@@ -953,11 +957,11 @@
                         </div>
                         
                         <!-- Match Sub-tabs -->
-                        <div class="sub-tabs-nav" style="margin-bottom: 1.5rem;">
-                            <button class="sub-tab-btn active" onclick="showZamalekMatchSubTab(event, 'lineup')">
+                        <div class="tabs-header" style="margin-bottom: 1.5rem;">
+                            <button class="tab-button active" onclick="showZamalekMatchSubTab(event, 'lineup')">
                                 👥 Match Lineup
                             </button>
-                            <button class="sub-tab-btn" onclick="showZamalekMatchSubTab(event, 'goals')">
+                            <button class="tab-button" onclick="showZamalekMatchSubTab(event, 'goals')">
                                 ⚽ Goals Scored
                             </button>
                         </div>
@@ -965,29 +969,12 @@
                         <!-- Match Sub-tab Contents -->
                         <div class="tab-content-wrapper">
                             <!-- Lineup Content -->
-                            <div id="zamalek-match-lineup-content" class="sub-tab-content active">
-                                <!-- Two columns: Ahly on left, Zamalek on right -->
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-                                    <!-- Al Ahly Lineup -->
-                                    <div id="zamalek-match-ahly-lineup" style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                                        <h3 style="text-align: center; color: #dc143c; font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 3px solid #dc143c; padding-bottom: 0.5rem;">
-                                            🔴 Al Ahly
-                                        </h3>
-                                        <div id="zamalek-match-ahly-lineup-container"></div>
-                                    </div>
-                                    
-                                    <!-- Zamalek Lineup -->
-                                    <div id="zamalek-match-zamalek-lineup" style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                                        <h3 style="text-align: center; color: #333; font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 3px solid #333; padding-bottom: 0.5rem;">
-                                            ⚪ Zamalek
-                                        </h3>
-                                        <div id="zamalek-match-zamalek-lineup-container"></div>
-                                    </div>
-                                </div>
+                            <div id="zamalek-match-lineup-content" class="tab-content active">
+                                <div id="zamalek-match-lineup-container"></div>
                             </div>
                             
                             <!-- Goals Content -->
-                            <div id="zamalek-match-goals-content" class="sub-tab-content">
+                            <div id="zamalek-match-goals-content" class="tab-content">
                                 <div id="zamalek-match-goals-container"></div>
                             </div>
                         </div>
