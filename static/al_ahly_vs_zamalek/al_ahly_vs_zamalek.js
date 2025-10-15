@@ -3916,6 +3916,7 @@ function displayZamalekMatchGoals(match) {
                 <table class="matches-table">
                     <thead>
                                 <tr>
+                                    <th>Minute</th>
                                     <th>Player</th>
                                     <th>Type</th>
                                 </tr>
@@ -3934,6 +3935,7 @@ function displayZamalekMatchGoals(match) {
         
         html += `
                     <tr>
+                        <td><strong>${minute}'</strong></td>
                         <td>
                             <strong>${player}</strong> <span style="color: #dc143c; font-weight: 600;">(${gatotal})</span>
                             ${assistPlayer ? `<div style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">↳ Assist: ${assistPlayer}</div>` : ''}
@@ -3944,7 +3946,7 @@ function displayZamalekMatchGoals(match) {
     });
     
     if (ahlyGoals.length === 0) {
-        html += '<tr><td colspan="2" style="text-align: center; color: #999;">No goals</td></tr>';
+        html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
     }
     
     html += `
@@ -3962,6 +3964,7 @@ function displayZamalekMatchGoals(match) {
                 <table class="matches-table">
                     <thead>
                                 <tr>
+                                    <th>Minute</th>
                                     <th>Player</th>
                                     <th>Type</th>
                                 </tr>
@@ -3980,6 +3983,7 @@ function displayZamalekMatchGoals(match) {
         
         html += `
             <tr>
+                <td><strong>${minute}'</strong></td>
                 <td>
                     <strong>${player}</strong> <span style="color: #333; font-weight: 600;">(${gatotal})</span>
                     ${assistPlayer ? `<div style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">↳ Assist: ${assistPlayer}</div>` : ''}
@@ -3990,7 +3994,7 @@ function displayZamalekMatchGoals(match) {
     });
     
     if (zamalekGoals.length === 0) {
-        html += '<tr><td colspan="2" style="text-align: center; color: #999;">No goals</td></tr>';
+        html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
     }
     
     html += `
