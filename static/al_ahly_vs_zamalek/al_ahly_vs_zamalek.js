@@ -3645,9 +3645,6 @@ function displayZamalekMatchHeader(match) {
     
     headerContainer.innerHTML = `
         <div style="margin-bottom: 1rem;">
-            <h2 style="font-size: 2rem; font-weight: 700; color: #333; margin-bottom: 0.5rem;">
-                Match #${match.MATCH_ID}
-            </h2>
             <p style="font-size: 1.1rem; color: #666;">${date} • ${season}</p>
         </div>
         
@@ -3657,7 +3654,10 @@ function displayZamalekMatchHeader(match) {
                 <p style="font-size: 3rem; font-weight: 700; color: #dc143c;">${ahlyScore}</p>
             </div>
             
-            <div style="font-size: 2rem; color: #666;">VS</div>
+            <div style="text-align: center;">
+                <h3 style="font-size: 1.2rem; color: #666; margin-bottom: 0.5rem;">VS</h3>
+                <p style="font-size: 2rem; font-weight: 700; color: #666;">${ahlyScore} - ${zamalekScore}</p>
+            </div>
             
             <div style="text-align: center;">
                 <h3 style="font-size: 1.5rem; color: #333; margin-bottom: 0.5rem;">⚪ Zamalek</h3>
