@@ -3976,6 +3976,7 @@ function loadAllMatches(allRecords) {
         }
         
         row.innerHTML = `
+            <td><strong>${match.MATCH_ID || 'N/A'}</strong></td>
             <td>${formattedDate}</td>
             <td>${match.SEASON || 'N/A'}</td>
             <td>${match['AHLY MANAGER'] || 'N/A'}</td>
