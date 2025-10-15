@@ -3625,56 +3625,34 @@ function displayZamalekMatchDetails(match) {
 function displayZamalekMatchHeader(match) {
     const headerContainer = document.getElementById('zamalek-match-header');
     
-    const date = match.DATE || 'Unknown Date';
-    const season = match.SEASON || 'Unknown Season';
-    const championship = match.CHAMPION || 'Unknown Championship';
+    const date = match.DATE || '';
+    const season = match.SEASON || '';
+    const championship = match.CHAMPION || '';
     const round = match.ROUND || '';
     const stadium = match.STADIUM || '';
     const ahlyScore = match.AHLY || 0;
     const zamalekScore = match.ZAMALEK || 0;
-    const result = match['W-D-L'] || '';
-    
-    let resultBadge = '';
-    if (result === 'W') {
-        resultBadge = '<span style="background: #d4edda; color: #155724; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600;">Al Ahly Win</span>';
-    } else if (result === 'D') {
-        resultBadge = '<span style="background: #fff3cd; color: #856404; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600;">Draw</span>';
-    } else if (result === 'L') {
-        resultBadge = '<span style="background: #f8d7da; color: #721c24; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600;">Zamalek Win</span>';
-    }
     
     headerContainer.innerHTML = `
-        <div style="margin-bottom: 1rem;">
-            <p style="font-size: 1.1rem; color: #666;">${date} • ${season}</p>
-        </div>
-        
-        <div style="display: flex; justify-content: center; align-items: center; gap: 2rem; margin: 2rem 0;">
-            <div style="text-align: center;">
-                <h3 style="font-size: 1.5rem; color: #dc143c; margin-bottom: 0.5rem;">🔴 Al Ahly</h3>
-                <p style="font-size: 3rem; font-weight: 700; color: #dc143c;">${ahlyScore}</p>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 3rem; margin-bottom: 1.5rem;">
+            <div style="text-align: center; flex: 1;">
+                <h2 style="font-size: 2rem; font-weight: 700; color: #dc143c; margin: 0;">Al Ahly</h2>
+                ${match['MANAGER AHLY'] ? `<p style="color: #999; font-size: 0.95rem; margin-top: 0.25rem;">Manager: ${match['MANAGER AHLY']}</p>` : ''}
             </div>
-            
-            <div style="text-align: center;">
-                <h3 style="font-size: 1.2rem; color: #666; margin-bottom: 0.5rem;">VS</h3>
-                <p style="font-size: 2rem; font-weight: 700; color: #666;">${ahlyScore} - ${zamalekScore}</p>
+            <div style="font-size: 3rem; font-weight: 700; color: #333;">
+                ${ahlyScore} - ${zamalekScore}
             </div>
-            
-            <div style="text-align: center;">
-                <h3 style="font-size: 1.5rem; color: #333; margin-bottom: 0.5rem;">⚪ Zamalek</h3>
-                <p style="font-size: 3rem; font-weight: 700; color: #333;">${zamalekScore}</p>
+            <div style="text-align: center; flex: 1;">
+                <h2 style="font-size: 2rem; font-weight: 700; color: #333; margin: 0;">Zamalek</h2>
+                ${match['MANAGER ZAMALEK'] ? `<p style="color: #999; font-size: 0.95rem; margin-top: 0.25rem;">Manager: ${match['MANAGER ZAMALEK']}</p>` : ''}
             </div>
         </div>
-        
-        <div style="margin-top: 1.5rem;">
-            ${resultBadge}
-        </div>
-        
-        <div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; font-size: 0.9rem; color: #666;">
-            <div><strong>Championship:</strong> ${championship}</div>
-            ${round ? `<div><strong>Round:</strong> ${round}</div>` : ''}
-            ${stadium ? `<div><strong>Stadium:</strong> ${stadium}</div>` : ''}
-            <div><strong>Manager Ahly:</strong> ${match['MANAGER AHLY'] || 'Unknown'}</div>
-            <div><strong>Manager Zamalek:</strong> ${match['MANAGER ZAMALEK'] || 'Unknown'}</div>
+        <div style="border-top: 2px solid #e5e7eb; padding-top: 1rem; display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; font-size: 0.95rem; color: #666;">
+            ${date ? `<span><strong>Date:</strong> ${date}</span>` : ''}
+            ${season ? `<span><strong>Season:</strong> ${season}</span>` : ''}
+            ${stadium ? `<span><strong>Stadium:</strong> ${stadium}</span>` : ''}
+            ${round ? `<span><strong>Round:</strong> ${round}</span>` : ''}
+            ${championship ? `<span><strong>Championship:</strong> ${championship}</span>` : ''}
         </div>
     `;
 }
