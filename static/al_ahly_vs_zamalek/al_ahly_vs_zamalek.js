@@ -3637,14 +3637,14 @@ function displayZamalekMatchHeader(match) {
         <div style="display: flex; align-items: center; justify-content: center; gap: 3rem; margin-bottom: 1.5rem;">
             <div style="text-align: center; flex: 1;">
                 <h2 style="font-size: 2rem; font-weight: 700; color: #dc143c; margin: 0;">Al Ahly</h2>
-                ${match['MANAGER AHLY'] ? `<p style="color: #999; font-size: 0.95rem; margin-top: 0.25rem;">Manager: ${match['MANAGER AHLY']}</p>` : ''}
+                ${match['AHLY MANAGER'] ? `<p style="color: #999; font-size: 0.95rem; margin-top: 0.25rem;">Manager: ${match['AHLY MANAGER']}</p>` : ''}
             </div>
             <div style="font-size: 3rem; font-weight: 700; color: #333;">
                 ${ahlyScore} - ${zamalekScore}
             </div>
             <div style="text-align: center; flex: 1;">
                 <h2 style="font-size: 2rem; font-weight: 700; color: #333; margin: 0;">Zamalek</h2>
-                ${match['MANAGER ZAMALEK'] ? `<p style="color: #999; font-size: 0.95rem; margin-top: 0.25rem;">Manager: ${match['MANAGER ZAMALEK']}</p>` : ''}
+                ${match['ZAMALEK MANAGER'] ? `<p style="color: #999; font-size: 0.95rem; margin-top: 0.25rem;">Manager: ${match['ZAMALEK MANAGER']}</p>` : ''}
             </div>
         </div>
         <div style="border-top: 2px solid #e5e7eb; padding-top: 1rem; display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; font-size: 0.95rem; color: #666;">
