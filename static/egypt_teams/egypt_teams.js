@@ -165,7 +165,7 @@ function displayMatches() {
     const matches = egyptTeamsData.filteredRecords.slice().reverse(); // Show latest first
     
     if (matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
         return;
     }
     
@@ -178,6 +178,7 @@ function displayMatches() {
         const managerOpponent = match['MANAGER OPPONENT'] || '';
         const season = match['SEASON'] || '';
         const place = match['PLACE'] || '';
+        const egyptTeam = match['Egypt TEAM'] || '';
         const gf = match['GF'] || 0;
         const ga = match['GA'] || 0;
         const opponent = match['OPPONENT TEAM'] || '';
@@ -199,6 +200,7 @@ function displayMatches() {
             <td>${managerOpponent}</td>
             <td>${season}</td>
             <td>${place}</td>
+            <td>${egyptTeam}</td>
             <td><strong>${gf}</strong></td>
             <td><strong>${ga}</strong></td>
             <td>${opponent}</td>
