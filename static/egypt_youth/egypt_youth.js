@@ -82,11 +82,11 @@ async function loadYouthEgyptData(forceRefresh = false) {
             loadYouthPlayersData();
             
         } else {
-            throw new Error(data.error || 'Failed to load data');
+            throw new Error(data.error || 'No Data Available');
         }
     } catch (error) {
         console.error('❌ Error loading Youth Egypt data:', error);
-        showError('Failed to load data: ' + error.message);
+        showError('No Data Available');
         hideLoading();
     }
 }
@@ -115,7 +115,7 @@ async function loadYouthPlayersData() {
             console.log('👥 Total youth players records:', youthEgyptData.youthPlayers.length);
             
         } else {
-            throw new Error(data.error || 'Failed to load youth players data');
+            throw new Error(data.error || 'No Data Available');
         }
     } catch (error) {
         console.error('❌ Error loading Youth Players data:', error);

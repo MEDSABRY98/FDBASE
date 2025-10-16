@@ -4587,10 +4587,14 @@ def api_egypt_teams_matches():
             worksheet = spreadsheet.worksheet('MATCHDETAILS')
         except gspread.WorksheetNotFound:
             print("❌ MATCHDETAILS worksheet not found")
-            return jsonify({'error': 'MATCHDETAILS worksheet not found', 'matches': []}), 404
+            return jsonify({'error': 'No Data Available', 'matches': []}), 404
         
         # Get all records as list of dictionaries
-        records = worksheet.get_all_records()
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ MATCHDETAILS is empty or has no data: {e}")
+            return jsonify({'error': 'No Data Available', 'matches': []}), 200
         
         # Filter out empty rows and clean data
         matches = []
@@ -4766,26 +4770,40 @@ def api_egypt_teams_players():
             player_db_worksheet = spreadsheet.worksheet('PLAYERDATABASE')
         except gspread.WorksheetNotFound:
             print("❌ PLAYERDATABASE worksheet not found")
-            return jsonify({'error': 'PLAYERDATABASE worksheet not found', 'players': []}), 404
+            return jsonify({'error': 'No Data Available', 'players': []}), 404
         
         # Get PLAYERDETAILS worksheet
         try:
             player_details_worksheet = spreadsheet.worksheet('PLAYERDETAILS')
         except gspread.WorksheetNotFound:
             print("❌ PLAYERDETAILS worksheet not found")
-            return jsonify({'error': 'PLAYERDETAILS worksheet not found', 'players': []}), 404
+            return jsonify({'error': 'No Data Available', 'players': []}), 404
         
         # Get MATCHDETAILS worksheet
         try:
             match_details_worksheet = spreadsheet.worksheet('MATCHDETAILS')
         except gspread.WorksheetNotFound:
             print("❌ MATCHDETAILS worksheet not found")
-            return jsonify({'error': 'MATCHDETAILS worksheet not found', 'players': []}), 404
+            return jsonify({'error': 'No Data Available', 'players': []}), 404
         
         # Get all records
-        player_db_records = player_db_worksheet.get_all_records()
-        player_details_records = player_details_worksheet.get_all_records()
-        match_details_records = match_details_worksheet.get_all_records()
+        try:
+            player_db_records = player_db_worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ PLAYERDATABASE is empty: {e}")
+            return jsonify({'error': 'No Data Available', 'players': []}), 200
+            
+        try:
+            player_details_records = player_details_worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ PLAYERDETAILS is empty: {e}")
+            player_details_records = []
+            
+        try:
+            match_details_records = match_details_worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ MATCHDETAILS is empty: {e}")
+            match_details_records = []
         
         # Create a set of official match IDs (where CHAMPION SYSTEM = "OFI")
         official_match_ids = set()
@@ -4936,50 +4954,67 @@ def api_egypt_teams_player_details():
         # Get PLAYERDATABASE worksheet
         try:
             player_db_worksheet = spreadsheet.worksheet('PLAYERDATABASE')
-        except gspread.WorksheetNotFound:
-            return jsonify({'error': 'PLAYERDATABASE worksheet not found', 'playerDetails': [], 'playerDatabase': []}), 404
+        except:
+            print("❌ PLAYERDATABASE worksheet not found")
+            return jsonify({'error': 'No Data Available', 'playerDetails': [], 'playerDatabase': []}), 404
         
         # Get PLAYERDETAILS worksheet
         try:
             player_details_worksheet = spreadsheet.worksheet('PLAYERDETAILS')
-        except gspread.WorksheetNotFound:
-            return jsonify({'error': 'PLAYERDETAILS worksheet not found', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
+        except:
+            print("❌ PLAYERDETAILS worksheet not found")
+            return jsonify({'error': 'No Data Available', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
         
         # Get LINEUPEGYPT worksheet
         try:
             lineup_egypt_worksheet = spreadsheet.worksheet('LINEUPEGYPT')
-        except gspread.WorksheetNotFound:
-            return jsonify({'error': 'LINEUPEGYPT worksheet not found', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
+        except:
+            print("❌ LINEUPEGYPT worksheet not found")
+            return jsonify({'error': 'No Data Available', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
         
         # Get LINEUPOPPONENT worksheet
         try:
             lineup_opponent_worksheet = spreadsheet.worksheet('LINEUPOPPONENT')
-        except gspread.WorksheetNotFound:
-            return jsonify({'error': 'LINEUPOPPONENT worksheet not found', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
+        except:
+            print("❌ LINEUPOPPONENT worksheet not found")
+            return jsonify({'error': 'No Data Available', 'playerDetails': [], 'playerDatabase': [], 'lineupDetails': []}), 404
         
         # Get GKDETAILS worksheet (optional)
         try:
             gk_details_worksheet = spreadsheet.worksheet('GKDETAILS')
             gk_details_records = gk_details_worksheet.get_all_records()
-        except gspread.WorksheetNotFound:
-            print("⚠️ GKDETAILS worksheet not found (optional)")
+        except:
             gk_details_records = []
         
         # Get HOWPENMISSED worksheet (optional)
         try:
             howpen_worksheet = spreadsheet.worksheet('HOWPENMISSED')
             howpen_records = howpen_worksheet.get_all_records()
-        except gspread.WorksheetNotFound:
-            print("⚠️ HOWPENMISSED worksheet not found (optional)")
+        except:
             howpen_records = []
         
         # Get all records
-        player_db_records = player_db_worksheet.get_all_records()
-        player_details_records = player_details_worksheet.get_all_records()
+        try:
+            player_db_records = player_db_worksheet.get_all_records()
+        except:
+            print("⚠️ PLAYERDATABASE is empty")
+            return jsonify({'error': 'No Data Available', 'playerDetails': [], 'playerDatabase': []}), 200
+        
+        try:
+            player_details_records = player_details_worksheet.get_all_records()
+        except:
+            player_details_records = []
         
         # Get records from both lineup sheets
-        lineup_egypt_records = lineup_egypt_worksheet.get_all_records()
-        lineup_opponent_records = lineup_opponent_worksheet.get_all_records()
+        try:
+            lineup_egypt_records = lineup_egypt_worksheet.get_all_records()
+        except:
+            lineup_egypt_records = []
+        
+        try:
+            lineup_opponent_records = lineup_opponent_worksheet.get_all_records()
+        except:
+            lineup_opponent_records = []
         
         # Add source team identifier to each record
         for record in lineup_egypt_records:
@@ -5027,7 +5062,6 @@ def api_egypt_teams_player_details():
                 cleaned_record[key] = str(value).strip() if value else ''
             cleaned_howpen.append(cleaned_record)
         
-        print(f"✅ Loaded {len(cleaned_player_db)} players, {len(cleaned_player_details)} player details, {len(cleaned_lineup_details)} lineup records, {len(cleaned_gk_details)} GK records, and {len(cleaned_howpen)} penalty saves")
         
         # Cache the data
         result = {
@@ -5042,8 +5076,8 @@ def api_egypt_teams_player_details():
         return jsonify(result)
         
     except Exception as e:
-        print(f"❌ Error loading player details: {e}")
         import traceback
+        print(f"❌ Error loading player details: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e), 'playerDetails': [], 'playerDatabase': []}), 500
 
@@ -5083,10 +5117,14 @@ def api_egypt_teams_pks():
         try:
             pks_worksheet = spreadsheet.worksheet('ETPKS')
         except gspread.WorksheetNotFound:
-            return jsonify({'error': 'ETPKS worksheet not found', 'records': []}), 404
+            return jsonify({'error': 'No Data Available', 'records': []}), 404
         
         # Get all records
-        pks_records = pks_worksheet.get_all_records()
+        try:
+            pks_records = pks_worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ ETPKS is empty: {e}")
+            return jsonify({'error': 'No Data Available', 'records': []}), 200
         
         # Clean data
         cleaned_records = []

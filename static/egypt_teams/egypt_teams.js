@@ -92,7 +92,7 @@ async function loadEgyptTeamsData(forceRefresh = false) {
     } catch (error) {
         console.error('Error loading Egypt Teams data:', error);
         hideLoading();
-        showError('Failed to load Egypt Teams data. Please try again.');
+        showError('No Data Available');
     }
 }
 
@@ -552,7 +552,17 @@ async function loadPlayersData(forceRefresh = false) {
         const response = await fetch(url);
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // Try to get error details from the response
+            let errorMessage = `HTTP error! status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    errorMessage = errorData.error;
+                }
+            } catch (e) {
+                // If parsing JSON fails, use the default error message
+            }
+            throw new Error(errorMessage);
         }
         
         const data = await response.json();
@@ -578,7 +588,7 @@ async function loadPlayersData(forceRefresh = false) {
     } catch (error) {
         console.error('Error loading players data:', error);
         hidePlayersLoading();
-        showPlayersError('Failed to load players data. Please try again.');
+        showPlayersError('No Data Available');
     }
 }
 
@@ -3112,7 +3122,7 @@ async function searchEgyptMatchById() {
             console.log('✅ Player data loaded successfully');
         } catch (error) {
             console.error('❌ Error loading player data:', error);
-            showError('Failed to load player data. Please try again.');
+            showError('No Data Available');
             return;
         }
     }

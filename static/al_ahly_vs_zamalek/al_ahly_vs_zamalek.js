@@ -123,7 +123,7 @@ async function loadAllZamalekData(forceRefresh = false) {
     } catch (error) {
         console.error('❌ Error loading Ahly VS Zamalek data:', error);
         console.error('❌ Error stack:', error.stack);
-        showError('Failed to load data. Please refresh the page.');
+        showError('No Data Available');
         zamalekMatchesData = [];
         return false;
     }

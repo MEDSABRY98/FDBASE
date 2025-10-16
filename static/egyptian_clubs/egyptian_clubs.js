@@ -75,11 +75,11 @@ async function loadEgyptianClubsData() {
             // Add filter event listeners
             addFilterListeners();
         } else {
-            throw new Error(result.error || 'Failed to load data');
+            throw new Error(result.error || 'No Data Available');
         }
     } catch (error) {
         console.error('❌ Error loading data:', error);
-        showError('Failed to load data: ' + error.message);
+        showError('No Data Available');
         showLoading(false);
     }
 }

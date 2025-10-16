@@ -32,7 +32,7 @@ async function loadPKSData(forceRefresh = false) {
         document.getElementById('pks-main-content').style.display = 'block';
     } catch (error) {
         console.error('Error loading PKS data:', error);
-        document.getElementById('pks-loading').innerHTML = '<p style="color: red;">Error loading data. Please try again.</p>';
+        document.getElementById('pks-loading').innerHTML = '<p style="color: red;">No Data Available</p>';
     }
 }
 
