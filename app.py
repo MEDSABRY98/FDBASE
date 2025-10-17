@@ -5109,6 +5109,88 @@ def api_pks_data():
         print(f"❌ Error loading PKS data: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/ahly-stats/pks-data')
+def api_ahly_stats_pks_data():
+    """API endpoint to get PKS data for Al Ahly stats from Google Sheets"""
+    try:
+        match_id = request.args.get('match_id')
+        
+        if not match_id:
+            return jsonify({'error': 'Match ID is required'}), 400
+        
+        
+        # Fetch fresh data from Google Sheets
+        all_pks_data = fetch_ahly_stats_pks_data()
+        
+        # Get data for specific match
+        match_data = all_pks_data.get(match_id, [])
+        return jsonify(match_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def fetch_ahly_stats_pks_data():
+    """Fetch all PKS data from PKSDETAILS worksheet in Al Ahly Stats sheet"""
+    try:
+        
+        # Use the Al Ahly Stats sheet ID
+        sheet_id = "1zeSlEN7VS2S6KPZH7_uvQeeY3Iu5INUyi12V0_Wi9G4"
+        sheet_name = "PKSDETAILS"
+        
+        # Use Google Sheets API instead of CSV export
+        client = get_google_sheets_client('ahly_match')
+        sheet = client.open_by_key(sheet_id).worksheet(sheet_name)
+        
+        # Get all data with proper headers
+        all_values = sheet.get_all_values()
+        
+        if len(all_values) < 2:
+            return {}
+        
+        # The headers are mixed with data, so we need to use the correct column names
+        # Based on the user's specification, the columns should be:
+        correct_headers = [
+            'MATCH_ID', 'SEASON', 'CHAMPION', 'ROUND', 'WHO START?', 
+            'OPPONENT TEAM', 'OPPONENT PLAYER', 'OPPONENT STATUS', 'HOWMISS OPPONENT',
+            'AHLY GK', 'MATCH RESULT', 'PKS RESULT', 'PKS W-L', 'AHLY TEAM', 
+            'AHLY PLAYER', 'AHLY STATUS', 'HOWMISS AHLY', 'OPPONENT GK'
+        ]
+        
+        
+        # Convert to records with correct column names
+        all_data = []
+        for row in all_values[1:]:  # Skip first row (mixed headers/data)
+            record = {}
+            for i, correct_header in enumerate(correct_headers):
+                if i < len(row):
+                    record[correct_header] = row[i]
+            all_data.append(record)
+        
+        if not all_data:
+            return {}
+        
+        
+        # Organize data by match ID
+        organized_data = {}
+        processed_ids = set()
+        
+        for row in all_data:
+            match_id = row.get('MATCH_ID', '').strip()
+            
+            if match_id and match_id != '':
+                processed_ids.add(match_id)
+                
+                # Add to organized data
+                if match_id not in organized_data:
+                    organized_data[match_id] = []
+                organized_data[match_id].append(row)
+        
+        
+        return organized_data
+        
+    except Exception as e:
+        return {}
+
 def fetch_and_organize_pks_data():
     """Fetch all PKS data from PKSDETAILS worksheet in the same Al Ahly vs Zamalek sheet"""
     try:
@@ -5260,6 +5342,12 @@ if __name__ == '__main__':
         DESKTOP_MODE = True
     except ImportError:
         DESKTOP_MODE = False
+
+    # Allow forcing web mode via env or when a custom PORT is provided
+    force_web_mode = os.environ.get('WEB_MODE', '').strip() == '1'
+    env_port = int(os.environ.get('PORT', 98051))
+    if force_web_mode or os.environ.get('PORT'):
+        DESKTOP_MODE = False
     
     # Start Google Sheets Auto-Sync Scheduler
     try:
@@ -5277,7 +5365,7 @@ if __name__ == '__main__':
     if DESKTOP_MODE:
         # Function to run Flask server
         def run_server():
-            app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
+            app.run(host='127.0.0.1', port=env_port, debug=False, use_reloader=False)
         
         # Start Flask server in a separate thread
         server_thread = threading.Thread(target=run_server, daemon=True)
@@ -5286,7 +5374,7 @@ if __name__ == '__main__':
         # Create and start the webview window (desktop application)
         webview.create_window(
             'Football Database', 
-            'http://127.0.0.1:5000',
+            f'http://127.0.0.1:{env_port}',
             width=1400,
             height=900,
             resizable=True,
@@ -5295,5 +5383,5 @@ if __name__ == '__main__':
         webview.start()
     else:
         # Web deployment mode - just run Flask
-        port = int(os.environ.get('PORT', 5001))
+        port = env_port
         app.run(host='0.0.0.0', port=port)
