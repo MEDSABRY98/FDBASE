@@ -11585,9 +11585,16 @@ function searchMatchById() {
         displayMatchLineup(matchId);
         displayMatchGoals(matchId);
         displayMatchGoalkeepers(matchId);
+        displayMatchPKS(matchId);
         
         detailsContainer.style.display = 'block';
         noMatchFound.style.display = 'none';
+        
+        // Activate all sub-tab content divs
+        document.getElementById('match-lineup-content').classList.add('active');
+        document.getElementById('match-goals-content').classList.add('active');
+        document.getElementById('match-goalkeepers-content').classList.add('active');
+        document.getElementById('match-pks-content').classList.add('active');
     } else {
         detailsContainer.style.display = 'none';
         noMatchFound.style.display = 'block';
@@ -12039,6 +12046,208 @@ function displayMatchGoalkeepers(matchId) {
     container.innerHTML = html;
 }
 
+// Display PKS data in the container
+function displayPKSData(matchId, pksData) {
+    console.log('Displaying PKS data for match:', matchId, 'Data:', pksData);
+    const container = document.getElementById('match-pks-container');
+    
+    if (!container) {
+        console.error('PKS container not found');
+        return;
+    }
+    
+    if (!pksData || pksData.length === 0) {
+        console.log('No PKS data to display');
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; background: #f8f9fa; border-radius: 12px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #6c757d;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <h3 style="color: #495057; margin-bottom: 0.5rem;">No PKS Data Found</h3>
+                <p style="color: #6c757d;">No penalty shootout data found for match ID: ${matchId}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h3 style="color: #495057; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 12h8"/>
+                    <path d="M12 8v8"/>
+                </svg>
+                Penalty Shootout Data
+            </h3>
+            <div style="display: grid; gap: 1rem;">
+    `;
+    
+    // Collect goalkeeper statistics
+    const goalkeeperStats = {};
+    
+    pksData.forEach((pks, index) => {
+        const ahlyStatus = pks['AHLY STATUS'] || 'Unknown';
+        const ahlyPlayer = pks['AHLY PLAYER'] || 'Unknown';
+        const ahlyGk = pks['AHLY GK'] || 'Unknown';
+        const ahlyHowMiss = pks['HOWMISS AHLY'] || '';
+        const opponentStatus = pks['OPPONENT STATUS'] || 'Unknown';
+        const opponentPlayer = pks['OPPONENT PLAYER'] || 'Unknown';
+        const opponentGk = pks['OPPONENT GK'] || 'Unknown';
+        const opponentHowMiss = pks['HOWMISS OPPONENT'] || '';
+        const round = pks['ROUND'] || (index + 1);
+        
+        // Initialize goalkeeper stats
+        if (!goalkeeperStats[ahlyGk]) {
+            goalkeeperStats[ahlyGk] = { shots: 0, saves: 0 };
+        }
+        if (!goalkeeperStats[opponentGk]) {
+            goalkeeperStats[opponentGk] = { shots: 0, saves: 0 };
+        }
+        
+        // Count shots and saves
+        goalkeeperStats[opponentGk].shots++; // Ahly player shoots at opponent GK
+        if (ahlyStatus === 'MISS' && ahlyHowMiss.includes('الحارس')) {
+            goalkeeperStats[opponentGk].saves++;
+        }
+        
+        goalkeeperStats[ahlyGk].shots++; // Opponent player shoots at Ahly GK
+        if (opponentStatus === 'MISS' && opponentHowMiss.includes('الحارس')) {
+            goalkeeperStats[ahlyGk].saves++;
+        }
+        
+        const ahlyStatusColor = ahlyStatus === 'GOAL' ? '#28a745' : '#dc3545';
+        const opponentStatusColor = opponentStatus === 'GOAL' ? '#28a745' : '#dc3545';
+        
+        html += `
+            <div style="background: white; border-radius: 8px; padding: 1rem; border: 1px solid #dee2e6;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h4 style="color: #495057; margin: 0;">Round ${round}</h4>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center;">
+                    <div style="text-align: right;">
+                        <div style="font-weight: 600; color: #495057;">${ahlyPlayer}</div>
+                        ${ahlyStatus === 'MISS' && ahlyHowMiss ? `<div style="font-size: 0.8rem; color: #dc3545; margin-top: 0.25rem;">${ahlyHowMiss}</div>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span style="background: ${ahlyStatusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">
+                            ${ahlyStatus}
+                        </span>
+                        <span style="color: #6c757d; font-weight: 600;">VS</span>
+                        <span style="background: ${opponentStatusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">
+                            ${opponentStatus}
+                        </span>
+                    </div>
+                    <div style="text-align: left;">
+                        <div style="font-weight: 600; color: #495057;">${opponentPlayer}</div>
+                        ${opponentStatus === 'MISS' && opponentHowMiss ? `<div style="font-size: 0.8rem; color: #dc3545; margin-top: 0.25rem;">${opponentHowMiss}</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    // Add goalkeeper statistics section
+    html += `
+        </div>
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
+            <h3 style="color: #495057; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px;">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+                إحصائيات الحارسين
+            </h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+    `;
+    
+    Object.entries(goalkeeperStats).forEach(([gkName, stats]) => {
+        const savePercentage = stats.shots > 0 ? ((stats.saves / stats.shots) * 100).toFixed(1) : '0.0';
+        html += `
+            <div style="background: white; border-radius: 8px; padding: 1rem; border: 1px solid #dee2e6;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; text-align: center;">
+                    <div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #007bff;">${stats.shots}</div>
+                        <div style="font-size: 0.8rem; color: #6c757d;">الكور</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;">${stats.saves}</div>
+                        <div style="font-size: 0.8rem; color: #6c757d;">التصديات</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #ffc107;">${savePercentage}%</div>
+                        <div style="font-size: 0.8rem; color: #6c757d;">النسبة</div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e9ecef;">
+                    <span style="font-weight: 600; color: #495057; font-size: 0.9rem;">${gkName}</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// Display match PKS data
+async function displayMatchPKS(matchId) {
+    console.log('Displaying PKS for match:', matchId);
+    const container = document.getElementById('match-pks-container');
+    
+    if (!container) {
+        console.error('PKS container not found');
+        return;
+    }
+    
+    try {
+        console.log('Fetching PKS data from API...');
+        // Fetch PKS data from API
+        const response = await fetch(`/api/ahly-stats/pks-data?match_id=${encodeURIComponent(matchId)}`);
+        const pksData = await response.json();
+        
+        console.log('PKS API response:', response.status, pksData);
+        
+        if (response.ok && pksData && pksData.length > 0) {
+            displayPKSData(matchId, pksData);
+        } else {
+            console.log('No PKS data found for match:', matchId);
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem; background: #f8f9fa; border-radius: 12px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #6c757d;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <h3 style="color: #495057; margin-bottom: 0.5rem;">No PKS Data Found</h3>
+                    <p style="color: #6c757d;">No penalty shootout data found for match ID: ${matchId}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading PKS data for match:', matchId, error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; background: #f8f9fa; border-radius: 12px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #dc3545;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                <h3 style="color: #dc3545; margin-bottom: 0.5rem;">Error Loading PKS Data</h3>
+                <p style="color: #6c757d;">Failed to load penalty shootout data for match ID: ${matchId}</p>
+                <p style="color: #6c757d; font-size: 0.9rem; margin-top: 0.5rem;">Error: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
 // Show match sub-tab
 function showMatchSubTab(event, tabName) {
     // Remove active class from all match sub-tabs
@@ -12060,5 +12269,34 @@ function showMatchSubTab(event, tabName) {
     const selectedContent = document.getElementById(`match-${tabName}-content`);
     if (selectedContent) {
         selectedContent.classList.add('active');
+    }
+    
+    // Load data based on selected tab
+    const matchIdInput = document.getElementById('match-id-search');
+    if (matchIdInput && matchIdInput.value.trim()) {
+        const matchId = matchIdInput.value.trim();
+        console.log('Loading data for match ID:', matchId, 'in tab:', tabName);
+        
+        // Check if data is available
+        if (!window.__ahlySheetsJson || Object.keys(window.__ahlySheetsJson).length === 0) {
+            console.warn('No data available for tab loading');
+            return;
+        }
+        
+        if (tabName === 'lineup') {
+            console.log('Loading lineup data...');
+            displayMatchLineup(matchId);
+        } else if (tabName === 'goals') {
+            console.log('Loading goals data...');
+            displayMatchGoals(matchId);
+        } else if (tabName === 'goalkeepers') {
+            console.log('Loading goalkeepers data...');
+            displayMatchGoalkeepers(matchId);
+        } else if (tabName === 'pks') {
+            console.log('Loading PKS data...');
+            displayMatchPKS(matchId);
+        }
+    } else {
+        console.warn('No match ID found for tab loading');
     }
 }
