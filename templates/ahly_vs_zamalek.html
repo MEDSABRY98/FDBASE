@@ -545,8 +545,6 @@
             color: #333;
             margin-bottom: 1.5rem;
             text-align: center;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 0.5rem;
         }
 
         /* Main Tabs Navigation */
@@ -1042,17 +1040,22 @@
             <!-- Search Match Tab -->
             <div id="search-match-tab" class="tab-content active">
                 <div class="zamalek-stats-section">
-                    <h2 class="zamalek-section-title">🔍 Search Match by ID</h2>
+                    <h2 class="zamalek-section-title">Search Match by ID</h2>
                     
                     <!-- Search Box -->
-                    <div style="text-align: center; margin-bottom: 2rem;">
-                        <input type="text" id="zamalek-match-search-input" placeholder="Enter Match ID..." 
-                            style="padding: 1rem; width: 400px; max-width: 90%; border: 2px solid #667eea; border-radius: 10px; font-size: 1.1rem; text-align: center;">
-                        <br><br>
-                        <button onclick="searchZamalekMatchById()" 
-                            style="padding: 1rem 2rem; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600; cursor: pointer;">
-                            Search Match
-                        </button>
+                    <div style="max-width: 600px; margin: 2rem auto;">
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <input type="text" id="zamalek-match-search-input" placeholder="Enter Match ID (e.g., ah1, ah100...)" 
+                                   style="flex: 1; padding: 0.75rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;"
+                                   onkeypress="if(event.key==='Enter') searchZamalekMatchById()">
+                            <button onclick="searchZamalekMatchById()" style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                                    <circle cx="11" cy="11" r="8"/>
+                                    <path d="m21 21-4.35-4.35"/>
+                                </svg>
+                                Search
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Match Details Container -->
@@ -1070,6 +1073,9 @@
                             <button class="tab-button" onclick="showZamalekMatchSubTab(event, 'goals')">
                                 ⚽ Goals Scored
                             </button>
+                            <button class="tab-button" onclick="showZamalekMatchSubTab(event, 'pks')">
+                                🎯 PKS
+                            </button>
                         </div>
                         
                         <!-- Match Sub-tab Contents -->
@@ -1082,6 +1088,11 @@
                             <!-- Goals Content -->
                             <div id="zamalek-match-goals-content" class="tab-content">
                                 <div id="zamalek-match-goals-container"></div>
+                            </div>
+                            
+                            <!-- PKS Content -->
+                            <div id="zamalek-match-pks-content" class="tab-content">
+                                <div id="zamalek-match-pks-container"></div>
                             </div>
                         </div>
                     </div>

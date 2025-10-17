@@ -1668,51 +1668,48 @@ async function loadPlayerElnadyStats(playerName, playerMatchIds) {
 // TAB SWITCHING
 // ============================================================================
 
-function switchTab(tabName) {
-    // Remove active class from all modern tab buttons
-    const modernTabButtons = document.querySelectorAll('.modern-tab-button');
-    modernTabButtons.forEach(button => button.classList.remove('active'));
-    
-    // Remove active class from all legacy tab buttons (for other sections)
-    const legacyTabButtons = document.querySelectorAll('.tabs-header > .tab-button');
-    legacyTabButtons.forEach(button => button.classList.remove('active'));
-    
+// Main tabs switching (compatible with showStatsTab(event, 'name') and showStatsTab('name'))
+function showStatsTab(arg1, arg2) {
+    const isEvent = arg1 && typeof arg1 === 'object' && typeof arg1.preventDefault === 'function';
+    const evt = isEvent ? arg1 : null;
+    const tabName = typeof arg1 === 'string' ? arg1 : (typeof arg2 === 'string' ? arg2 : 'search');
+
     // Hide all tab contents
-    const tabContents = document.querySelectorAll('#content-tabs > .tab-content');
-    tabContents.forEach(content => content.classList.remove('active'));
+    document.querySelectorAll('.stats-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
     
-    // Show selected tab
+    // Remove active class from all tabs
+    document.querySelectorAll('.stats-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Show selected tab content (fallback to search if missing)
+    const selectedTab = document.getElementById(`${tabName}-tab`) || document.getElementById('search-tab');
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+    
+    // Add active class to clicked tab (support clicks on nested SVG)
+    const clickedBtn = evt && evt.target && evt.target.closest ? evt.target.closest('button.stats-tab') : null;
+    if (clickedBtn) {
+        clickedBtn.classList.add('active');
+    } else {
+        const btn = document.querySelector(`.stats-tab[onclick*="'${tabName}'"]`) || document.querySelector(`.stats-tab[onclick*="'search'"]`);
+        if (btn) btn.classList.add('active');
+    }
+    
+    // Load specific data for each tab
     if (tabName === 'search') {
-        document.getElementById('search-tab').classList.add('active');
-        // Activate the correct modern tab button
-        const searchButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'search\')"]');
-        if (searchButton) searchButton.classList.add('active');
         // Load player details and lineup if not already loaded
         if (!egyptTeamsData.playersLoaded) {
             loadPlayersData();
         }
-    } else if (tabName === 'overview') {
-        document.getElementById('overview-tab').classList.add('active');
-        const overviewButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'overview\')"]');
-        if (overviewButton) overviewButton.classList.add('active');
-    } else if (tabName === 'matches') {
-        document.getElementById('matches-tab').classList.add('active');
-        const matchesButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'matches\')"]');
-        if (matchesButton) matchesButton.classList.add('active');
     } else if (tabName === 'h2h') {
-        document.getElementById('h2h-tab').classList.add('active');
-        const h2hButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'h2h\')"]');
-        if (h2hButton) h2hButton.classList.add('active');
         loadH2HStats();
     } else if (tabName === 'managers') {
-        document.getElementById('managers-tab').classList.add('active');
-        const managersButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'managers\')"]');
-        if (managersButton) managersButton.classList.add('active');
         loadManagersStats();
     } else if (tabName === 'referees') {
-        document.getElementById('referees-tab').classList.add('active');
-        const refereesButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'referees\')"]');
-        if (refereesButton) refereesButton.classList.add('active');
         // Load only PLAYERDETAILS if not already loaded (needed for penalty counting)
         if (!egyptTeamsData.playerDetailsLoaded) {
             loadPlayerDetailsOnly().then(() => {
@@ -1722,23 +1719,14 @@ function switchTab(tabName) {
             loadRefereesStats();
         }
     } else if (tabName === 'players') {
-        document.getElementById('players-tab').classList.add('active');
-        const playersButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'players\')"]');
-        if (playersButton) playersButton.classList.add('active');
         // Load players data if not already loaded
         if (!egyptTeamsData.playersLoaded) {
             loadPlayersData();
         }
     } else if (tabName === 'byplayer') {
-        document.getElementById('byplayer-tab').classList.add('active');
-        const byplayerButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'byplayer\')"]');
-        if (byplayerButton) byplayerButton.classList.add('active');
         // Setup player search if not already setup
         setupPlayerSearch();
     } else if (tabName === 'goalkeepers') {
-        document.getElementById('goalkeepers-tab').classList.add('active');
-        const goalkeepersButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'goalkeepers\')"]');
-        if (goalkeepersButton) goalkeepersButton.classList.add('active');
         // Load goalkeepers data if not already loaded
         if (!egyptTeamsData.playersLoaded) {
             loadPlayersData().then(() => {
@@ -1748,12 +1736,14 @@ function switchTab(tabName) {
             loadGoalkeepersStats();
         }
     } else if (tabName === 'elnady') {
-        document.getElementById('elnady-tab').classList.add('active');
-        const elnadyButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'elnady\')"]');
-        if (elnadyButton) elnadyButton.classList.add('active');
         // Load all clubs stats by default
         loadAllClubsStats();
     }
+}
+
+// Keep the old function name for backward compatibility
+function switchTab(tabName) {
+    showStatsTab(tabName);
 }
 
 function switchPlayerTab(tabName) {

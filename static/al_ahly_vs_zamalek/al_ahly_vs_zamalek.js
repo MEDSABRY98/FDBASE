@@ -3620,6 +3620,9 @@ function displayZamalekMatchDetails(match) {
     
     // Display goals
     displayZamalekMatchGoals(match);
+    
+    // Display PKS data
+    displayZamalekMatchPKS(match);
 }
 
 // Display match header
@@ -3631,9 +3634,10 @@ function displayZamalekMatchHeader(match) {
     const championship = match.CHAMPION || '';
     const round = match.ROUND || '';
     const stadium = match.STADIUM || '';
-    const referee = match.REFREE || '';
+    const referee = match.REFEREE || '';
     const ahlyScore = match.GF || 0;
     const zamalekScore = match.GA || 0;
+    const penaltyResult = match.PEN || '';
     
     headerContainer.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; gap: 3rem; margin-bottom: 1.5rem;">
@@ -3641,8 +3645,11 @@ function displayZamalekMatchHeader(match) {
                 <h2 style="font-size: 2rem; font-weight: 700; color: #dc143c; margin: 0;">Al Ahly</h2>
                 ${match['AHLY MANAGER'] ? `<p style="color: #999; font-size: 0.95rem; margin-top: 0.25rem;">Manager: ${match['AHLY MANAGER']}</p>` : ''}
             </div>
-            <div style="font-size: 3rem; font-weight: 700; color: #333;">
-                ${ahlyScore} - ${zamalekScore}
+            <div style="text-align: center;">
+                <div style="font-size: 3rem; font-weight: 700; color: #333;">
+                    ${ahlyScore} - ${zamalekScore}
+                </div>
+                ${penaltyResult ? `<div style="font-size: 1.2rem; font-weight: 600; color: #666; margin-top: 0.5rem;">Penalties: ${penaltyResult}</div>` : ''}
             </div>
             <div style="text-align: center; flex: 1;">
                 <h2 style="font-size: 2rem; font-weight: 700; color: #333; margin: 0;">Zamalek</h2>
@@ -4007,6 +4014,226 @@ function displayZamalekMatchGoals(match) {
     html += '</div>';
     
     container.innerHTML = html;
+}
+
+// Display PKS data for a match
+async function displayZamalekMatchPKS(match) {
+    const container = document.getElementById('zamalek-match-pks-container');
+    const matchId = match.MATCH_ID;
+    
+    console.log('🎯 Displaying PKS data for match:', matchId);
+    
+    try {
+        // Fetch PKS data from Google Sheets with force refresh to see debugging
+        const response = await fetch(`/api/pks-data?match_id=${encodeURIComponent(matchId)}&force_refresh=true`);
+        const pksData = await response.json();
+        
+        // Check if response is an error
+        if (pksData.error) {
+            console.error('PKS API Error:', pksData.error);
+            container.innerHTML = `<p style="text-align: center; color: #dc3545; padding: 2rem;">Error: ${pksData.error}</p>`;
+            return;
+        }
+        
+        // Check if pksData is an array
+        if (!Array.isArray(pksData)) {
+            console.error('PKS data is not an array:', pksData);
+            container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 2rem;">Invalid PKS data format</p>';
+            return;
+        }
+        
+        if (pksData.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No PKS data available for this match</p>';
+            return;
+        }
+        
+        // Separate Al Ahly and Zamalek players
+        const ahlyPlayers = pksData.filter(player => 
+            player['AHLY PLAYER'] && player['AHLY PLAYER'].trim() !== ''
+        );
+        const zamalekPlayers = pksData.filter(player => 
+            player['ZAMALEK PLAYER'] && player['ZAMALEK PLAYER'].trim() !== ''
+        );
+        
+        let html = '<div class="pks-match-container" style="display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap;">';
+        
+        // Al Ahly PKS Section
+        if (ahlyPlayers.length > 0) {
+            html += `
+                <div class="pks-team-section" style="flex: 1; min-width: 300px;">
+                    <h3 style="color: #dc143c; margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 700; text-align: center; border-bottom: 2px solid #dc143c; padding-bottom: 0.5rem;">Al Ahly Penalty Shootout</h3>
+                    <div class="stats-table-container">
+                        <table class="stats-table" style="width: 100%; border-collapse: collapse; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #dc143c, #b91c3c); color: white;">
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 1rem;">Player</th>
+                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 1rem;">Result</th>
+                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 1rem;">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            ahlyPlayers.forEach((player, index) => {
+                const playerName = player['AHLY PLAYER'] || 'Unknown';
+                const status = player['AHLY STATUS'] || '';
+                const isGoal = status === 'GOAL';
+                const howMissed = player['HOWMISS AHLY'] || '';
+                
+                // Alternate row colors
+                const rowColor = index % 2 === 0 ? '#f8f9fa' : '#ffffff';
+                const resultIcon = isGoal ? '✅' : '❌';
+                const resultText = isGoal ? 'Goal' : 'Miss';
+                const resultColor = isGoal ? '#28a745' : '#dc3545';
+                const details = isGoal ? 'Perfect shot!' : (howMissed || 'Missed');
+                
+                html += `
+                    <tr style="background-color: ${rowColor}; border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px 16px; font-weight: 500; color: #333;">${playerName}</td>
+                        <td style="padding: 12px 16px; text-align: center; font-weight: 600; color: ${resultColor}; font-size: 1.1rem;">${resultIcon} ${resultText}</td>
+                        <td style="padding: 12px 16px; text-align: center; color: #666; font-style: italic;">${details}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Zamalek PKS Section
+        if (zamalekPlayers.length > 0) {
+            html += `
+                <div class="pks-team-section" style="flex: 1; min-width: 300px;">
+                    <h3 style="color: #333; margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 700; text-align: center; border-bottom: 2px solid #333; padding-bottom: 0.5rem;">Zamalek Penalty Shootout</h3>
+                    <div class="stats-table-container">
+                        <table class="stats-table" style="width: 100%; border-collapse: collapse; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #333, #555); color: white;">
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 1rem;">Player</th>
+                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 1rem;">Result</th>
+                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 1rem;">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            zamalekPlayers.forEach((player, index) => {
+                const playerName = player['ZAMALEK PLAYER'] || 'Unknown';
+                const status = player['ZAMALEK STATUS'] || '';
+                const isGoal = status === 'GOAL';
+                const howMissed = player['HOWMISS ZAMALEK'] || '';
+                
+                // Alternate row colors
+                const rowColor = index % 2 === 0 ? '#f8f9fa' : '#ffffff';
+                const resultIcon = isGoal ? '✅' : '❌';
+                const resultText = isGoal ? 'Goal' : 'Miss';
+                const resultColor = isGoal ? '#28a745' : '#dc3545';
+                const details = isGoal ? 'Perfect shot!' : (howMissed || 'Missed');
+                
+                html += `
+                    <tr style="background-color: ${rowColor}; border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px 16px; font-weight: 500; color: #333;">${playerName}</td>
+                        <td style="padding: 12px 16px; text-align: center; font-weight: 600; color: ${resultColor}; font-size: 1.1rem;">${resultIcon} ${resultText}</td>
+                        <td style="padding: 12px 16px; text-align: center; color: #666; font-style: italic;">${details}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Goalkeepers Section
+        html += `
+            <div style="margin-top: 3rem; display: flex; gap: 2rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h3 style="color: #dc143c; margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 700; text-align: center; border-bottom: 2px solid #dc143c; padding-bottom: 0.5rem;">Al Ahly Goalkeeper</h3>
+                    <div style="background: linear-gradient(135deg, #dc143c, #b91c3c); color: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        ${getGoalkeeperStats(pksData, 'AHLY GK', 'ZAMALEK PLAYER')}
+                    </div>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <h3 style="color: #333; margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 700; text-align: center; border-bottom: 2px solid #333; padding-bottom: 0.5rem;">Zamalek Goalkeeper</h3>
+                    <div style="background: linear-gradient(135deg, #333, #555); color: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        ${getGoalkeeperStats(pksData, 'ZAMALEK GK', 'AHLY PLAYER')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading PKS data:', error);
+        container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 2rem;">Error loading PKS data</p>';
+    }
+}
+
+// Get goalkeeper statistics
+function getGoalkeeperStats(pksData, gkColumn, opponentPlayerColumn) {
+    if (!pksData || pksData.length === 0) {
+        return '<p style="text-align: center; color: #ccc;">No goalkeeper data available</p>';
+    }
+    
+    // Get goalkeeper name from first record
+    const gkName = pksData[0][gkColumn] || 'Unknown';
+    
+    // Count total shots faced and saves
+    let totalShots = 0;
+    let saves = 0;
+    
+    pksData.forEach((player) => {
+        const opponentPlayer = player[opponentPlayerColumn];
+        // Build correct column names 
+        // For ZAMALEK PLAYER → ZAMALEK STATUS and HOWMISS ZAMALEK
+        // For AHLY PLAYER → AHLY STATUS and HOWMISS AHLY
+        const teamName = opponentPlayerColumn.replace(' PLAYER', '');
+        const statusColumnName = `${teamName} STATUS`;
+        const howMissColumnName = `HOWMISS ${teamName}`;
+        const opponentStatus = player[statusColumnName];
+        const howMissed = player[howMissColumnName];
+        
+        if (opponentPlayer && opponentPlayer.trim() !== '') {
+            totalShots++;
+            // If the player missed and the reason contains "الحارس" (goalkeeper), it's a save
+            // For Al Ahly GK: check HOWMISS ZAMALEK for "الحارس" (when Zamalek players miss)
+            // For Zamalek GK: check HOWMISS AHLY for "الحارس" (when Al Ahly players miss)
+            if (opponentStatus === 'MISS' && howMissed && howMissed.includes('الحارس')) {
+                saves++;
+            }
+        }
+    });
+    
+    const savePercentage = totalShots > 0 ? Math.round((saves / totalShots) * 100) : 0;
+    
+    return `
+        <div style="text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">${gkName}</div>
+            <div style="display: flex; justify-content: space-around; margin-bottom: 1rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 700; color: #ffd700;">${totalShots}</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">Total Shots</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 700; color: #4ade80;">${saves}</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">Saves</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 700; color: #60a5fa;">${savePercentage}%</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">Save Rate</div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // Switch between match sub-tabs (lineup, goals)

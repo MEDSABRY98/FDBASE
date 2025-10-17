@@ -178,6 +178,15 @@
             font-weight: 600;
             color: #333;
             margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .stats-section {
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
         }
 
         .matches-table {
@@ -455,73 +464,110 @@
         }
 
         /* Modern Tabs Design */
-        .modern-tabs-container {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+        /* Statistics Tabs Container */
+        .stats-tabs-container {
             margin-bottom: 2rem;
         }
 
-        .modern-tabs-row {
+        .stats-tabs-row {
             display: flex;
-            gap: 0.5rem;
-            justify-content: stretch;
-            flex-wrap: wrap;
-            width: 100%;
+            justify-content: center;
+            margin-bottom: 1rem;
         }
 
-        .modern-tab-button {
+        .stats-tabs {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 100%;
+        }
+
+        .stats-tab {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.875rem 1rem;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
             background: #f8f9fa;
+            color: #495057;
             border: none;
             border-radius: 12px;
-            color: #6b7280;
-            font-size: 0.9rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
             flex: 1;
-            min-width: 0;
-            justify-content: center;
-            position: relative;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            width: 100%;
             text-align: center;
         }
 
-        .modern-tab-button:hover {
-            background: #e5e7eb;
-            color: #374151;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        .stats-tab:hover {
+            background: #e9ecef;
+            color: #343a40;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
-        .modern-tab-button.active {
-            background: #3b82f6;
+        .stats-tab.active {
+            background: #007bff;
             color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
         }
 
-        .modern-tab-button.active:hover {
-            background: #2563eb;
+        .stats-tab.active:hover {
+            background: #0056b3;
             color: white;
         }
 
-        .tab-icon {
+        .stats-tab .icon {
             width: 18px;
             height: 18px;
             flex-shrink: 0;
         }
 
-        .tab-text {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            flex: 1;
-            text-align: center;
+        /* Tab Content */
+        .stats-tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .stats-tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .stats-tab {
+                flex: 1;
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .stats-tab {
+                flex: 1;
+                width: 100%;
+                font-size: 0.85rem;
+                padding: 0.75rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-tabs {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .stats-tab {
+                width: 100%;
+                flex: 1;
+            }
         }
 
         /* Legacy tabs for other sections */
@@ -947,115 +993,119 @@
 
                 <!-- Content Tabs -->
                 <div id="content-tabs" class="content-tabs" style="display: none;">
-                    <!-- Tabs Header -->
-                    <div class="modern-tabs-container">
-                        <!-- Top Row -->
-                        <div class="modern-tabs-row">
-                            <button class="modern-tab-button" onclick="switchTab('search')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <path d="m21 21-4.35-4.35"></path>
-                                </svg>
-                                <span class="tab-text">Search Match</span>
-                            </button>
-                            <button class="modern-tab-button" onclick="switchTab('overview')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M3 3v18h18"></path>
-                                    <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
-                                </svg>
-                                <span class="tab-text">Overview</span>
-                            </button>
-                            <button class="modern-tab-button" onclick="switchTab('matches')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14,2 14,8 20,8"></polyline>
-                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                    <polyline points="10,9 9,9 8,9"></polyline>
-                                </svg>
-                                <span class="tab-text">Matches</span>
-                            </button>
-                            <button class="modern-tab-button" onclick="switchTab('h2h')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="9" cy="7" r="4"></circle>
-                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                </svg>
-                                <span class="tab-text">H2H Teams</span>
-                            </button>
-                            <button class="modern-tab-button" onclick="switchTab('managers')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="12" cy="7" r="4"></circle>
-                                    <path d="M12 21v-2a4 4 0 0 0-4-4H4a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="4" cy="7" r="4"></circle>
-                                </svg>
-                                <span class="tab-text">Coaches</span>
-                            </button>
+                    <!-- Statistics Tabs -->
+                    <div class="stats-tabs-container">
+                        <!-- First Row of Tabs -->
+                        <div class="stats-tabs-row">
+                            <div class="stats-tabs">
+                                <button class="stats-tab active" onclick="showStatsTab(event, 'search')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"/>
+                                        <path d="m21 21-4.35-4.35"/>
+                                    </svg>
+                                    Search Match
+                                </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'overview')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 20V10M18 20V4M6 20v-4"/>
+                                    </svg>
+                                    Overview
+                                </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'matches')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="9" y1="9" x2="15" y2="9"/>
+                                        <line x1="9" y1="15" x2="15" y2="15"/>
+                                    </svg>
+                                    Matches
+                                </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'h2h')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                    H2H Teams
+                                </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'managers')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    Coaches
+                                </button>
+                            </div>
                         </div>
                         
-                        <!-- Bottom Row -->
-                        <div class="modern-tabs-row">
-                            <button class="modern-tab-button" onclick="switchTab('referees')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                                <span class="tab-text">Referees</span>
-                            </button>
-                            <button class="modern-tab-button" onclick="switchTab('players')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="9" cy="7" r="4"></circle>
-                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                </svg>
-                                <span class="tab-text">All Players</span>
-                            </button>
-                            <button class="modern-tab-button" onclick="switchTab('byplayer')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="9" cy="7" r="4"></circle>
-                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                </svg>
-                                <span class="tab-text">BY Player</span>
-                            </button>
-                            <button class="modern-tab-button" onclick="switchTab('goalkeepers')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                                <span class="tab-text">All Goalkeepers</span>
-                            </button>
-                            <button class="modern-tab-button" onclick="switchTab('elnady')">
-                                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                                <span class="tab-text">ElNady Stats</span>
-                            </button>
+                        <!-- Second Row of Tabs -->
+                        <div class="stats-tabs-row">
+                            <div class="stats-tabs">
+                                <button class="stats-tab" onclick="showStatsTab(event, 'referees')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="16" y1="2" x2="16" y2="6"/>
+                                        <line x1="8" y1="2" x2="8" y2="6"/>
+                                        <line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                    Referees
+                                </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'players')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                    </svg>
+                                    All Players
+                                </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'byplayer')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                    </svg>
+                                    BY Player
+                                </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'goalkeepers')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="16" y1="2" x2="16" y2="6"/>
+                                        <line x1="8" y1="2" x2="8" y2="6"/>
+                                        <line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                    All Goalkeepers
+                                </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'elnady')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="16" y1="2" x2="16" y2="6"/>
+                                        <line x1="8" y1="2" x2="8" y2="6"/>
+                                        <line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                    ElNady Stats
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Search Match Tab -->
-                    <div id="search-tab" class="tab-content active">
-                        <!-- Search Box -->
-                        <div style="text-align: center; margin-bottom: 2rem;">
-                            <input type="text" id="egypt-match-search-input" placeholder="Enter Match ID..." 
-                                style="padding: 1rem; width: 400px; max-width: 90%; border: 2px solid #667eea; border-radius: 10px; font-size: 1.1rem; text-align: center;">
-                            <br><br>
-                            <button onclick="searchEgyptMatchById()" 
-                                style="padding: 1rem 2rem; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600; cursor: pointer;">
-                                Search Match
-                            </button>
+                    <div id="search-tab" class="stats-tab-content active">
+                        <div class="stats-section">
+                            <h2 class="section-title">Search Match by ID</h2>
+                            
+                            <!-- Search Box -->
+                            <div style="max-width: 600px; margin: 2rem auto;">
+                                <div style="display: flex; gap: 1rem; align-items: center;">
+                                    <input type="text" id="egypt-match-search-input" placeholder="Enter Match ID (e.g., eg1, eg100...)" 
+                                           style="flex: 1; padding: 0.75rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;"
+                                           onkeypress="if(event.key==='Enter') searchEgyptMatchById()">
+                                    <button onclick="searchEgyptMatchById()" style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                                            <circle cx="11" cy="11" r="8"/>
+                                            <path d="m21 21-4.35-4.35"/>
+                                        </svg>
+                                        Search
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Match Details Container -->
@@ -1104,7 +1154,7 @@
                     </div>
 
                     <!-- Overview Tab -->
-                    <div id="overview-tab" class="tab-content">
+                    <div id="overview-tab" class="stats-tab-content">
                         <div class="overview-stats">
                             <div class="stat-card">
                                 <h3>Total Matches</h3>
@@ -1165,7 +1215,7 @@
                     </div>
 
                     <!-- Matches Tab -->
-                    <div id="matches-tab" class="tab-content">
+                    <div id="matches-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <h2 class="section-title">Match History</h2>
                             <div style="overflow-x: auto;">
@@ -1194,7 +1244,7 @@
                     </div>
 
                     <!-- H2H Teams Tab -->
-                    <div id="h2h-tab" class="tab-content">
+                    <div id="h2h-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <h2 class="section-title">Head to Head Statistics</h2>
                             
@@ -1229,7 +1279,7 @@
                     </div>
 
                     <!-- Managers Tab -->
-                    <div id="managers-tab" class="tab-content">
+                    <div id="managers-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <h2 class="section-title">Managers Statistics</h2>
                             
@@ -1302,7 +1352,7 @@
                     </div>
 
                     <!-- Referees Tab -->
-                    <div id="referees-tab" class="tab-content">
+                    <div id="referees-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <h2 class="section-title">Referees Statistics</h2>
                             
@@ -1334,7 +1384,7 @@
                     </div>
 
                     <!-- Players Tab -->
-                    <div id="players-tab" class="tab-content">
+                    <div id="players-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <!-- Players Filter -->
                             <div style="margin-bottom: 2rem; text-align: center;">
@@ -1376,7 +1426,7 @@
                     </div>
 
                     <!-- BY Players Tab -->
-                    <div id="byplayer-tab" class="tab-content">
+                    <div id="byplayer-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <!-- Player Search -->
                             <div style="margin-bottom: 2rem; text-align: center;">
@@ -1653,7 +1703,7 @@
                     </div>
 
                     <!-- All Goalkeepers Tab -->
-                    <div id="goalkeepers-tab" class="tab-content">
+                    <div id="goalkeepers-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <h2 class="section-title">🧤 All Goalkeepers Statistics</h2>
                             
@@ -1685,7 +1735,7 @@
                     </div>
 
                     <!-- ELNADY Tab -->
-                    <div id="elnady-tab" class="tab-content">
+                    <div id="elnady-tab" class="stats-tab-content">
                         <!-- Sub Tabs for ELNADY -->
                         <div class="tabs-header" style="margin-bottom: 2rem;">
                             <button class="tab-button active" onclick="switchElnadyTab('all-clubs')">

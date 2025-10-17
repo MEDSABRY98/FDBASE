@@ -11618,6 +11618,7 @@ function displayMatchDetails(match) {
     const opponentManager = match['OPPONENT MANAGER'] || match['MANAGER OPPONENT'] || '';
     const gf = match.GF || 0;
     const ga = match.GA || 0;
+    const penaltyResult = match.PEN || '';
     const season = match.SEASON || '';
     const stadium = match.STAD || '';
     const round = match.ROUND || '';
@@ -11631,8 +11632,11 @@ function displayMatchDetails(match) {
                 <h2 style="font-size: 2rem; font-weight: 700; color: #dc2626; margin: 0;">${ahlyTeam}</h2>
                 ${ahlyManager ? `<p style="color: #999; font-size: 0.95rem; margin-top: 0.25rem;">Manager: ${ahlyManager}</p>` : ''}
             </div>
-            <div style="font-size: 3rem; font-weight: 700; color: #333;">
-                ${gf} - ${ga}
+            <div style="text-align: center;">
+                <div style="font-size: 3rem; font-weight: 700; color: #333;">
+                    ${gf} - ${ga}
+                </div>
+                ${penaltyResult ? `<div style="font-size: 1.2rem; font-weight: 600; color: #666; margin-top: 0.5rem;">Penalties: ${penaltyResult}</div>` : ''}
             </div>
             <div style="text-align: center; flex: 1;">
                 <h2 style="font-size: 2rem; font-weight: 700; color: #3b82f6; margin: 0;">${opponentTeam}</h2>

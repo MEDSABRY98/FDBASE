@@ -5081,6 +5081,112 @@ def api_egypt_teams_player_details():
         traceback.print_exc()
         return jsonify({'error': str(e), 'playerDetails': [], 'playerDatabase': []}), 500
 
+@app.route('/api/pks-data')
+def api_pks_data():
+    """API endpoint to get PKS data for a specific match from Google Sheets"""
+    try:
+        match_id = request.args.get('match_id')
+        force_refresh = request.args.get('force_refresh', 'false').lower() == 'true'
+        
+        if not match_id:
+            return jsonify({'error': 'Match ID is required'}), 400
+        
+        print(f"🎯 PKS API request for match_id: '{match_id}' (force_refresh: {force_refresh})")
+        print(f"🔍 Looking for MATCH_ID in PKSDETAILS worksheet")
+        
+        # Always fetch fresh data from Google Sheets (no caching for PKS data)
+        print("🔄 Fetching fresh PKS data from PKSDETAILS (no cache)")
+        all_pks_data = fetch_and_organize_pks_data()
+        
+        # Get data for specific match
+        match_data = all_pks_data.get(match_id, [])
+        print(f"📊 Found {len(match_data)} PKS records for match_id: '{match_id}'")
+        if len(match_data) == 0:
+            print(f"🔍 Available match IDs in PKS data: {list(all_pks_data.keys())[:10]}")
+        return jsonify(match_data)
+        
+    except Exception as e:
+        print(f"❌ Error loading PKS data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+def fetch_and_organize_pks_data():
+    """Fetch all PKS data from PKSDETAILS worksheet in the same Al Ahly vs Zamalek sheet"""
+    try:
+        print("📊 Loading PKS data from PKSDETAILS worksheet...")
+        
+        # Use the same sheet ID as Al Ahly vs Zamalek matches
+        sheet_id = "1jxRPyUQdqa38byIzorTfowbVUzL1pWLo2_KRLrvHN60"
+        sheet_name = "PKSDETAILS"
+        
+        # Fetch data from Google Sheets using the specific GID for PKSDETAILS
+        # GID 1418983387 is the PKSDETAILS worksheet with new structure
+        # Force fresh data by adding timestamp
+        import time
+        timestamp = int(time.time())
+        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid=1418983387&t={timestamp}"
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        # Parse CSV data
+        csv_data = response.text
+        lines = csv_data.strip().split('\n')
+        
+        if len(lines) < 2:
+            print("❌ PKSDETAILS worksheet is empty or has no data")
+            return {}
+        
+        # Parse headers
+        headers = [h.strip('"') for h in lines[0].split(',')]
+        print(f"📋 PKSDETAILS headers: {headers}")
+        
+        # Find MATCH_ID column index
+        match_id_index = None
+        for i, header in enumerate(headers):
+            header_upper = header.upper().strip()
+            if header_upper in ['MATCH_ID', 'MATCHID', 'ID']:
+                match_id_index = i
+                print(f"✅ Found MATCH_ID column at index {i}: '{header}'")
+                break
+        
+        if match_id_index is None:
+            print(f"❌ ERROR: MATCH_ID column not found in PKSDETAILS!")
+            print(f"📋 Available columns: {headers}")
+            return {}
+        
+        # Organize data by match ID
+        organized_data = {}
+        processed_ids = set()
+        for line in lines[1:]:
+            if not line.strip():
+                continue
+                
+            values = [v.strip('"') for v in line.split(',')]
+            if len(values) > match_id_index:
+                row_match_id = values[match_id_index].strip()
+                
+                # Only include rows with non-empty match IDs
+                if row_match_id and row_match_id != '""':
+                    processed_ids.add(row_match_id)
+                    # Create row object
+                    row_data = {}
+                    for i, header in enumerate(headers):
+                        if i < len(values):
+                            row_data[header] = values[i]
+                    
+                    # Add to organized data
+                    if row_match_id not in organized_data:
+                        organized_data[row_match_id] = []
+                    organized_data[row_match_id].append(row_data)
+        
+        print(f"📊 PKS data organized by {len(organized_data)} unique match IDs")
+        print(f"📋 Sample MATCH_IDs in PKSDETAILS: {list(processed_ids)[:10]}")
+        
+        return organized_data
+        
+    except Exception as e:
+        print(f"❌ Error fetching PKS data from PKSDETAILS: {str(e)}")
+        return {}
+
 @app.route('/api/egypt-teams-pks')
 def api_egypt_teams_pks():
     """API endpoint to get PKS data from ETPKS sheet"""
@@ -5171,7 +5277,7 @@ if __name__ == '__main__':
     if DESKTOP_MODE:
         # Function to run Flask server
         def run_server():
-            app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
+            app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
         
         # Start Flask server in a separate thread
         server_thread = threading.Thread(target=run_server, daemon=True)
@@ -5189,5 +5295,5 @@ if __name__ == '__main__':
         webview.start()
     else:
         # Web deployment mode - just run Flask
-        port = int(os.environ.get('PORT', 5000))
+        port = int(os.environ.get('PORT', 5001))
         app.run(host='0.0.0.0', port=port)
