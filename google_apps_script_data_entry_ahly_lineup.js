@@ -11,7 +11,11 @@ const SHEET_CONFIG = {
   'SCAM': '1aP4CJHeyj_sVxqJz8YnjrxxcA4RenOWqnpkXBHCs5AE',
   'CWCAM': '1YF2UbWWX54lz9akSlEZObyaU1_EPsoQArSvSlwPG0Ys',
   'WCAM': '1ghZCE0b5ssdRtZdJM-38LlE-JrLMVGGs9HDV4C0hC1I',
-  'EGYAM': '1_cwgRcc5vHk9lHl7Anc1Mo_W4rAoIsCP9ILS4FPny8Q'
+  'EGYAM': '1_cwgRcc5vHk9lHl7Anc1Mo_W4rAoIsCP9ILS4FPny8Q',
+  'الدوري المصري': '1_cwgRcc5vHk9lHl7Anc1Mo_W4rAoIsCP9ILS4FPny8Q',
+  'كأس مصر': '1_cwgRcc5vHk9lHl7Anc1Mo_W4rAoIsCP9ILS4FPny8Q',
+  'السوبر المصري': '1_cwgRcc5vHk9lHl7Anc1Mo_W4rAoIsCP9ILS4FPny8Q',
+  'كأس الرابطة': '1_cwgRcc5vHk9lHl7Anc1Mo_W4rAoIsCP9ILS4FPny8Q'
 };
 
 // Fallback: Create new spreadsheet if sheet ID doesn't work

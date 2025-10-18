@@ -17,7 +17,7 @@ class Config:
     GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
     
     # Google Apps Script URL for AHLY LINEUP
-    GOOGLE_APPS_SCRIPT_URL = os.environ.get('GOOGLE_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbwQvXQfornyh09ooGBpSGVDk-fgkPgOnbTfT1IbIxsJ7yN4ViLkwUT1uytMx5R_I3eC/exec')
+    GOOGLE_APPS_SCRIPT_URL = os.environ.get('GOOGLE_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbyfzKiAiltr3iCm5CclY4XFsZ2LG8_g_3aTy6gB2pERopyQ8wgOLZgmOLhSaNcqhxRQ/exec')
     
     # Google Apps Script URL for AHLY PKs
     GOOGLE_APPS_SCRIPT_PKS_URL = os.environ.get('GOOGLE_APPS_SCRIPT_PKS_URL', 'https://script.google.com/macros/s/AKfycbwZSSm87FRLr4Pez8-CiSZ_cN1Q5JQKBkw-oNOEQeNGvedNM77z19CFspt_xJMADXU/exec')
