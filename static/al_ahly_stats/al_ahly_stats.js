@@ -5847,6 +5847,7 @@ async function loadGoalkeeperStatistics(goalkeeperName, selectedTeam = '') {
                 clean_sheets: 0,
                 goals_conceded: 0,
                 clean_sheet_percentage: 0,
+                avg_goals_conceded: 0,
                 penalty_goals: 0,
                 penalty_saves: 0,
                 penalties_missed: 0
@@ -5866,6 +5867,7 @@ async function loadGoalkeeperStatistics(goalkeeperName, selectedTeam = '') {
             clean_sheets: 0,
             goals_conceded: 0,
             clean_sheet_percentage: 0,
+            avg_goals_conceded: 0,
             penalty_goals: 0,
             penalty_saves: 0,
             penalties_missed: 0
@@ -7328,6 +7330,7 @@ function loadGKOverview() {
             clean_sheets: 0,
             goals_conceded: 0,
             clean_sheet_percentage: 0,
+            avg_goals_conceded: 0,
             penalty_goals: 0,
             penalty_saves: 0,
             penalties_missed: 0
@@ -7355,6 +7358,7 @@ async function loadGKOverviewStats(goalkeeperName, teamFilter = '') {
         clean_sheets: stats.cleanSheets,
         goals_conceded: stats.goalsConceded,
         clean_sheet_percentage: stats.cleanSheetPercentage,
+        avg_goals_conceded: stats.avgGoalsConceded,
         penalty_goals: stats.penaltyGoals,
         penalty_saves: stats.penaltySaves,
         penalties_missed: stats.penaltiesMissed
@@ -7515,7 +7519,14 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
     howPenMissed.forEach(record => {
         const playerName = normalizeStr(record['PLAYER NAME'] || '');
         if (playerName === goalkeeperNameNorm) {
-            penaltySaves++;
+            // Check if this penalty save was in one of the filtered matches
+            const matchId = record.MATCH_ID;
+            if (matchId && filteredMatchIds.has(matchId)) {
+                penaltySaves++;
+            } else if (!matchId) {
+                // If no match ID, count it (legacy data)
+                penaltySaves++;
+            }
         }
     });
     
@@ -7544,11 +7555,15 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
     // Calculate clean sheet percentage
     const cleanSheetPercentage = totalMatches > 0 ? Math.round((cleanSheets / totalMatches) * 100) : 0;
     
+    // Calculate average goals conceded per match
+    const avgGoalsConceded = totalMatches > 0 ? (goalsConceded / totalMatches).toFixed(2) : 0;
+    
     const stats = {
         totalMatches,
         cleanSheets,
         goalsConceded,
         cleanSheetPercentage,
+        avgGoalsConceded,
         penaltyGoals,
         penaltySaves,
         penaltiesMissed
@@ -7715,6 +7730,7 @@ function updateGKOverviewCards(stats) {
         clean_sheets: stats.clean_sheets,
         goals_conceded: stats.goals_conceded,
         clean_sheet_percentage: stats.clean_sheet_percentage,
+        avg_goals_conceded: stats.avg_goals_conceded,
         penalty_goals: stats.penalty_goals,
         penalty_saves: stats.penalty_saves,
         penalties_missed: stats.penalties_missed
@@ -7722,12 +7738,12 @@ function updateGKOverviewCards(stats) {
     
     // Update each card with the corresponding stat
     const elements = [
-        'gk-total-matches', 'gk-clean-sheets', 'gk-goals-conceded', 
+        'gk-total-matches', 'gk-clean-sheets', 'gk-goals-conceded', 'gk-avg-goals-conceded',
         'gk-clean-sheet-percentage', 'gk-penalty-goals', 'gk-penalty-saves', 'gk-penalties-missed'
     ];
     
     const values = [
-        stats.total_matches, stats.clean_sheets, stats.goals_conceded,
+        stats.total_matches, stats.clean_sheets, stats.goals_conceded, stats.avg_goals_conceded,
         stats.clean_sheet_percentage + '%', stats.penalty_goals, stats.penalty_saves, stats.penalties_missed
     ];
     
@@ -11590,11 +11606,20 @@ function searchMatchById() {
         detailsContainer.style.display = 'block';
         noMatchFound.style.display = 'none';
         
-        // Activate all sub-tab content divs
+        // Activate only the first sub-tab content (lineup) and remove active from others
+        document.querySelectorAll('#match-details-container .goal-details-tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
         document.getElementById('match-lineup-content').classList.add('active');
-        document.getElementById('match-goals-content').classList.add('active');
-        document.getElementById('match-goalkeepers-content').classList.add('active');
-        document.getElementById('match-pks-content').classList.add('active');
+        
+        // Also activate the first tab button
+        document.querySelectorAll('#match-details-container .goal-details-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        const firstTab = document.querySelector('#match-details-container .goal-details-tab');
+        if (firstTab) {
+            firstTab.classList.add('active');
+        }
     } else {
         detailsContainer.style.display = 'none';
         noMatchFound.style.display = 'block';
