@@ -1374,11 +1374,11 @@
 
         /* Player Sub-tabs Styling */
         .stats-sub-tabs {
-            display: flex;
-            justify-content: center;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
             gap: 0.5rem;
             margin-bottom: 1.5rem;
-            flex-wrap: wrap;
+            max-width: 100%;
         }
 
         .stats-sub-tab {
@@ -1386,7 +1386,7 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            padding: 0.75rem 1rem;
+            padding: 0.75rem 0.5rem;
             border: 2px solid #e5e7eb;
             border-radius: 8px;
             background: white;
@@ -1394,11 +1394,9 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 0.875rem;
-            flex: 1;
-            min-width: 120px;
-            max-width: 150px;
+            font-size: 0.8rem;
             text-align: center;
+            min-height: 50px;
         }
 
         .stats-sub-tab:hover {
@@ -1431,24 +1429,31 @@
         }
 
         /* Responsive design for sub-tabs */
-        @media (max-width: 768px) {
+        @media (max-width: 1200px) {
             .stats-sub-tabs {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .stats-sub-tab {
-                width: 100%;
-                max-width: 250px;
+                grid-template-columns: repeat(3, 1fr);
             }
         }
 
-        @media (max-width: 1024px) {
+        @media (max-width: 768px) {
+            .stats-sub-tabs {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
             .stats-sub-tab {
-                flex: 1;
-                min-width: 100px;
-                max-width: 130px;
+                font-size: 0.75rem;
+                padding: 0.5rem 0.25rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-sub-tabs {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-sub-tab {
                 font-size: 0.8rem;
+                padding: 0.75rem 1rem;
             }
         }
 
@@ -3907,4 +3912,5 @@
                 const btn = document.querySelector(`.stats-tab[onclick*="'${name}'"]`);
                 if (btn) btn.classList.add('active');
             });
+        })();
         })();

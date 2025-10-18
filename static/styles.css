@@ -1295,11 +1295,14 @@ body {
 
 /* Highlight values > 0 in player matches table */
 .highlight-value {
-    background-color: #fef3c7 !important;
-    color: #92400e !important;
-    font-weight: 600 !important;
+    background-color: transparent !important;
+    color: #dc2626 !important;
+    font-weight: 700 !important;
+    font-size: 1.2em !important;
+    text-shadow: 0 0 8px rgba(220, 38, 38, 0.3);
     border-radius: 4px;
     padding: 2px 4px;
+    transition: all 0.3s ease;
 }
 
 /* Sortable table headers */
