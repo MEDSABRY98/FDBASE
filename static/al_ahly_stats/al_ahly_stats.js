@@ -7969,6 +7969,9 @@ function loadPlayerSubTabData(subTabName) {
         case 'assist-details':
             loadPlayerAssistDetails();
             break;
+        case 'with-coaches':
+            loadPlayerWithCoachesStats();
+            break;
     }
 }
 
@@ -11194,6 +11197,304 @@ function sortAssistDetailsTable(column) {
     console.log(`✅ Table sorted by ${column} (${assistDetailsSortState.direction})`);
 }
 
+// Load Player With Coaches Statistics
+function loadPlayerWithCoachesStats() {
+    try {
+        const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+        const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+        
+        if (!selectedPlayer) {
+            console.log('⚠️ No player selected for With Coaches stats');
+            return;
+        }
+        
+        console.log(`👨‍💼 Loading With Coaches stats for player: ${selectedPlayer}, team filter: ${teamFilter}`);
+        
+        // Get data from sheets
+        const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
+        const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
+        const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
+        
+        // Get all player matches from LINEUPDETAILS for minutes calculation
+        const playerLineupData = lineupDetails.filter(row => {
+            const playerName = normalizeStr(row['PLAYER NAME'] || row.PLAYER || '');
+            const team = normalizeStr(row.TEAM || row['AHLY TEAM'] || '');
+            
+            const nameMatch = playerName.toLowerCase() === selectedPlayer.toLowerCase();
+            const teamMatch = !teamFilter || team.toLowerCase().includes(teamFilter.toLowerCase());
+            
+            return nameMatch && teamMatch;
+        });
+        
+        // Get all player goals and assists from PLAYERDETAILS (regardless of LINEUPDETAILS)
+        const playerGoalsAssists = playerDetails.filter(pd => {
+            const pdPlayerName = normalizeStr(pd['PLAYER NAME'] || pd.PLAYER || '');
+            const pdTeam = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '');
+            
+            const nameMatch = pdPlayerName.toLowerCase() === selectedPlayer.toLowerCase();
+            const teamMatch = !teamFilter || pdTeam.toLowerCase().includes(teamFilter.toLowerCase());
+            
+            return nameMatch && teamMatch;
+        });
+        
+        // Group by coach and calculate stats
+        const coachStats = new Map();
+        
+        // First, add all matches from LINEUPDETAILS (for minutes and match count)
+        playerLineupData.forEach(row => {
+            const matchId = normalizeStr(row.MATCH_ID || row['MATCH ID'] || '');
+            const minutes = safeInt(row.MINTOTAL || row.MINUTES || row.MINUTE || 0);
+            
+            // Get coach name from MATCHDETAILS using match ID
+            const matchDetail = matchDetails.find(match => 
+                normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+            );
+            
+            // If player is in LINEUPDETAILS, they are Al Ahly player
+            // So their coach is AHLY MANAGER
+            let coach = 'Unknown Coach';
+            if (matchDetail) {
+                coach = normalizeStr(matchDetail['AHLY MANAGER'] || 'Unknown Coach');
+            }
+            
+            // Initialize coach stats if not exists
+            if (!coachStats.has(coach)) {
+                coachStats.set(coach, {
+                    coach: coach,
+                    matches: 0,
+                    minutes: 0,
+                    goals: 0,
+                    assists: 0
+                });
+            }
+            
+            const stats = coachStats.get(coach);
+            stats.matches++;
+            stats.minutes += minutes;
+        });
+        
+        // Then, add all goals and assists from PLAYERDETAILS
+        playerGoalsAssists.forEach(pd => {
+            const matchId = normalizeStr(pd.MATCH_ID || pd['MATCH ID'] || '');
+            const ga = normalizeStr(pd.GA || '').toUpperCase();
+            
+            // Get coach name from MATCHDETAILS using match ID
+            const matchDetail = matchDetails.find(match => 
+                normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+            );
+            
+            // Determine coach based on player's team from PLAYERDETAILS
+            const playerTeam = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '').toLowerCase();
+            const isAhlyPlayer = playerTeam === 'الأهلي' || playerTeam === 'al ahly' || playerTeam === 'ahly';
+            
+            let coach = 'Unknown Coach';
+            if (matchDetail) {
+                if (isAhlyPlayer) {
+                    coach = normalizeStr(matchDetail['AHLY MANAGER'] || 'Unknown Coach');
+                } else {
+                    coach = normalizeStr(matchDetail['OPPONENT MANAGER'] || 'Unknown Coach');
+                }
+            }
+            
+            // Don't add matches from PLAYERDETAILS - only from LINEUPDETAILS
+            // This ensures matches are only counted when player was actually in lineup
+            
+            // Initialize coach stats if not exists
+            if (!coachStats.has(coach)) {
+                coachStats.set(coach, {
+                    coach: coach,
+                    matches: 0,
+                    minutes: 0,
+                    goals: 0,
+                    assists: 0
+                });
+            }
+            
+            const stats = coachStats.get(coach);
+            if (ga === 'GOAL') stats.goals++;
+            if (ga === 'ASSIST') stats.assists++;
+        });
+        
+        // Convert to array and filter by team filter
+        let coachStatsArray = Array.from(coachStats.values());
+        
+        // Apply team filter to coaches
+        if (teamFilter) {
+            coachStatsArray = coachStatsArray.filter(stat => {
+                // Check if this coach has any matches that match the team filter
+                const hasMatchingMatches = playerLineupData.some(row => {
+                    const matchId = normalizeStr(row.MATCH_ID || row['MATCH ID'] || '');
+                    const matchDetail = matchDetails.find(match => 
+                        normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+                    );
+                    
+                    if (!matchDetail) return false;
+                    
+                    // Get coach for this match
+                    let coach = 'Unknown Coach';
+                    coach = normalizeStr(matchDetail['AHLY MANAGER'] || 'Unknown Coach');
+                    
+                    // Check if this coach matches and team matches filter
+                    if (coach === stat.coach) {
+                        const team = normalizeStr(row.TEAM || row['AHLY TEAM'] || '');
+                        return team.toLowerCase().includes(teamFilter.toLowerCase());
+                    }
+                    return false;
+                });
+                
+                // Also check PLAYERDETAILS for goals/assists
+                const hasMatchingPlayerDetails = playerGoalsAssists.some(pd => {
+                    const matchId = normalizeStr(pd.MATCH_ID || pd['MATCH ID'] || '');
+                    const matchDetail = matchDetails.find(match => 
+                        normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+                    );
+                    
+                    if (!matchDetail) return false;
+                    
+                    const playerTeam = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '').toLowerCase();
+                    const isAhlyPlayer = playerTeam === 'الأهلي' || playerTeam === 'al ahly' || playerTeam === 'ahly';
+                    
+                    let coach = 'Unknown Coach';
+                    if (isAhlyPlayer) {
+                        coach = normalizeStr(matchDetail['AHLY MANAGER'] || 'Unknown Coach');
+                    } else {
+                        coach = normalizeStr(matchDetail['OPPONENT MANAGER'] || 'Unknown Coach');
+                    }
+                    
+                    if (coach === stat.coach) {
+                        const team = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '');
+                        return team.toLowerCase().includes(teamFilter.toLowerCase());
+                    }
+                    return false;
+                });
+                
+                return hasMatchingMatches || hasMatchingPlayerDetails;
+            });
+        }
+        
+        // Filter out coaches with no stats at all
+        coachStatsArray = coachStatsArray.filter(stat => 
+            stat.matches > 0 || stat.minutes > 0 || stat.goals > 0 || stat.assists > 0
+        );
+        
+        // Sort by matches (descending)
+        coachStatsArray = coachStatsArray.sort((a, b) => b.matches - a.matches);
+        
+        // Store data globally for sorting
+        window.currentWithCoachesData = coachStatsArray;
+        
+        // Render table
+        const tableBody = document.getElementById('with-coaches-table').querySelector('tbody');
+        if (coachStatsArray.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999; padding: 2rem;">No data available for this player</td></tr>';
+        } else {
+            tableBody.innerHTML = coachStatsArray.map(coach => `
+                <tr>
+                    <td style="text-align: center; font-weight: 600; color: #2c3e50;">${coach.coach}</td>
+                    <td style="text-align: center; font-weight: 700; color: #3b82f6; font-size: 1.2rem;">${coach.matches}</td>
+                    <td style="text-align: center; font-weight: 700; color: #10b981; font-size: 1.2rem;">${coach.minutes}</td>
+                    <td style="text-align: center; font-weight: 700; color: #ef4444; font-size: 1.2rem;">${coach.goals}</td>
+                    <td style="text-align: center; font-weight: 700; color: #f59e0b; font-size: 1.2rem;">${coach.assists}</td>
+                </tr>
+            `).join('');
+        }
+        
+        // Update totals
+        const totals = coachStatsArray.reduce((acc, coach) => ({
+            matches: acc.matches + coach.matches,
+            minutes: acc.minutes + coach.minutes,
+            goals: acc.goals + coach.goals,
+            assists: acc.assists + coach.assists
+        }), { matches: 0, minutes: 0, goals: 0, assists: 0 });
+        
+        document.getElementById('with-coaches-total-matches').textContent = totals.matches;
+        document.getElementById('with-coaches-total-minutes').textContent = totals.minutes;
+        document.getElementById('with-coaches-total-goals').textContent = totals.goals;
+        document.getElementById('with-coaches-total-assists').textContent = totals.assists;
+        
+        console.log(`✅ Loaded With Coaches stats: ${coachStatsArray.length} coaches found`);
+        
+    } catch (error) {
+        console.error('❌ Error loading With Coaches stats:', error);
+        const tableBody = document.getElementById('with-coaches-table').querySelector('tbody');
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ef4444; padding: 2rem;">Error loading data</td></tr>';
+    }
+}
+
+// Sort With Coaches Table
+let withCoachesSortState = { column: null, direction: 'asc' };
+
+function sortWithCoachesTable(column) {
+    if (!window.currentWithCoachesData || window.currentWithCoachesData.length === 0) {
+        return;
+    }
+    
+    // Toggle sort direction if same column
+    if (withCoachesSortState.column === column) {
+        withCoachesSortState.direction = withCoachesSortState.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        withCoachesSortState.column = column;
+        withCoachesSortState.direction = 'asc';
+    }
+    
+    const data = [...window.currentWithCoachesData];
+    
+    // Sort data
+    data.sort((a, b) => {
+        let valA, valB;
+        
+        if (column === 'coach') {
+            valA = a.coach.toLowerCase();
+            valB = b.coach.toLowerCase();
+            return withCoachesSortState.direction === 'asc' 
+                ? valA.localeCompare(valB) 
+                : valB.localeCompare(valA);
+        } else if (column === 'matches') {
+            valA = a.matches;
+            valB = b.matches;
+        } else if (column === 'minutes') {
+            valA = a.minutes;
+            valB = b.minutes;
+        } else if (column === 'goals') {
+            valA = a.goals;
+            valB = b.goals;
+        } else if (column === 'assists') {
+            valA = a.assists;
+            valB = b.assists;
+        }
+        
+        if (withCoachesSortState.direction === 'asc') {
+            return valA - valB;
+        } else {
+            return valB - valA;
+        }
+    });
+    
+    // Render sorted data
+    const tableBody = document.getElementById('with-coaches-table').querySelector('tbody');
+    tableBody.innerHTML = data.map(coach => `
+        <tr>
+            <td style="text-align: center; font-weight: 600; color: #2c3e50;">${coach.coach}</td>
+            <td style="text-align: center; font-weight: 700; color: #3b82f6; font-size: 1.2rem;">${coach.matches}</td>
+            <td style="text-align: center; font-weight: 700; color: #10b981; font-size: 1.2rem;">${coach.minutes}</td>
+            <td style="text-align: center; font-weight: 700; color: #ef4444; font-size: 1.2rem;">${coach.goals}</td>
+            <td style="text-align: center; font-weight: 700; color: #f59e0b; font-size: 1.2rem;">${coach.assists}</td>
+        </tr>
+    `).join('');
+    
+    // Update sort indicators
+    document.querySelectorAll('#with-coaches-table th.sortable').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    const currentHeader = document.querySelector(`#with-coaches-table th.sortable[onclick*="${column}"]`);
+    if (currentHeader) {
+        currentHeader.classList.add(withCoachesSortState.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+    }
+    
+    console.log(`✅ With Coaches table sorted by ${column} (${withCoachesSortState.direction})`);
+}
+
 /**
  * Search Assist Details Table
  */
@@ -11912,12 +12213,12 @@ function displayMatchGoals(matchId) {
     // Group by team (Al Ahly vs Opponent)
     const ahlyGoals = matchGoals.filter(g => {
         const team = normalizeStr(g.TEAM || g['AHLY TEAM'] || '').toLowerCase();
-        return team.includes('ahly') || team.includes('الأهلي');
+        return team === 'الأهلي' || team === 'al ahly' || team === 'ahly';
     });
     
     const opponentGoals = matchGoals.filter(g => {
         const team = normalizeStr(g.TEAM || g['AHLY TEAM'] || '').toLowerCase();
-        return !team.includes('ahly') && !team.includes('الأهلي');
+        return team !== 'الأهلي' && team !== 'al ahly' && team !== 'ahly';
     });
     
     // Helper function to find assist for a goal
@@ -12049,12 +12350,12 @@ function displayMatchGoalkeepers(matchId) {
     // Group by team (Al Ahly vs Opponent)
     const ahlyGKs = matchGKs.filter(gk => {
         const team = normalizeStr(gk.TEAM || gk['AHLY TEAM'] || '').toLowerCase();
-        return team.includes('ahly') || team.includes('الأهلي');
+        return team === 'الأهلي' || team === 'al ahly' || team === 'ahly';
     });
     
     const opponentGKs = matchGKs.filter(gk => {
         const team = normalizeStr(gk.TEAM || gk['AHLY TEAM'] || '').toLowerCase();
-        return !team.includes('ahly') && !team.includes('الأهلي');
+        return team !== 'الأهلي' && team !== 'al ahly' && team !== 'ahly';
     });
     
     let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">';
