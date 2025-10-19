@@ -135,6 +135,8 @@ function safeInt(v, d = 0) {
 }
 
 function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {}) {
+    // This function returns ALL matches where the player participated (from LINEUPDETAILS)
+    // with their goals/assists data (from PLAYERDETAILS) - shows 0 if no goals/assists
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
@@ -237,10 +239,30 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
     });
 
     // Build rows by joining filtered MATCHDETAILS and LINEUPDETAILS
+    // Include ALL matches where player participated (from LINEUPDETAILS), not just those with goals/assists
     const result = [];
-    byMatchId.forEach((agg, matchId) => {
+    
+    // Get all matches where player participated from LINEUPDETAILS
+    const playerLineupMatches = lineup.filter(l => {
+        const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
+        if (p !== nameLower) return false;
+        if (teamLower) {
+            const team = normalizeStr(l.TEAM || l['AHLY TEAM']).toLowerCase();
+            if (team !== teamLower) return false;
+        }
+        const matchId = normalizeStr(l.MATCH_ID);
+        return filteredMatchIds.has(matchId);
+    });
+    
+    console.log(`Found ${playerLineupMatches.length} matches for player ${playerName} in LINEUPDETAILS`);
+    
+    // Create result for each match where player participated (regardless of goals/assists)
+    playerLineupMatches.forEach(l => {
+        const matchId = normalizeStr(l.MATCH_ID);
         const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID) === matchId) || {};
-        const l = lineup.find(x => normalizeStr(x.MATCH_ID) === matchId && normalizeStr(x.PLAYER || x['PLAYER NAME']).toLowerCase() === nameLower) || {};
+        const agg = byMatchId.get(matchId) || { goals: 0, assists: 0 };
+        
+        // Include ALL matches where player participated
         result.push({
             date: normalizeStr(m.DATE),
             season: normalizeStr(m.SEASON),
@@ -251,6 +273,8 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
             minutes: safeInt(l.MINTOTAL || l['MIN TOTAL'] || l.MINUTES)
         });
     });
+    
+    console.log(`Returning ${result.length} matches for player ${playerName} (all matches where player participated)`);
     return result;
 }
 
@@ -4127,11 +4151,13 @@ async function loadPlayerOverviewStats(playerName) {
         const match = matchDetails.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID'] || m.match_id) === matchId);
         const matchStats = perMatch.get(matchId);
         const goals = (matchStats && matchStats.goals) || 0;
+        const assists = (matchStats && matchStats.assists) || 0;
         
         return {
             matchId: matchId,
             date: match ? (match.DATE || 0) : 0,
-            goals: goals
+            goals: goals,
+            assists: assists
         };
     }).filter(m => m.matchId); // Remove any without matchId
 
@@ -4142,48 +4168,34 @@ async function loadPlayerOverviewStats(playerName) {
         return dateA - dateB;
     });
 
-    // Calculate longest consecutive streaks with date ranges
-    let currentGoalStreak = 0;
-    let maxGoalStreak = 0;
-    let currentGoalStreakStart = null;
-    let maxGoalStreakStart = null;
-    let maxGoalStreakEnd = null;
+    // Calculate longest consecutive streaks using the same logic as popup functions
+    const gaStreak = findLongestConsecutiveGAStreak(lineupWithDates);
+    const noGAStreak = findLongestConsecutiveNoGAStreak(lineupWithDates);
+    const goalStreak = findLongestConsecutiveScoringStreak(lineupWithDates);
+    const noGoalStreak = findLongestConsecutiveNoGoalStreak(lineupWithDates);
+    const assistStreak = findLongestConsecutiveAssistStreak(lineupWithDates);
+    const noAssistStreak = findLongestConsecutiveNoAssistStreak(lineupWithDates);
     
-    let currentNoGoalStreak = 0;
-    let maxNoGoalStreak = 0;
-    let currentNoGoalStreakStart = null;
-    let maxNoGoalStreakStart = null;
-    let maxNoGoalStreakEnd = null;
-
-    lineupWithDates.forEach(match => {
-        if (match.goals > 0) {
-            // Scored in this match
-            if (currentGoalStreak === 0) {
-                currentGoalStreakStart = match.date;
-            }
-            currentGoalStreak += 1;
-            if (currentGoalStreak > maxGoalStreak) {
-                maxGoalStreak = currentGoalStreak;
-                maxGoalStreakStart = currentGoalStreakStart;
-                maxGoalStreakEnd = match.date;
-            }
-            currentNoGoalStreak = 0; // Reset no-goal streak
-            currentNoGoalStreakStart = null;
-        } else {
-            // Did not score in this match
-            if (currentNoGoalStreak === 0) {
-                currentNoGoalStreakStart = match.date;
-            }
-            currentNoGoalStreak += 1;
-            if (currentNoGoalStreak > maxNoGoalStreak) {
-                maxNoGoalStreak = currentNoGoalStreak;
-                maxNoGoalStreakStart = currentNoGoalStreakStart;
-                maxNoGoalStreakEnd = match.date;
-            }
-            currentGoalStreak = 0; // Reset goal streak
-            currentGoalStreakStart = null;
-        }
-    });
+    const maxGAStreak = gaStreak.length;
+    const maxNoGAStreak = noGAStreak.length;
+    const maxGoalStreak = goalStreak.length;
+    const maxNoGoalStreak = noGoalStreak.length;
+    const maxAssistStreak = assistStreak.length;
+    const maxNoAssistStreak = noAssistStreak.length;
+    
+    // Get date ranges from the actual streak matches
+    const maxGAStreakStart = gaStreak.length > 0 ? gaStreak[0].date : null;
+    const maxGAStreakEnd = gaStreak.length > 0 ? gaStreak[gaStreak.length - 1].date : null;
+    const maxNoGAStreakStart = noGAStreak.length > 0 ? noGAStreak[0].date : null;
+    const maxNoGAStreakEnd = noGAStreak.length > 0 ? noGAStreak[noGAStreak.length - 1].date : null;
+    const maxGoalStreakStart = goalStreak.length > 0 ? goalStreak[0].date : null;
+    const maxGoalStreakEnd = goalStreak.length > 0 ? goalStreak[goalStreak.length - 1].date : null;
+    const maxNoGoalStreakStart = noGoalStreak.length > 0 ? noGoalStreak[0].date : null;
+    const maxNoGoalStreakEnd = noGoalStreak.length > 0 ? noGoalStreak[noGoalStreak.length - 1].date : null;
+    const maxAssistStreakStart = assistStreak.length > 0 ? assistStreak[0].date : null;
+    const maxAssistStreakEnd = assistStreak.length > 0 ? assistStreak[assistStreak.length - 1].date : null;
+    const maxNoAssistStreakStart = noAssistStreak.length > 0 ? noAssistStreak[0].date : null;
+    const maxNoAssistStreakEnd = noAssistStreak.length > 0 ? noAssistStreak[noAssistStreak.length - 1].date : null;
 
     // Format dates for display
     function formatDateForDisplay(dateVal) {
@@ -4226,6 +4238,14 @@ async function loadPlayerOverviewStats(playerName) {
         return str;
     }
 
+    const gaStreakPeriod = (maxGAStreakStart && maxGAStreakEnd) 
+        ? `${formatDateForDisplay(maxGAStreakStart)} to ${formatDateForDisplay(maxGAStreakEnd)}`
+        : '';
+    
+    const noGAStreakPeriod = (maxNoGAStreakStart && maxNoGAStreakEnd)
+        ? `${formatDateForDisplay(maxNoGAStreakStart)} to ${formatDateForDisplay(maxNoGAStreakEnd)}`
+        : '';
+    
     const goalStreakPeriod = (maxGoalStreakStart && maxGoalStreakEnd) 
         ? `${formatDateForDisplay(maxGoalStreakStart)} to ${formatDateForDisplay(maxGoalStreakEnd)}`
         : '';
@@ -4233,16 +4253,32 @@ async function loadPlayerOverviewStats(playerName) {
     const noGoalStreakPeriod = (maxNoGoalStreakStart && maxNoGoalStreakEnd)
         ? `${formatDateForDisplay(maxNoGoalStreakStart)} to ${formatDateForDisplay(maxNoGoalStreakEnd)}`
         : '';
+    
+    const assistStreakPeriod = (maxAssistStreakStart && maxAssistStreakEnd) 
+        ? `${formatDateForDisplay(maxAssistStreakStart)} to ${formatDateForDisplay(maxAssistStreakEnd)}`
+        : '';
+    
+    const noAssistStreakPeriod = (maxNoAssistStreakStart && maxNoAssistStreakEnd)
+        ? `${formatDateForDisplay(maxNoAssistStreakStart)} to ${formatDateForDisplay(maxNoAssistStreakEnd)}`
+        : '';
 
     updatePlayerOverviewCards({
         total_matches: totalMatches,
         total_minutes: totalMinutes,
         matches_with_goals: matchesWithGoals,
         matches_without_goals: matchesWithoutGoals,
+        consecutive_ga: maxGAStreak,
+        consecutive_ga_period: gaStreakPeriod,
+        consecutive_no_ga: maxNoGAStreak,
+        consecutive_no_ga_period: noGAStreakPeriod,
         consecutive_goals: maxGoalStreak,
         consecutive_goals_period: goalStreakPeriod,
         consecutive_no_goals: maxNoGoalStreak,
         consecutive_no_goals_period: noGoalStreakPeriod,
+        consecutive_assists: maxAssistStreak,
+        consecutive_assists_period: assistStreakPeriod,
+        consecutive_no_assists: maxNoAssistStreak,
+        consecutive_no_assists_period: noAssistStreakPeriod,
         total_goals: totalGoals,
         total_assists: totalAssists,
         brace_goals: braceGoals,
@@ -4268,7 +4304,7 @@ function updatePlayerOverviewCards(stats) {
     // Update each card with the corresponding stat
     const elements = [
         'player-total-matches', 'player-total-minutes', 'player-matches-with-goals', 'player-matches-without-goals',
-        'player-consecutive-goals', 'player-consecutive-no-goals',
+        'player-consecutive-ga', 'player-consecutive-no-ga', 'player-consecutive-goals', 'player-consecutive-no-goals', 'player-consecutive-assists', 'player-consecutive-no-assists',
         'player-total-goals', 'player-total-assists',
         'player-brace-goals', 'player-brace-assists', 'player-hat-trick-goals', 'player-hat-trick-assists',
         'player-three-plus-goals', 'player-three-plus-assists',
@@ -4281,7 +4317,7 @@ function updatePlayerOverviewCards(stats) {
     
     const values = [
         stats.total_matches, stats.total_minutes, stats.matches_with_goals, stats.matches_without_goals,
-        stats.consecutive_goals, stats.consecutive_no_goals,
+        stats.consecutive_ga, stats.consecutive_no_ga, stats.consecutive_goals, stats.consecutive_no_goals, stats.consecutive_assists, stats.consecutive_no_assists,
         stats.total_goals, stats.total_assists,
         stats.brace_goals, stats.brace_assists, stats.hat_trick_goals, stats.hat_trick_assists,
         stats.three_plus_goals, stats.three_plus_assists,
@@ -4303,6 +4339,18 @@ function updatePlayerOverviewCards(stats) {
     }
     
     // Update period details for consecutive streaks
+    const consecutiveGAPeriod = document.getElementById('player-consecutive-ga-period');
+    if (consecutiveGAPeriod) {
+        consecutiveGAPeriod.textContent = stats.consecutive_ga_period || '';
+        consecutiveGAPeriod.style.display = stats.consecutive_ga_period ? 'block' : 'none';
+    }
+    
+    const consecutiveNoGAPeriod = document.getElementById('player-consecutive-no-ga-period');
+    if (consecutiveNoGAPeriod) {
+        consecutiveNoGAPeriod.textContent = stats.consecutive_no_ga_period || '';
+        consecutiveNoGAPeriod.style.display = stats.consecutive_no_ga_period ? 'block' : 'none';
+    }
+    
     const consecutiveGoalsPeriod = document.getElementById('player-consecutive-goals-period');
     if (consecutiveGoalsPeriod) {
         consecutiveGoalsPeriod.textContent = stats.consecutive_goals_period || '';
@@ -4313,6 +4361,18 @@ function updatePlayerOverviewCards(stats) {
     if (consecutiveNoGoalsPeriod) {
         consecutiveNoGoalsPeriod.textContent = stats.consecutive_no_goals_period || '';
         consecutiveNoGoalsPeriod.style.display = stats.consecutive_no_goals_period ? 'block' : 'none';
+    }
+    
+    const consecutiveAssistsPeriod = document.getElementById('player-consecutive-assists-period');
+    if (consecutiveAssistsPeriod) {
+        consecutiveAssistsPeriod.textContent = stats.consecutive_assists_period || '';
+        consecutiveAssistsPeriod.style.display = stats.consecutive_assists_period ? 'block' : 'none';
+    }
+    
+    const consecutiveNoAssistsPeriod = document.getElementById('player-consecutive-no-assists-period');
+    if (consecutiveNoAssistsPeriod) {
+        consecutiveNoAssistsPeriod.textContent = stats.consecutive_no_assists_period || '';
+        consecutiveNoAssistsPeriod.style.display = stats.consecutive_no_assists_period ? 'block' : 'none';
     }
 }
 
@@ -4331,10 +4391,18 @@ function loadPlayerOverview() {
         total_minutes: 0,
         matches_with_goals: 0,
         matches_without_goals: 0,
+        consecutive_ga: 0,
+        consecutive_ga_period: '',
+        consecutive_no_ga: 0,
+        consecutive_no_ga_period: '',
         consecutive_goals: 0,
         consecutive_goals_period: '',
         consecutive_no_goals: 0,
         consecutive_no_goals_period: '',
+        consecutive_assists: 0,
+        consecutive_assists_period: '',
+        consecutive_no_assists: 0,
+        consecutive_no_assists_period: '',
         total_goals: 0,
         total_assists: 0,
         brace_goals: 0,
@@ -4369,6 +4437,7 @@ function loadPlayerMatchesWithFilter(selectedTeam) {
     
     const rows = getPlayerMatchesFromSheets(playerName, selectedTeam, appliedFilters);
     console.log('Player matches rows:', rows.length);
+    console.log('Player matches data:', rows);
     renderPlayerMatchesTable(rows);
 }
 
@@ -4423,7 +4492,7 @@ function renderPlayerMatchesTable(matches) {
     if (!tbody) return;
     tbody.innerHTML = '';
     if (!matches || matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">No matches data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7">No matches data available</td></tr>';
         return;
     }
     // Sort by date (newest first) while displaying the sheet value (string) or a formatted Excel serial
@@ -4465,9 +4534,8 @@ function renderPlayerMatchesTable(matches) {
         return String(s || '').trim() || 'N/A';
     }
 
-    // Keep only matches where the player scored or assisted
-    const filtered = (matches || []).filter(m => (Number(m.goals || 0) > 0) || (Number(m.assists || 0) > 0) || (String(m.ga).toUpperCase() === 'GOAL') || (String(m.ga).toUpperCase() === 'ASSIST'));
-    const sorted = [...filtered].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    // Show all matches where the player participated (from LINEUPDETAILS)
+    const sorted = [...(matches || [])].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
 
     sorted.forEach(m => {
         const date = formatSheetDateDisplay(m.date);
@@ -4489,6 +4557,7 @@ function renderPlayerMatchesTable(matches) {
             <td>${season}</td>
             <td>${manager}</td>
             <td>${opponent}</td>
+            <td>${m.minutes || 0}</td>
             <td class="${goalsClass}">${goals}</td>
             <td class="${assistsClass}">${assists}</td>
         `;
@@ -12324,4 +12393,1249 @@ function showMatchSubTab(event, tabName) {
     } else {
         console.warn('No match ID found for tab loading');
     }
+}
+
+
+// Show consecutive G+A streak
+function showConsecutiveGAStreak() {
+    console.log('Showing consecutive G+A streak');
+    
+    // Check if player is selected
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    if (!selectedPlayer) {
+        alert('Please select a player first');
+        return;
+    }
+    
+    // Load and display consecutive G+A streak in popup
+    loadConsecutiveGAStreak();
+    showStreakPopup('Consecutive G+A Streak', 'consecutive-ga-streak-data');
+}
+
+// Show consecutive no G+A streak
+function showConsecutiveNoGAStreak() {
+    console.log('Showing consecutive no G+A streak');
+    
+    // Check if player is selected
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    if (!selectedPlayer) {
+        alert('Please select a player first');
+        return;
+    }
+    
+    // Load and display consecutive no G+A streak in popup
+    loadConsecutiveNoGAStreak();
+    showStreakPopup('Consecutive No G+A Streak', 'consecutive-no-ga-streak-data');
+}
+
+// Show consecutive scoring streak
+function showConsecutiveScoringStreak() {
+    console.log('Showing consecutive scoring streak');
+    
+    // Check if player is selected
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    if (!selectedPlayer) {
+        alert('Please select a player first');
+        return;
+    }
+    
+    // Load and display consecutive scoring streak in popup
+    loadConsecutiveScoringStreak();
+    showStreakPopup('Consecutive Scoring Streak', 'consecutive-scoring-streak-data');
+}
+
+// Show consecutive no-goal streak
+function showConsecutiveNoGoalStreak() {
+    console.log('Showing consecutive no-goal streak');
+    
+    // Check if player is selected
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    if (!selectedPlayer) {
+        alert('Please select a player first');
+        return;
+    }
+    
+    // Load and display consecutive no-goal streak in popup
+    loadConsecutiveNoGoalStreak();
+    showStreakPopup('Consecutive No-Goal Streak', 'consecutive-no-goal-streak-data');
+}
+
+// Load consecutive G+A streak
+function loadConsecutiveGAStreak() {
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    
+    if (!selectedPlayer) {
+        console.log('No player selected');
+        return;
+    }
+    
+    // Get applied filters
+    const appliedFilters = getCurrentFilters();
+    
+    // Get all player matches
+    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
+    
+    // Find the longest consecutive G+A streak
+    const streak = findLongestConsecutiveGAStreak(allMatches);
+    
+    console.log(`Found consecutive G+A streak of ${streak.length} matches for ${selectedPlayer}`);
+    console.log('Streak matches:', streak);
+    
+    // Store streak data globally for popup
+    window.currentStreakData = streak;
+    
+    // Render the table
+    renderConsecutiveGAStreakTable(streak);
+}
+
+// Load consecutive no G+A streak
+function loadConsecutiveNoGAStreak() {
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    
+    if (!selectedPlayer) {
+        console.log('No player selected');
+        return;
+    }
+    
+    // Get applied filters
+    const appliedFilters = getCurrentFilters();
+    
+    // Get all player matches
+    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
+    
+    // Find the longest consecutive no G+A streak
+    const streak = findLongestConsecutiveNoGAStreak(allMatches);
+    
+    console.log(`Found consecutive no G+A streak of ${streak.length} matches for ${selectedPlayer}`);
+    console.log('Streak matches:', streak);
+    
+    // Store streak data globally for popup
+    window.currentStreakData = streak;
+    
+    // Render the table
+    renderConsecutiveNoGAStreakTable(streak);
+}
+
+// Load consecutive scoring streak
+function loadConsecutiveScoringStreak() {
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    
+    if (!selectedPlayer) {
+        console.log('No player selected');
+        return;
+    }
+    
+    // Get applied filters
+    const appliedFilters = getCurrentFilters();
+    
+    // Get all player matches
+    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
+    
+    // Find the longest consecutive scoring streak
+    const streak = findLongestConsecutiveScoringStreak(allMatches);
+    
+    console.log(`Found consecutive scoring streak of ${streak.length} matches for ${selectedPlayer}`);
+    console.log('Streak matches:', streak);
+    
+    // Store streak data globally for popup
+    window.currentStreakData = streak;
+    
+    // Render the table
+    renderConsecutiveScoringStreakTable(streak);
+}
+
+// Load consecutive no-goal streak
+function loadConsecutiveNoGoalStreak() {
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    
+    if (!selectedPlayer) {
+        console.log('No player selected');
+        return;
+    }
+    
+    // Get applied filters
+    const appliedFilters = getCurrentFilters();
+    
+    // Get all player matches
+    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
+    
+    // Find the longest consecutive no-goal streak
+    const streak = findLongestConsecutiveNoGoalStreak(allMatches);
+    
+    console.log(`Found consecutive no-goal streak of ${streak.length} matches for ${selectedPlayer}`);
+    console.log('Streak matches:', streak);
+    
+    // Store streak data globally for popup
+    window.currentStreakData = streak;
+    
+    // Render the table
+    renderConsecutiveNoGoalStreakTable(streak);
+}
+
+// Find longest consecutive G+A streak
+function findLongestConsecutiveGAStreak(matches) {
+    if (!matches || matches.length === 0) return [];
+    
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
+    
+    let longestStreak = [];
+    let currentStreak = [];
+    
+    for (const match of sortedMatches) {
+        if (match.goals > 0 || match.assists > 0) {
+            currentStreak.push(match);
+        } else {
+            if (currentStreak.length > longestStreak.length) {
+                longestStreak = [...currentStreak];
+            }
+            currentStreak = [];
+        }
+    }
+    
+    // Check if the last streak is the longest
+    if (currentStreak.length > longestStreak.length) {
+        longestStreak = [...currentStreak];
+    }
+    
+    console.log(`Longest G+A streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
+    
+    return longestStreak;
+}
+
+// Find longest consecutive no G+A streak
+function findLongestConsecutiveNoGAStreak(matches) {
+    if (!matches || matches.length === 0) return [];
+    
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
+    
+    let longestStreak = [];
+    let currentStreak = [];
+    
+    for (const match of sortedMatches) {
+        if (match.goals === 0 && match.assists === 0) {
+            currentStreak.push(match);
+        } else {
+            if (currentStreak.length > longestStreak.length) {
+                longestStreak = [...currentStreak];
+            }
+            currentStreak = [];
+        }
+    }
+    
+    // Check if the last streak is the longest
+    if (currentStreak.length > longestStreak.length) {
+        longestStreak = [...currentStreak];
+    }
+    
+    console.log(`Longest no G+A streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
+    
+    return longestStreak;
+}
+
+// Find longest consecutive scoring streak
+function findLongestConsecutiveScoringStreak(matches) {
+    if (!matches || matches.length === 0) return [];
+    
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
+    
+    let longestStreak = [];
+    let currentStreak = [];
+    
+    for (const match of sortedMatches) {
+        if (match.goals > 0) {
+            currentStreak.push(match);
+        } else {
+            if (currentStreak.length > longestStreak.length) {
+                longestStreak = [...currentStreak];
+            }
+            currentStreak = [];
+        }
+    }
+    
+    // Check if the last streak is the longest
+    if (currentStreak.length > longestStreak.length) {
+        longestStreak = [...currentStreak];
+    }
+    
+    console.log(`Longest scoring streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals })));
+    
+    return longestStreak;
+}
+
+// Find longest consecutive no-goal streak
+function findLongestConsecutiveNoGoalStreak(matches) {
+    if (!matches || matches.length === 0) return [];
+    
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
+    
+    let longestStreak = [];
+    let currentStreak = [];
+    
+    for (const match of sortedMatches) {
+        if (match.goals === 0) {
+            currentStreak.push(match);
+        } else {
+            if (currentStreak.length > longestStreak.length) {
+                longestStreak = [...currentStreak];
+            }
+            currentStreak = [];
+        }
+    }
+    
+    // Check if the last streak is the longest
+    if (currentStreak.length > longestStreak.length) {
+        longestStreak = [...currentStreak];
+    }
+    
+    console.log(`Longest no-goal streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals })));
+    
+    return longestStreak;
+}
+
+// Render consecutive scoring streak table
+function renderConsecutiveScoringStreakTable(matches) {
+    const tbody = document.querySelector('#consecutive-scoring-streak-data tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!matches || matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No consecutive scoring streak found</td></tr>';
+        return;
+    }
+    
+    // Sort by date (newest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+
+    function formatSheetDateDisplay(s) {
+        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+            const t = new Date((Number(s) - 25569) * 86400 * 1000);
+            if (!isNaN(t.getTime())) {
+                const dd = String(t.getDate()).padStart(2, '0');
+                const MMM = Object.keys(monthMap)[t.getMonth()];
+                const yyyy = t.getFullYear();
+                return `${dd}-${MMM}-${yyyy}`;
+            }
+        }
+        return String(s || '').trim() || 'N/A';
+    }
+    
+    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    
+    sorted.forEach(m => {
+        const date = formatSheetDateDisplay(m.date);
+        const season = m.season || 'N/A';
+        const opponent = m.opponent || 'N/A';
+        const minutes = m.minutes || 0;
+        const goals = m.goals || 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${season}</td>
+            <td>${opponent}</td>
+            <td>${minutes}</td>
+            <td class="highlight-value">${goals}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Render consecutive no-goal streak table
+function renderConsecutiveNoGoalStreakTable(matches) {
+    const tbody = document.querySelector('#consecutive-no-goal-streak-data tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!matches || matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No consecutive no-goal streak found</td></tr>';
+        return;
+    }
+    
+    // Sort by date (newest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+
+    function formatSheetDateDisplay(s) {
+        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+            const t = new Date((Number(s) - 25569) * 86400 * 1000);
+            if (!isNaN(t.getTime())) {
+                const dd = String(t.getDate()).padStart(2, '0');
+                const MMM = Object.keys(monthMap)[t.getMonth()];
+                const yyyy = t.getFullYear();
+                return `${dd}-${MMM}-${yyyy}`;
+            }
+        }
+        return String(s || '').trim() || 'N/A';
+    }
+    
+    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    
+    sorted.forEach(m => {
+        const date = formatSheetDateDisplay(m.date);
+        const season = m.season || 'N/A';
+        const opponent = m.opponent || 'N/A';
+        const minutes = m.minutes || 0;
+        const goals = m.goals || 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${season}</td>
+            <td>${opponent}</td>
+            <td>${minutes}</td>
+            <td>${goals}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Show streak popup
+function showStreakPopup(title, tableId) {
+    // Create popup overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'streak-popup-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        box-sizing: border-box;
+    `;
+    
+    // Create popup content
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        max-width: 90%;
+        max-height: 90%;
+        width: 1000px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        position: relative;
+        overflow: auto;
+    `;
+    
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.cssText = `
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #666;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    `;
+    
+    closeBtn.onmouseover = () => {
+        closeBtn.style.background = '#f0f0f0';
+        closeBtn.style.color = '#333';
+    };
+    
+    closeBtn.onmouseout = () => {
+        closeBtn.style.background = 'none';
+        closeBtn.style.color = '#666';
+    };
+    
+    closeBtn.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+    
+    // Create title with streak count
+    const streakData = window.currentStreakData || [];
+    const titleElement = document.createElement('h2');
+    titleElement.innerHTML = `${title} <span style="color: #667eea; font-size: 1.2rem;">(${streakData.length} matches)</span>`;
+    titleElement.style.cssText = `
+        margin: 0 0 1.5rem 0;
+        color: #333;
+        font-size: 1.8rem;
+        font-weight: 600;
+        text-align: center;
+        padding-right: 50px;
+    `;
+    
+    // Create table dynamically with streak data
+    const table = document.createElement('table');
+    table.style.cssText = `
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    `;
+    
+    // Determine column headers based on table type
+    let lastColumnHeader = 'GOALS';
+    if (tableId.includes('assist')) {
+        lastColumnHeader = 'ASSISTS';
+    } else if (tableId.includes('ga')) {
+        lastColumnHeader = 'GOALS & ASSISTS';
+    }
+    
+    // Create table header
+    const thead = document.createElement('thead');
+    if (tableId.includes('ga')) {
+        // For G+A tables, show both GOALS and ASSISTS columns
+        thead.innerHTML = `
+            <tr>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">DATE</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">SEASON</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">OPPONENT TEAM</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">MINUTES</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">GOALS</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">ASSISTS</th>
+            </tr>
+        `;
+    } else {
+        // For single column tables (goals or assists)
+        thead.innerHTML = `
+            <tr>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">DATE</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">SEASON</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">OPPONENT TEAM</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">MINUTES</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">${lastColumnHeader}</th>
+            </tr>
+        `;
+    }
+    
+    // Create table body
+    const tbody = document.createElement('tbody');
+    
+    if (streakData.length === 0) {
+        const colspan = tableId.includes('ga') ? '6' : '5';
+        tbody.innerHTML = `<tr><td colspan="${colspan}" style="padding: 2rem; text-align: center; color: #999;">No streak data found</td></tr>`;
+    } else {
+        // Sort by date (newest first)
+        const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+        function parseSheetDate(s) {
+            const str = String(s || '').trim();
+            const d1 = Date.parse(str);
+            if (!isNaN(d1)) return d1;
+            const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+            if (m) {
+                const day = parseInt(m[1], 10);
+                const mon = monthMap[m[2].slice(0,3)];
+                const yr = parseInt(m[3], 10);
+                if (mon != null) {
+                    return new Date(yr, mon, day).getTime();
+                }
+            }
+            const num = Number(str);
+            if (!isNaN(num) && str !== '') {
+                return new Date((num - 25569) * 86400 * 1000).getTime();
+            }
+            return 0;
+        }
+
+        function formatSheetDateDisplay(s) {
+            if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+                const t = new Date((Number(s) - 25569) * 86400 * 1000);
+                if (!isNaN(t.getTime())) {
+                    const dd = String(t.getDate()).padStart(2, '0');
+                    const MMM = Object.keys(monthMap)[t.getMonth()];
+                    const yyyy = t.getFullYear();
+                    return `${dd}-${MMM}-${yyyy}`;
+                }
+            }
+            return String(s || '').trim() || 'N/A';
+        }
+        
+        const sorted = [...streakData].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+        
+        sorted.forEach(m => {
+            const date = formatSheetDateDisplay(m.date);
+            const season = m.season || 'N/A';
+            const opponent = m.opponent || 'N/A';
+            const minutes = m.minutes || 0;
+            const goals = m.goals || 0;
+            const assists = m.assists || 0;
+            
+            const row = document.createElement('tr');
+            
+            if (tableId.includes('ga')) {
+                // For G+A tables, show both goals and assists
+                row.innerHTML = `
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${date}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${season}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${opponent}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${minutes}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${goals > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${goals}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${assists > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${assists}</td>
+                `;
+            } else if (tableId.includes('assist')) {
+                // For assist tables, show assists only
+                row.innerHTML = `
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${date}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${season}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${opponent}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${minutes}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${assists > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${assists}</td>
+                `;
+            } else {
+                // For goal tables, show goals only
+                row.innerHTML = `
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${date}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${season}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${opponent}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${minutes}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${goals > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${goals}</td>
+                `;
+            }
+            
+            // Add hover effect
+            row.onmouseover = () => {
+                row.style.background = '#f8f9fa';
+            };
+            row.onmouseout = () => {
+                row.style.background = 'white';
+            };
+            
+            tbody.appendChild(row);
+        });
+    }
+    
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    
+    // Assemble popup
+    popup.appendChild(closeBtn);
+    popup.appendChild(titleElement);
+    popup.appendChild(table);
+    overlay.appendChild(popup);
+    
+    // Add to page
+    document.body.appendChild(overlay);
+    
+    // Close on overlay click
+    overlay.onclick = (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    };
+    
+    // Close on Escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            document.body.removeChild(overlay);
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
+// Show consecutive assist streak
+function showConsecutiveAssistStreak() {
+    console.log('Showing consecutive assist streak');
+    
+    // Check if player is selected
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    if (!selectedPlayer) {
+        alert('Please select a player first');
+        return;
+    }
+    
+    // Load and display consecutive assist streak in popup
+    loadConsecutiveAssistStreak();
+    showStreakPopup('Consecutive Assist Streak', 'consecutive-assist-streak-data');
+}
+
+// Show consecutive no-assist streak
+function showConsecutiveNoAssistStreak() {
+    console.log('Showing consecutive no-assist streak');
+    
+    // Check if player is selected
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    if (!selectedPlayer) {
+        alert('Please select a player first');
+        return;
+    }
+    
+    // Load and display consecutive no-assist streak in popup
+    loadConsecutiveNoAssistStreak();
+    showStreakPopup('Consecutive No-Assist Streak', 'consecutive-no-assist-streak-data');
+}
+
+// Load consecutive assist streak
+function loadConsecutiveAssistStreak() {
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    
+    if (!selectedPlayer) {
+        console.log('No player selected');
+        return;
+    }
+    
+    // Get applied filters
+    const appliedFilters = getCurrentFilters();
+    
+    // Get all player matches
+    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
+    
+    // Find the longest consecutive assist streak
+    const streak = findLongestConsecutiveAssistStreak(allMatches);
+    
+    console.log(`Found consecutive assist streak of ${streak.length} matches for ${selectedPlayer}`);
+    console.log('Streak matches:', streak);
+    
+    // Store streak data globally for popup
+    window.currentStreakData = streak;
+    
+    // Render the table
+    renderConsecutiveAssistStreakTable(streak);
+}
+
+// Load consecutive no-assist streak
+function loadConsecutiveNoAssistStreak() {
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    
+    if (!selectedPlayer) {
+        console.log('No player selected');
+        return;
+    }
+    
+    // Get applied filters
+    const appliedFilters = getCurrentFilters();
+    
+    // Get all player matches
+    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
+    
+    // Find the longest consecutive no-assist streak
+    const streak = findLongestConsecutiveNoAssistStreak(allMatches);
+    
+    console.log(`Found consecutive no-assist streak of ${streak.length} matches for ${selectedPlayer}`);
+    console.log('Streak matches:', streak);
+    
+    // Store streak data globally for popup
+    window.currentStreakData = streak;
+    
+    // Render the table
+    renderConsecutiveNoAssistStreakTable(streak);
+}
+
+// Find longest consecutive assist streak
+function findLongestConsecutiveAssistStreak(matches) {
+    if (!matches || matches.length === 0) return [];
+    
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
+    
+    let longestStreak = [];
+    let currentStreak = [];
+    
+    for (const match of sortedMatches) {
+        if (match.assists > 0) {
+            currentStreak.push(match);
+        } else {
+            if (currentStreak.length > longestStreak.length) {
+                longestStreak = [...currentStreak];
+            }
+            currentStreak = [];
+        }
+    }
+    
+    // Check if the last streak is the longest
+    if (currentStreak.length > longestStreak.length) {
+        longestStreak = [...currentStreak];
+    }
+    
+    console.log(`Longest assist streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, assists: m.assists })));
+    
+    return longestStreak;
+}
+
+// Find longest consecutive no-assist streak
+function findLongestConsecutiveNoAssistStreak(matches) {
+    if (!matches || matches.length === 0) return [];
+    
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
+    
+    let longestStreak = [];
+    let currentStreak = [];
+    
+    for (const match of sortedMatches) {
+        if (match.assists === 0) {
+            currentStreak.push(match);
+        } else {
+            if (currentStreak.length > longestStreak.length) {
+                longestStreak = [...currentStreak];
+            }
+            currentStreak = [];
+        }
+    }
+    
+    // Check if the last streak is the longest
+    if (currentStreak.length > longestStreak.length) {
+        longestStreak = [...currentStreak];
+    }
+    
+    console.log(`Longest no-assist streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, assists: m.assists })));
+    
+    return longestStreak;
+}
+
+// Render consecutive assist streak table
+function renderConsecutiveAssistStreakTable(matches) {
+    const tbody = document.querySelector('#consecutive-assist-streak-data tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!matches || matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No consecutive assist streak found</td></tr>';
+        return;
+    }
+    
+    // Sort by date (newest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+
+    function formatSheetDateDisplay(s) {
+        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+            const t = new Date((Number(s) - 25569) * 86400 * 1000);
+            if (!isNaN(t.getTime())) {
+                const dd = String(t.getDate()).padStart(2, '0');
+                const MMM = Object.keys(monthMap)[t.getMonth()];
+                const yyyy = t.getFullYear();
+                return `${dd}-${MMM}-${yyyy}`;
+            }
+        }
+        return String(s || '').trim() || 'N/A';
+    }
+    
+    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    
+    sorted.forEach(m => {
+        const date = formatSheetDateDisplay(m.date);
+        const season = m.season || 'N/A';
+        const opponent = m.opponent || 'N/A';
+        const minutes = m.minutes || 0;
+        const assists = m.assists || 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${season}</td>
+            <td>${opponent}</td>
+            <td>${minutes}</td>
+            <td class="highlight-value">${assists}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Render consecutive no-assist streak table
+function renderConsecutiveNoAssistStreakTable(matches) {
+    const tbody = document.querySelector('#consecutive-no-assist-streak-data tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!matches || matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No consecutive no-assist streak found</td></tr>';
+        return;
+    }
+    
+    // Sort by date (newest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+
+    function formatSheetDateDisplay(s) {
+        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+            const t = new Date((Number(s) - 25569) * 86400 * 1000);
+            if (!isNaN(t.getTime())) {
+                const dd = String(t.getDate()).padStart(2, '0');
+                const MMM = Object.keys(monthMap)[t.getMonth()];
+                const yyyy = t.getFullYear();
+                return `${dd}-${MMM}-${yyyy}`;
+            }
+        }
+        return String(s || '').trim() || 'N/A';
+    }
+    
+    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    
+    sorted.forEach(m => {
+        const date = formatSheetDateDisplay(m.date);
+        const season = m.season || 'N/A';
+        const opponent = m.opponent || 'N/A';
+        const minutes = m.minutes || 0;
+        const assists = m.assists || 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${season}</td>
+            <td>${opponent}</td>
+            <td>${minutes}</td>
+            <td>${assists}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Render consecutive G+A streak table
+function renderConsecutiveGAStreakTable(matches) {
+    const tbody = document.querySelector('#consecutive-ga-streak-data tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!matches || matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No consecutive G+A streak found</td></tr>';
+        return;
+    }
+    
+    // Sort by date (newest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+
+    function formatSheetDateDisplay(s) {
+        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+            const t = new Date((Number(s) - 25569) * 86400 * 1000);
+            if (!isNaN(t.getTime())) {
+                const dd = String(t.getDate()).padStart(2, '0');
+                const MMM = Object.keys(monthMap)[t.getMonth()];
+                const yyyy = t.getFullYear();
+                return `${dd}-${MMM}-${yyyy}`;
+            }
+        }
+        return String(s || '').trim() || 'N/A';
+    }
+    
+    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    
+    sorted.forEach(m => {
+        const date = formatSheetDateDisplay(m.date);
+        const season = m.season || 'N/A';
+        const opponent = m.opponent || 'N/A';
+        const minutes = m.minutes || 0;
+        const goals = m.goals || 0;
+        const assists = m.assists || 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${season}</td>
+            <td>${opponent}</td>
+            <td>${minutes}</td>
+            <td class="${goals > 0 ? 'highlight-value' : ''}">${goals}</td>
+            <td class="${assists > 0 ? 'highlight-value' : ''}">${assists}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Render consecutive no G+A streak table
+function renderConsecutiveNoGAStreakTable(matches) {
+    const tbody = document.querySelector('#consecutive-no-ga-streak-data tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!matches || matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No consecutive no G+A streak found</td></tr>';
+        return;
+    }
+    
+    // Sort by date (newest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+
+    function formatSheetDateDisplay(s) {
+        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+            const t = new Date((Number(s) - 25569) * 86400 * 1000);
+            if (!isNaN(t.getTime())) {
+                const dd = String(t.getDate()).padStart(2, '0');
+                const MMM = Object.keys(monthMap)[t.getMonth()];
+                const yyyy = t.getFullYear();
+                return `${dd}-${MMM}-${yyyy}`;
+            }
+        }
+        return String(s || '').trim() || 'N/A';
+    }
+    
+    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    
+    sorted.forEach(m => {
+        const date = formatSheetDateDisplay(m.date);
+        const season = m.season || 'N/A';
+        const opponent = m.opponent || 'N/A';
+        const minutes = m.minutes || 0;
+        const goals = m.goals || 0;
+        const assists = m.assists || 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${season}</td>
+            <td>${opponent}</td>
+            <td>${minutes}</td>
+            <td>${goals}</td>
+            <td>${assists}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }

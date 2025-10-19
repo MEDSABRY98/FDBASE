@@ -1380,6 +1380,19 @@
             margin-bottom: 1.5rem;
             max-width: 100%;
         }
+        
+        /* Center the sub-tabs container with equal width tabs for All Players only */
+        .stats-sub-tabs.centered {
+            display: flex;
+            justify-content: center;
+            max-width: 600px;
+            margin: 0 auto 1.5rem auto;
+        }
+        
+        .stats-sub-tabs.centered .stats-sub-tab {
+            flex: 1;
+            min-width: 0;
+        }
 
         .stats-sub-tab {
             display: flex;
@@ -1430,13 +1443,13 @@
 
         /* Responsive design for sub-tabs */
         @media (max-width: 1200px) {
-            .stats-sub-tabs {
+            .stats-sub-tabs:not(.centered) {
                 grid-template-columns: repeat(3, 1fr);
             }
         }
 
         @media (max-width: 768px) {
-            .stats-sub-tabs {
+            .stats-sub-tabs:not(.centered) {
                 grid-template-columns: repeat(2, 1fr);
             }
             
@@ -1447,7 +1460,7 @@
         }
 
         @media (max-width: 480px) {
-            .stats-sub-tabs {
+            .stats-sub-tabs:not(.centered) {
                 grid-template-columns: 1fr;
             }
             
@@ -2509,11 +2522,11 @@
 
             <!-- All Players Tab -->
             <div id="all-players-tab" class="stats-tab-content">
-                <div class="stats-section">
-                    <h2 class="section-title">All Players Statistics</h2>
+                <div class="stats-section" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                    <h2 class="section-title" style="text-align: center;">All Players Statistics</h2>
                     
                     <!-- Sub-tabs for All Players -->
-                    <div class="stats-sub-tabs" style="margin-bottom: 2rem;">
+                    <div class="stats-sub-tabs centered">
                         <button class="stats-sub-tab active" onclick="showAllPlayersSubTab(event, 'main-stats')">
                             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -2543,7 +2556,7 @@
                     <!-- Main Stats Sub-tab -->
                     <div id="main-stats-subtab" class="stats-subtab-content active">
                         <!-- Team Filter Dropdown -->
-                        <div class="all-players-filter-container" style="margin-bottom: 20px;">
+                        <div class="all-players-filter-container" style="margin-bottom: 20px; text-align: center;">
                             <label style="margin-right: 10px; font-weight: 600;">Filter by Team:</label>
                             <select id="all-players-team-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 200px;">
                                 <option value="">All Players</option>
@@ -2897,7 +2910,40 @@
                                 </div>
                             </div>
 
-                            <div class="player-stat-card">
+                            <div class="player-stat-card goal-effect-clickable" onclick="showConsecutiveGAStreak()" style="cursor: pointer;">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 12l2 2 4-4"/>
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M3 12h4l3 9 4-18 3 9h4"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Consecutive G+A Streak</h3>
+                                    <p class="stat-value" id="player-consecutive-ga">0</p>
+                                    <p class="stat-label">Most Matches in a Row</p>
+                                    <p class="stat-label" id="player-consecutive-ga-period" style="font-size: 0.75rem; color: #999; margin-top: 4px; display: none;"></p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card goal-effect-clickable" onclick="showConsecutiveNoGAStreak()" style="cursor: pointer;">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <line x1="15" y1="9" x2="9" y2="15"/>
+                                        <line x1="9" y1="9" x2="15" y2="15"/>
+                                        <path d="M3 12h18"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Consecutive No G+A Streak</h3>
+                                    <p class="stat-value" id="player-consecutive-no-ga">0</p>
+                                    <p class="stat-label">Most Matches in a Row</p>
+                                    <p class="stat-label" id="player-consecutive-no-ga-period" style="font-size: 0.75rem; color: #999; margin-top: 4px; display: none;"></p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card goal-effect-clickable" onclick="showConsecutiveScoringStreak()" style="cursor: pointer;">
                                 <div class="stat-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M3 12h4l3 9 4-18 3 9h4"/>
@@ -2911,7 +2957,7 @@
                                 </div>
                             </div>
 
-                            <div class="player-stat-card">
+                            <div class="player-stat-card goal-effect-clickable" onclick="showConsecutiveNoGoalStreak()" style="cursor: pointer;">
                                 <div class="stat-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M3 12h18"/>
@@ -2924,6 +2970,37 @@
                                     <p class="stat-value" id="player-consecutive-no-goals">0</p>
                                     <p class="stat-label">Most Matches in a Row</p>
                                     <p class="stat-label" id="player-consecutive-no-goals-period" style="font-size: 0.75rem; color: #999; margin-top: 4px; display: none;"></p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card goal-effect-clickable" onclick="showConsecutiveAssistStreak()" style="cursor: pointer;">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 12l2 2 4-4"/>
+                                        <circle cx="12" cy="12" r="10"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Consecutive Assist Streak</h3>
+                                    <p class="stat-value" id="player-consecutive-assists">0</p>
+                                    <p class="stat-label">Most Matches in a Row</p>
+                                    <p class="stat-label" id="player-consecutive-assists-period" style="font-size: 0.75rem; color: #999; margin-top: 4px; display: none;"></p>
+                                </div>
+                            </div>
+
+                            <div class="player-stat-card goal-effect-clickable" onclick="showConsecutiveNoAssistStreak()" style="cursor: pointer;">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <line x1="15" y1="9" x2="9" y2="15"/>
+                                        <line x1="9" y1="9" x2="15" y2="15"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-content">
+                                    <h3>Consecutive No-Assist Streak</h3>
+                                    <p class="stat-value" id="player-consecutive-no-assists">0</p>
+                                    <p class="stat-label">Most Matches in a Row</p>
+                                    <p class="stat-label" id="player-consecutive-no-assists-period" style="font-size: 0.75rem; color: #999; margin-top: 4px; display: none;"></p>
                                 </div>
                             </div>
 
@@ -3172,7 +3249,149 @@
                                             <th>SEASON</th>
                                             <th>AHLY MANAGER</th>
                                             <th>OPPONENT TEAM</th>
+                                            <th>MINUTES</th>
                                             <th>GOALS</th>
+                                            <th>ASSISTS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Consecutive G+A Streak Table -->
+                    <div id="consecutive-ga-streak-table" class="player-sub-tab-content" style="display: none;">
+                        <div class="stats-section">
+                            <h2 class="section-title">Consecutive G+A Streak</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="consecutive-ga-streak-data">
+                                    <thead>
+                                        <tr>
+                                            <th>DATE</th>
+                                            <th>SEASON</th>
+                                            <th>OPPONENT TEAM</th>
+                                            <th>MINUTES</th>
+                                            <th>GOALS</th>
+                                            <th>ASSISTS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consecutive No G+A Streak Table -->
+                    <div id="consecutive-no-ga-streak-table" class="player-sub-tab-content" style="display: none;">
+                        <div class="stats-section">
+                            <h2 class="section-title">Consecutive No G+A Streak</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="consecutive-no-ga-streak-data">
+                                    <thead>
+                                        <tr>
+                                            <th>DATE</th>
+                                            <th>SEASON</th>
+                                            <th>OPPONENT TEAM</th>
+                                            <th>MINUTES</th>
+                                            <th>GOALS</th>
+                                            <th>ASSISTS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consecutive Scoring Streak Table -->
+                    <div id="consecutive-scoring-streak-table" class="player-sub-tab-content" style="display: none;">
+                        <div class="stats-section">
+                            <h2 class="section-title">Consecutive Scoring Streak</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="consecutive-scoring-streak-data">
+                                    <thead>
+                                        <tr>
+                                            <th>DATE</th>
+                                            <th>SEASON</th>
+                                            <th>OPPONENT TEAM</th>
+                                            <th>MINUTES</th>
+                                            <th>GOALS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consecutive No-Goal Streak Table -->
+                    <div id="consecutive-no-goal-streak-table" class="player-sub-tab-content" style="display: none;">
+                        <div class="stats-section">
+                            <h2 class="section-title">Consecutive No-Goal Streak</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="consecutive-no-goal-streak-data">
+                                    <thead>
+                                        <tr>
+                                            <th>DATE</th>
+                                            <th>SEASON</th>
+                                            <th>OPPONENT TEAM</th>
+                                            <th>MINUTES</th>
+                                            <th>GOALS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consecutive Assist Streak Table -->
+                    <div id="consecutive-assist-streak-table" class="player-sub-tab-content" style="display: none;">
+                        <div class="stats-section">
+                            <h2 class="section-title">Consecutive Assist Streak</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="consecutive-assist-streak-data">
+                                    <thead>
+                                        <tr>
+                                            <th>DATE</th>
+                                            <th>SEASON</th>
+                                            <th>OPPONENT TEAM</th>
+                                            <th>MINUTES</th>
+                                            <th>ASSISTS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consecutive No-Assist Streak Table -->
+                    <div id="consecutive-no-assist-streak-table" class="player-sub-tab-content" style="display: none;">
+                        <div class="stats-section">
+                            <h2 class="section-title">Consecutive No-Assist Streak</h2>
+                            <div class="stats-table-container">
+                                <table class="stats-table" id="consecutive-no-assist-streak-data">
+                                    <thead>
+                                        <tr>
+                                            <th>DATE</th>
+                                            <th>SEASON</th>
+                                            <th>OPPONENT TEAM</th>
+                                            <th>MINUTES</th>
                                             <th>ASSISTS</th>
                                         </tr>
                                     </thead>

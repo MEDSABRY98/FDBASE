@@ -4,9 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
-venv/
-ENV/
 build/
 develop-eggs/
 dist/
@@ -22,53 +19,90 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec.bak
+# Virtual environments
+venv/
+env/
+ENV/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
 # OS
 .DS_Store
 Thumbs.db
-desktop.ini
 
 # Logs
 *.log
-app.log
 
 # Cache
-cache/
-*.cache
+.cache/
 
-# Credentials (Keep template, ignore actual credentials)
+# Build files
+build_desktop.spec
+*.exe
+
+# Credentials (keep template)
 credentials/*.json
 !credentials_template.json
 
-# Local development
-*.local
+# System files
+.android/
+.gradle/
+.jdks/
+.lesshst
+.matplotlib/
+.metadata
+.node_repl_history
+.nuget/
+.shorebird/
+.skiko/
+.MemuHyperv/
+.electron-gyp/
+.emulator_console_auth_token
 .env
-.env.local
+.gitconfig
 
-# Build artifacts
-dist/
-build/
-*.exe
+# Windows system files
+NTUSER.DAT*
+ntuser.dat*
+ntuser.ini
+*.regtrans-ms
+*.blf
+*.LOG*
 
-# Temporary files
-*.tmp
-*.temp
-temp/
-tmp/
+# User directories
+3D Objects/
+AndroidStudioProjects/
+AppData/
+Contacts/
+Desktop/
+Documents/
+Downloads/
+Favorites/
+IntelGraphicsProfiles/
+Links/
+Microsoft/
+Music/
+OneDrive/
+Pictures/
+Saved Games/
+Searches/
+Templates/
+Videos/
 
-# Excel test files
-*.xlsx
-*.xls
-~$*.xlsx
-~$*.xls
+# Flutter/Dart (if any)
+analysis_options.yaml
+pubspec.lock
+pubspec.yaml
+android/
+ios/
+linux/
+macos/
+test/
+web/
+windows/

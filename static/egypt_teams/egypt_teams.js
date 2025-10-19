@@ -1128,7 +1128,7 @@ function loadPlayerMatches(playerName, playerMatchIds) {
     tbody.innerHTML = '';
     
     if (playerMatchIds.size === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
         return;
     }
     
@@ -1172,8 +1172,9 @@ function loadPlayerMatches(playerName, playerMatchIds) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${match['DATE'] || ''}</td>
+            <td>${match['SEASON'] || ''}</td>
+            <td>${match['MANAGER EGY'] || ''}</td>
             <td>${match['OPPONENT TEAM'] || ''}</td>
-            <td>${match['CHAMPION'] || ''}</td>
             <td style="text-align: center;">${minutes}'</td>
             <td style="text-align: center;"><strong style="color: #667eea;">${goals}</strong></td>
             <td style="text-align: center;"><strong style="color: #10b981;">${penaltyGoals}</strong></td>
