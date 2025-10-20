@@ -10375,38 +10375,91 @@ function updateCurrentH2HTDetailsWithFilters(filteredRecords) {
 // Load H2H T Details data for selected team
 async function loadH2HTDetailsData(teamName) {
     try {
-        console.log(`Loading H2H T Details for team: ${teamName}`);
+        console.log(`🎯 Loading H2H T Details for team: ${teamName}`);
+        
+        // Show loading state
+        const overviewContent = document.getElementById('h2h-t-overview-content');
+        const championshipsContent = document.getElementById('h2h-t-championships-content');
+        const seasonsContent = document.getElementById('h2h-t-seasons-content');
+        
+        if (overviewContent) {
+            overviewContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6c757d;">Loading data...</div>';
+        }
+        if (championshipsContent) {
+            championshipsContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6c757d;">Loading data...</div>';
+        }
+        if (seasonsContent) {
+            seasonsContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6c757d;">Loading data...</div>';
+        }
         
         // Get current filtered records to apply filters to H2H data
         const currentFilteredRecords = getCurrentFilteredRecords();
         
         if (currentFilteredRecords && currentFilteredRecords.length > 0) {
-            console.log(`Applying filters to H2H T Details: ${currentFilteredRecords.length} filtered records`);
+            console.log(`🔄 Applying filters to H2H T Details: ${currentFilteredRecords.length} filtered records`);
             // Calculate H2H stats from filtered data
             const h2hStats = calculateH2HTDetailsFromFilteredData(teamName, currentFilteredRecords);
             if (h2hStats) {
+                console.log('✅ Successfully calculated H2H stats from filtered data');
                 renderH2HTDetailsOverview(h2hStats.overview, teamName);
                 renderH2HTDetailsChampionships(h2hStats.championships, teamName);
                 renderH2HTDetailsSeasons(h2hStats.seasons, teamName);
                 return;
+            } else {
+                console.warn('⚠️ Failed to calculate H2H stats from filtered data, trying API...');
             }
         }
         
         // Fallback to API call if no filtered data or calculation fails
-        const response = await fetch(`/api/h2h-t-details/${encodeURIComponent(teamName)}`);
-        const data = await response.json();
+        console.log(`🌐 Making API call to /api/h2h-t-details/${encodeURIComponent(teamName)}`);
         
-        if (data.overview && data.championships) {
-            renderH2HTDetailsOverview(data.overview, teamName);
-            renderH2HTDetailsChampionships(data.championships, teamName);
-            if (data.seasons) {
-                renderH2HTDetailsSeasons(data.seasons, teamName);
+        try {
+            const response = await fetch(`/api/h2h-t-details/${encodeURIComponent(teamName)}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        } else {
-            console.error('Invalid data received for H2H T Details');
+            
+            const data = await response.json();
+            console.log('📊 API response received:', data);
+            
+            if (data.overview && data.championships) {
+                console.log('✅ Valid data received, rendering...');
+                renderH2HTDetailsOverview(data.overview, teamName);
+                renderH2HTDetailsChampionships(data.championships, teamName);
+                if (data.seasons) {
+                    renderH2HTDetailsSeasons(data.seasons, teamName);
+                }
+            } else {
+                console.error('❌ Invalid data received for H2H T Details:', data);
+                throw new Error('Invalid API response');
+            }
+        } catch (apiError) {
+            console.warn('⚠️ API call failed, trying fallback calculation:', apiError);
+            
+            // Fallback: Calculate from existing data
+            if (alAhlyStatsData && alAhlyStatsData.allRecords) {
+                console.log('🔄 Using fallback calculation from existing data...');
+                const fallbackStats = calculateH2HTDetailsFromFilteredData(teamName, alAhlyStatsData.allRecords);
+                if (fallbackStats) {
+                    console.log('✅ Fallback calculation successful');
+                    renderH2HTDetailsOverview(fallbackStats.overview, teamName);
+                    renderH2HTDetailsChampionships(fallbackStats.championships, teamName);
+                    renderH2HTDetailsSeasons(fallbackStats.seasons, teamName);
+                } else {
+                    throw new Error('Fallback calculation also failed');
+                }
+            } else {
+                throw new Error('No data available for fallback');
+            }
         }
     } catch (error) {
-        console.error(`Error loading H2H T Details for ${teamName}:`, error);
+        console.error(`❌ Error loading H2H T Details for ${teamName}:`, error);
+        // Show error message
+        const overviewContent = document.getElementById('h2h-t-overview-content');
+        if (overviewContent) {
+            overviewContent.innerHTML = `<div style="text-align: center; padding: 2rem; color: #dc3545;">Error: ${error.message}</div>`;
+        }
     }
 }
 
