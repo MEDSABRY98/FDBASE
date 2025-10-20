@@ -1519,6 +1519,8 @@
                 grid-template-columns: 1fr;
             }
         }
+
+
     </style>
 </head>
 <body class="stats-container">
@@ -1728,7 +1730,7 @@
 
         <!-- Statistics Tabs -->
         <div class="stats-tabs-container">
-            <!-- First Row of Tabs -->
+            <!-- First Row of Tabs (6 tabs) -->
             <div class="stats-tabs-row">
                 <div class="stats-tabs">
                     <button class="stats-tab active" onclick="showStatsTab(event, 'search-match')">
@@ -1774,6 +1776,12 @@
                         </svg>
                         H2H Teams
                     </button>
+                </div>
+            </div>
+            
+            <!-- Second Row of Tabs (6 tabs) -->
+            <div class="stats-tabs-row">
+                <div class="stats-tabs">
                     <button class="stats-tab" onclick="showStatsTab(event, 'coaches')">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -1792,12 +1800,6 @@
                         </svg>
                         Referees
                     </button>
-                </div>
-            </div>
-            
-            <!-- Second Row of Tabs -->
-            <div class="stats-tabs-row">
-                <div class="stats-tabs">
                     <button class="stats-tab" onclick="showStatsTab(event, 'all-players')">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -4032,6 +4034,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Browser Cache Utility -->
     <script src="{{ url_for('static', filename='browser_cache.js') }}"></script>

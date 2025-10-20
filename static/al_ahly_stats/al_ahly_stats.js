@@ -4054,11 +4054,17 @@ function loadTopPerformers() {
 async function loadPlayerOverviewStats(playerName) {
     console.log(`🔄 Loading stats for player (Excel): ${playerName}`);
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    
+    // Get applied filters from the main filter section
+    const appliedFilters = getCurrentFilters();
+    console.log(`🔄 Loading Overview stats for player: ${playerName}, team filter: ${teamFilter}, applied filters:`, appliedFilters);
+    
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
+    const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
     const teamLower = (teamFilter || '').toLowerCase();
 
-    // Filter rows for player (+team if provided)
+    // Filter rows for player (+team if provided + main filters)
     const playerRows = details.filter(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
@@ -4066,7 +4072,16 @@ async function loadPlayerOverviewStats(playerName) {
             const t = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (t !== teamLower) return false;
         }
-        return true;
+        
+        // Apply main filters to match data
+        const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
+        const matchDetail = matchDetails.find(match => 
+            normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+        );
+        
+        const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
+        
+        return filtersMatch;
     });
 
     // Aggregate per match
@@ -4107,7 +4122,17 @@ async function loadPlayerOverviewStats(playerName) {
     const lineupRowsAll = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const lineupRows = lineupRowsAll.filter(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
-        return p === nameLower; // do not filter by team here
+        if (p !== nameLower) return false;
+        
+        // Apply main filters to match data
+        const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || '');
+        const matchDetail = matchDetails.find(match => 
+            normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+        );
+        
+        const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
+        
+        return filtersMatch;
     });
     const totalMatches = lineupRows.length;
     let totalMinutes = 0;
@@ -4145,7 +4170,7 @@ async function loadPlayerOverviewStats(playerName) {
     });
 
     // Calculate consecutive streaks - need to get match dates and sort chronologically
-    const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
+    // matchDetails already defined above
     const lineupWithDates = lineupRows.map(l => {
         const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
         const match = matchDetails.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID'] || m.match_id) === matchId);
@@ -5155,6 +5180,7 @@ function loadPlayerGoalMinuteStats() {
 // Get goal minutes from Excel data
 function getPlayerGoalMinutesFromSheets(playerName, teamFilter, appliedFilters = {}) {
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
+    const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
     const teamLower = (teamFilter || '').toLowerCase();
     
@@ -5169,6 +5195,15 @@ function getPlayerGoalMinutesFromSheets(playerName, teamFilter, appliedFilters =
             const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (team !== teamLower) return false;
         }
+        
+        // Apply main filters to match data
+        const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
+        const matchDetail = matchDetails.find(match => 
+            normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+        );
+        
+        const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
+        if (!filtersMatch) return false;
         
         // Only get goals where GA = 'GOAL'
         const gaVal = normalizeStr(r.GA || '').toUpperCase();
@@ -8041,13 +8076,17 @@ function loadPlayerGoalEffectStats() {
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
     
-    const goalEffect = getPlayerGoalEffectFromSheets(playerName, teamFilter);
+    // Get applied filters from the main filter section
+    const appliedFilters = getCurrentFilters();
+    console.log('Applied filters for goal effect:', appliedFilters);
+    
+    const goalEffect = getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Goal effect data:', goalEffect);
     renderGoalEffectCards(goalEffect);
 }
 
 // Calculate winning and equalizing matches
-function getPlayerGoalEffectFromSheets(playerName, teamFilter) {
+function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = {}) {
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
@@ -8071,6 +8110,15 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter) {
             const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (team !== teamLower) return false;
         }
+        
+        // Apply main filters to match data
+        const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
+        const matchDetail = matches.find(match => 
+            normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+        );
+        
+        const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
+        if (!filtersMatch) return false;
         
         // Only goals (GA = 'GOAL')
         const gaVal = normalizeStr(r.GA || '').toUpperCase();
@@ -10764,7 +10812,154 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Setup Main Stats filters
     setupMainStatsFilters();
+    
+    // Setup main filters for all tabs
+    setupMainFiltersForAllTabs();
 });
+
+// Setup main filters for all tabs
+function setupMainFiltersForAllTabs() {
+    console.log('🔧 Setting up main filters for all tabs...');
+    
+    // Get all main filter elements
+    const filterElements = [
+        'match-id-filter',
+        'champion-system-filter', 
+        'champion-filter',
+        'season-filter',
+        'ahly-manager-filter',
+        'opponent-manager-filter',
+        'referee-filter',
+        'round-filter',
+        'h-a-n-filter',
+        'stadium-filter',
+        'ahly-team-filter',
+        'opponent-team-filter',
+        'goals-for-filter',
+        'goals-against-filter',
+        'result-filter',
+        'clean-sheet-filter',
+        'extra-time-filter',
+        'penalties-filter',
+        'date-from-filter',
+        'date-to-filter'
+    ];
+    
+    filterElements.forEach(filterId => {
+        const element = document.getElementById(filterId);
+        if (element) {
+            console.log(`✅ Setting up filter: ${filterId}`);
+            // Remove existing listener to prevent duplicates
+            if (element.mainFilterListener) {
+                element.removeEventListener('change', element.mainFilterListener);
+                element.removeEventListener('input', element.mainFilterListener);
+            }
+            
+            // Add new listener
+            element.mainFilterListener = function() {
+                console.log(`🔍 Main filter changed: ${filterId} = ${this.value}`);
+                console.log('🔄 Calling reloadCurrentActiveTab()...');
+                // Reload current active tab data
+                reloadCurrentActiveTab();
+            };
+            
+            // Add event listener (use 'input' for text inputs, 'change' for selects)
+            if (filterId.includes('filter') && !filterId.includes('date')) {
+                element.addEventListener('change', element.mainFilterListener);
+                console.log(`📝 Added 'change' listener to ${filterId}`);
+            } else {
+                element.addEventListener('input', element.mainFilterListener);
+                console.log(`📝 Added 'input' listener to ${filterId}`);
+            }
+        } else {
+            console.log(`❌ Filter element not found: ${filterId}`);
+        }
+    });
+    
+    console.log('✅ Main filters setup complete');
+}
+
+// Reload current active tab data
+function reloadCurrentActiveTab() {
+    console.log('🔄 reloadCurrentActiveTab() called');
+    
+    // Check if we're in the BY Player tab
+    const playersTab = document.getElementById('players-tab');
+    console.log('📊 BY Player tab active:', playersTab && playersTab.classList.contains('active'));
+    
+    if (playersTab && playersTab.classList.contains('active')) {
+        // Check if With Coaches sub-tab is active
+        const withCoachesSubTab = document.getElementById('player-with-coaches-sub');
+        const overviewSubTab = document.getElementById('player-overview-sub');
+        const goalMinuteContent = document.getElementById('goal-minute-content');
+        const goalEffectContent = document.getElementById('goal-effect-content');
+        
+        console.log('👨‍💼 With Coaches sub-tab active:', withCoachesSubTab && withCoachesSubTab.classList.contains('active'));
+        console.log('📊 Overview sub-tab active:', overviewSubTab && overviewSubTab.classList.contains('active'));
+        console.log('⏰ Goal Minute sub-tab active:', goalMinuteContent && goalMinuteContent.classList.contains('active'));
+        console.log('🎯 Goal Effect sub-tab active:', goalEffectContent && goalEffectContent.classList.contains('active'));
+        
+        if (withCoachesSubTab && withCoachesSubTab.classList.contains('active')) {
+            console.log('🔄 Reloading With Coaches tab due to main filter change');
+            loadPlayerWithCoachesStats();
+        } 
+        // Check if Overview sub-tab is active
+        else if (overviewSubTab && overviewSubTab.classList.contains('active')) {
+            console.log('🔄 Reloading Overview tab due to main filter change');
+            const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+            if (selectedPlayer) {
+                loadPlayerOverviewStats(selectedPlayer);
+            }
+        }
+        // Check if Goal Minute sub-tab is active
+        else if (goalMinuteContent && goalMinuteContent.classList.contains('active')) {
+            console.log('🔄 Reloading Goal Minute tab due to main filter change');
+            loadPlayerGoalMinuteStats();
+        }
+        // Check if Goal Effect sub-tab is active
+        else if (goalEffectContent && goalEffectContent.classList.contains('active')) {
+            console.log('🔄 Reloading Goal Effect tab due to main filter change');
+            loadPlayerGoalEffectStats();
+        } else {
+            // Reload other player sub-tabs
+            const currentSubTab = getCurrentPlayerSubTab();
+            console.log('🔄 Reloading other player sub-tab:', currentSubTab);
+            if (currentSubTab) {
+                loadPlayerSubTabData(currentSubTab);
+            }
+        }
+    }
+    
+    // Also reload other tabs that use main filters
+    const activeTab = document.querySelector('.stats-tab.active');
+    if (activeTab) {
+        const tabId = activeTab.getAttribute('onclick');
+        if (tabId) {
+            const tabName = tabId.match(/showStatsTab\([^,]+,\s*'([^']+)'/);
+            if (tabName && tabName[1]) {
+                const tabNameValue = tabName[1];
+                console.log(`🔄 Reloading ${tabNameValue} tab due to main filter change`);
+                
+                // Reload specific tabs that use main filters
+                if (tabNameValue === 'all-players') {
+                    const currentFilteredRecords = getCurrentFilteredRecords();
+                    loadAllPlayersData(currentFilteredRecords);
+                } else if (tabNameValue === 'coaches') {
+                    const currentFilteredRecords = getCurrentFilteredRecords();
+                    loadCoachesData(currentFilteredRecords);
+                } else if (tabNameValue === 'h2h') {
+                    const currentFilteredRecords = getCurrentFilteredRecords();
+                    loadH2HTeamsData(currentFilteredRecords);
+                } else if (tabNameValue === 'referees') {
+                    const currentFilteredRecords = getCurrentFilteredRecords();
+                    loadAllRefereesData(currentFilteredRecords);
+                } else if (tabNameValue === 'all-goalkeepers') {
+                    loadAllGoalkeepersData();
+                }
+            }
+        }
+    }
+}
 
 // ============================================================================
 // TROPHY STATISTICS
@@ -11197,6 +11392,119 @@ function sortAssistDetailsTable(column) {
     console.log(`✅ Table sorted by ${column} (${assistDetailsSortState.direction})`);
 }
 
+// Helper function to apply main filters to match data
+function applyMainFiltersToMatch(matchDetail, filters) {
+    if (!matchDetail) return false;
+    
+    // Match ID filter
+    if (filters.matchId && !normalizeStr(matchDetail.MATCH_ID || matchDetail['MATCH ID'] || '').toLowerCase().includes(filters.matchId.toLowerCase())) {
+        return false;
+    }
+    
+    // Champion System filter
+    if (filters.championSystem && normalizeStr(matchDetail['CHAMPION SYSTEM'] || '') !== filters.championSystem) {
+        return false;
+    }
+    
+    // Champion filter
+    if (filters.champion && normalizeStr(matchDetail.CHAMPION || '') !== filters.champion) {
+        return false;
+    }
+    
+    // Season filter
+    if (filters.season && normalizeStr(matchDetail.SEASON || '') !== filters.season) {
+        return false;
+    }
+    
+    // Ahly Manager filter
+    if (filters.ahlyManager && normalizeStr(matchDetail['AHLY MANAGER'] || '') !== filters.ahlyManager) {
+        return false;
+    }
+    
+    // Opponent Manager filter
+    if (filters.opponentManager && normalizeStr(matchDetail['OPPONENT MANAGER'] || '') !== filters.opponentManager) {
+        return false;
+    }
+    
+    // Referee filter
+    if (filters.referee && normalizeStr(matchDetail.REFEREE || '') !== filters.referee) {
+        return false;
+    }
+    
+    // Round filter
+    if (filters.round && normalizeStr(matchDetail.ROUND || '') !== filters.round) {
+        return false;
+    }
+    
+    // H/A/N filter
+    if (filters.hAN && normalizeStr(matchDetail['H/A/N'] || '') !== filters.hAN) {
+        return false;
+    }
+    
+    // Stadium filter
+    if (filters.stadium && normalizeStr(matchDetail.STADIUM || '') !== filters.stadium) {
+        return false;
+    }
+    
+    // Ahly Team filter
+    if (filters.ahlyTeam && normalizeStr(matchDetail['AHLY TEAM'] || '') !== filters.ahlyTeam) {
+        return false;
+    }
+    
+    // Opponent Team filter
+    if (filters.opponentTeam && normalizeStr(matchDetail['OPPONENT TEAM'] || '') !== filters.opponentTeam) {
+        return false;
+    }
+    
+    // Goals For filter
+    if (filters.goalsFor && safeInt(matchDetail['GOALS FOR'] || matchDetail['AHLY GOALS'] || 0) !== safeInt(filters.goalsFor)) {
+        return false;
+    }
+    
+    // Goals Against filter
+    if (filters.goalsAgainst && safeInt(matchDetail['GOALS AGAINST'] || matchDetail['OPPONENT GOALS'] || 0) !== safeInt(filters.goalsAgainst)) {
+        return false;
+    }
+    
+    // Result filter
+    if (filters.result && normalizeStr(matchDetail.RESULT || '') !== filters.result) {
+        return false;
+    }
+    
+    // Clean Sheet filter
+    if (filters.cleanSheet && normalizeStr(matchDetail['CLEAN SHEET'] || '') !== filters.cleanSheet) {
+        return false;
+    }
+    
+    // Extra Time filter
+    if (filters.extraTime && normalizeStr(matchDetail['EXTRA TIME'] || '') !== filters.extraTime) {
+        return false;
+    }
+    
+    // Penalties filter
+    if (filters.penalties && normalizeStr(matchDetail.PENALTIES || '') !== filters.penalties) {
+        return false;
+    }
+    
+    // Date From filter
+    if (filters.dateFrom) {
+        const matchDate = matchDetail.DATE || matchDetail['MATCH DATE'] || '';
+        if (matchDate && matchDate < filters.dateFrom) {
+            return false;
+        }
+    }
+    
+    // Date To filter
+    if (filters.dateTo) {
+        const matchDate = matchDetail.DATE || matchDetail['MATCH DATE'] || '';
+        if (matchDate && matchDate > filters.dateTo) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 // Load Player With Coaches Statistics
 function loadPlayerWithCoachesStats() {
     try {
@@ -11208,7 +11516,9 @@ function loadPlayerWithCoachesStats() {
             return;
         }
         
-        console.log(`👨‍💼 Loading With Coaches stats for player: ${selectedPlayer}, team filter: ${teamFilter}`);
+        // Get applied filters from the main filter section
+        const appliedFilters = getCurrentFilters();
+        console.log(`👨‍💼 Loading With Coaches stats for player: ${selectedPlayer}, team filter: ${teamFilter}, applied filters:`, appliedFilters);
         
         // Get data from sheets
         const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
@@ -11223,7 +11533,15 @@ function loadPlayerWithCoachesStats() {
             const nameMatch = playerName.toLowerCase() === selectedPlayer.toLowerCase();
             const teamMatch = !teamFilter || team.toLowerCase().includes(teamFilter.toLowerCase());
             
-            return nameMatch && teamMatch;
+            // Apply main filters to match data
+            const matchId = normalizeStr(row.MATCH_ID || row['MATCH ID'] || '');
+            const matchDetail = matchDetails.find(match => 
+                normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+            );
+            
+            const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
+            
+            return nameMatch && teamMatch && filtersMatch;
         });
         
         // Get all player goals and assists from PLAYERDETAILS (regardless of LINEUPDETAILS)
@@ -11234,7 +11552,15 @@ function loadPlayerWithCoachesStats() {
             const nameMatch = pdPlayerName.toLowerCase() === selectedPlayer.toLowerCase();
             const teamMatch = !teamFilter || pdTeam.toLowerCase().includes(teamFilter.toLowerCase());
             
-            return nameMatch && teamMatch;
+            // Apply main filters to match data
+            const matchId = normalizeStr(pd.MATCH_ID || pd['MATCH ID'] || '');
+            const matchDetail = matchDetails.find(match => 
+                normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
+            );
+            
+            const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
+            
+            return nameMatch && teamMatch && filtersMatch;
         });
         
         // Group by coach and calculate stats
