@@ -10119,13 +10119,60 @@ async function loadH2HTDetailsTeams() {
     try {
         console.log('Loading opponent teams for H2H T Details...');
         const response = await fetch('/api/opponent-teams');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         
-        if (data.teams) {
+        if (data.teams && data.teams.length > 0) {
+            console.log(`✅ Loaded ${data.teams.length} teams from API`);
             setupH2HTDetailsSearch(data.teams);
+        } else {
+            console.warn('⚠️ No teams data from API, trying fallback...');
+            loadH2HTDetailsTeamsFallback();
         }
     } catch (error) {
-        console.error('Error loading opponent teams for H2H T Details:', error);
+        console.error('❌ Error loading opponent teams for H2H T Details:', error);
+        console.log('🔄 Trying fallback method...');
+        loadH2HTDetailsTeamsFallback();
+    }
+}
+
+// Fallback method to load teams from existing data
+function loadH2HTDetailsTeamsFallback() {
+    try {
+        console.log('🔄 Loading teams from existing data as fallback...');
+        
+        // Check if we have alAhlyStatsData available
+        if (alAhlyStatsData && alAhlyStatsData.allRecords) {
+            console.log(`📊 Using ${alAhlyStatsData.allRecords.length} records for fallback`);
+            
+            // Extract unique opponent teams from existing data
+            const opponentTeams = new Set();
+            alAhlyStatsData.allRecords.forEach(match => {
+                const opponentTeam = match['OPPONENT TEAM'] || match['OPPONENT'] || '';
+                if (opponentTeam.trim()) {
+                    opponentTeams.add(opponentTeam.trim());
+                }
+            });
+            
+            const teamsList = Array.from(opponentTeams).sort();
+            console.log(`✅ Fallback loaded ${teamsList.length} teams: ${teamsList.slice(0, 5).join(', ')}...`);
+            
+            setupH2HTDetailsSearch(teamsList);
+        } else {
+            console.error('❌ No fallback data available - alAhlyStatsData not loaded');
+            // Show error message in search input
+            const searchInput = document.getElementById('h2h-t-details-team-search');
+            if (searchInput) {
+                searchInput.placeholder = 'Error loading teams - please refresh page';
+                searchInput.disabled = true;
+            }
+        }
+    } catch (error) {
+        console.error('❌ Fallback method also failed:', error);
     }
 }
 
@@ -10152,6 +10199,57 @@ function loadH2HTDetailsTeamsWithFilteredData(filteredRecords) {
         updateCurrentH2HTDetailsWithFilters(filteredRecords);
     } catch (error) {
         console.error('Error loading opponent teams from filtered data:', error);
+    }
+}
+
+// Search H2H T Details teams function
+function searchH2HTDetailsTeams(searchTerm) {
+    const searchInput = document.getElementById('h2h-t-details-team-search');
+    const dropdown = document.getElementById('h2h-t-details-team-dropdown');
+    
+    if (!searchInput || !dropdown) return;
+    
+    const teams = searchInput._teamsData || [];
+    const term = searchTerm.toLowerCase().trim();
+    
+    if (term === '') {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    // Filter teams
+    const filteredTeams = teams.filter(team => 
+        team.toLowerCase().includes(term)
+    );
+    
+    // Show dropdown with filtered teams
+    if (filteredTeams.length > 0) {
+        dropdown.innerHTML = '';
+        filteredTeams.forEach(team => {
+            const teamItem = document.createElement('div');
+            teamItem.className = 'team-item';
+            teamItem.style.cssText = 'padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;';
+            teamItem.textContent = team;
+            
+            teamItem.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f8f9fa';
+            });
+            
+            teamItem.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = 'white';
+            });
+            
+            teamItem.addEventListener('click', function() {
+                searchInput.value = team;
+                dropdown.style.display = 'none';
+                loadH2HTDetailsData(team);
+            });
+            
+            dropdown.appendChild(teamItem);
+        });
+        dropdown.style.display = 'block';
+    } else {
+        dropdown.style.display = 'none';
     }
 }
 
