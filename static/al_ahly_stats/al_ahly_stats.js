@@ -738,7 +738,6 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
         };
     });
 }
-
 function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
     // Sheets needed
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
@@ -1537,36 +1536,59 @@ async function loadGoalkeeperStats() {
         throw error;
     }
 }
-
 // ============================================================================
 // STATISTICS CALCULATION FUNCTIONS
 // ============================================================================
 
 function calculateOverviewStats() {
-    const matches = getFilteredMatches();
+    // Prefer using raw records to avoid shape mismatches in normal mode
+    const records = (alAhlyStatsData.filteredRecords && alAhlyStatsData.filteredRecords.length)
+        ? alAhlyStatsData.filteredRecords
+        : (alAhlyStatsData.allRecords || []);
     
-    const totalMatches = matches.length;
-    const totalWins = matches.filter(m => m.result === 'W').length;
-    const totalDraws = matches.filter(m => m.result === 'D').length;
-    const totalLosses = matches.filter(m => m.result === 'L').length;
+    if (!Array.isArray(records) || records.length === 0) {
+        // Fallback to the parsed matches path if available
+        const matches = getFilteredMatches();
+        const totalMatches = matches.length;
+        const totalWins = matches.filter(m => m.result === 'W').length;
+        const totalDraws = matches.filter(m => m.result === 'D').length;
+        const totalLosses = matches.filter(m => m.result === 'L').length;
+        const totalGoalsFor = matches.reduce((sum, m) => sum + (m.goalsFor || 0), 0);
+        const totalGoalsAgainst = matches.reduce((sum, m) => sum + (m.goalsAgainst || 0), 0);
+        const cleanSheets = matches.filter(m => (m.goalsAgainst || 0) === 0).length;
+        const cleanSheetsAgainst = matches.filter(m => (m.goalsFor || 0) === 0).length;
+        const winRate = totalMatches > 0 ? Math.round((totalWins / totalMatches) * 100) : 0;
+        return {
+            totalMatches,
+            totalWins,
+            totalDraws,
+            drawsWithGoals: 0,
+            drawsNoGoals: 0,
+            totalLosses,
+            totalGoalsFor,
+            totalGoalsAgainst,
+            cleanSheets,
+            cleanSheetsAgainst,
+            winRate
+        };
+    }
     
-    const totalGoalsFor = matches.reduce((sum, m) => sum + m.goalsFor, 0);
-    const totalGoalsAgainst = matches.reduce((sum, m) => sum + m.goalsAgainst, 0);
+    const normalized = records.map(r => ({
+        wdl: normalizeStr(r['W-D-L'] || ''),
+        gf: parseInt(r['GF'] || 0) || 0,
+        ga: parseInt(r['GA'] || 0) || 0
+    }));
     
-    const cleanSheets = matches.filter(m => m.goalsAgainst === 0).length;
-    const cleanSheetsAgainst = matches.filter(m => m.goalsFor === 0).length;
-    
-    // Calculate draws with goals vs no goals from raw records
-    const filteredRecords = alAhlyStatsData.filteredRecords || alAhlyStatsData.allRecords || [];
-    const drawsWithGoals = filteredRecords.filter(r => {
-        const wdl = normalizeStr(r['W-D-L'] || '');
-        return wdl === 'D' || wdl === 'D WITH G' || wdl === 'DWITHG';
-    }).length;
-    const drawsNoGoals = filteredRecords.filter(r => {
-        const wdl = normalizeStr(r['W-D-L'] || '');
-        return wdl === 'D.' || wdl === 'D WITHOUT G' || wdl === 'DWITHOUTG';
-    }).length;
-    
+    const totalMatches = normalized.length;
+    const totalWins = normalized.filter(r => r.wdl === 'W').length;
+    const totalLosses = normalized.filter(r => r.wdl === 'L').length;
+    const totalDraws = normalized.filter(r => r.wdl && r.wdl.startsWith('D')).length;
+    const totalGoalsFor = normalized.reduce((s, r) => s + r.gf, 0);
+    const totalGoalsAgainst = normalized.reduce((s, r) => s + r.ga, 0);
+    const cleanSheets = normalized.filter(r => r.ga === 0).length; // for Ahly
+    const cleanSheetsAgainst = normalized.filter(r => r.gf === 0).length; // against Ahly
+    const drawsWithGoals = normalized.filter(r => r.wdl === 'D' || r.wdl === 'D WITH G' || r.wdl === 'DWITHG').length;
+    const drawsNoGoals = normalized.filter(r => r.wdl === 'D.' || r.wdl === 'D WITHOUT G' || r.wdl === 'DWITHOUTG').length;
     const winRate = totalMatches > 0 ? Math.round((totalWins / totalMatches) * 100) : 0;
     
     return {
@@ -2328,7 +2350,6 @@ function calculateOpponentsHowWinStats() {
     // Update UI
     updateOpponentsHowWinUI(stats, matchesWithUnknownMinutes.size);
 }
-
 // Update HOW WIN UI for Opponents
 function updateOpponentsHowWinUI(stats, excludedCount) {
     const elements = {
@@ -3074,7 +3095,6 @@ function updateAllSearchableInputs() {
         }
     });
 }
-
 function updateFilterOptionsFromFilteredData(filteredRecords) {
     // Extract unique values for filters from filtered data
     function getUniqueValuesFromFiltered(columnName) {
@@ -3252,6 +3272,20 @@ const debouncedApplyFilters = debounce(function() {
     // Load data directly from API when filters change
     
     applyFiltersWithData(filters);
+    
+    // Update H2H T Details if it's currently active
+    const currentActiveTab = document.querySelector('.stats-tab.active');
+    if (currentActiveTab && currentActiveTab.getAttribute('onclick') && currentActiveTab.getAttribute('onclick').includes('h2h-t-details')) {
+        console.log('🔄 H2H T Details tab is active, updating with new filters');
+        const currentFilteredRecords = getCurrentFilteredRecords();
+        if (currentFilteredRecords && currentFilteredRecords.length > 0) {
+            loadH2HTDetailsTeamsWithFilteredData(currentFilteredRecords);
+            // Update currently selected team stats if any
+            updateCurrentH2HTDetailsWithFilters(currentFilteredRecords);
+        } else {
+            loadH2HTDetailsTeams();
+        }
+    }
 }, 300); // Wait 300ms after user stops changing filters
 
 function getCurrentFilteredRecords() {
@@ -3347,6 +3381,18 @@ function applyFilters() {
     
     console.log('🔄 Applying filters...');
     debouncedApplyFilters();
+    
+    // Update H2H T Details if it's currently active
+    const currentActiveTab = document.querySelector('.stats-tab.active');
+    if (currentActiveTab && currentActiveTab.getAttribute('onclick') && currentActiveTab.getAttribute('onclick').includes('h2h-t-details')) {
+        console.log('🔄 H2H T Details tab is active, updating with new filters');
+        const currentFilteredRecords = getCurrentFilteredRecords();
+        if (currentFilteredRecords && currentFilteredRecords.length > 0) {
+            loadH2HTDetailsTeamsWithFilteredData(currentFilteredRecords);
+        } else {
+            loadH2HTDetailsTeams();
+        }
+    }
 }
 
 function applyFiltersWithPreservedSelections(preservedFilters) {
@@ -3733,6 +3779,21 @@ function clearFilters() {
                     cleanSheetsAgainst: alAhlyStatsData.cleanSheetsAgainst || 0
                 };
                 
+                // Update H2H T Details if it's currently active
+                const currentActiveTab = document.querySelector('.stats-tab.active');
+                if (currentActiveTab && currentActiveTab.getAttribute('onclick') && currentActiveTab.getAttribute('onclick').includes('h2h-t-details')) {
+                    console.log('🔄 H2H T Details tab is active, updating with cleared filters');
+                    // Reload teams with all data (no filters)
+                    loadH2HTDetailsTeams();
+                    // Update currently selected team stats if any
+                    const searchInput = document.getElementById('h2h-t-details-team-search');
+                    if (searchInput && searchInput.value.trim()) {
+                        const selectedTeam = searchInput.value.trim();
+                        console.log(`Updating H2H stats for ${selectedTeam} with cleared filters`);
+                        loadH2HTDetailsData(selectedTeam);
+                    }
+                }
+                
                 const elements = {
                     'total-matches': stats.totalMatches,
                     'total-wins': stats.totalWins,
@@ -3854,7 +3915,6 @@ function clearFilters() {
     
     console.log('All filters cleared and data reloaded');
 }
-
 // loadAllData removed per product decision; intentionally no-op if referenced
 
 function refreshStats() {
@@ -4610,7 +4670,6 @@ function loadPlayerChampionships() {
     const items = getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters);
     renderPlayerChampionshipsTable(items);
 }
-
 function renderPlayerChampionshipsTable(items) {
     const tbody = document.querySelector('#player-championships-table tbody');
     if (!tbody) return;
@@ -5360,7 +5419,6 @@ function loadPlayerGoalByRoundStats() {
     console.log('Goal rounds data:', goalRounds);
     renderGoalRoundCards(goalRounds);
 }
-
 // Get goal rounds from Excel data (grouped by champion)
 function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = {}) {
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
@@ -6023,7 +6081,6 @@ function loadGKMatches(teamFilter = '') {
     console.log(`Found ${matches.length} matches, rendering table...`);
     renderGKMatchesTable(matches);
 }
-
 // Excel: get goalkeeper matches from GKDETAILS and MATCHDETAILS
 function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters = {}) {
     console.log(`Getting matches for goalkeeper: ${goalkeeperName}, team filter: ${teamFilter}, applied filters:`, appliedFilters);
@@ -6817,7 +6874,6 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
     console.log(`Found ${seasonsData.length} seasons for goalkeeper ${goalkeeperName}`);
     return seasonsData;
 }
-
 // Render goalkeeper seasons table
 function renderGKSeasonsTable(seasons) {
     console.log('=== RENDERING GK SEASONS TABLE ===');
@@ -7468,7 +7524,6 @@ async function loadGKOverviewStats(goalkeeperName, teamFilter = '') {
         penalties_missed: stats.penaltiesMissed
     });
 }
-
 // Excel: calculate goalkeeper statistics from GKDETAILS and MATCHDETAILS
 function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFilters = {}) {
     
@@ -7870,6 +7925,9 @@ function updateGKOverviewCards(stats) {
 function showStatsTab(arg1, arg2) {
     const isEvent = arg1 && typeof arg1 === 'object' && typeof arg1.preventDefault === 'function';
     const evt = isEvent ? arg1 : null;
+    if (evt) {
+        try { evt.preventDefault(); } catch (e) {}
+    }
     const tabName = typeof arg1 === 'string' ? arg1 : (typeof arg2 === 'string' ? arg2 : 'overview');
 
     // Hide all tab contents
@@ -7902,6 +7960,26 @@ function showStatsTab(arg1, arg2) {
         // Get current filtered records if filters are applied
         const currentFilteredRecords = getCurrentFilteredRecords();
         loadH2HTeamsData(currentFilteredRecords);
+        
+        // Also load countries data if countries tab is visible
+        const countriesTab = document.getElementById('h2h-countries-subtab');
+        if (countriesTab && countriesTab.style.display !== 'none') {
+            loadH2HCountriesData();
+        }
+    }
+    
+    // Load H2H T Details data when H2H T Details tab is selected
+    if (tabName === 'h2h-t-details') {
+        console.log('🎯 H2H T Details tab selected, loading teams...');
+        loadH2HTDetailsTeams();
+        
+        // Apply current filters to H2H T Details
+        const currentFilteredRecords = getCurrentFilteredRecords();
+        if (currentFilteredRecords && currentFilteredRecords.length > 0) {
+            console.log(`🔄 Applying filters to H2H T Details: ${currentFilteredRecords.length} filtered records`);
+            // Reload teams with filtered data
+            loadH2HTDetailsTeamsWithFilteredData(currentFilteredRecords);
+        }
     }
     
     // Load Coaches data when Coaches tab is selected (with current filters applied)
@@ -8239,7 +8317,6 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = 
         equalizingMatchesData
     };
 }
-
 // Helper function to parse Excel date serial number
 function parseExcelDate(excelDate) {
     if (!excelDate) return new Date(0);
@@ -9029,7 +9106,6 @@ function showAllPlayersSubTab(event, subtabName) {
         }
     }
 }
-
 // Load Variety Goals data
 function loadVarietyGoalsData(filteredRecords = null) {
     console.log('Loading Variety Goals data...');
@@ -9709,6 +9785,12 @@ function loadH2HTeamsData(filteredRecords = null) {
     
     // Setup search functionality
     setupH2HSearch(teamsArray);
+    
+    // Update Countries tab if it's currently visible
+    const countriesTab = document.getElementById('h2h-countries-subtab');
+    if (countriesTab && countriesTab.style.display !== 'none') {
+        loadH2HCountriesData();
+    }
 }
 
 // Render H2H Teams table
@@ -9813,6 +9895,880 @@ function setupH2HSearch(teamsData) {
     });
     
     console.log('H2H search functionality initialized');
+}
+// ============================================================================
+// H2H TEAMS SUBTABS FUNCTIONS
+
+// Show H2H Teams sub-tab
+function showH2HTeamsSubTab(evt, tabName) {
+    // Hide all sub-tab contents by removing active class
+    const subTabContents = document.querySelectorAll('#h2h-tab .stats-subtab-content');
+    subTabContents.forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Remove active class from all sub-tab buttons
+    const subTabButtons = document.querySelectorAll('#h2h-tab .stats-subtab');
+    subTabButtons.forEach(button => {
+        button.classList.remove('active');
+    });
+    
+    // Show the selected sub-tab content by adding active class
+    const selectedContent = document.getElementById(tabName);
+    if (selectedContent) {
+        selectedContent.classList.add('active');
+        console.log('Showing tab:', tabName);
+        console.log('Tab element:', selectedContent);
+        console.log('Tab has active class:', selectedContent.classList.contains('active'));
+        console.log('Tab computed display:', window.getComputedStyle(selectedContent).display);
+        console.log('Tab computed visibility:', window.getComputedStyle(selectedContent).visibility);
+        console.log('Tab innerHTML length:', selectedContent.innerHTML.length);
+    } else {
+        console.error('Could not find tab element:', tabName);
+    }
+    
+    // Add active class to the clicked button
+    evt.currentTarget.classList.add('active');
+    
+    // Load countries data if Countries tab is selected
+    if (tabName === 'h2h-countries-subtab') {
+        // Wait a bit for the tab to be visible, then load data
+        setTimeout(() => {
+            console.log('Loading countries data for tab:', tabName);
+            loadH2HCountriesData();
+        }, 100);
+    }
+}
+
+// Load H2H Countries data
+function loadH2HCountriesData() {
+    try {
+        console.log('Loading H2H Countries data...');
+        
+        // Check if data is available
+        if (!alAhlyStatsData || !alAhlyStatsData.allRecords) {
+            console.error('No data available for H2H Countries');
+            // Show loading message
+            const tbody = document.querySelector('#h2h-countries-table tbody');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6c757d;">Loading data...</td></tr>';
+            }
+            
+            // Try to load data if not available
+            if (typeof loadAlAhlyStatsData === 'function') {
+                console.log('Attempting to load data...');
+                loadAlAhlyStatsData().then(() => {
+                    loadH2HCountriesData();
+                });
+            }
+            return;
+        }
+        
+        console.log(`Processing ${alAhlyStatsData.allRecords.length} records for H2H Countries`);
+        
+        // Get current filtered records
+        const currentFilteredRecords = getCurrentFilteredRecords();
+        const recordsToUse = currentFilteredRecords || alAhlyStatsData.allRecords;
+        
+        console.log(`Using ${recordsToUse.length} records for country calculations`);
+        
+        // Calculate country statistics
+        const countryStats = calculateCountryStats(recordsToUse);
+        
+        console.log(`Calculated stats for ${countryStats.length} countries`);
+        
+        // Render the countries table
+        renderH2HCountriesTable(countryStats);
+        
+    } catch (error) {
+        console.error('Error loading H2H Countries data:', error);
+        // Show error message
+        const tbody = document.querySelector('#h2h-countries-table tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #dc3545;">Error loading data</td></tr>';
+        }
+    }
+}
+
+// Calculate country statistics from match records
+function calculateCountryStats(records) {
+    const countryMap = new Map();
+    
+    records.forEach(match => {
+        const opponentTeam = (match['OPPONENT TEAM'] || '').toString().trim();
+        if (!opponentTeam) return;
+        
+        // Extract country name (after the last " - ")
+        const parts = opponentTeam.split(' - ');
+        if (parts.length < 2) return;
+        
+        const country = parts[parts.length - 1].trim();
+        if (!country) return;
+        
+        // Initialize country stats if not exists
+        if (!countryMap.has(country)) {
+            countryMap.set(country, {
+                country: country,
+                teams: new Set(),
+                matches: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                goals_for: 0,
+                goals_against: 0,
+                clean_sheets_for: 0,
+                clean_sheets_against: 0
+            });
+        }
+        
+        const countryStats = countryMap.get(country);
+        
+        // Add team to country's teams set
+        countryStats.teams.add(opponentTeam);
+        
+        // Parse match result
+        const result = (match['W-D-L'] || '').toString().trim();
+        const gf = parseInt(match['GF'] || 0) || 0;
+        const ga = parseInt(match['GA'] || 0) || 0;
+        
+        // Update statistics
+        countryStats.matches += 1;
+        countryStats.goals_for += gf;
+        countryStats.goals_against += ga;
+        
+        // Clean sheets
+        if (ga === 0) countryStats.clean_sheets_for += 1;
+        if (gf === 0) countryStats.clean_sheets_against += 1;
+        
+        // W-D-L
+        if (result === 'W') {
+            countryStats.wins += 1;
+        } else if (result.includes('D')) {
+            countryStats.draws += 1;
+        } else if (result === 'L') {
+            countryStats.losses += 1;
+        }
+    });
+    
+    // Convert to array and sort by matches (descending)
+    const countries = Array.from(countryMap.values()).map(country => ({
+        ...country,
+        teams_count: country.teams.size
+    })).sort((a, b) => b.matches - a.matches);
+    
+    return countries;
+}
+
+// Render H2H Countries table
+function renderH2HCountriesTable(countries) {
+    console.log('Rendering H2H Countries table with', countries.length, 'countries');
+    
+    const tbody = document.querySelector('#h2h-countries-table tbody');
+    if (!tbody) {
+        console.error('Could not find #h2h-countries-table tbody element');
+        return;
+    }
+    
+    if (countries.length === 0) {
+        console.log('No countries data to display');
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6c757d;">No country data available</td></tr>';
+        return;
+    }
+    
+    let tableHTML = '';
+    
+    countries.forEach((country, index) => {
+        console.log(`Country ${index + 1}:`, country.country, '- Teams:', country.teams_count, '- Matches:', country.matches);
+        
+        tableHTML += `
+            <tr>
+                <td style="color: #007bff; font-weight: 600;">${country.teams_count}</td>
+                <td style="font-weight: 600;">${country.country}</td>
+                <td style="font-weight: 600;">${country.matches}</td>
+                <td style="color: #28a745; font-weight: 600;">${country.wins}</td>
+                <td style="color: #ffc107; font-weight: 600;">${country.draws}</td>
+                <td style="color: #dc3545; font-weight: 600;">${country.losses}</td>
+                <td style="color: #007bff; font-weight: 600;">${country.goals_for}</td>
+                <td style="color: #6c757d; font-weight: 600;">${country.goals_against}</td>
+                <td style="color: #17a2b8; font-weight: 600;">${country.clean_sheets_for}</td>
+                <td style="color: #fd7e14; font-weight: 600;">${country.clean_sheets_against}</td>
+            </tr>
+        `;
+    });
+    
+    console.log('Setting table HTML with', countries.length, 'rows');
+    tbody.innerHTML = tableHTML;
+    console.log('Table HTML set successfully');
+    
+    // Debug: Check if table is visible
+    const table = document.getElementById('h2h-countries-table');
+    const subtab = document.getElementById('h2h-countries-subtab');
+    console.log('Countries table element:', table);
+    console.log('Countries subtab element:', subtab);
+    console.log('Subtab display:', subtab ? window.getComputedStyle(subtab).display : 'N/A');
+    console.log('Subtab classes:', subtab ? subtab.className : 'N/A');
+    console.log('Table display:', table ? window.getComputedStyle(table).display : 'N/A');
+    console.log('Table visibility:', table ? window.getComputedStyle(table).visibility : 'N/A');
+}
+
+// H2H T DETAILS FUNCTIONS
+// ============================================================================
+
+// Load opponent teams for H2H T Details search
+async function loadH2HTDetailsTeams() {
+    try {
+        console.log('Loading opponent teams for H2H T Details...');
+        const response = await fetch('/api/opponent-teams');
+        const data = await response.json();
+        
+        if (data.teams) {
+            setupH2HTDetailsSearch(data.teams);
+        }
+    } catch (error) {
+        console.error('Error loading opponent teams for H2H T Details:', error);
+    }
+}
+
+// Load opponent teams with filtered data
+function loadH2HTDetailsTeamsWithFilteredData(filteredRecords) {
+    try {
+        console.log('Loading opponent teams from filtered data...');
+        
+        // Extract unique opponent teams from filtered records
+        const opponentTeams = new Set();
+        filteredRecords.forEach(match => {
+            const opponentTeam = match['OPPONENT TEAM'] || match['OPPONENT'] || '';
+            if (opponentTeam.trim()) {
+                opponentTeams.add(opponentTeam.trim());
+            }
+        });
+        
+        const teamsList = Array.from(opponentTeams).sort();
+        console.log(`Found ${teamsList.length} unique teams in filtered data`);
+        
+        setupH2HTDetailsSearch(teamsList);
+        
+        // Update currently selected team stats with filtered data
+        updateCurrentH2HTDetailsWithFilters(filteredRecords);
+    } catch (error) {
+        console.error('Error loading opponent teams from filtered data:', error);
+    }
+}
+
+// Setup H2H T Details search functionality
+function setupH2HTDetailsSearch(teams) {
+    const searchInput = document.getElementById('h2h-t-details-team-search');
+    const dropdown = document.getElementById('h2h-t-details-team-dropdown');
+    
+    if (searchInput && dropdown) {
+        // Store teams data
+        searchInput._teamsData = teams;
+        
+        // Clear existing event listeners
+        searchInput.removeEventListener('input', searchInput._inputHandler);
+        
+        // Add event listener for search input
+        searchInput._inputHandler = function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const teams = this._teamsData || [];
+            
+            if (searchTerm === '') {
+                dropdown.style.display = 'none';
+                return;
+            }
+            
+            // Filter teams
+            const filteredTeams = teams.filter(team => 
+                team.toLowerCase().includes(searchTerm)
+            );
+            
+            // Show dropdown with filtered teams
+            if (filteredTeams.length > 0) {
+                dropdown.innerHTML = '';
+                filteredTeams.forEach(team => {
+                    const teamItem = document.createElement('div');
+                    teamItem.className = 'team-item';
+                    teamItem.style.cssText = 'padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;';
+                    teamItem.textContent = team;
+                    
+                    teamItem.addEventListener('mouseenter', function() {
+                        this.style.backgroundColor = '#f8f9fa';
+                    });
+                    
+                    teamItem.addEventListener('mouseleave', function() {
+                        this.style.backgroundColor = 'white';
+                    });
+                    
+                    teamItem.addEventListener('click', function() {
+                        searchInput.value = team;
+                        dropdown.style.display = 'none';
+                        loadH2HTDetailsData(team);
+                    });
+                    
+                    dropdown.appendChild(teamItem);
+                });
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        };
+        
+        searchInput.addEventListener('input', searchInput._inputHandler);
+        
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        console.log(`Setup H2H T Details search with ${teams.length} teams`);
+    }
+}
+
+// Update currently selected H2H T Details with new filters
+function updateCurrentH2HTDetailsWithFilters(filteredRecords) {
+    const searchInput = document.getElementById('h2h-t-details-team-search');
+    if (searchInput && searchInput.value.trim()) {
+        const selectedTeam = searchInput.value.trim();
+        console.log(`Updating H2H stats for currently selected team: ${selectedTeam}`);
+        
+        // Recalculate stats for the selected team with new filters
+        const h2hStats = calculateH2HTDetailsFromFilteredData(selectedTeam, filteredRecords);
+        if (h2hStats) {
+            renderH2HTDetailsOverview(h2hStats.overview, selectedTeam);
+            renderH2HTDetailsChampionships(h2hStats.championships, selectedTeam);
+            renderH2HTDetailsSeasons(h2hStats.seasons, selectedTeam);
+        } else {
+            // Clear the display if no matches found with current filters
+            const content = document.getElementById('h2h-t-overview-content');
+            if (content) {
+                content.innerHTML = `
+                    <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">H2H T Details - Overview</h3>
+                    <p style="text-align: center; color: #6c757d; font-size: 0.9rem; margin-bottom: 1rem;">
+                        <em>لا توجد مباريات ضد ${selectedTeam} مع الفلاتر المطبقة حالياً</em>
+                    </p>
+                `;
+            }
+            
+            const championshipsContent = document.getElementById('h2h-t-championships-content');
+            if (championshipsContent) {
+                championshipsContent.innerHTML = `
+                    <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Championships Statistics</h3>
+                    <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
+                        لا توجد مباريات ضد ${selectedTeam} مع الفلاتر المطبقة حالياً
+                    </p>
+                `;
+            }
+            
+            const seasonsContent = document.getElementById('h2h-t-seasons-content');
+            if (seasonsContent) {
+                seasonsContent.innerHTML = `
+                    <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Seasons Statistics</h3>
+                    <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
+                        لا توجد مباريات ضد ${selectedTeam} مع الفلاتر المطبقة حالياً
+                    </p>
+                `;
+            }
+        }
+    }
+}
+
+// Load H2H T Details data for selected team
+async function loadH2HTDetailsData(teamName) {
+    try {
+        console.log(`Loading H2H T Details for team: ${teamName}`);
+        
+        // Get current filtered records to apply filters to H2H data
+        const currentFilteredRecords = getCurrentFilteredRecords();
+        
+        if (currentFilteredRecords && currentFilteredRecords.length > 0) {
+            console.log(`Applying filters to H2H T Details: ${currentFilteredRecords.length} filtered records`);
+            // Calculate H2H stats from filtered data
+            const h2hStats = calculateH2HTDetailsFromFilteredData(teamName, currentFilteredRecords);
+            if (h2hStats) {
+                renderH2HTDetailsOverview(h2hStats.overview, teamName);
+                renderH2HTDetailsChampionships(h2hStats.championships, teamName);
+                renderH2HTDetailsSeasons(h2hStats.seasons, teamName);
+                return;
+            }
+        }
+        
+        // Fallback to API call if no filtered data or calculation fails
+        const response = await fetch(`/api/h2h-t-details/${encodeURIComponent(teamName)}`);
+        const data = await response.json();
+        
+        if (data.overview && data.championships) {
+            renderH2HTDetailsOverview(data.overview, teamName);
+            renderH2HTDetailsChampionships(data.championships, teamName);
+            if (data.seasons) {
+                renderH2HTDetailsSeasons(data.seasons, teamName);
+            }
+        } else {
+            console.error('Invalid data received for H2H T Details');
+        }
+    } catch (error) {
+        console.error(`Error loading H2H T Details for ${teamName}:`, error);
+    }
+}
+
+// Calculate H2H T Details from filtered data
+function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
+    try {
+        console.log(`Calculating H2H stats for ${teamName} from ${filteredRecords.length} filtered records`);
+        
+        // Filter records for the specific team
+        const teamMatches = filteredRecords.filter(record => {
+            const opponentTeam = record['OPPONENT TEAM'] || record['OPPONENT'] || '';
+            return opponentTeam.trim().toLowerCase() === teamName.trim().toLowerCase();
+        });
+        
+        console.log(`Found ${teamMatches.length} matches against ${teamName}`);
+        
+        if (teamMatches.length === 0) {
+            return null;
+        }
+        
+        // Calculate overview stats
+        const overview = {
+            total_matches: teamMatches.length,
+            wins: 0,
+            draws: 0,
+            losses: 0,
+            goals_for: 0,
+            goals_against: 0,
+            clean_sheets_for: 0,
+            clean_sheets_against: 0
+        };
+        
+        // Aggregate championship and season stats in maps first
+        const championshipNameToStats = new Map();
+        const seasonNameToStats = new Map();
+        
+        teamMatches.forEach(match => {
+            const gf = parseInt(match['GF'] || 0);
+            const ga = parseInt(match['GA'] || 0);
+            const result = (match['W-D-L'] || '').toString().toUpperCase();
+            const champion = (match['CHAMPION'] || 'Unknown').toString();
+            const cleanSheetFor = String(match['CLEAN SHEET'] || '').toUpperCase() === 'YES' || ga === 0 ? 1 : 0;
+            const cleanSheetAgainst = gf === 0 ? 1 : 0;
+            
+            // Update overview stats
+            overview.goals_for += gf;
+            overview.goals_against += ga;
+            overview.clean_sheets_for += cleanSheetFor;
+            overview.clean_sheets_against += cleanSheetAgainst;
+            
+            // Count wins/draws/losses
+            if (result === 'W') {
+                overview.wins++;
+            } else if (result === 'D') {
+                overview.draws++;
+            } else if (result === 'L') {
+                overview.losses++;
+            }
+            
+            // Update championship stats
+            if (!championshipNameToStats.has(champion)) {
+                championshipNameToStats.set(champion, {
+                    championship: champion,
+                    matches: 0,
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                    clean_sheets_for: 0,
+                    clean_sheets_against: 0
+                });
+            }
+            const champStats = championshipNameToStats.get(champion);
+            champStats.matches += 1;
+            champStats.goals_for += gf;
+            champStats.goals_against += ga;
+            champStats.clean_sheets_for += cleanSheetFor;
+            champStats.clean_sheets_against += cleanSheetAgainst;
+            if (result === 'W') {
+                champStats.wins += 1;
+            } else if (result.includes('D')) {
+                champStats.draws += 1;
+            } else if (result === 'L') {
+                champStats.losses += 1;
+            }
+            
+            // Update season stats
+            const season = (match['SEASON'] || 'Unknown').toString();
+            if (!seasonNameToStats.has(season)) {
+                seasonNameToStats.set(season, {
+                    season: season,
+                    matches: 0,
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                    clean_sheets_for: 0,
+                    clean_sheets_against: 0
+                });
+            }
+            const seasonStats = seasonNameToStats.get(season);
+            seasonStats.matches += 1;
+            seasonStats.goals_for += gf;
+            seasonStats.goals_against += ga;
+            seasonStats.clean_sheets_for += cleanSheetFor;
+            seasonStats.clean_sheets_against += cleanSheetAgainst;
+            if (result === 'W') {
+                seasonStats.wins += 1;
+            } else if (result.includes('D')) {
+                seasonStats.draws += 1;
+            } else if (result === 'L') {
+                seasonStats.losses += 1;
+            }
+        });
+        
+        // Convert championships map to the array structure expected by renderer
+        const championships = Array.from(championshipNameToStats.values());
+        
+        // Convert seasons map to array and sort alphabetically and numerically
+        const seasons = Array.from(seasonNameToStats.values()).sort((a, b) => {
+            // Extract year numbers for sorting (e.g., "الدوري المصري 2025-26" -> [2025, 26])
+            const getYears = (seasonName) => {
+                const years = seasonName.match(/\d+/g);
+                if (years && years.length >= 2) {
+                    return [parseInt(years[0]), parseInt(years[1])];
+                } else if (years && years.length === 1) {
+                    return [parseInt(years[0]), 0];
+                }
+                return [0, 0];
+            };
+            
+            const yearsA = getYears(a.season);
+            const yearsB = getYears(b.season);
+            
+            // Sort by first year (descending), then by second year (descending)
+            if (yearsA[0] !== yearsB[0]) {
+                return yearsB[0] - yearsA[0];
+            }
+            return yearsB[1] - yearsA[1];
+        });
+        
+        return { overview, championships, seasons };
+    } catch (error) {
+        console.error('Error calculating H2H stats from filtered data:', error);
+        return null;
+    }
+}
+
+// Render H2H T Details Overview (similar to HOW WIN design)
+function renderH2HTDetailsOverview(overview, teamName) {
+    const content = document.getElementById('h2h-t-overview-content');
+    if (!content) return;
+    
+    const winRate = overview.total_matches > 0 ? ((overview.wins / overview.total_matches) * 100).toFixed(1) : 0;
+    const drawRate = overview.total_matches > 0 ? ((overview.draws / overview.total_matches) * 100).toFixed(1) : 0;
+    const lossRate = overview.total_matches > 0 ? ((overview.losses / overview.total_matches) * 100).toFixed(1) : 0;
+    
+    content.innerHTML = `
+        <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">H2H T Details vs ${teamName} - Overview</h3>
+        <div class="stats-overview">
+            <div class="stat-card">
+                <h3>Matches</h3>
+                <p class="stat-value" style="color: #6c757d;">${overview.total_matches}</p>
+                <p class="stat-label">Total Matches</p>
+            </div>
+            <div class="stat-card">
+                <h3>Wins</h3>
+                <p class="stat-value" style="color: #28a745;">${overview.wins}</p>
+                <p class="stat-label">${winRate}%</p>
+            </div>
+            <div class="stat-card">
+                <h3>Draws</h3>
+                <p class="stat-value" style="color: #ffc107;">${overview.draws}</p>
+                <p class="stat-label">${drawRate}%</p>
+            </div>
+            <div class="stat-card">
+                <h3>Losses</h3>
+                <p class="stat-value" style="color: #dc3545;">${overview.losses}</p>
+                <p class="stat-label">${lossRate}%</p>
+            </div>
+            <div class="stat-card">
+                <h3>Goals For</h3>
+                <p class="stat-value" style="color: #007bff;">${overview.goals_for}</p>
+                <p class="stat-label">Al Ahly Goals</p>
+            </div>
+            <div class="stat-card">
+                <h3>Goals Against</h3>
+                <p class="stat-value" style="color: #6c757d;">${overview.goals_against}</p>
+                <p class="stat-label">${teamName} Goals</p>
+            </div>
+            <div class="stat-card">
+                <h3>Clean Sheets For</h3>
+                <p class="stat-value" style="color: #17a2b8;">${overview.clean_sheets_for}</p>
+                <p class="stat-label">Al Ahly Clean Sheets</p>
+            </div>
+            <div class="stat-card">
+                <h3>Clean Sheets Against</h3>
+                <p class="stat-value" style="color: #fd7e14;">${overview.clean_sheets_against}</p>
+                <p class="stat-label">${teamName} Clean Sheets</p>
+            </div>
+        </div>
+    `;
+}
+
+// Render H2H T Details Championships table
+function renderH2HTDetailsChampionships(championships, teamName) {
+    const content = document.getElementById('h2h-t-championships-content');
+    if (!content) return;
+    
+    if (championships.length === 0) {
+        content.innerHTML = `
+            <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Championships Statistics vs ${teamName}</h3>
+            <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
+                No championship data available for this team.
+            </p>
+        `;
+        return;
+    }
+    
+    let tableHTML = `
+        <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Championships Statistics vs ${teamName}</h3>
+        <div class="stats-table-container">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Championship</th>
+                        <th>Matches</th>
+                        <th>Wins</th>
+                        <th>Draws</th>
+                        <th>Losses</th>
+                        <th>Goals For</th>
+                        <th>Goals Against</th>
+                        <th>Clean Sheets For</th>
+                        <th>Clean Sheets Against</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    // Sort championships by matches (descending)
+    championships.sort((a, b) => b.matches - a.matches);
+    
+    // Calculate totals
+    const totals = {
+        matches: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goals_for: 0,
+        goals_against: 0,
+        clean_sheets_for: 0,
+        clean_sheets_against: 0
+    };
+    
+    championships.forEach(champ => {
+        totals.matches += champ.matches;
+        totals.wins += champ.wins;
+        totals.draws += champ.draws;
+        totals.losses += champ.losses;
+        totals.goals_for += champ.goals_for;
+        totals.goals_against += champ.goals_against;
+        totals.clean_sheets_for += champ.clean_sheets_for;
+        totals.clean_sheets_against += champ.clean_sheets_against;
+    });
+    
+    championships.forEach(champ => {
+        const winRate = champ.matches > 0 ? ((champ.wins / champ.matches) * 100).toFixed(1) : 0;
+        tableHTML += `
+            <tr>
+                <td>${champ.championship}</td>
+                <td>${champ.matches}</td>
+                <td style="color: #28a745; font-weight: 600;">${champ.wins}</td>
+                <td style="color: #ffc107; font-weight: 600;">${champ.draws}</td>
+                <td style="color: #dc3545; font-weight: 600;">${champ.losses}</td>
+                <td style="color: #007bff; font-weight: 600;">${champ.goals_for}</td>
+                <td style="color: #6c757d; font-weight: 600;">${champ.goals_against}</td>
+                <td style="color: #17a2b8; font-weight: 600;">${champ.clean_sheets_for}</td>
+                <td style="color: #fd7e14; font-weight: 600;">${champ.clean_sheets_against}</td>
+            </tr>
+        `;
+    });
+    
+    // Add totals row
+    const totalWinRate = totals.matches > 0 ? ((totals.wins / totals.matches) * 100).toFixed(1) : 0;
+    tableHTML += `
+        <tr style="background-color: #f8f9fa; font-weight: bold; border-top: 2px solid #dee2e6;">
+            <td><strong>Total</strong></td>
+            <td><strong>${totals.matches}</strong></td>
+            <td style="color: #28a745; font-weight: 700;"><strong>${totals.wins}</strong></td>
+            <td style="color: #ffc107; font-weight: 700;"><strong>${totals.draws}</strong></td>
+            <td style="color: #dc3545; font-weight: 700;"><strong>${totals.losses}</strong></td>
+            <td style="color: #007bff; font-weight: 700;"><strong>${totals.goals_for}</strong></td>
+            <td style="color: #6c757d; font-weight: 700;"><strong>${totals.goals_against}</strong></td>
+            <td style="color: #17a2b8; font-weight: 700;"><strong>${totals.clean_sheets_for}</strong></td>
+            <td style="color: #fd7e14; font-weight: 700;"><strong>${totals.clean_sheets_against}</strong></td>
+        </tr>
+    `;
+    
+    tableHTML += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    content.innerHTML = tableHTML;
+}
+
+// Render H2H T Details Seasons table
+function renderH2HTDetailsSeasons(seasons, teamName) {
+    const content = document.getElementById('h2h-t-seasons-content');
+    if (!content) return;
+    
+    if (seasons.length === 0) {
+        content.innerHTML = `
+            <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Seasons Statistics vs ${teamName}</h3>
+            <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
+                No season data available for this team.
+            </p>
+        `;
+        return;
+    }
+    
+    let tableHTML = `
+        <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Seasons Statistics vs ${teamName}</h3>
+        <div class="stats-table-container">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Season</th>
+                        <th>Matches</th>
+                        <th>Wins</th>
+                        <th>Draws</th>
+                        <th>Losses</th>
+                        <th>Goals For</th>
+                        <th>Goals Against</th>
+                        <th>Clean Sheets For</th>
+                        <th>Clean Sheets Against</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    // Calculate totals
+    const totals = {
+        matches: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goals_for: 0,
+        goals_against: 0,
+        clean_sheets_for: 0,
+        clean_sheets_against: 0
+    };
+    
+    seasons.forEach(season => {
+        totals.matches += season.matches;
+        totals.wins += season.wins;
+        totals.draws += season.draws;
+        totals.losses += season.losses;
+        totals.goals_for += season.goals_for;
+        totals.goals_against += season.goals_against;
+        totals.clean_sheets_for += season.clean_sheets_for;
+        totals.clean_sheets_against += season.clean_sheets_against;
+    });
+    
+    seasons.forEach(season => {
+        const winRate = season.matches > 0 ? ((season.wins / season.matches) * 100).toFixed(1) : 0;
+        tableHTML += `
+            <tr>
+                <td>${season.season}</td>
+                <td>${season.matches}</td>
+                <td style="color: #28a745; font-weight: 600;">${season.wins}</td>
+                <td style="color: #ffc107; font-weight: 600;">${season.draws}</td>
+                <td style="color: #dc3545; font-weight: 600;">${season.losses}</td>
+                <td style="color: #007bff; font-weight: 600;">${season.goals_for}</td>
+                <td style="color: #6c757d; font-weight: 600;">${season.goals_against}</td>
+                <td style="color: #17a2b8; font-weight: 600;">${season.clean_sheets_for}</td>
+                <td style="color: #fd7e14; font-weight: 600;">${season.clean_sheets_against}</td>
+            </tr>
+        `;
+    });
+    
+    // Add totals row
+    const totalWinRate = totals.matches > 0 ? ((totals.wins / totals.matches) * 100).toFixed(1) : 0;
+    tableHTML += `
+        <tr style="background-color: #f8f9fa; font-weight: bold; border-top: 2px solid #dee2e6;">
+            <td><strong>Total</strong></td>
+            <td><strong>${totals.matches}</strong></td>
+            <td style="color: #28a745; font-weight: 700;"><strong>${totals.wins}</strong></td>
+            <td style="color: #ffc107; font-weight: 700;"><strong>${totals.draws}</strong></td>
+            <td style="color: #dc3545; font-weight: 700;"><strong>${totals.losses}</strong></td>
+            <td style="color: #007bff; font-weight: 700;"><strong>${totals.goals_for}</strong></td>
+            <td style="color: #6c757d; font-weight: 700;"><strong>${totals.goals_against}</strong></td>
+            <td style="color: #17a2b8; font-weight: 700;"><strong>${totals.clean_sheets_for}</strong></td>
+            <td style="color: #fd7e14; font-weight: 700;"><strong>${totals.clean_sheets_against}</strong></td>
+        </tr>
+    `;
+    
+    tableHTML += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    content.innerHTML = tableHTML;
+}
+
+// Clear H2H T Details content
+function clearH2HTDetailsContent() {
+    const overviewContent = document.getElementById('h2h-t-overview-content');
+    const championshipsContent = document.getElementById('h2h-t-championships-content');
+    const seasonsContent = document.getElementById('h2h-t-seasons-content');
+    
+    if (overviewContent) {
+        overviewContent.innerHTML = `
+            <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
+                Please select a team to view H2H T Details
+            </p>
+        `;
+    }
+    
+    if (championshipsContent) {
+        championshipsContent.innerHTML = `
+            <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
+                Please select a team to view championship statistics
+            </p>
+        `;
+    }
+    
+    if (seasonsContent) {
+        seasonsContent.innerHTML = `
+            <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
+                Please select a team to view season statistics
+            </p>
+        `;
+    }
+}
+
+// Switch H2H T Details sub-tabs
+function showH2HTDetailsSubTab(event, subTabName) {
+    // Remove active class from all sub-tabs
+    document.querySelectorAll('#h2h-t-details-tab .stats-subtab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all sub-tab contents
+    document.querySelectorAll('#h2h-t-details-tab .stats-subtab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Add active class to clicked tab
+    event.target.classList.add('active');
+    
+    // Show selected sub-tab content
+    const targetContent = document.getElementById(subTabName);
+    if (targetContent) {
+        targetContent.classList.add('active');
+    }
 }
 
 // ============================================================================
@@ -10212,7 +11168,6 @@ function showRefereeMainSubTab(event, tabName) {
         loadAllRefereesData(currentFilteredRecords);
     }
 }
-
 // Load and display All Referees data
 function loadAllRefereesData(filteredRecords = null) {
     console.log('Loading All Referees data...');
@@ -10878,7 +11833,6 @@ function setupMainFiltersForAllTabs() {
     
     console.log('✅ Main filters setup complete');
 }
-
 // Reload current active tab data
 function reloadCurrentActiveTab() {
     console.log('🔄 reloadCurrentActiveTab() called');
@@ -10950,6 +11904,13 @@ function reloadCurrentActiveTab() {
                 } else if (tabNameValue === 'h2h') {
                     const currentFilteredRecords = getCurrentFilteredRecords();
                     loadH2HTeamsData(currentFilteredRecords);
+                } else if (tabNameValue === 'h2h-t-details') {
+                    console.log('🔄 Updating H2H T Details with filtered data');
+                    if (filteredRecords && filteredRecords.length > 0) {
+                        loadH2HTDetailsTeamsWithFilteredData(filteredRecords);
+                    } else {
+                        loadH2HTDetailsTeams();
+                    }
                 } else if (tabNameValue === 'referees') {
                     const currentFilteredRecords = getCurrentFilteredRecords();
                     loadAllRefereesData(currentFilteredRecords);
@@ -10957,6 +11918,28 @@ function reloadCurrentActiveTab() {
                     loadAllGoalkeepersData();
                 }
             }
+        }
+    }
+    
+    // Update H2H T Details if it's currently active
+    const h2hTDetailsTab = document.getElementById('h2h-t-details-tab');
+    if (h2hTDetailsTab && h2hTDetailsTab.style.display !== 'none') {
+        console.log('🔄 Updating H2H T Details due to filter change');
+        console.log(`📊 Filtered records count: ${filteredRecords.length}`);
+        if (filteredRecords && filteredRecords.length > 0) {
+            loadH2HTDetailsTeamsWithFilteredData(filteredRecords);
+        } else {
+            loadH2HTDetailsTeams();
+        }
+    }
+    
+    // Also check if H2H T Details tab is active by checking if it's visible
+    if (activeTab && activeTab.getAttribute('onclick') && activeTab.getAttribute('onclick').includes('h2h-t-details')) {
+        console.log('🔄 H2H T Details tab is active, updating with filtered data');
+        if (filteredRecords && filteredRecords.length > 0) {
+            loadH2HTDetailsTeamsWithFilteredData(filteredRecords);
+        } else {
+            loadH2HTDetailsTeams();
         }
     }
 }
@@ -11504,7 +12487,6 @@ function applyMainFiltersToMatch(matchDetail, filters) {
     
     return true;
 }
-
 // Load Player With Coaches Statistics
 function loadPlayerWithCoachesStats() {
     try {
@@ -12268,7 +13250,6 @@ window.addEventListener('pageshow', async function(event) {
         await autoLoadCachedExcelData();
     }
 });
-
 // ============================================================================
 // SEARCH MATCH FUNCTIONALITY
 // ============================================================================
@@ -13070,7 +14051,6 @@ function showConsecutiveScoringStreak() {
     loadConsecutiveScoringStreak();
     showStreakPopup('Consecutive Scoring Streak', 'consecutive-scoring-streak-data');
 }
-
 // Show consecutive no-goal streak
 function showConsecutiveNoGoalStreak() {
     console.log('Showing consecutive no-goal streak');
@@ -13859,7 +14839,6 @@ function loadConsecutiveAssistStreak() {
     // Render the table
     renderConsecutiveAssistStreakTable(streak);
 }
-
 // Load consecutive no-assist streak
 function loadConsecutiveNoAssistStreak() {
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';

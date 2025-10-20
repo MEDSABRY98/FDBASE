@@ -1592,3 +1592,93 @@ body {
         display: table-cell;
     }
 }
+
+/* Stats Sub-tabs */
+.stats-subtabs {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    border-bottom: 2px solid #e5e5e5;
+    padding-bottom: 10px;
+}
+
+/* By Referee sub-tabs only: spread three buttons evenly across full width */
+#by-referee-sub .stats-sub-tabs {
+    display: flex;
+    width: 100%;
+    gap: 10px;
+    margin: 20px 0;
+    border-bottom: 2px solid #e5e5e5;
+    padding-bottom: 10px;
+    justify-content: space-between !important; /* override inline center */
+}
+
+#by-referee-sub .stats-sub-tab {
+    flex: 1; /* equal widths */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 8px;
+}
+
+.stats-subtab {
+    padding: 10px 20px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-weight: 500;
+    color: #6c757d;
+    transition: all 0.3s ease;
+    border-bottom: none;
+}
+
+.stats-subtab:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.stats-subtab.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.stats-subtab-content {
+    display: none;
+    margin-top: 20px;
+}
+
+.stats-subtab-content.active {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Team Dropdown */
+.team-dropdown {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.team-item {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.team-item:hover {
+    background-color: #f8f9fa !important;
+}
+
+/* Table Search Container */
+.table-search-container {
+    position: relative;
+    margin-bottom: 20px;
+}
