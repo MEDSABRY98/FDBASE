@@ -10610,6 +10610,165 @@ function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
     }
 }
 
+// Calculate streak statistics for H2H T Details
+function calculateH2HStreaks(teamName, records) {
+    try {
+        console.log(`Calculating streaks for ${teamName} from ${records.length} records`);
+        
+        // Filter records for the specific team and sort by date
+        const teamMatches = records.filter(record => {
+            const opponentTeam = (record['OPPONENT TEAM'] || '').toString().trim();
+            return opponentTeam === teamName;
+        }).sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+        
+        if (teamMatches.length === 0) {
+            return {
+                ahlyWinningStreak: 0,
+                opponentWinningStreak: 0,
+                ahlyLosingStreak: 0,
+                opponentLosingStreak: 0,
+                ahlyDrawStreak: 0,
+                opponentDrawStreak: 0,
+                ahlyWinlessStreak: 0,
+                opponentWinlessStreak: 0,
+                ahlyUnbeatenStreak: 0,
+                opponentUnbeatenStreak: 0
+            };
+        }
+        
+        // Calculate streaks
+        const streaks = {
+            ahlyWinningStreak: 0,
+            opponentWinningStreak: 0,
+            ahlyLosingStreak: 0,
+            opponentLosingStreak: 0,
+            ahlyDrawStreak: 0,
+            opponentDrawStreak: 0,
+            ahlyWinlessStreak: 0,
+            opponentWinlessStreak: 0,
+            ahlyUnbeatenStreak: 0,
+            opponentUnbeatenStreak: 0
+        };
+        
+        // Current streak counters
+        let currentAhlyWin = 0, maxAhlyWin = 0;
+        let currentOpponentWin = 0, maxOpponentWin = 0;
+        let currentAhlyLoss = 0, maxAhlyLoss = 0;
+        let currentOpponentLoss = 0, maxOpponentLoss = 0;
+        let currentAhlyDraw = 0, maxAhlyDraw = 0;
+        let currentOpponentDraw = 0, maxOpponentDraw = 0;
+        let currentAhlyWinless = 0, maxAhlyWinless = 0;
+        let currentOpponentWinless = 0, maxOpponentWinless = 0;
+        let currentAhlyUnbeaten = 0, maxAhlyUnbeaten = 0;
+        let currentOpponentUnbeaten = 0, maxOpponentUnbeaten = 0;
+        
+        teamMatches.forEach(match => {
+            const result = (match['W-D-L'] || '').toString().trim();
+            const gf = parseInt(match['GF'] || 0) || 0;
+            const ga = parseInt(match['GA'] || 0) || 0;
+            
+            // Determine match result for Al Ahly
+            let ahlyResult = '';
+            let opponentResult = '';
+            
+            if (result === 'W') {
+                ahlyResult = 'W';
+                opponentResult = 'L';
+            } else if (result === 'L') {
+                ahlyResult = 'L';
+                opponentResult = 'W';
+            } else if (result === 'D') {
+                ahlyResult = 'D';
+                opponentResult = 'D';
+            }
+            
+            // Al Ahly streaks
+            if (ahlyResult === 'W') {
+                currentAhlyWin++;
+                currentAhlyLoss = 0;
+                currentAhlyDraw = 0;
+                currentAhlyWinless = 0;
+                currentAhlyUnbeaten++;
+                maxAhlyWin = Math.max(maxAhlyWin, currentAhlyWin);
+                maxAhlyUnbeaten = Math.max(maxAhlyUnbeaten, currentAhlyUnbeaten);
+            } else if (ahlyResult === 'L') {
+                currentAhlyWin = 0;
+                currentAhlyLoss++;
+                currentAhlyDraw = 0;
+                currentAhlyWinless++;
+                currentAhlyUnbeaten = 0;
+                maxAhlyLoss = Math.max(maxAhlyLoss, currentAhlyLoss);
+                maxAhlyWinless = Math.max(maxAhlyWinless, currentAhlyWinless);
+            } else if (ahlyResult === 'D') {
+                currentAhlyWin = 0;
+                currentAhlyLoss = 0;
+                currentAhlyDraw++;
+                currentAhlyWinless++;
+                currentAhlyUnbeaten++;
+                maxAhlyDraw = Math.max(maxAhlyDraw, currentAhlyDraw);
+                maxAhlyWinless = Math.max(maxAhlyWinless, currentAhlyWinless);
+                maxAhlyUnbeaten = Math.max(maxAhlyUnbeaten, currentAhlyUnbeaten);
+            }
+            
+            // Opponent streaks
+            if (opponentResult === 'W') {
+                currentOpponentWin++;
+                currentOpponentLoss = 0;
+                currentOpponentDraw = 0;
+                currentOpponentWinless = 0;
+                currentOpponentUnbeaten++;
+                maxOpponentWin = Math.max(maxOpponentWin, currentOpponentWin);
+                maxOpponentUnbeaten = Math.max(maxOpponentUnbeaten, currentOpponentUnbeaten);
+            } else if (opponentResult === 'L') {
+                currentOpponentWin = 0;
+                currentOpponentLoss++;
+                currentOpponentDraw = 0;
+                currentOpponentWinless++;
+                currentOpponentUnbeaten = 0;
+                maxOpponentLoss = Math.max(maxOpponentLoss, currentOpponentLoss);
+                maxOpponentWinless = Math.max(maxOpponentWinless, currentOpponentWinless);
+            } else if (opponentResult === 'D') {
+                currentOpponentWin = 0;
+                currentOpponentLoss = 0;
+                currentOpponentDraw++;
+                currentOpponentWinless++;
+                currentOpponentUnbeaten++;
+                maxOpponentDraw = Math.max(maxOpponentDraw, currentOpponentDraw);
+                maxOpponentWinless = Math.max(maxOpponentWinless, currentOpponentWinless);
+                maxOpponentUnbeaten = Math.max(maxOpponentUnbeaten, currentOpponentUnbeaten);
+            }
+        });
+        
+        return {
+            ahlyWinningStreak: maxAhlyWin,
+            opponentWinningStreak: maxOpponentWin,
+            ahlyLosingStreak: maxAhlyLoss,
+            opponentLosingStreak: maxOpponentLoss,
+            ahlyDrawStreak: maxAhlyDraw,
+            opponentDrawStreak: maxOpponentDraw,
+            ahlyWinlessStreak: maxAhlyWinless,
+            opponentWinlessStreak: maxOpponentWinless,
+            ahlyUnbeatenStreak: maxAhlyUnbeaten,
+            opponentUnbeatenStreak: maxOpponentUnbeaten
+        };
+        
+    } catch (error) {
+        console.error('Error calculating H2H streaks:', error);
+        return {
+            ahlyWinningStreak: 0,
+            opponentWinningStreak: 0,
+            ahlyLosingStreak: 0,
+            opponentLosingStreak: 0,
+            ahlyDrawStreak: 0,
+            opponentDrawStreak: 0,
+            ahlyWinlessStreak: 0,
+            opponentWinlessStreak: 0,
+            ahlyUnbeatenStreak: 0,
+            opponentUnbeatenStreak: 0
+        };
+    }
+}
+
 // Render H2H T Details Overview (similar to HOW WIN design)
 function renderH2HTDetailsOverview(overview, teamName) {
     const content = document.getElementById('h2h-t-overview-content');
@@ -10619,8 +10778,15 @@ function renderH2HTDetailsOverview(overview, teamName) {
     const drawRate = overview.total_matches > 0 ? ((overview.draws / overview.total_matches) * 100).toFixed(1) : 0;
     const lossRate = overview.total_matches > 0 ? ((overview.losses / overview.total_matches) * 100).toFixed(1) : 0;
     
+    // Calculate streaks
+    const currentFilteredRecords = getCurrentFilteredRecords();
+    const recordsToUse = currentFilteredRecords || (alAhlyStatsData ? alAhlyStatsData.allRecords : []);
+    const streaks = calculateH2HStreaks(teamName, recordsToUse);
+    
     content.innerHTML = `
         <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">H2H T Details vs ${teamName} - Overview</h3>
+        
+        <!-- Basic Stats -->
         <div class="stats-overview">
             <div class="stat-card">
                 <h3>Matches</h3>
@@ -10663,6 +10829,125 @@ function renderH2HTDetailsOverview(overview, teamName) {
                 <p class="stat-label">${teamName} Clean Sheets</p>
             </div>
         </div>
+        
+        <!-- Streak Stats -->
+        <h4 class="section-title" style="font-size: 1.2rem; margin-top: 2rem; margin-bottom: 1rem; color: #495057;">Streak Statistics</h4>
+        <div class="stats-overview">
+            <!-- Winning Streak -->
+            <div class="stat-card streak-card">
+                <h3 style="color: #28a745;">🏆 Winning Streak</h3>
+                <div class="streak-comparison">
+                    <div class="streak-item">
+                        <div class="team-label">Al Ahly</div>
+                        <p class="stat-value" style="color: #28a745; font-size: 1.8rem; font-weight: bold;">${streaks.ahlyWinningStreak}</p>
+                    </div>
+                    <div class="vs-divider">VS</div>
+                    <div class="streak-item">
+                        <div class="team-label">${teamName}</div>
+                        <p class="stat-value" style="color: #28a745; font-size: 1.8rem; font-weight: bold;">${streaks.opponentWinningStreak}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Losing Streak -->
+            <div class="stat-card streak-card">
+                <h3 style="color: #dc3545;">💔 Losing Streak</h3>
+                <div class="streak-comparison">
+                    <div class="streak-item">
+                        <div class="team-label">Al Ahly</div>
+                        <p class="stat-value" style="color: #dc3545; font-size: 1.8rem; font-weight: bold;">${streaks.ahlyLosingStreak}</p>
+                    </div>
+                    <div class="vs-divider">VS</div>
+                    <div class="streak-item">
+                        <div class="team-label">${teamName}</div>
+                        <p class="stat-value" style="color: #dc3545; font-size: 1.8rem; font-weight: bold;">${streaks.opponentLosingStreak}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Draw Streak -->
+            <div class="stat-card streak-card">
+                <h3 style="color: #ffc107;">🤝 Draw Streak</h3>
+                <div class="streak-comparison">
+                    <div class="streak-item">
+                        <div class="team-label">Al Ahly</div>
+                        <p class="stat-value" style="color: #ffc107; font-size: 1.8rem; font-weight: bold;">${streaks.ahlyDrawStreak}</p>
+                    </div>
+                    <div class="vs-divider">VS</div>
+                    <div class="streak-item">
+                        <div class="team-label">${teamName}</div>
+                        <p class="stat-value" style="color: #ffc107; font-size: 1.8rem; font-weight: bold;">${streaks.opponentDrawStreak}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Winless Streak -->
+            <div class="stat-card streak-card">
+                <h3 style="color: #6f42c1;">😔 Winless Streak</h3>
+                <div class="streak-comparison">
+                    <div class="streak-item">
+                        <div class="team-label">Al Ahly</div>
+                        <p class="stat-value" style="color: #6f42c1; font-size: 1.8rem; font-weight: bold;">${streaks.ahlyWinlessStreak}</p>
+                    </div>
+                    <div class="vs-divider">VS</div>
+                    <div class="streak-item">
+                        <div class="team-label">${teamName}</div>
+                        <p class="stat-value" style="color: #6f42c1; font-size: 1.8rem; font-weight: bold;">${streaks.opponentWinlessStreak}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Unbeaten Streak -->
+            <div class="stat-card streak-card">
+                <h3 style="color: #20c997;">🛡️ Unbeaten Streak</h3>
+                <div class="streak-comparison">
+                    <div class="streak-item">
+                        <div class="team-label">Al Ahly</div>
+                        <p class="stat-value" style="color: #20c997; font-size: 1.8rem; font-weight: bold;">${streaks.ahlyUnbeatenStreak}</p>
+                    </div>
+                    <div class="vs-divider">VS</div>
+                    <div class="streak-item">
+                        <div class="team-label">${teamName}</div>
+                        <p class="stat-value" style="color: #20c997; font-size: 1.8rem; font-weight: bold;">${streaks.opponentUnbeatenStreak}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <style>
+            .streak-card {
+                min-height: 120px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            
+            .streak-comparison {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-top: 1rem;
+            }
+            
+            .streak-item {
+                text-align: center;
+                flex: 1;
+            }
+            
+            .team-label {
+                font-size: 0.8rem;
+                color: #6c757d;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+            }
+            
+            .vs-divider {
+                font-size: 0.9rem;
+                color: #6c757d;
+                font-weight: bold;
+                margin: 0 1rem;
+            }
+        </style>
     `;
 }
 
