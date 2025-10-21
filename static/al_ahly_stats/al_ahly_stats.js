@@ -7584,9 +7584,64 @@ async function loadGKOverviewStats(goalkeeperName, teamFilter = '') {
         avg_goals_conceded: stats.avgGoalsConceded,
         penalty_goals: stats.penaltyGoals,
         penalty_saves: stats.penaltySaves,
-        penalties_missed: stats.penaltiesMissed
+        penalties_missed: stats.penaltiesMissed,
+        longest_conceding_streak: stats.longestConcedingStreak,
+        longest_clean_sheet_streak: stats.longestCleanSheetStreak
     });
 }
+// Calculate goalkeeper streaks (consecutive matches)
+function calculateGKStreaks(gkRecords, filteredMatches) {
+    if (!gkRecords || gkRecords.length === 0) {
+        return {
+            longestConcedingStreak: 0,
+            longestCleanSheetStreak: 0
+        };
+    }
+    
+    // Sort matches by date
+    const matchesMap = new Map();
+    filteredMatches.forEach(match => {
+        matchesMap.set(match.MATCH_ID, match);
+    });
+    
+    // Sort GK records by match date
+    const sortedRecords = [...gkRecords]
+        .map(record => ({
+            ...record,
+            matchDate: matchesMap.get(record.MATCH_ID)?.DATE || ''
+        }))
+        .filter(record => record.matchDate)
+        .sort((a, b) => new Date(a.matchDate) - new Date(b.matchDate));
+    
+    let longestConcedingStreak = 0;
+    let currentConcedingStreak = 0;
+    let longestCleanSheetStreak = 0;
+    let currentCleanSheetStreak = 0;
+    
+    sortedRecords.forEach(record => {
+        const goalsConceded = parseInt(record['GOALS CONCEDED'] || 0);
+        
+        if (goalsConceded > 0) {
+            // Conceding streak
+            currentConcedingStreak++;
+            longestConcedingStreak = Math.max(longestConcedingStreak, currentConcedingStreak);
+            // Reset clean sheet streak
+            currentCleanSheetStreak = 0;
+        } else {
+            // Clean sheet streak
+            currentCleanSheetStreak++;
+            longestCleanSheetStreak = Math.max(longestCleanSheetStreak, currentCleanSheetStreak);
+            // Reset conceding streak
+            currentConcedingStreak = 0;
+        }
+    });
+    
+    return {
+        longestConcedingStreak,
+        longestCleanSheetStreak
+    };
+}
+
 // Excel: calculate goalkeeper statistics from GKDETAILS and MATCHDETAILS
 function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFilters = {}) {
     
@@ -7780,6 +7835,9 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
     // Calculate average goals conceded per match
     const avgGoalsConceded = totalMatches > 0 ? (goalsConceded / totalMatches).toFixed(2) : 0;
     
+    // Calculate longest streaks
+    const streaks = calculateGKStreaks(gkRecords, filteredMatches);
+    
     const stats = {
         totalMatches,
         cleanSheets,
@@ -7788,7 +7846,9 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
         avgGoalsConceded,
         penaltyGoals,
         penaltySaves,
-        penaltiesMissed
+        penaltiesMissed,
+        longestConcedingStreak: streaks.longestConcedingStreak,
+        longestCleanSheetStreak: streaks.longestCleanSheetStreak
     };
     
     return stats;
@@ -7961,12 +8021,14 @@ function updateGKOverviewCards(stats) {
     // Update each card with the corresponding stat
     const elements = [
         'gk-total-matches', 'gk-clean-sheets', 'gk-goals-conceded', 'gk-avg-goals-conceded',
-        'gk-clean-sheet-percentage', 'gk-penalty-goals', 'gk-penalty-saves', 'gk-penalties-missed'
+        'gk-clean-sheet-percentage', 'gk-longest-conceding-streak', 'gk-longest-clean-sheet-streak',
+        'gk-penalty-goals', 'gk-penalty-saves', 'gk-penalties-missed'
     ];
     
     const values = [
         stats.total_matches, stats.clean_sheets, stats.goals_conceded, stats.avg_goals_conceded,
-        stats.clean_sheet_percentage + '%', stats.penalty_goals, stats.penalty_saves, stats.penalties_missed
+        stats.clean_sheet_percentage + '%', stats.longest_conceding_streak || 0, stats.longest_clean_sheet_streak || 0,
+        stats.penalty_goals, stats.penalty_saves, stats.penalties_missed
     ];
     
     for (let i = 0; i < elements.length; i++) {
