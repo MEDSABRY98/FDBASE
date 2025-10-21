@@ -4077,7 +4077,7 @@
                                     </div>
                                 </div>
 
-                                <div class="player-stat-card">
+                                <div class="player-stat-card" onclick="showStreakDetails('conceding')" style="cursor: pointer;">
                                     <div class="stat-icon">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M3 12h18"/>
@@ -4091,11 +4091,11 @@
                                     <div class="stat-content">
                                         <h3>Longest Conceding Streak</h3>
                                         <p class="stat-value" id="gk-longest-conceding-streak">0</p>
-                                        <p class="stat-label">Consecutive Matches</p>
+                                        <p class="stat-label">Click to view details</p>
                                     </div>
                                 </div>
 
-                                <div class="player-stat-card">
+                                <div class="player-stat-card" onclick="showStreakDetails('cleansheet')" style="cursor: pointer;">
                                     <div class="stat-icon">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -4105,7 +4105,7 @@
                                     <div class="stat-content">
                                         <h3>Longest Clean Sheet Streak</h3>
                                         <p class="stat-value" id="gk-longest-clean-sheet-streak">0</p>
-                                        <p class="stat-label">Consecutive Matches</p>
+                                        <p class="stat-label">Click to view details</p>
                                     </div>
                                 </div>
 
@@ -4153,6 +4153,31 @@
                                         <p class="stat-value" id="gk-penalties-missed">0</p>
                                         <p class="stat-label">Missed in his presence</p>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Streak Details Modal -->
+                        <div id="streak-details-modal" class="modal" style="display: none;">
+                            <div class="modal-content" style="max-width: 900px;">
+                                <span class="close" onclick="closeStreakModal()">&times;</span>
+                                <h2 id="streak-modal-title" style="text-align: center; margin-bottom: 20px;">Streak Details</h2>
+                                <div class="stats-table-container">
+                                    <table class="stats-table" id="streak-details-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Match #</th>
+                                                <th>Date</th>
+                                                <th>Season</th>
+                                                <th>Opponent</th>
+                                                <th>Minutes Played</th>
+                                                <th>Goals Conceded</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be loaded dynamically -->
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>

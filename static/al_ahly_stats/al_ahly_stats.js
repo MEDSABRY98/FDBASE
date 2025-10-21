@@ -5150,6 +5150,8 @@ window.searchTable = searchTable;
 window.updateTotalRow = updateTotalRow;
 window.loadAlAhlyStatsData = loadAlAhlyStatsData;
 window.loadAlAhlyStats = loadAlAhlyStats;
+window.showStreakDetails = showStreakDetails;
+window.closeStreakModal = closeStreakModal;
 window.applyFilters = applyFilters;
 window.clearFilters = clearFilters;
 window.refreshStats = refreshStats;
@@ -7594,7 +7596,9 @@ function calculateGKStreaks(gkRecords, filteredMatches) {
     if (!gkRecords || gkRecords.length === 0) {
         return {
             longestConcedingStreak: 0,
-            longestCleanSheetStreak: 0
+            longestCleanSheetStreak: 0,
+            concedingStreakMatches: [],
+            cleanSheetStreakMatches: []
         };
     }
     
@@ -7608,37 +7612,72 @@ function calculateGKStreaks(gkRecords, filteredMatches) {
     const sortedRecords = [...gkRecords]
         .map(record => ({
             ...record,
-            matchDate: matchesMap.get(record.MATCH_ID)?.DATE || ''
+            matchDate: matchesMap.get(record.MATCH_ID)?.DATE || '',
+            matchInfo: matchesMap.get(record.MATCH_ID)
         }))
         .filter(record => record.matchDate)
         .sort((a, b) => new Date(a.matchDate) - new Date(b.matchDate));
     
     let longestConcedingStreak = 0;
     let currentConcedingStreak = 0;
+    let currentConcedingMatches = [];
+    let longestConcedingMatches = [];
+    
     let longestCleanSheetStreak = 0;
     let currentCleanSheetStreak = 0;
+    let currentCleanSheetMatches = [];
+    let longestCleanSheetMatches = [];
     
     sortedRecords.forEach(record => {
         const goalsConceded = parseInt(record['GOALS CONCEDED'] || 0);
+        const minutesPlayed = parseInt(record['MINTOTAL'] || record['MINUTES'] || 0);
         
         if (goalsConceded > 0) {
             // Conceding streak
             currentConcedingStreak++;
-            longestConcedingStreak = Math.max(longestConcedingStreak, currentConcedingStreak);
+            currentConcedingMatches.push({
+                date: record.matchDate,
+                season: record.matchInfo?.SEASON || '',
+                opponent: record.matchInfo?.['OPPONENT TEAM'] || '',
+                minutesPlayed: minutesPlayed,
+                goalsConceded: goalsConceded
+            });
+            
+            if (currentConcedingStreak > longestConcedingStreak) {
+                longestConcedingStreak = currentConcedingStreak;
+                longestConcedingMatches = [...currentConcedingMatches];
+            }
+            
             // Reset clean sheet streak
             currentCleanSheetStreak = 0;
+            currentCleanSheetMatches = [];
         } else {
             // Clean sheet streak
             currentCleanSheetStreak++;
-            longestCleanSheetStreak = Math.max(longestCleanSheetStreak, currentCleanSheetStreak);
+            currentCleanSheetMatches.push({
+                date: record.matchDate,
+                season: record.matchInfo?.SEASON || '',
+                opponent: record.matchInfo?.['OPPONENT TEAM'] || '',
+                minutesPlayed: minutesPlayed,
+                goalsConceded: goalsConceded
+            });
+            
+            if (currentCleanSheetStreak > longestCleanSheetStreak) {
+                longestCleanSheetStreak = currentCleanSheetStreak;
+                longestCleanSheetMatches = [...currentCleanSheetMatches];
+            }
+            
             // Reset conceding streak
             currentConcedingStreak = 0;
+            currentConcedingMatches = [];
         }
     });
     
     return {
         longestConcedingStreak,
-        longestCleanSheetStreak
+        longestCleanSheetStreak,
+        concedingStreakMatches: longestConcedingMatches,
+        cleanSheetStreakMatches: longestCleanSheetMatches
     };
 }
 
@@ -7838,6 +7877,12 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
     // Calculate longest streaks
     const streaks = calculateGKStreaks(gkRecords, filteredMatches);
     
+    // Store streak details globally for modal display
+    window.currentGKStreaks = {
+        concedingMatches: streaks.concedingStreakMatches,
+        cleanSheetMatches: streaks.cleanSheetStreakMatches
+    };
+    
     const stats = {
         totalMatches,
         cleanSheets,
@@ -8003,6 +8048,76 @@ function setupAllGoalkeepersFilter() {
         });
     }
 }
+
+// Show streak details modal
+function showStreakDetails(streakType) {
+    console.log('Showing streak details for:', streakType);
+    
+    if (!window.currentGKStreaks) {
+        console.error('No streak data available');
+        return;
+    }
+    
+    const modal = document.getElementById('streak-details-modal');
+    const title = document.getElementById('streak-modal-title');
+    const tbody = document.querySelector('#streak-details-table tbody');
+    
+    if (!modal || !title || !tbody) {
+        console.error('Modal elements not found');
+        return;
+    }
+    
+    // Get the appropriate matches based on streak type
+    const matches = streakType === 'conceding' 
+        ? window.currentGKStreaks.concedingMatches 
+        : window.currentGKStreaks.cleanSheetMatches;
+    
+    if (!matches || matches.length === 0) {
+        alert('No streak data available');
+        return;
+    }
+    
+    // Set modal title
+    title.textContent = streakType === 'conceding' 
+        ? `Longest Conceding Streak (${matches.length} Matches)`
+        : `Longest Clean Sheet Streak (${matches.length} Matches)`;
+    
+    // Clear existing table rows
+    tbody.innerHTML = '';
+    
+    // Add rows for each match
+    matches.forEach((match, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${match.date || 'N/A'}</td>
+            <td>${match.season || 'N/A'}</td>
+            <td>${match.opponent || 'N/A'}</td>
+            <td>${match.minutesPlayed || 0}</td>
+            <td>${match.goalsConceded}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Show modal
+    modal.style.display = 'block';
+}
+
+// Close streak details modal
+function closeStreakModal() {
+    const modal = document.getElementById('streak-details-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('streak-details-modal');
+    if (event.target === modal) {
+        modal.style.display = 'none';
+    }
+};
 
 // Function to update goalkeeper overview cards
 function updateGKOverviewCards(stats) {
