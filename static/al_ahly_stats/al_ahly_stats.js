@@ -7592,7 +7592,7 @@ async function loadGKOverviewStats(goalkeeperName, teamFilter = '') {
     });
 }
 // Calculate goalkeeper streaks (consecutive matches)
-function calculateGKStreaks(gkRecords, filteredMatches) {
+function calculateGKStreaks(gkRecords, filteredMatches, goalkeeperName) {
     if (!gkRecords || gkRecords.length === 0) {
         return {
             longestConcedingStreak: 0,
@@ -7628,9 +7628,27 @@ function calculateGKStreaks(gkRecords, filteredMatches) {
     let currentCleanSheetMatches = [];
     let longestCleanSheetMatches = [];
     
+    // Get LINEUPDETAILS to fetch accurate MINTOTAL
+    const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
+    const lineupMap = new Map();
+    
+    // Build map of match_id + player_name -> minutes from LINEUPDETAILS
+    const goalkeeperNameNorm = normalizeStr(goalkeeperName);
+    lineupDetails.forEach(lineup => {
+        const matchId = lineup.MATCH_ID;
+        const playerName = normalizeStr(lineup['PLAYER NAME'] || lineup.PLAYER || '');
+        const minutes = parseInt(lineup.MINTOTAL || 0);
+        const key = `${matchId}_${playerName}`;
+        lineupMap.set(key, minutes);
+    });
+    
     sortedRecords.forEach(record => {
         const goalsConceded = parseInt(record['GOALS CONCEDED'] || 0);
-        const minutesPlayed = parseInt(record['MINTOTAL'] || record['MINUTES'] || 0);
+        
+        // Get minutes from LINEUPDETAILS using match ID and goalkeeper name
+        const matchId = record.MATCH_ID;
+        const key = `${matchId}_${goalkeeperNameNorm}`;
+        const minutesPlayed = lineupMap.get(key) || 0;
         
         if (goalsConceded > 0) {
             // Conceding streak
@@ -7875,7 +7893,7 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
     const avgGoalsConceded = totalMatches > 0 ? (goalsConceded / totalMatches).toFixed(2) : 0;
     
     // Calculate longest streaks
-    const streaks = calculateGKStreaks(gkRecords, filteredMatches);
+    const streaks = calculateGKStreaks(gkRecords, filteredMatches, goalkeeperName);
     
     // Store streak details globally for modal display
     window.currentGKStreaks = {
@@ -8049,21 +8067,25 @@ function setupAllGoalkeepersFilter() {
     }
 }
 
-// Show streak details modal
-function showStreakDetails(streakType) {
+// Show streak details popup
+async function showStreakDetails(streakType) {
     console.log('Showing streak details for:', streakType);
+    
+    // Recompute streaks using current filters and selected GK context before showing
+    try {
+        const selectedGKName = (goalkeepersData && goalkeepersData.selectedGoalkeeper && goalkeepersData.selectedGoalkeeper.name) ? goalkeepersData.selectedGoalkeeper.name : '';
+        if (selectedGKName) {
+            const teamFilterEl = document.getElementById('gk-team-filter');
+            const teamFilter = teamFilterEl ? teamFilterEl.value : '';
+            await loadGKOverviewStats(selectedGKName, teamFilter);
+        }
+    } catch (e) {
+        console.warn('Could not recompute GK streaks before showing modal:', e);
+    }
     
     if (!window.currentGKStreaks) {
         console.error('No streak data available');
-        return;
-    }
-    
-    const modal = document.getElementById('streak-details-modal');
-    const title = document.getElementById('streak-modal-title');
-    const tbody = document.querySelector('#streak-details-table tbody');
-    
-    if (!modal || !title || !tbody) {
-        console.error('Modal elements not found');
+        alert('No streak data available');
         return;
     }
     
@@ -8077,15 +8099,97 @@ function showStreakDetails(streakType) {
         return;
     }
     
-    // Set modal title
-    title.textContent = streakType === 'conceding' 
+    const title = streakType === 'conceding' 
         ? `Longest Conceding Streak (${matches.length} Matches)`
         : `Longest Clean Sheet Streak (${matches.length} Matches)`;
     
-    // Clear existing table rows
-    tbody.innerHTML = '';
+    // Create popup overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'gk-streak-popup-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        box-sizing: border-box;
+    `;
     
-    // Add rows for each match
+    // Create popup content
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        max-width: 90%;
+        max-height: 90%;
+        width: 1000px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        position: relative;
+        overflow: auto;
+    `;
+    
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '×';
+    closeBtn.style.cssText = `
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #666;
+        line-height: 1;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    closeBtn.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+    
+    // Create title
+    const titleEl = document.createElement('h2');
+    titleEl.textContent = title;
+    titleEl.style.cssText = `
+        text-align: center;
+        margin-bottom: 1.5rem;
+        color: #333;
+        font-size: 1.5rem;
+    `;
+    
+    // Create table
+    const tableContainer = document.createElement('div');
+    tableContainer.className = 'stats-table-container';
+    
+    const table = document.createElement('table');
+    table.className = 'stats-table';
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th>Match #</th>
+                <th>Date</th>
+                <th>Season</th>
+                <th>Opponent</th>
+                <th>Minutes Played</th>
+                <th>Goals Conceded</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    `;
+    
+    const tbody = table.querySelector('tbody');
     matches.forEach((match, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -8099,25 +8203,30 @@ function showStreakDetails(streakType) {
         tbody.appendChild(row);
     });
     
-    // Show modal
-    modal.style.display = 'block';
+    tableContainer.appendChild(table);
+    popup.appendChild(closeBtn);
+    popup.appendChild(titleEl);
+    popup.appendChild(tableContainer);
+    overlay.appendChild(popup);
+    
+    // Add to document
+    document.body.appendChild(overlay);
+    
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    });
 }
 
-// Close streak details modal
+// Close streak details modal (for backward compatibility)
 function closeStreakModal() {
-    const modal = document.getElementById('streak-details-modal');
-    if (modal) {
-        modal.style.display = 'none';
+    const overlay = document.getElementById('gk-streak-popup-overlay');
+    if (overlay && overlay.parentNode) {
+        document.body.removeChild(overlay);
     }
 }
-
-// Close modal when clicking outside of it
-window.onclick = function(event) {
-    const modal = document.getElementById('streak-details-modal');
-    if (event.target === modal) {
-        modal.style.display = 'none';
-    }
-};
 
 // Function to update goalkeeper overview cards
 function updateGKOverviewCards(stats) {
