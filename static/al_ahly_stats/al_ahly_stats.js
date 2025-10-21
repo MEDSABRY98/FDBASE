@@ -8764,7 +8764,7 @@ function loadAllPlayersData(filteredRecords = null) {
             if (!filteredMatchIds.has(record.MATCH_ID)) return;
             
             const playerName = record['PLAYER NAME'] || record.PLAYER || '';
-            const minutes = parseInt(record.MINUTES || record.MIN || 0);
+            const minutes = parseInt(record.MINTOTAL || 0);
             
             if (!playerName) return;
             
