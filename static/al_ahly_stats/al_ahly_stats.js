@@ -5058,10 +5058,13 @@ function searchTable(tableId, searchValue) {
     const rows = Array.from(tbody.querySelectorAll('tr'));
     
     let visibleCount = 0;
+    let totalRow = null;
+    let visibleRows = [];
     
     rows.forEach(row => {
-        // Skip total row if it exists
+        // Check if this is the total row
         if (row.style.fontWeight === 'bold' && row.style.backgroundColor === 'rgb(240, 240, 240)') {
+            totalRow = row;
             return;
         }
         
@@ -5074,10 +5077,26 @@ function searchTable(tableId, searchValue) {
         if (searchTerm === '' || rowText.includes(searchTerm)) {
             row.style.display = '';
             visibleCount++;
+            visibleRows.push(row);
         } else {
             row.style.display = 'none';
         }
     });
+    
+    // Update total row if it exists
+    if (totalRow) {
+        if (visibleRows.length > 0) {
+            updateTotalRow(totalRow, visibleRows);
+        } else if (searchTerm === '') {
+            // If search is cleared, we need to restore original totals
+            // This will be handled by re-rendering the table with original data
+            // For now, just show the total row
+            totalRow.style.display = '';
+        } else {
+            // Hide total row if no visible rows and search is active
+            totalRow.style.display = 'none';
+        }
+    }
     
     // Log search results
     if (searchTerm !== '') {
@@ -5085,8 +5104,50 @@ function searchTable(tableId, searchValue) {
     }
 }
 
+// Helper function to update total row based on visible rows
+function updateTotalRow(totalRow, visibleRows) {
+    const totals = {
+        matches: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        cleanSheetsFor: 0,
+        cleanSheetsAgainst: 0
+    };
+    
+    visibleRows.forEach(row => {
+        const cells = row.cells;
+        if (cells.length >= 9) {
+            totals.matches += parseInt(cells[1].textContent) || 0;
+            totals.wins += parseInt(cells[2].textContent) || 0;
+            totals.draws += parseInt(cells[3].textContent) || 0;
+            totals.losses += parseInt(cells[4].textContent) || 0;
+            totals.goalsFor += parseInt(cells[5].textContent) || 0;
+            totals.goalsAgainst += parseInt(cells[6].textContent) || 0;
+            totals.cleanSheetsFor += parseInt(cells[7].textContent) || 0;
+            totals.cleanSheetsAgainst += parseInt(cells[8].textContent) || 0;
+        }
+    });
+    
+    // Update total row cells
+    const totalCells = totalRow.cells;
+    if (totalCells.length >= 9) {
+        totalCells[1].textContent = totals.matches;
+        totalCells[2].textContent = totals.wins;
+        totalCells[3].textContent = totals.draws;
+        totalCells[4].textContent = totals.losses;
+        totalCells[5].textContent = totals.goalsFor;
+        totalCells[6].textContent = totals.goalsAgainst;
+        totalCells[7].textContent = totals.cleanSheetsFor;
+        totalCells[8].textContent = totals.cleanSheetsAgainst;
+    }
+}
+
 // Export functions for global access
 window.searchTable = searchTable;
+window.updateTotalRow = updateTotalRow;
 window.loadAlAhlyStatsData = loadAlAhlyStatsData;
 window.loadAlAhlyStats = loadAlAhlyStats;
 window.applyFilters = applyFilters;
@@ -9866,7 +9927,7 @@ function renderH2HTeamsTable(teamsData) {
 
 // Setup H2H search functionality
 function setupH2HSearch(teamsData) {
-    const searchInput = document.getElementById('h2h-search');
+    const searchInput = document.getElementById('h2h-teams-search');
     if (!searchInput) return;
     
     // Store teams data for search
