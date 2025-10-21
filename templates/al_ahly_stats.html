@@ -2703,6 +2703,17 @@
                             </svg>
                             Main Stats
                         </button>
+                        <button class="stats-sub-tab" onclick="showAllPlayersSubTab(event, 'trophy-scorers')">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                                <path d="M4 22h16"/>
+                                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                            </svg>
+                            Trophy Scorers
+                        </button>
                         <button class="stats-sub-tab" onclick="showAllPlayersSubTab(event, 'variety-goals')">
                             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="10"/>
@@ -2770,6 +2781,66 @@
                                             Winning Matches <span class="sort-icon">⇅</span>
                                         </th>
                                         <th class="sortable" onclick="sortAllPlayersTable('equalizingMatches')">
+                                            Equalizing Matches <span class="sort-icon">⇅</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Trophy Scorers Sub-tab -->
+                    <div id="trophy-scorers-subtab" class="stats-subtab-content">
+                        <!-- Team Filter Dropdown -->
+                        <div class="trophy-scorers-filter-container" style="margin-bottom: 20px; text-align: center;">
+                            <label style="margin-right: 10px; font-weight: 600;">Filter by Team:</label>
+                            <select id="trophy-scorers-team-filter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; min-width: 200px;">
+                                <option value="">All Players</option>
+                                <option value="WITH_AHLY">With Al Ahly</option>
+                                <option value="AGAINST_AHLY">Against Al Ahly</option>
+                            </select>
+                        </div>
+                        
+                        <div class="stats-table-container">
+                            <!-- Search Box -->
+                            <div class="table-search-container">
+                                <div class="table-search-box">
+                                    <input type="text" class="table-search-input" id="trophy-scorers-search" placeholder="Search players by name..." oninput="searchTable('trophy-scorers-table', this.value)">
+                                    <svg class="table-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <path d="m21 21-4.35-4.35"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <table class="stats-table" id="trophy-scorers-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortTrophyScorersTable('name')">
+                                            Player Name <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyScorersTable('matches')">
+                                            Matches <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyScorersTable('minutes')">
+                                            Minutes <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyScorersTable('goalsAssists')">
+                                            G+A <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyScorersTable('goals')">
+                                            Goals <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyScorersTable('assists')">
+                                            Assists <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyScorersTable('winningMatches')">
+                                            Winning Matches <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyScorersTable('equalizingMatches')">
                                             Equalizing Matches <span class="sort-icon">⇅</span>
                                         </th>
                                     </tr>

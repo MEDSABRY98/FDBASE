@@ -5164,6 +5164,8 @@ window.showAllPlayersSubTab = showAllPlayersSubTab;
 window.sortVarietyGoalsTable = sortVarietyGoalsTable;
 window.sortAllPlayersTable = sortAllPlayersTable;
 window.sortPenaltyDetailsTable = sortPenaltyDetailsTable;
+window.sortTrophyScorersTable = sortTrophyScorersTable;
+window.loadTrophyScorersData = loadTrophyScorersData;
 
 // Player Statistics Functions
 function loadPlayerSeasonsStats() {
@@ -9135,6 +9137,345 @@ function setupAllPlayersFilter() {
 }
 
 // ============================================================================
+// TROPHY SCORERS FUNCTIONS
+// ============================================================================
+
+// Global variable to store current Trophy Scorers data and sort state
+let trophyScorersCurrentData = [];
+let trophyScorersSortState = {
+    column: 'goalsAssists',
+    direction: 'desc'
+};
+
+// Get trophy-winning seasons from TROPHY sheet
+function getTrophySeasons() {
+    const trophyData = getSheetRowsByCandidates(['TROPHY']);
+    const seasons = new Set();
+    
+    trophyData.forEach(record => {
+        const season = record.SEASON || record.season;
+        if (season) {
+            seasons.add(season);
+        }
+    });
+    
+    console.log(`Found ${seasons.size} trophy-winning seasons:`, Array.from(seasons));
+    return seasons;
+}
+
+// Load and display Trophy Scorers data
+function loadTrophyScorersData(filteredRecords = null) {
+    console.log('Loading Trophy Scorers data...');
+    
+    const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
+    const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
+    const matchDetails = filteredRecords || alAhlyStatsData.allRecords || [];
+    
+    if (!lineupDetails.length || !playerDetails.length || !matchDetails.length) {
+        console.log('No data available for Trophy Scorers');
+        renderTrophyScorersTable([]);
+        return;
+    }
+    
+    // Get trophy-winning seasons
+    const trophySeasons = getTrophySeasons();
+    if (trophySeasons.size === 0) {
+        console.log('No trophy seasons found');
+        renderTrophyScorersTable([]);
+        return;
+    }
+    
+    // Filter matches to only trophy-winning seasons
+    const trophyMatches = matchDetails.filter(match => {
+        const season = match.SEASON || match.season;
+        return trophySeasons.has(season);
+    });
+    
+    console.log(`Processing data from ${trophyMatches.length} matches in trophy-winning seasons`);
+    
+    // Get filtered match IDs
+    const filteredMatchIds = new Set(trophyMatches.map(m => m.MATCH_ID));
+    
+    // Get team filter value
+    const teamFilter = document.getElementById('trophy-scorers-team-filter')?.value || '';
+    
+    // Calculate stats for each player from LINEUPDETAILS
+    const playersStats = {};
+    
+    // LINEUPDETAILS contains ONLY Al Ahly players
+    // So we only use it if teamFilter is not 'AGAINST_AHLY'
+    if (teamFilter !== 'AGAINST_AHLY') {
+        lineupDetails.forEach(record => {
+            // Skip if match not in filtered matches
+            if (!filteredMatchIds.has(record.MATCH_ID)) return;
+            
+            const playerName = record['PLAYER NAME'] || record.PLAYER || '';
+            const minutes = parseInt(record.MINTOTAL || 0);
+            
+            if (!playerName) return;
+            
+            if (!playersStats[playerName]) {
+                playersStats[playerName] = {
+                    name: playerName,
+                    matches: new Set(),
+                    minutes: 0,
+                    goals: 0,
+                    assists: 0,
+                    winningMatches: new Set(),
+                    equalizingMatches: new Set()
+                };
+            }
+            
+            playersStats[playerName].matches.add(record.MATCH_ID);
+            playersStats[playerName].minutes += minutes;
+        });
+    }
+    
+    // Add goals and assists from PLAYERDETAILS
+    playerDetails.forEach(record => {
+        // Skip if match not in filtered matches
+        if (!filteredMatchIds.has(record.MATCH_ID)) return;
+        
+        const playerName = record['PLAYER NAME'] || record.PLAYER || '';
+        const playerTeam = normalizeStr(record.TEAM || record['AHLY TEAM'] || '');
+        const ga = normalizeStr(record.GA || '').toUpperCase();
+        
+        if (!playerName) return;
+        
+        // Apply team filter
+        if (teamFilter === 'WITH_AHLY') {
+            if (playerTeam.trim() !== 'الأهلي' && playerTeam.trim().toLowerCase() !== 'ahly') return;
+        } else if (teamFilter === 'AGAINST_AHLY') {
+            if (playerTeam.trim() === 'الأهلي' || playerTeam.trim().toLowerCase() === 'ahly') return;
+        }
+        
+        // Initialize player if not exists (for players who scored but weren't in lineup)
+        if (!playersStats[playerName]) {
+            playersStats[playerName] = {
+                name: playerName,
+                matches: new Set(),
+                minutes: 0,
+                goals: 0,
+                assists: 0,
+                winningMatches: new Set(),
+                equalizingMatches: new Set()
+            };
+        }
+        
+        // Count goals - exact match with 'GOAL'
+        if (ga === 'GOAL') {
+            playersStats[playerName].goals++;
+        }
+        // Count assists - exact match with 'ASSIST'
+        else if (ga === 'ASSIST') {
+            playersStats[playerName].assists++;
+        }
+    });
+    
+    // Calculate winning and equalizing matches for each player
+    Object.keys(playersStats).forEach(playerName => {
+        const playerGoalEffect = calculatePlayerGoalEffect(playerName, playerDetails, trophyMatches, filteredMatchIds, teamFilter);
+        playersStats[playerName].winningMatches = new Set(playerGoalEffect.winningMatches);
+        playersStats[playerName].equalizingMatches = new Set(playerGoalEffect.equalizingMatches);
+    });
+    
+    // Convert to array and calculate G+A
+    const playersArray = Object.values(playersStats).map(player => ({
+        name: player.name,
+        matches: player.matches.size,
+        minutes: player.minutes,
+        goalsAssists: player.goals + player.assists,
+        goals: player.goals,
+        assists: player.assists,
+        winningMatches: player.winningMatches.size,
+        equalizingMatches: player.equalizingMatches.size
+    }));
+    
+    // Sort by G+A descending (highest first) - default sort
+    playersArray.sort((a, b) => b.goalsAssists - a.goalsAssists);
+    
+    // Reset sort state to default
+    trophyScorersSortState = {
+        column: 'goalsAssists',
+        direction: 'desc'
+    };
+    
+    // Render table
+    renderTrophyScorersTable(playersArray);
+    
+    // Update header styling for default sort
+    setTimeout(() => {
+        document.querySelectorAll('#trophy-scorers-table th.sortable').forEach(th => {
+            th.classList.remove('active');
+            const icon = th.querySelector('.sort-icon');
+            if (icon) icon.textContent = '⇅';
+        });
+        const headers = document.querySelectorAll('#trophy-scorers-table th.sortable');
+        if (headers[3]) { // G+A column
+            headers[3].classList.add('active');
+            const icon = headers[3].querySelector('.sort-icon');
+            if (icon) icon.textContent = '↓';
+        }
+    }, 0);
+}
+
+// Render Trophy Scorers table
+function renderTrophyScorersTable(playersData) {
+    const tbody = document.querySelector('#trophy-scorers-table tbody');
+    if (!tbody) return;
+    
+    // Store current data for sorting
+    trophyScorersCurrentData = playersData;
+    
+    tbody.innerHTML = '';
+    
+    if (playersData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No data available</td></tr>';
+        return;
+    }
+    
+    // Calculate totals
+    const totals = {
+        matches: 0,
+        minutes: 0,
+        goalsAssists: 0,
+        goals: 0,
+        assists: 0,
+        winningMatches: 0,
+        equalizingMatches: 0
+    };
+    
+    playersData.forEach(player => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${player.name}</strong></td>
+            <td>${player.matches}</td>
+            <td>${player.minutes}</td>
+            <td><strong>${player.goalsAssists}</strong></td>
+            <td>${player.goals}</td>
+            <td>${player.assists}</td>
+            <td>${player.winningMatches || 0}</td>
+            <td>${player.equalizingMatches || 0}</td>
+        `;
+        tbody.appendChild(row);
+        
+        // Note: matches count per player, so we don't sum them
+        totals.minutes += player.minutes;
+        totals.goalsAssists += player.goalsAssists;
+        totals.goals += player.goals;
+        totals.assists += player.assists;
+        totals.winningMatches += (player.winningMatches || 0);
+        totals.equalizingMatches += (player.equalizingMatches || 0);
+    });
+    
+    // Add total row
+    const totalRow = document.createElement('tr');
+    totalRow.style.fontWeight = 'bold';
+    totalRow.style.backgroundColor = '#f0f0f0';
+    totalRow.style.borderTop = '2px solid #333';
+    totalRow.innerHTML = `
+        <td><strong>TOTAL</strong></td>
+        <td>${playersData.length} Players</td>
+        <td>${totals.minutes}</td>
+        <td><strong>${totals.goalsAssists}</strong></td>
+        <td>${totals.goals}</td>
+        <td>${totals.assists}</td>
+        <td>${totals.winningMatches}</td>
+        <td>${totals.equalizingMatches}</td>
+    `;
+    tbody.appendChild(totalRow);
+    
+    console.log(`Trophy Scorers table rendered with ${playersData.length} players`);
+}
+
+// Sort Trophy Scorers table
+function sortTrophyScorersTable(column) {
+    console.log('Sorting Trophy Scorers table by:', column);
+    
+    // Update sort direction
+    if (trophyScorersSortState.column === column) {
+        trophyScorersSortState.direction = trophyScorersSortState.direction === 'desc' ? 'asc' : 'desc';
+    } else {
+        trophyScorersSortState.column = column;
+        trophyScorersSortState.direction = 'desc';
+    }
+    
+    // Sort the data
+    const sortedData = [...trophyScorersCurrentData].sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+        
+        // Handle string comparison for player name
+        if (column === 'name') {
+            valA = String(valA).toLowerCase();
+            valB = String(valB).toLowerCase();
+            if (trophyScorersSortState.direction === 'desc') {
+                return valB.localeCompare(valA);
+            } else {
+                return valA.localeCompare(valB);
+            }
+        }
+        
+        // Handle numeric comparison
+        valA = Number(valA) || 0;
+        valB = Number(valB) || 0;
+        
+        if (trophyScorersSortState.direction === 'desc') {
+            return valB - valA;
+        } else {
+            return valA - valB;
+        }
+    });
+    
+    // Update active header styling
+    document.querySelectorAll('#trophy-scorers-table th.sortable').forEach(th => {
+        th.classList.remove('active');
+        const icon = th.querySelector('.sort-icon');
+        if (icon) {
+            icon.textContent = '⇅';
+        }
+    });
+    
+    // Find and mark active header
+    const headers = document.querySelectorAll('#trophy-scorers-table th.sortable');
+    const columnMap = {
+        'name': 0,
+        'matches': 1,
+        'minutes': 2,
+        'goalsAssists': 3,
+        'goals': 4,
+        'assists': 5,
+        'winningMatches': 6,
+        'equalizingMatches': 7
+    };
+    
+    const headerIndex = columnMap[column];
+    if (headerIndex !== undefined && headers[headerIndex]) {
+        headers[headerIndex].classList.add('active');
+        const icon = headers[headerIndex].querySelector('.sort-icon');
+        if (icon) {
+            icon.textContent = trophyScorersSortState.direction === 'desc' ? '↓' : '↑';
+        }
+    }
+    
+    // Re-render table
+    renderTrophyScorersTable(sortedData);
+}
+
+// Setup Trophy Scorers team filter
+function setupTrophyScorersFilter() {
+    const teamFilter = document.getElementById('trophy-scorers-team-filter');
+    if (!teamFilter) return;
+    
+    teamFilter.addEventListener('change', function() {
+        console.log('Trophy Scorers team filter changed:', this.value);
+        // Use current filtered records if filters are applied
+        const currentFilteredRecords = getCurrentFilteredRecords();
+        loadTrophyScorersData(currentFilteredRecords);
+    });
+}
+
+// ============================================================================
 // ALL PLAYERS SUB-TABS FUNCTIONS
 // ============================================================================
 
@@ -9160,7 +9501,10 @@ function showAllPlayersSubTab(event, subtabName) {
         // Load data based on which subtab is opened
         const currentFilteredRecords = getCurrentFilteredRecords();
         
-        if (subtabName === 'variety-goals') {
+        if (subtabName === 'trophy-scorers') {
+            loadTrophyScorersData(currentFilteredRecords);
+            setupTrophyScorersFilter();
+        } else if (subtabName === 'variety-goals') {
             loadVarietyGoalsData(currentFilteredRecords);
         } else if (subtabName === 'penalty-details') {
             loadPenaltyDetailsData(currentFilteredRecords);
