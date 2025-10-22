@@ -1616,12 +1616,6 @@ function displayUnifiedPlayerOverview(playerName, teamFilter) {
         </div>
         
         <div class="player-overview-card">
-            <h3>Total Minutes</h3>
-            <p class="player-overview-value">${stats.totalMinutes}</p>
-            <p class="player-overview-label">Minutes Played</p>
-        </div>
-        
-        <div class="player-overview-card">
             <h3>Finals Played</h3>
             <p class="player-overview-value">${stats.finalsPlayed}</p>
             <p class="player-overview-label">Total Finals</p>
@@ -1786,13 +1780,6 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
     // Count matches played
     const matchesPlayed = playerLineup.length;
     
-    // Calculate total minutes
-    let totalMinutes = 0;
-    playerLineup.forEach(lineup => {
-        const minutes = parseInt(lineup['MINTOTAL']) || 0;
-        totalMinutes += minutes;
-    });
-    
     // Determine if player is with Ahly or opponent based on team filter
     let isAhlyPlayer = true; // Default to Ahly player
     if (teamFilter) {
@@ -1907,7 +1894,6 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
     
     return {
         matchesPlayed,
-        totalMinutes,
         finalsPlayed,
         finalsWon,
         winRate,
