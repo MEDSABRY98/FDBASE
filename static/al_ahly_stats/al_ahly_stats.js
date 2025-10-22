@@ -216,10 +216,20 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
     const playerRows = details.filter(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
-        if (teamLower) {
+        
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return false;
+            }
+        } else if (teamLower) {
             const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (team !== teamLower) return false;
         }
+        
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!filteredMatchIds.has(matchId)) return false;
         return true;
@@ -246,10 +256,20 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
     const playerLineupMatches = lineup.filter(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
         if (p !== nameLower) return false;
-        if (teamLower) {
+        
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(l.TEAM || l['AHLY TEAM']).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return false;
+            }
+        } else if (teamLower) {
             const team = normalizeStr(l.TEAM || l['AHLY TEAM']).toLowerCase();
             if (team !== teamLower) return false;
         }
+        
         const matchId = normalizeStr(l.MATCH_ID);
         return filteredMatchIds.has(matchId);
     });
@@ -361,10 +381,20 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
     const playerRows = details.filter(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
-        if (teamLower) {
+        
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return false;
+            }
+        } else if (teamLower) {
             const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (team !== teamLower) return false;
         }
+        
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!filteredMatchIds.has(matchId)) return false;
         return true;
@@ -518,10 +548,20 @@ function getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters = {})
     const playerRows = details.filter(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
-        if (teamLower) {
+        
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return false;
+            }
+        } else if (teamLower) {
             const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (team !== teamLower) return false;
         }
+        
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!matchId || !filteredMatchIds.has(matchId)) return false;
         return true;
@@ -542,6 +582,20 @@ function getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters = {})
     lineup.forEach(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
         if (p !== nameLower) return;
+        
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(l.TEAM || l['AHLY TEAM']).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return;
+            }
+        } else if (teamLower) {
+            const team = normalizeStr(l.TEAM || l['AHLY TEAM']).toLowerCase();
+            if (team !== teamLower) return;
+        }
+        
         const mid = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
         if (!mid || !filteredMatchIds.has(mid)) return;
         const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
@@ -671,10 +725,20 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
     details.forEach(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return;
-        if (teamLower) {
+        
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return;
+            }
+        } else if (teamLower) {
             const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (team !== teamLower) return;
         }
+        
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!matchId || !filteredMatchIds.has(matchId)) return;
         const gaVal = normalizeStr(r.GA || r.TYPE || r.ga).toUpperCase();
@@ -689,6 +753,20 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
     lineup.forEach(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
         if (p !== nameLower) return;
+        
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(l.TEAM || l['AHLY TEAM']).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return;
+            }
+        } else if (teamLower) {
+            const team = normalizeStr(l.TEAM || l['AHLY TEAM']).toLowerCase();
+            if (team !== teamLower) return;
+        }
+        
         const mid = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
         if (!mid || !filteredMatchIds.has(mid)) return;
         const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
@@ -835,7 +913,14 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
         const playerTeamInMatch = normalizeStr(r.TEAM || '');
         if (!playerTeamInMatch) return; // Skip if no team data
         
-        if (teamLower) {
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const teamUpper = playerTeamInMatch.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return;
+            }
+        } else if (teamLower) {
             const t = playerTeamInMatch.toLowerCase();
             if (t !== teamLower) return;
         }
@@ -5338,7 +5423,15 @@ function getPlayerGoalMinutesFromSheets(playerName, teamFilter, appliedFilters =
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
         
-        if (teamLower) {
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return false;
+            }
+        } else if (teamLower) {
             const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (team !== teamLower) return false;
         }
@@ -5553,7 +5646,15 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
         
-        if (teamLower) {
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return false;
+            }
+        } else if (teamLower) {
             const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (team !== teamLower) return false;
         }
@@ -8556,7 +8657,15 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = 
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
         
-        if (teamLower) {
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
+            const teamUpper = team.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return false;
+            }
+        } else if (teamLower) {
             const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (team !== teamLower) return false;
         }
