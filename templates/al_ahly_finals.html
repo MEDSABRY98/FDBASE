@@ -902,7 +902,115 @@
             <div class="filters-section">
                 <h2 class="filters-title">Filters</h2>
                 
-                <!-- Row: W-L MATCH, C.S, W-L FINAL -->
+                <!-- Row 1: MATCH_ID, CHAMPION System, SEASON, TIMING -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="match-id-filter">MATCH_ID</label>
+                        <select class="finals-filter-control" id="match-id-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="champion-system-filter">CHAMPION System</label>
+                        <select class="finals-filter-control" id="champion-system-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="season-filter">SEASON</label>
+                        <select class="finals-filter-control" id="season-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="timing-filter">TIMING</label>
+                        <select class="finals-filter-control" id="timing-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 2: DATE RANGE, CHAMPION, AHLY MANAGER, OPPONENT MANAGER -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="date-from-filter">DATE From</label>
+                        <input type="date" class="finals-filter-control" id="date-from-filter" placeholder="From Date">
+                    </div>
+                    <div class="filter-item">
+                        <label for="date-to-filter">DATE To</label>
+                        <input type="date" class="finals-filter-control" id="date-to-filter" placeholder="To Date">
+                    </div>
+                    <div class="filter-item">
+                        <label for="champion-filter">CHAMPION</label>
+                        <select class="finals-filter-control" id="champion-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="ahly-manager-filter">AHLY MANAGER</label>
+                        <select class="finals-filter-control" id="ahly-manager-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Row 3: OPPONENT MANAGER, H/A/N, AHLY TEAM, GF -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="opponent-manager-filter">OPPONENT MANAGER</label>
+                        <select class="finals-filter-control" id="opponent-manager-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="han-filter">H/A/N</label>
+                        <select class="finals-filter-control" id="han-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="ahly-team-filter">AHLY TEAM</label>
+                        <select class="finals-filter-control" id="ahly-team-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="gf-filter">GF</label>
+                        <select class="finals-filter-control" id="gf-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 4: GA, ET, PEN, OPPONENT TEAM -->
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="ga-filter">GA</label>
+                        <select class="finals-filter-control" id="ga-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="et-filter">ET</label>
+                        <select class="finals-filter-control" id="et-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="pen-filter">PEN</label>
+                        <select class="finals-filter-control" id="pen-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="opponent-team-filter">OPPONENT TEAM</label>
+                        <select class="finals-filter-control" id="opponent-team-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 5: W-L MATCH, C.S, W-L FINAL (plus filler to keep 4 items) -->
                 <div class="filter-row">
                     <div class="filter-item">
                         <label for="wl-match-filter">W-L MATCH</label>
@@ -920,6 +1028,12 @@
                         <label for="wl-final-filter">W-L FINAL</label>
                         <select class="finals-filter-control" id="wl-final-filter">
                             <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-item" style="visibility: hidden;">
+                        <label>&nbsp;</label>
+                        <select class="finals-filter-control" disabled>
+                            <option>All</option>
                         </select>
                     </div>
                 </div>
