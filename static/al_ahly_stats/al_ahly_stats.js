@@ -2577,6 +2577,20 @@ function selectPlayer(player) {
             const sortedTeams = [...player.teams].sort();
             console.log('📋 Sorted teams:', sortedTeams);
             
+            // Check if player has non-Ahly teams
+            const nonAhlyTeams = sortedTeams.filter(team => {
+                const teamUpper = team.toUpperCase();
+                return !teamUpper.includes('AHLY') && !teamUpper.includes('الأهلي') && !teamUpper.includes('الاهلي');
+            });
+            
+            // Add "ضد الأهلي" option if player has non-Ahly teams
+            if (nonAhlyTeams.length > 0) {
+                const vsAhlyOption = document.createElement('option');
+                vsAhlyOption.value = 'vs_ahly';
+                vsAhlyOption.textContent = 'ضد الأهلي';
+                teamFilter.appendChild(vsAhlyOption);
+            }
+            
             // Add team options
             sortedTeams.forEach(team => {
                 const option = document.createElement('option');
@@ -4128,7 +4142,16 @@ async function loadPlayerOverviewStats(playerName) {
     const playerRows = details.filter(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
-        if (teamLower) {
+        
+        // Handle "ضد الأهلي" filter
+        if (teamFilter === 'vs_ahly') {
+            const t = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
+            const teamUpper = t.toUpperCase();
+            // Include only non-Ahly teams
+            if (teamUpper.includes('AHLY') || teamUpper.includes('الأهلي') || teamUpper.includes('الاهلي')) {
+                return false;
+            }
+        } else if (teamLower) {
             const t = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
             if (t !== teamLower) return false;
         }
@@ -13139,7 +13162,10 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
             // Get all matches in this season from main sheet
             const seasonMatches = mainSheet.filter(m => {
                 const matchSeason = m['SEASON'];
-                if (teamFilter) {
+                if (teamFilter === 'vs_ahly') {
+                    // For "ضد الأهلي", include all matches where opponent is not Ahly
+                    return matchSeason === season;
+                } else if (teamFilter) {
                     const ahlyTeam = m['AHLY TEAM'];
                     return matchSeason === season && ahlyTeam === teamFilter;
                 }
@@ -13157,26 +13183,53 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
             let playerFound = false;
             
             for (const matchId of seasonMatchIds) {
-                // Check in LINEUPDETAILS
-                const inLineup = lineupSheet.some(row => {
-                    return String(row['MATCH_ID']) === String(matchId) && 
-                           row['PLAYER NAME'] === playerName && 
-                           row['TEAM'] === 'الأهلي';
-                });
+                let inLineup = false, inPlayerDetails = false, inGKDetails = false;
                 
-                // Check in PLAYERDETAILS
-                const inPlayerDetails = playerDetailsSheet.some(row => {
-                    return String(row['MATCH_ID']) === String(matchId) && 
-                           row['PLAYER NAME'] === playerName && 
-                           row['TEAM'] === 'الأهلي';
-                });
-                
-                // Check in GKDETAILS
-                const inGKDetails = gkDetailsSheet.some(row => {
-                    return String(row['MATCH_ID']) === String(matchId) && 
-                           row['PLAYER NAME'] === playerName && 
-                           row['TEAM'] === 'الأهلي';
-                });
+                if (teamFilter === 'vs_ahly') {
+                    // For "ضد الأهلي", check for non-Ahly teams
+                    inLineup = lineupSheet.some(row => {
+                        const team = row['TEAM'] || '';
+                        const teamUpper = team.toUpperCase();
+                        return String(row['MATCH_ID']) === String(matchId) && 
+                               row['PLAYER NAME'] === playerName && 
+                               !teamUpper.includes('AHLY') && !teamUpper.includes('الأهلي') && !teamUpper.includes('الاهلي');
+                    });
+                    
+                    inPlayerDetails = playerDetailsSheet.some(row => {
+                        const team = row['TEAM'] || '';
+                        const teamUpper = team.toUpperCase();
+                        return String(row['MATCH_ID']) === String(matchId) && 
+                               row['PLAYER NAME'] === playerName && 
+                               !teamUpper.includes('AHLY') && !teamUpper.includes('الأهلي') && !teamUpper.includes('الاهلي');
+                    });
+                    
+                    inGKDetails = gkDetailsSheet.some(row => {
+                        const team = row['TEAM'] || '';
+                        const teamUpper = team.toUpperCase();
+                        return String(row['MATCH_ID']) === String(matchId) && 
+                               row['PLAYER NAME'] === playerName && 
+                               !teamUpper.includes('AHLY') && !teamUpper.includes('الأهلي') && !teamUpper.includes('الاهلي');
+                    });
+                } else {
+                    // For specific team or all teams, check for Ahly team
+                    inLineup = lineupSheet.some(row => {
+                        return String(row['MATCH_ID']) === String(matchId) && 
+                               row['PLAYER NAME'] === playerName && 
+                               row['TEAM'] === 'الأهلي';
+                    });
+                    
+                    inPlayerDetails = playerDetailsSheet.some(row => {
+                        return String(row['MATCH_ID']) === String(matchId) && 
+                               row['PLAYER NAME'] === playerName && 
+                               row['TEAM'] === 'الأهلي';
+                    });
+                    
+                    inGKDetails = gkDetailsSheet.some(row => {
+                        return String(row['MATCH_ID']) === String(matchId) && 
+                               row['PLAYER NAME'] === playerName && 
+                               row['TEAM'] === 'الأهلي';
+                    });
+                }
                 
                 if (inLineup || inPlayerDetails || inGKDetails) {
                     playerFound = true;
