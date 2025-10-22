@@ -1945,6 +1945,11 @@ function populateH2HTeamsTable() {
     
     console.log('📊 Populating H2H Teams table with', records.length, 'records');
     
+    // Store original data for filtering
+    if (!window.h2hTeamsOriginalData) {
+        window.h2hTeamsOriginalData = [];
+    }
+    
     // Group by opponent team
     const teamStats = {};
     
@@ -2017,26 +2022,27 @@ function populateH2HTeamsTable() {
     let teamsArray = Object.values(teamStats);
     teamsArray.sort((a, b) => b.finals - a.finals);
     
-    // Calculate totals (unique MATCH_IDs from original records)
-    const totalFinalsWonIds = new Set();
-    const totalFinalsLostIds = new Set();
+    // Store original data for filtering
+    window.h2hTeamsOriginalData = teamsArray;
     
-    records.forEach(record => {
-        const matchId = record['MATCH_ID'];
-        if (matchId) {
-            const wlFinal = (record['W-L FINAL'] || '').toUpperCase().trim();
-            if (wlFinal === 'W') {
-                totalFinalsWonIds.add(matchId);
-            } else if (wlFinal === 'L') {
-                totalFinalsLostIds.add(matchId);
-            }
-        }
-    });
+    // Render table with all data initially
+    renderH2HTeamsTable(teamsArray);
     
+    // Initialize search functionality
+    initializeH2HTeamsSearch();
+    
+    console.log('✅ H2H Teams table populated with', teamsArray.length, 'teams');
+}
+
+/**
+ * Render H2H Teams table with given data
+ */
+function renderH2HTeamsTable(teamsArray) {
+    // Calculate totals for the filtered data
     const totals = {
-        finalsWon: totalFinalsWonIds.size,
-        finalsLost: totalFinalsLostIds.size,
         finals: 0,
+        finalsWon: 0,
+        finalsLost: 0,
         matches: 0,
         wins: 0,
         draws: 0,
@@ -2045,11 +2051,11 @@ function populateH2HTeamsTable() {
         goalsAgainst: 0
     };
     
-    // Calculate Total Finals as sum of Finals Won + Finals Lost
-    totals.finals = totals.finalsWon + totals.finalsLost;
-    
-    // Sum match stats and goals
+    // Sum stats from filtered teams
     teamsArray.forEach(stats => {
+        totals.finals += stats.finals;
+        totals.finalsWon += stats.finalsWon;
+        totals.finalsLost += stats.finalsLost;
         totals.matches += stats.matches;
         totals.wins += stats.wins;
         totals.draws += stats.draws;
@@ -2103,8 +2109,36 @@ function populateH2HTeamsTable() {
     const totalGdElement = document.getElementById('h2h-total-gd');
     totalGdElement.textContent = (totalGd > 0 ? '+' : '') + totalGd;
     totalGdElement.className = totalGd > 0 ? 'positive' : totalGd < 0 ? 'negative' : '';
+}
+
+/**
+ * Initialize H2H Teams search functionality
+ */
+function initializeH2HTeamsSearch() {
+    const searchInput = document.getElementById('h2h-teams-search');
+    if (!searchInput) return;
     
-    console.log('✅ H2H Teams table populated with', teamsArray.length, 'teams');
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        filterH2HTeamsTable(searchTerm);
+    });
+}
+
+/**
+ * Filter H2H Teams table based on search term
+ */
+function filterH2HTeamsTable(searchTerm) {
+    if (!window.h2hTeamsOriginalData) return;
+    
+    let filteredTeams = window.h2hTeamsOriginalData;
+    
+    if (searchTerm) {
+        filteredTeams = window.h2hTeamsOriginalData.filter(team => 
+            team.team.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    renderH2HTeamsTable(filteredTeams);
 }
 
 /**
@@ -2122,58 +2156,59 @@ function sortH2HTeamsTable(column) {
         h2hTeamsSortDirection = 'desc';
     }
     
-    const tbody = document.querySelector('#h2h-teams-table tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
+    // Get current filtered data or original data
+    const currentData = window.h2hTeamsOriginalData || [];
     
-    rows.sort((a, b) => {
+    // Sort the data
+    const sortedData = [...currentData].sort((a, b) => {
         let aVal, bVal;
         
         switch (column) {
             case 'team':
-                aVal = a.cells[0].textContent;
-                bVal = b.cells[0].textContent;
+                aVal = a.team;
+                bVal = b.team;
                 return h2hTeamsSortDirection === 'asc' 
                     ? aVal.localeCompare(bVal) 
                     : bVal.localeCompare(aVal);
             case 'finals':
-                aVal = parseInt(a.cells[1].textContent) || 0;
-                bVal = parseInt(b.cells[1].textContent) || 0;
+                aVal = a.finals;
+                bVal = b.finals;
                 break;
             case 'finalsWon':
-                aVal = parseInt(a.cells[2].textContent) || 0;
-                bVal = parseInt(b.cells[2].textContent) || 0;
+                aVal = a.finalsWon;
+                bVal = b.finalsWon;
                 break;
             case 'finalsLost':
-                aVal = parseInt(a.cells[3].textContent) || 0;
-                bVal = parseInt(b.cells[3].textContent) || 0;
+                aVal = a.finalsLost;
+                bVal = b.finalsLost;
                 break;
             case 'matches':
-                aVal = parseInt(a.cells[4].textContent) || 0;
-                bVal = parseInt(b.cells[4].textContent) || 0;
+                aVal = a.matches;
+                bVal = b.matches;
                 break;
             case 'wins':
-                aVal = parseInt(a.cells[5].textContent) || 0;
-                bVal = parseInt(b.cells[5].textContent) || 0;
+                aVal = a.wins;
+                bVal = b.wins;
                 break;
             case 'draws':
-                aVal = parseInt(a.cells[6].textContent) || 0;
-                bVal = parseInt(b.cells[6].textContent) || 0;
+                aVal = a.draws;
+                bVal = b.draws;
                 break;
             case 'losses':
-                aVal = parseInt(a.cells[7].textContent) || 0;
-                bVal = parseInt(b.cells[7].textContent) || 0;
+                aVal = a.losses;
+                bVal = b.losses;
                 break;
             case 'goalsFor':
-                aVal = parseInt(a.cells[8].textContent) || 0;
-                bVal = parseInt(b.cells[8].textContent) || 0;
+                aVal = a.goalsFor;
+                bVal = b.goalsFor;
                 break;
             case 'goalsAgainst':
-                aVal = parseInt(a.cells[9].textContent) || 0;
-                bVal = parseInt(b.cells[9].textContent) || 0;
+                aVal = a.goalsAgainst;
+                bVal = b.goalsAgainst;
                 break;
             case 'goalDifference':
-                aVal = parseInt(a.cells[10].textContent.replace('+', '')) || 0;
-                bVal = parseInt(b.cells[10].textContent.replace('+', '')) || 0;
+                aVal = a.goalsFor - a.goalsAgainst;
+                bVal = b.goalsFor - b.goalsAgainst;
                 break;
             default:
                 return 0;
@@ -2182,8 +2217,8 @@ function sortH2HTeamsTable(column) {
         return h2hTeamsSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
     });
     
-    tbody.innerHTML = '';
-    rows.forEach(row => tbody.appendChild(row));
+    // Re-render table with sorted data
+    renderH2HTeamsTable(sortedData);
     
     // Update sort icons
     document.querySelectorAll('#h2h-teams-table th').forEach(th => {
@@ -2736,6 +2771,9 @@ window.switchMainTab = switchMainTab;
 window.switchSubTab = switchSubTab;
 window.switchNestedSubTab = switchNestedSubTab;
 window.populateH2HTeamsTable = populateH2HTeamsTable;
+window.renderH2HTeamsTable = renderH2HTeamsTable;
+window.initializeH2HTeamsSearch = initializeH2HTeamsSearch;
+window.filterH2HTeamsTable = filterH2HTeamsTable;
 window.sortH2HTeamsTable = sortH2HTeamsTable;
 window.populateAhlyManagersTable = populateAhlyManagersTable;
 window.populateOpponentManagersTable = populateOpponentManagersTable;
