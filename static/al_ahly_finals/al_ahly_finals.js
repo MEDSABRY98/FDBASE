@@ -265,6 +265,8 @@ function populateFilterDropdowns() {
                 option.textContent = value;
                 selectElement.appendChild(option);
             });
+        } else {
+            console.warn(`Filter element not found: ${selectId}`);
         }
     });
     
@@ -278,25 +280,30 @@ function populateFilterDropdowns() {
  * Apply filters to data
  */
 function applyFinalsFilters() {
-    // Get current filter values
+    // Get current filter values with safe fallbacks
+    const getFilterValue = (id) => {
+        const element = document.getElementById(id);
+        return element ? element.value : '';
+    };
+    
     const filters = {
-        'MATCH_ID': document.getElementById('match-id-filter')?.value || '',
-        'CHAMPION System': document.getElementById('champion-system-filter')?.value || '',
-        'SEASON': document.getElementById('season-filter')?.value || '',
-        'TIMING': document.getElementById('timing-filter')?.value || '',
-        'CHAMPION': document.getElementById('champion-filter')?.value || '',
-        'AHLY MANAGER': document.getElementById('ahly-manager-filter')?.value || '',
-        'OPPONENT MANAGER': document.getElementById('opponent-manager-filter')?.value || '',
-        'H/A/N': document.getElementById('han-filter')?.value || '',
-        'AHLY TEAM': document.getElementById('ahly-team-filter')?.value || '',
-        'GF': document.getElementById('gf-filter')?.value || '',
-        'GA': document.getElementById('ga-filter')?.value || '',
-        'ET': document.getElementById('et-filter')?.value || '',
-        'PEN': document.getElementById('pen-filter')?.value || '',
-        'OPPONENT TEAM': document.getElementById('opponent-team-filter')?.value || '',
-        'W-L MATCH': document.getElementById('wl-match-filter')?.value || '',
-        'C.S': document.getElementById('cs-filter')?.value || '',
-        'W-L FINAL': document.getElementById('wl-final-filter')?.value || ''
+        'MATCH_ID': getFilterValue('match-id-filter'),
+        'CHAMPION System': getFilterValue('champion-system-filter'),
+        'SEASON': getFilterValue('season-filter'),
+        'TIMING': getFilterValue('timing-filter'),
+        'CHAMPION': getFilterValue('champion-filter'),
+        'AHLY MANAGER': getFilterValue('ahly-manager-filter'),
+        'OPPONENT MANAGER': getFilterValue('opponent-manager-filter'),
+        'H/A/N': getFilterValue('han-filter'),
+        'AHLY TEAM': getFilterValue('ahly-team-filter'),
+        'GF': getFilterValue('gf-filter'),
+        'GA': getFilterValue('ga-filter'),
+        'ET': getFilterValue('et-filter'),
+        'PEN': getFilterValue('pen-filter'),
+        'OPPONENT TEAM': getFilterValue('opponent-team-filter'),
+        'W-L MATCH': getFilterValue('wl-match-filter'),
+        'C.S': getFilterValue('cs-filter'),
+        'W-L FINAL': getFilterValue('wl-final-filter')
     };
     
     // Get date range filters
@@ -354,7 +361,7 @@ function applyFinalsFilters() {
  * Clear all filters
  */
 function clearFinalsFilters() {
-    // Reset all filter dropdowns
+    // Reset all filter dropdowns with safe fallbacks
     const filterIds = [
         'match-id-filter', 'champion-system-filter', 'season-filter', 'timing-filter',
         'champion-filter', 'ahly-manager-filter', 'opponent-manager-filter',
