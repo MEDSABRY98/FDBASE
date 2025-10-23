@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // AL AHLY STATISTICS MODULE - JAVASCRIPT FUNCTIONS
 // ============================================================================
 // Excel-only mode: no cacheServices
@@ -2993,9 +2993,9 @@ function loadPlayerSubTabData(subTabName, selectedTeams = null) {
             loadPlayerWithCoachesWithFilter(selectedTeams);
             break;
         case 'trophies':
-            console.log('🏆 Loading trophies from loadPlayerSubTabData');
             if (playersData.selectedPlayer && playersData.selectedPlayer.name) {
-                loadPlayerTrophies(playersData.selectedPlayer.name, selectedTeams);
+                // For trophies, ignore team filter - always show Al Ahly trophies only
+                loadPlayerTrophies(playersData.selectedPlayer.name, '');
             }
             break;
     }
@@ -8825,8 +8825,8 @@ function loadPlayerSubTabData(subTabName, selectedTeams = null) {
             loadPlayerWithCoachesWithFilter(selectedTeams || teamFilter);
             break;
         case 'trophies':
-            console.log('🏆 Loading trophies from loadPlayerSubTabData (second function)');
-            loadPlayerTrophies(selectedPlayer, selectedTeams || teamFilter);
+            // For trophies, ignore team filter - always show Al Ahly trophies only
+            loadPlayerTrophies(selectedPlayer, '');
             break;
     }
 }
@@ -13486,9 +13486,10 @@ function loadPlayerTrophies(playerName, teamFilter = '') {
         const mainSheet = getSheetRowsByCandidates(['MATCHDETAILS']) || [];
         
         // Calculate trophies for the player
+        // For trophies, we ignore team filter and only show Al Ahly trophies
         const playerTrophies = calculatePlayerTrophies(
             playerName,
-            teamFilter,
+            '', // Empty team filter - trophies are always Al Ahly only
             trophySheet,
             lineupSheet,
             playerDetailsSheet,
@@ -13520,12 +13521,9 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
             if (!season) return;
             
             // Get all matches in this season from main sheet
+            // For trophies, we only care about Al Ahly matches regardless of team filter
             const seasonMatches = mainSheet.filter(m => {
                 const matchSeason = m['SEASON'];
-                if (teamFilter) {
-                    const ahlyTeam = m['AHLY TEAM'];
-                    return matchSeason === season && ahlyTeam === teamFilter;
-                }
                 return matchSeason === season;
             });
             
@@ -13543,22 +13541,19 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
                 // Check in LINEUPDETAILS
                 const inLineup = lineupSheet.some(row => {
                     return String(row['MATCH_ID']) === String(matchId) && 
-                           row['PLAYER NAME'] === playerName && 
-                           row['TEAM'] === 'الأهلي';
+                           row['PLAYER NAME'] === playerName;
                 });
                 
                 // Check in PLAYERDETAILS
                 const inPlayerDetails = playerDetailsSheet.some(row => {
                     return String(row['MATCH_ID']) === String(matchId) && 
-                           row['PLAYER NAME'] === playerName && 
-                           row['TEAM'] === 'الأهلي';
+                           row['PLAYER NAME'] === playerName;
                 });
                 
                 // Check in GKDETAILS
                 const inGKDetails = gkDetailsSheet.some(row => {
                     return String(row['MATCH_ID']) === String(matchId) && 
-                           row['PLAYER NAME'] === playerName && 
-                           row['TEAM'] === 'الأهلي';
+                           row['PLAYER NAME'] === playerName;
                 });
                 
                 if (inLineup || inPlayerDetails || inGKDetails) {
