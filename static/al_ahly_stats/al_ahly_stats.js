@@ -16302,6 +16302,256 @@ function renderConsecutiveScoringStreakTable(matches) {
     });
 }
 
+// Show streak popup with table
+function showStreakPopup(title, tableId) {
+    // Create popup overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'streak-popup-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        box-sizing: border-box;
+    `;
+    
+    // Create popup content
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        max-width: 90%;
+        max-height: 90%;
+        width: 1000px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        position: relative;
+        overflow: auto;
+    `;
+    
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.cssText = `
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #666;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    `;
+    
+    closeBtn.onmouseover = () => {
+        closeBtn.style.background = '#f0f0f0';
+        closeBtn.style.color = '#333';
+    };
+    
+    closeBtn.onmouseout = () => {
+        closeBtn.style.background = 'none';
+        closeBtn.style.color = '#666';
+    };
+    
+    closeBtn.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+    
+    // Create title with streak count
+    const streakData = window.currentStreakData || [];
+    const titleElement = document.createElement('h2');
+    titleElement.innerHTML = `${title} <span style="color: #667eea; font-size: 1.2rem;">(${streakData.length} matches)</span>`;
+    titleElement.style.cssText = `
+        margin: 0 0 1.5rem 0;
+        color: #333;
+        font-size: 1.8rem;
+        font-weight: 600;
+        text-align: center;
+        padding-right: 50px;
+    `;
+    
+    // Create table dynamically with streak data
+    const table = document.createElement('table');
+    table.style.cssText = `
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    `;
+    
+    // Determine column headers based on table type
+    let lastColumnHeader = 'GOALS';
+    if (tableId.includes('assist')) {
+        lastColumnHeader = 'ASSISTS';
+    } else if (tableId.includes('ga')) {
+        lastColumnHeader = 'GOALS & ASSISTS';
+    }
+    
+    // Create table header
+    const thead = document.createElement('thead');
+    if (tableId.includes('ga')) {
+        // For G+A tables, show both GOALS and ASSISTS columns
+        thead.innerHTML = `
+            <tr>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">DATE</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">SEASON</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">OPPONENT TEAM</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">MINUTES</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">GOALS</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">ASSISTS</th>
+            </tr>
+        `;
+    } else {
+        // For single column tables (goals or assists)
+        thead.innerHTML = `
+            <tr>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">DATE</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">SEASON</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">OPPONENT TEAM</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">MINUTES</th>
+                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">${lastColumnHeader}</th>
+            </tr>
+        `;
+    }
+    
+    // Create table body
+    const tbody = document.createElement('tbody');
+    
+    if (streakData.length === 0) {
+        const colspan = tableId.includes('ga') ? '6' : '5';
+        tbody.innerHTML = `<tr><td colspan="${colspan}" style="padding: 2rem; text-align: center; color: #999;">No streak data found</td></tr>`;
+    } else {
+        // Sort by date (newest first)
+        const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+        function parseSheetDate(s) {
+            const str = String(s || '').trim();
+            const d1 = Date.parse(str);
+            if (!isNaN(d1)) return d1;
+            const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+            if (m) {
+                const day = parseInt(m[1], 10);
+                const mon = monthMap[m[2].slice(0,3)];
+                const yr = parseInt(m[3], 10);
+                if (mon != null) {
+                    return new Date(yr, mon, day).getTime();
+                }
+            }
+            const num = Number(str);
+            if (!isNaN(num) && str !== '') {
+                return new Date((num - 25569) * 86400 * 1000).getTime();
+            }
+            return 0;
+        }
+
+        function formatSheetDateDisplay(s) {
+            if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+                const t = new Date((Number(s) - 25569) * 86400 * 1000);
+                if (!isNaN(t.getTime())) {
+                    const dd = String(t.getDate()).padStart(2, '0');
+                    const MMM = Object.keys(monthMap)[t.getMonth()];
+                    const yyyy = t.getFullYear();
+                    return `${dd}-${MMM}-${yyyy}`;
+                }
+            }
+            return String(s || '').trim() || 'N/A';
+        }
+        
+        const sorted = [...streakData].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+        
+        sorted.forEach(m => {
+            const date = formatSheetDateDisplay(m.date);
+            const season = m.season || 'N/A';
+            const opponent = m.opponent || 'N/A';
+            const minutes = m.minutes || 0;
+            const goals = m.goals || 0;
+            const assists = m.assists || 0;
+            
+            const row = document.createElement('tr');
+            
+            if (tableId.includes('ga')) {
+                // For G+A tables, show both goals and assists
+                row.innerHTML = `
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${date}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${season}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${opponent}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${minutes}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${goals > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${goals}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${assists > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${assists}</td>
+                `;
+            } else if (tableId.includes('assist')) {
+                // For assist tables, show assists only
+                row.innerHTML = `
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${date}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${season}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${opponent}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${minutes}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${assists > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${assists}</td>
+                `;
+            } else {
+                // For goal tables, show goals only
+                row.innerHTML = `
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${date}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${season}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${opponent}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${minutes}</td>
+                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${goals > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${goals}</td>
+                `;
+            }
+            
+            // Add hover effect
+            row.onmouseover = () => {
+                row.style.background = '#f8f9fa';
+            };
+            row.onmouseout = () => {
+                row.style.background = 'white';
+            };
+            
+            tbody.appendChild(row);
+        });
+    }
+    
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    
+    // Assemble popup
+    popup.appendChild(closeBtn);
+    popup.appendChild(titleElement);
+    popup.appendChild(table);
+    overlay.appendChild(popup);
+    
+    // Add to page
+    document.body.appendChild(overlay);
+    
+    // Close on overlay click
+    overlay.onclick = (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    };
+    
+    // Close on Escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            document.body.removeChild(overlay);
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
 // Render consecutive no-goal streak table
 function renderConsecutiveNoGoalStreakTable(matches) {
     const tbody = document.querySelector('#consecutive-no-goal-streak-data tbody');
