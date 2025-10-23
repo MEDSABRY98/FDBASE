@@ -1076,6 +1076,7 @@ function populateFaceToFaceDropdowns() {
     if (countrySelect) {
         const currentValue = countrySelect.value;
         countrySelect.innerHTML = '<option value="">Individual Team</option>' +
+            '<option value="ALL_OPPONENTS">All Opponent Teams</option>' +
             countries.map(country => `<option value="${country}">${country}</option>`).join('');
         countrySelect.value = currentValue;
     }
@@ -1130,7 +1131,11 @@ function updateFaceToFace() {
     if (opponentTeam) {
         egyptData = egyptData.filter(r => r['OPPONENT TEAM'] === opponentTeam);
     } else if (country) {
-        egyptData = egyptData.filter(r => r['COUNTRY TEAM'] === country);
+        if (country === 'ALL_OPPONENTS') {
+            // No filtering needed - show all opponent teams
+        } else {
+            egyptData = egyptData.filter(r => r['COUNTRY TEAM'] === country);
+        }
     }
     
     // Calculate opponent stats (reverse perspective)
@@ -1141,7 +1146,7 @@ function updateFaceToFace() {
     
     // Update headers
     const egyptSideName = egyptAll === 'ALL' ? 'All Egypt Teams' : (egyptTeam || 'Egypt Side');
-    const opponentSideName = country || opponentTeam || 'Opponent Side';
+    const opponentSideName = country === 'ALL_OPPONENTS' ? 'All Opponent Teams' : (country || opponentTeam || 'Opponent Side');
     
     document.getElementById('f2f-team1-header').textContent = egyptSideName;
     document.getElementById('f2f-team2-header').textContent = opponentSideName;
