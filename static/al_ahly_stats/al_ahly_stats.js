@@ -15594,6 +15594,240 @@ function loadConsecutiveNoGoalStreak() {
     renderConsecutiveNoGoalStreakTable(streak);
 }
 
+// Find longest consecutive no-goal streak
+function findLongestConsecutiveNoGoalStreak(matches) {
+    if (!matches || matches.length === 0) return [];
+    
+    // Sort matches by date
+    const sortedMatches = [...matches].sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+    
+    let longestStreak = [];
+    let currentStreak = [];
+    
+    for (let i = 0; i < sortedMatches.length; i++) {
+        const match = sortedMatches[i];
+        const goals = parseInt(match.GOALS || 0);
+        
+        if (goals === 0) {
+            currentStreak.push(match);
+        } else {
+            if (currentStreak.length > longestStreak.length) {
+                longestStreak = [...currentStreak];
+            }
+            currentStreak = [];
+        }
+    }
+    
+    // Check if the last streak is the longest
+    if (currentStreak.length > longestStreak.length) {
+        longestStreak = [...currentStreak];
+    }
+    
+    return longestStreak;
+}
+
+// Find longest consecutive assist streak
+function findLongestConsecutiveAssistStreak(matches) {
+    if (!matches || matches.length === 0) return [];
+    
+    // Sort matches by date
+    const sortedMatches = [...matches].sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+    
+    let longestStreak = [];
+    let currentStreak = [];
+    
+    for (let i = 0; i < sortedMatches.length; i++) {
+        const match = sortedMatches[i];
+        const assists = parseInt(match.ASSISTS || 0);
+        
+        if (assists > 0) {
+            currentStreak.push(match);
+        } else {
+            if (currentStreak.length > longestStreak.length) {
+                longestStreak = [...currentStreak];
+            }
+            currentStreak = [];
+        }
+    }
+    
+    // Check if the last streak is the longest
+    if (currentStreak.length > longestStreak.length) {
+        longestStreak = [...currentStreak];
+    }
+    
+    return longestStreak;
+}
+
+// Find longest consecutive no-assist streak
+function findLongestConsecutiveNoAssistStreak(matches) {
+    if (!matches || matches.length === 0) return [];
+    
+    // Sort matches by date
+    const sortedMatches = [...matches].sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+    
+    let longestStreak = [];
+    let currentStreak = [];
+    
+    for (let i = 0; i < sortedMatches.length; i++) {
+        const match = sortedMatches[i];
+        const assists = parseInt(match.ASSISTS || 0);
+        
+        if (assists === 0) {
+            currentStreak.push(match);
+        } else {
+            if (currentStreak.length > longestStreak.length) {
+                longestStreak = [...currentStreak];
+            }
+            currentStreak = [];
+        }
+    }
+    
+    // Check if the last streak is the longest
+    if (currentStreak.length > longestStreak.length) {
+        longestStreak = [...currentStreak];
+    }
+    
+    return longestStreak;
+}
+
+// Show consecutive assist streak
+function showConsecutiveAssistStreak() {
+    console.log('Showing consecutive assist streak');
+    
+    // Check if player is selected
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    if (!selectedPlayer) {
+        alert('Please select a player first');
+        return;
+    }
+    
+    // Load and display consecutive assist streak in popup
+    loadConsecutiveAssistStreak();
+    showStreakPopup('Consecutive Assist Streak', 'consecutive-assist-streak-data');
+}
+
+// Show consecutive no-assist streak
+function showConsecutiveNoAssistStreak() {
+    console.log('Showing consecutive no-assist streak');
+    
+    // Check if player is selected
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    if (!selectedPlayer) {
+        alert('Please select a player first');
+        return;
+    }
+    
+    // Load and display consecutive no-assist streak in popup
+    loadConsecutiveNoAssistStreak();
+    showStreakPopup('Consecutive No-Assist Streak', 'consecutive-no-assist-streak-data');
+}
+
+// Load consecutive assist streak
+function loadConsecutiveAssistStreak() {
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    
+    if (!selectedPlayer) {
+        console.log('No player selected');
+        return;
+    }
+    
+    // Get applied filters
+    const appliedFilters = getCurrentFilters();
+    
+    // Get all player matches
+    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
+    
+    // Find the longest consecutive assist streak
+    const streak = findLongestConsecutiveAssistStreak(allMatches);
+    
+    console.log(`Found consecutive assist streak of ${streak.length} matches for ${selectedPlayer}`);
+    console.log('Streak matches:', streak);
+    
+    // Store streak data globally for popup
+    window.currentStreakData = streak;
+    
+    // Render the table
+    renderConsecutiveAssistStreakTable(streak);
+}
+
+// Load consecutive no-assist streak
+function loadConsecutiveNoAssistStreak() {
+    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    
+    if (!selectedPlayer) {
+        console.log('No player selected');
+        return;
+    }
+    
+    // Get applied filters
+    const appliedFilters = getCurrentFilters();
+    
+    // Get all player matches
+    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
+    
+    // Find the longest consecutive no-assist streak
+    const streak = findLongestConsecutiveNoAssistStreak(allMatches);
+    
+    console.log(`Found consecutive no-assist streak of ${streak.length} matches for ${selectedPlayer}`);
+    console.log('Streak matches:', streak);
+    
+    // Store streak data globally for popup
+    window.currentStreakData = streak;
+    
+    // Render the table
+    renderConsecutiveNoAssistStreakTable(streak);
+}
+
+// Render consecutive assist streak table
+function renderConsecutiveAssistStreakTable(matches) {
+    const tbody = document.querySelector('#consecutive-assist-streak-data tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!matches || matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No consecutive assist streak found</td></tr>';
+        return;
+    }
+    
+    matches.forEach(match => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${match.DATE || ''}</td>
+            <td>${match.OPPONENT || ''}</td>
+            <td>${match.ASSISTS || 0}</td>
+            <td>${match.GOALS || 0}</td>
+            <td>${match.MINUTES || 0}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Render consecutive no-assist streak table
+function renderConsecutiveNoAssistStreakTable(matches) {
+    const tbody = document.querySelector('#consecutive-no-assist-streak-data tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!matches || matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No consecutive no-assist streak found</td></tr>';
+        return;
+    }
+    
+    matches.forEach(match => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${match.DATE || ''}</td>
+            <td>${match.OPPONENT || ''}</td>
+            <td>${match.ASSISTS || 0}</td>
+            <td>${match.GOALS || 0}</td>
+            <td>${match.MINUTES || 0}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
 // Render consecutive no-goal streak table
 function renderConsecutiveNoGoalStreakTable(matches) {
     const tbody = document.querySelector('#consecutive-no-goal-streak-data tbody');
