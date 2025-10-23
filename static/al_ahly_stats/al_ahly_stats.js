@@ -390,8 +390,8 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
         if (teamLower) {
-            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
-            if (team !== teamLower) return false;
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!filteredMatchIds.has(matchId)) return false;
@@ -551,8 +551,8 @@ function getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters = {})
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
         if (teamLower) {
-            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
-            if (team !== teamLower) return false;
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!matchId || !filteredMatchIds.has(matchId)) return false;
@@ -876,8 +876,7 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
         if (!playerTeamInMatch) return; // Skip if no team data
         
         if (teamLower) {
-            const t = playerTeamInMatch.toLowerCase();
-            if (t !== teamLower) return;
+            if (!teamMatchesFilter(playerTeamInMatch, teamFilter)) return;
         }
         const mid = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!mid || !filteredMatchIds.has(mid)) return;
@@ -2920,7 +2919,7 @@ function applyPlayerTeamFilter() {
     updatePlayerStatisticsForTeam(selectedTeams);
     // Reload the overview cards with team filter applied
     if (playersData.selectedPlayer && playersData.selectedPlayer.name) {
-        loadPlayerOverviewStats(playersData.selectedPlayer.name);
+        loadPlayerOverviewWithFilter(selectedTeams);
         // Reload trophies with team filter
         loadPlayerTrophies(playersData.selectedPlayer.name, selectedTeams);
         
@@ -2961,7 +2960,7 @@ function getCurrentPlayerSubTab() {
 }
 
 // Load player sub-tab data with team filtering
-function loadPlayerSubTabData(subTabName, selectedTeams) {
+function loadPlayerSubTabData(subTabName, selectedTeams = null) {
     // This function will be called when team filter changes
     // It will reload the current sub-tab data with team filtering applied
     
@@ -2983,6 +2982,15 @@ function loadPlayerSubTabData(subTabName, selectedTeams) {
             break;
         case 'vs-gks':
             loadPlayerVsGKsWithFilter(selectedTeams);
+            break;
+        case 'goal-details':
+            loadPlayerGoalDetailsWithFilter(selectedTeams);
+            break;
+        case 'assist-details':
+            loadPlayerAssistDetailsWithFilter(selectedTeams);
+            break;
+        case 'with-coaches':
+            loadPlayerWithCoachesWithFilter(selectedTeams);
             break;
     }
 }
@@ -4356,8 +4364,8 @@ async function loadPlayerOverviewStats(playerName) {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
         if (teamLower) {
-            const t = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
-            if (t !== teamLower) return false;
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
         
         // Apply main filters to match data
@@ -4693,10 +4701,28 @@ function updatePlayerOverviewCards(stats) {
 }
 
 function loadPlayerOverviewWithFilter(selectedTeams) {
-    // This function is now replaced by loadPlayerOverviewStats
-    // but keeping it for compatibility with the filter system
-    if (playersData.selectedPlayer) {
-        loadPlayerOverviewStats(playersData.selectedPlayer.name);
+    console.log('Loading overview with team filter:', selectedTeams);
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        loadPlayerOverview();
+        return;
+    }
+    
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    
+    // Temporarily set the team filter in the DOM element for loadPlayerOverviewStats to use
+    const teamFilterElement = document.getElementById('player-team-filter');
+    const originalValue = teamFilterElement ? teamFilterElement.value : '';
+    if (teamFilterElement) {
+        teamFilterElement.value = teamFilter;
+    }
+    
+    // Load the overview stats with the team filter
+    loadPlayerOverviewStats(playerName);
+    
+    // Restore original value
+    if (teamFilterElement) {
+        teamFilterElement.value = originalValue;
     }
 }
 function loadPlayerOverview() {
@@ -5490,21 +5516,156 @@ function loadPlayerVsGKsStats() {
 // Additional filtered functions for other sub-tabs
 function loadPlayerChampionshipsWithFilter(selectedTeams) {
     console.log('Loading championships with team filter:', selectedTeams);
-    loadPlayerChampionshipsStats();
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        const tbody = document.querySelector('#player-championships-table tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6">No player selected</td></tr>';
+        }
+        return;
+    }
+    
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    
+    // Get applied filters from the main filter section
+    const appliedFilters = getCurrentFilters();
+    console.log('Applied filters for championships:', appliedFilters);
+    
+    const items = getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters);
+    console.log('Championships items with filter:', items.length);
+    renderPlayerChampionshipsTable(items);
 }
 
 function loadPlayerSeasonsWithFilter(selectedTeams) {
     console.log('Loading seasons with team filter:', selectedTeams);
-    loadPlayerSeasons();
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        const tbody = document.querySelector('#player-seasons-table tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6">No player selected</td></tr>';
+        }
+        return;
+    }
+    
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    
+    // Get applied filters from the main filter section
+    const appliedFilters = getCurrentFilters();
+    console.log('Applied filters for seasons:', appliedFilters);
+    
+    const items = getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters);
+    console.log('Seasons items with filter:', items.length);
+    renderPlayerSeasonsTable(items);
 }
 function loadPlayerVsTeamsWithFilter(selectedTeams) {
     console.log('Loading vs teams with team filter:', selectedTeams);
-    loadPlayerVsTeams();
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        const tbody = document.querySelector('#player-vs-teams-table tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="4">No player selected</td></tr>';
+        }
+        return;
+    }
+    
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    
+    // Get applied filters from the main filter section
+    const appliedFilters = getCurrentFilters();
+    console.log('Applied filters for vs teams:', appliedFilters);
+    
+    const items = getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters);
+    console.log('Vs teams items with filter:', items.length);
+    renderPlayerVsTeamsTable(items);
 }
 
 function loadPlayerVsGKsWithFilter(selectedTeams) {
     console.log('Loading vs GKs with team filter:', selectedTeams);
-    loadPlayerVsGKs();
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        const tbody = document.querySelector('#player-vs-gks-table tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="3">No player selected</td></tr>';
+        }
+        return;
+    }
+    
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    
+    // Get applied filters from the main filter section
+    const appliedFilters = getCurrentFilters();
+    console.log('Applied filters for vs goalkeepers:', appliedFilters);
+    
+    const items = getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters);
+    console.log('Vs goalkeepers items with filter:', items.length);
+    renderPlayerVsGKsTable(items);
+}
+
+// Additional filtered functions for other sub-tabs
+function loadPlayerGoalDetailsWithFilter(selectedTeams) {
+    console.log('Loading goal details with team filter:', selectedTeams);
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        return;
+    }
+    
+    // Temporarily set the team filter in the DOM element for loadPlayerGoalDetailsStats to use
+    const teamFilterElement = document.getElementById('player-team-filter');
+    const originalValue = teamFilterElement ? teamFilterElement.value : '';
+    if (teamFilterElement) {
+        teamFilterElement.value = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    }
+    
+    // Load the goal details stats with the team filter
+    loadPlayerGoalDetailsStats();
+    
+    // Restore original value
+    if (teamFilterElement) {
+        teamFilterElement.value = originalValue;
+    }
+}
+
+function loadPlayerAssistDetailsWithFilter(selectedTeams) {
+    console.log('Loading assist details with team filter:', selectedTeams);
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        return;
+    }
+    
+    // Temporarily set the team filter in the DOM element for loadPlayerAssistDetails to use
+    const teamFilterElement = document.getElementById('player-team-filter');
+    const originalValue = teamFilterElement ? teamFilterElement.value : '';
+    if (teamFilterElement) {
+        teamFilterElement.value = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    }
+    
+    // Load the assist details stats with the team filter
+    loadPlayerAssistDetails();
+    
+    // Restore original value
+    if (teamFilterElement) {
+        teamFilterElement.value = originalValue;
+    }
+}
+
+function loadPlayerWithCoachesWithFilter(selectedTeams) {
+    console.log('Loading with coaches with team filter:', selectedTeams);
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        return;
+    }
+    
+    // Temporarily set the team filter in the DOM element for loadPlayerWithCoachesStats to use
+    const teamFilterElement = document.getElementById('player-team-filter');
+    const originalValue = teamFilterElement ? teamFilterElement.value : '';
+    if (teamFilterElement) {
+        teamFilterElement.value = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    }
+    
+    // Load the with coaches stats with the team filter
+    loadPlayerWithCoachesStats();
+    
+    // Restore original value
+    if (teamFilterElement) {
+        teamFilterElement.value = originalValue;
+    }
 }
 
 // Load goal minute statistics for player
@@ -5545,8 +5706,8 @@ function getPlayerGoalMinutesFromSheets(playerName, teamFilter, appliedFilters =
         if (p !== nameLower) return false;
         
         if (teamLower) {
-            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
-            if (team !== teamLower) return false;
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
         
         // Apply main filters to match data
@@ -5760,8 +5921,8 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
         if (p !== nameLower) return false;
         
         if (teamLower) {
-            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
-            if (team !== teamLower) return false;
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
         
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
@@ -8618,42 +8779,44 @@ function showPlayerSubTab(arg1, arg2) {
     const searchEl = document.getElementById('player-search');
     const selectedPlayer = searchEl ? searchEl.value.trim() : '';
     if (selectedPlayer) {
-        loadPlayerSubTabData(subTabName);
+        // Get current selected teams from checkboxes
+        const selectedTeams = getSelectedPlayerTeams();
+        loadPlayerSubTabData(subTabName, selectedTeams);
     }
 }
 
 // Load player sub-tab data based on current selection (Excel-only)
-function loadPlayerSubTabData(subTabName) {
+function loadPlayerSubTabData(subTabName, selectedTeams = null) {
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
-    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    const teamFilter = selectedTeams ? (Array.isArray(selectedTeams) ? selectedTeams.join(',') : selectedTeams) : (document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '');
     if (!selectedPlayer) return;
     switch (subTabName) {
         case 'overview':
-            if (typeof loadPlayerOverviewWithFilter === 'function') loadPlayerOverviewWithFilter(teamFilter);
+            if (typeof loadPlayerOverviewWithFilter === 'function') loadPlayerOverviewWithFilter(selectedTeams || teamFilter);
             break;
         case 'matches':
-            loadPlayerMatchesWithFilter(teamFilter);
+            loadPlayerMatchesWithFilter(selectedTeams || teamFilter);
             break;
         case 'championships':
-            loadPlayerChampionshipsStats();
+            loadPlayerChampionshipsWithFilter(selectedTeams || teamFilter);
             break;
         case 'seasons':
-            loadPlayerSeasonsStats();
+            loadPlayerSeasonsWithFilter(selectedTeams || teamFilter);
             break;
         case 'vs-teams':
-            loadPlayerVsTeamsStats();
+            loadPlayerVsTeamsWithFilter(selectedTeams || teamFilter);
             break;
         case 'vs-gks':
-            loadPlayerVsGKsStats();
+            loadPlayerVsGKsWithFilter(selectedTeams || teamFilter);
             break;
         case 'goal-details':
-            loadPlayerGoalDetailsStats();
+            loadPlayerGoalDetailsWithFilter(selectedTeams || teamFilter);
             break;
         case 'assist-details':
-            loadPlayerAssistDetails();
+            loadPlayerAssistDetailsWithFilter(selectedTeams || teamFilter);
             break;
         case 'with-coaches':
-            loadPlayerWithCoachesStats();
+            loadPlayerWithCoachesWithFilter(selectedTeams || teamFilter);
             break;
     }
 }
@@ -8755,8 +8918,8 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = 
         if (p !== nameLower) return false;
         
         if (teamLower) {
-            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
-            if (team !== teamLower) return false;
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
         
         // Apply main filters to match data
@@ -13521,8 +13684,8 @@ function loadPlayerAssistDetails() {
         // Get all player records for filtering
         const filteredDetails = playerDetails.filter(r => {
             if (teamLower) {
-                const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || '').toLowerCase();
-                return team === teamLower;
+                const teamVal = r.TEAM || r['AHLY TEAM'] || '';
+                return teamMatchesFilter(teamVal, teamFilter);
             }
             return true;
         });
