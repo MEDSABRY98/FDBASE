@@ -811,7 +811,7 @@ function calculateAhlyPlayersStats(matchRecords, playersData, lineupData) {
     // Group by player name
     const playerStats = {};
     
-    // Process PLAYERDETAILS data for goals and assists
+    // Process PLAYERDETAILS data for goals and assists AND as secondary source for match participation
     const filteredPlayers = playersData.filter(p => matchIds.has(p['MATCH_ID']));
     
     filteredPlayers.forEach(record => {
@@ -835,7 +835,7 @@ function calculateAhlyPlayersStats(matchRecords, playersData, lineupData) {
             };
         }
         
-        // Add match to set
+        // Add match to set (PLAYERDETAILS as primary source for participation)
         if (matchId) {
             playerStats[playerName].matches.add(matchId);
         }
@@ -851,6 +851,7 @@ function calculateAhlyPlayersStats(matchRecords, playersData, lineupData) {
     });
     
     // Process LINEUP11 data to add matches where player appeared but didn't score/assist
+    // This serves as a secondary source to catch players who were in lineup but had no contributions
     const filteredLineup = lineupData.filter(l => matchIds.has(l['MATCH_ID']));
     
     filteredLineup.forEach(record => {
@@ -1284,24 +1285,10 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
     // Get match IDs from filtered matches
     const matchIds = new Set(matchRecords.map(r => r['MATCH_ID']));
     
-    // Get player matches from both LINEUP11 and PLAYERDETAILS
+    // Get player matches from both PLAYERDETAILS (primary) and LINEUP11 (secondary)
     const playerMatches = new Set();
     
-    // Get matches from LINEUP11
-    const playerLineup = lineupData.filter(l => {
-        if (!matchIds.has(l['MATCH_ID'])) return false;
-        if (l['PLAYER NAME'] !== playerName) return false;
-        
-        // Apply team filter if set
-        if (teamFilter) {
-            const team = (l['TEAM'] || '').trim();
-            return team === teamFilter;
-        }
-        
-        return true;
-    });
-    
-    // Get matches from PLAYERDETAILS
+    // Get matches from PLAYERDETAILS (PRIMARY SOURCE)
     const playerContributions = playersData.filter(p => {
         if (!matchIds.has(p['MATCH_ID'])) return false;
         if (p['PLAYER NAME'] !== playerName) return false;
@@ -1315,16 +1302,30 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         return true;
     });
     
-    // Add matches from both sources
-    playerLineup.forEach(lineup => {
-        const matchId = lineup['MATCH_ID'];
+    // Get matches from LINEUP11 (SECONDARY SOURCE)
+    const playerLineup = lineupData.filter(l => {
+        if (!matchIds.has(l['MATCH_ID'])) return false;
+        if (l['PLAYER NAME'] !== playerName) return false;
+        
+        // Apply team filter if set
+        if (teamFilter) {
+            const team = (l['TEAM'] || '').trim();
+            return team === teamFilter;
+        }
+        
+        return true;
+    });
+    
+    // Add matches from both sources (PLAYERDETAILS first, then LINEUP11)
+    playerContributions.forEach(contribution => {
+        const matchId = contribution['MATCH_ID'];
         if (matchId) {
             playerMatches.add(matchId);
         }
     });
     
-    playerContributions.forEach(contribution => {
-        const matchId = contribution['MATCH_ID'];
+    playerLineup.forEach(lineup => {
+        const matchId = lineup['MATCH_ID'];
         if (matchId) {
             playerMatches.add(matchId);
         }
@@ -1733,29 +1734,7 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
     // Collect all matches for this player (with team filter)
     const playerMatches = new Set();
     
-    // Filter lineup data by team (if filter is set)
-    const playerLineup = lineupData.filter(l => {
-        if (!matchIds.has(l['MATCH_ID'])) return false;
-        if (l['PLAYER NAME'] !== playerName) return false;
-        
-        // Apply team filter if set
-        if (teamFilter) {
-            const team = (l['TEAM'] || '').trim();
-            return team === teamFilter;
-        }
-        
-        return true;
-    });
-    
-    // Add matches from LINEUP11
-    playerLineup.forEach(lineup => {
-        const matchId = lineup['MATCH_ID'];
-        if (matchId) {
-            playerMatches.add(matchId);
-        }
-    });
-    
-    // Filter player contributions by team (if filter is set)
+    // Filter player contributions by team (if filter is set) - PRIMARY SOURCE
     const playerContributions = playersData.filter(p => {
         if (!matchIds.has(p['MATCH_ID'])) return false;
         if (p['PLAYER NAME'] !== playerName) return false;
@@ -1769,9 +1748,31 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
         return true;
     });
     
-    // Add matches from PLAYERDETAILS
+    // Add matches from PLAYERDETAILS (PRIMARY SOURCE for participation)
     playerContributions.forEach(contribution => {
         const matchId = contribution['MATCH_ID'];
+        if (matchId) {
+            playerMatches.add(matchId);
+        }
+    });
+    
+    // Filter lineup data by team (if filter is set) - SECONDARY SOURCE
+    const playerLineup = lineupData.filter(l => {
+        if (!matchIds.has(l['MATCH_ID'])) return false;
+        if (l['PLAYER NAME'] !== playerName) return false;
+        
+        // Apply team filter if set
+        if (teamFilter) {
+            const team = (l['TEAM'] || '').trim();
+            return team === teamFilter;
+        }
+        
+        return true;
+    });
+    
+    // Add matches from LINEUP11 (SECONDARY SOURCE - catches players in lineup with no contributions)
+    playerLineup.forEach(lineup => {
+        const matchId = lineup['MATCH_ID'];
         if (matchId) {
             playerMatches.add(matchId);
         }
