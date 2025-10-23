@@ -2793,6 +2793,11 @@ function selectPlayer(player) {
                 label.innerHTML = `<input type="checkbox" class="team-filter-checkbox" id="${id}" value="${team}"> <span>${team}</span>`;
                 teamContainer.appendChild(label);
             });
+            
+            // Add event listeners to the new checkboxes
+            teamContainer.querySelectorAll('input.team-filter-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', applyPlayerTeamFilter);
+            });
             teamContainer.removeAttribute('disabled');
         } else {
             console.log('⚠️ Player has no teams');
@@ -2918,6 +2923,13 @@ function applyPlayerTeamFilter() {
         loadPlayerOverviewStats(playersData.selectedPlayer.name);
         // Reload trophies with team filter
         loadPlayerTrophies(playersData.selectedPlayer.name, selectedTeams);
+        
+        // Reload current active sub-tab with team filter
+        const currentSubTab = getCurrentPlayerSubTab();
+        if (currentSubTab) {
+            console.log(`🔄 Reloading sub-tab: ${currentSubTab} with team filter`);
+            loadPlayerSubTabData(currentSubTab, selectedTeams);
+        }
     }
     
     console.log(`Filtering player statistics for teams: ${selectedTeams.join(', ') || 'All Teams'}`);
