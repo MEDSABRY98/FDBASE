@@ -2993,6 +2993,7 @@ function loadPlayerSubTabData(subTabName, selectedTeams = null) {
             loadPlayerWithCoachesWithFilter(selectedTeams);
             break;
         case 'trophies':
+            console.log('🏆 Loading trophies from loadPlayerSubTabData');
             if (playersData.selectedPlayer && playersData.selectedPlayer.name) {
                 loadPlayerTrophies(playersData.selectedPlayer.name, selectedTeams);
             }
@@ -8824,6 +8825,7 @@ function loadPlayerSubTabData(subTabName, selectedTeams = null) {
             loadPlayerWithCoachesWithFilter(selectedTeams || teamFilter);
             break;
         case 'trophies':
+            console.log('🏆 Loading trophies from loadPlayerSubTabData (second function)');
             loadPlayerTrophies(selectedPlayer, selectedTeams || teamFilter);
             break;
     }
