@@ -1191,12 +1191,13 @@ function calculateBiggestWin(data, isEgypt = true) {
     const wins = data.filter(r => r['W-L MATCH'] === 'W' || r['W-L MATCH'] === 'Win');
     
     if (wins.length === 0) {
-        return { score: '-', date: '', team: '', opponent: '' };
+        return { score: '-', date: '', team: '', opponent: '', allWins: [] };
     }
     
-    let biggestWin = null;
     let maxDiff = -1;
+    let biggestWins = [];
     
+    // Find the maximum goal difference
     wins.forEach(record => {
         const gf = parseInt(record['GF']) || 0;
         const ga = parseInt(record['GA']) || 0;
@@ -1204,16 +1205,35 @@ function calculateBiggestWin(data, isEgypt = true) {
         
         if (diff > maxDiff) {
             maxDiff = diff;
-            biggestWin = {
+        }
+    });
+    
+    // Collect all wins with the maximum goal difference
+    wins.forEach(record => {
+        const gf = parseInt(record['GF']) || 0;
+        const ga = parseInt(record['GA']) || 0;
+        const diff = gf - ga;
+        
+        if (diff === maxDiff) {
+            biggestWins.push({
                 score: `${gf}-${ga}`,
                 date: record['DATE'] ? new Date(record['DATE']).toISOString().split('T')[0] : '',
                 team: record['EGYPT TEAM'] || '',
                 opponent: record['OPPONENT TEAM'] || ''
-            };
+            });
         }
     });
     
-    return biggestWin || { score: '-', date: '', team: '', opponent: '' };
+    // Sort by date (newest first)
+    biggestWins.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    return {
+        score: biggestWins[0]?.score || '-',
+        date: biggestWins[0]?.date || '',
+        team: biggestWins[0]?.team || '',
+        opponent: biggestWins[0]?.opponent || '',
+        allWins: biggestWins
+    };
 }
 
 /**
@@ -1249,12 +1269,13 @@ function calculateBiggestWinOpponent(data) {
     const wins = data.filter(r => r['W-L MATCH'] === 'L' || r['W-L MATCH'] === 'Loss');
     
     if (wins.length === 0) {
-        return { score: '-', date: '', team: '', opponent: '' };
+        return { score: '-', date: '', team: '', opponent: '', allWins: [] };
     }
     
-    let biggestWin = null;
     let maxDiff = -1;
+    let biggestWins = [];
     
+    // Find the maximum goal difference
     wins.forEach(record => {
         const gf = parseInt(record['GA']) || 0; // Opponent's GF is Egypt's GA
         const ga = parseInt(record['GF']) || 0; // Opponent's GA is Egypt's GF
@@ -1262,16 +1283,35 @@ function calculateBiggestWinOpponent(data) {
         
         if (diff > maxDiff) {
             maxDiff = diff;
-            biggestWin = {
+        }
+    });
+    
+    // Collect all wins with the maximum goal difference
+    wins.forEach(record => {
+        const gf = parseInt(record['GA']) || 0; // Opponent's GF is Egypt's GA
+        const ga = parseInt(record['GF']) || 0; // Opponent's GA is Egypt's GF
+        const diff = gf - ga;
+        
+        if (diff === maxDiff) {
+            biggestWins.push({
                 score: `${gf}-${ga}`,
                 date: record['DATE'] ? new Date(record['DATE']).toISOString().split('T')[0] : '',
                 team: record['OPPONENT TEAM'] || '',
                 opponent: record['EGYPT TEAM'] || ''
-            };
+            });
         }
     });
     
-    return biggestWin || { score: '-', date: '', team: '', opponent: '' };
+    // Sort by date (newest first)
+    biggestWins.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    return {
+        score: biggestWins[0]?.score || '-',
+        date: biggestWins[0]?.date || '',
+        team: biggestWins[0]?.team || '',
+        opponent: biggestWins[0]?.opponent || '',
+        allWins: biggestWins
+    };
 }
 
 /**
@@ -1302,10 +1342,14 @@ function renderFaceToFaceTable(egyptStats, opponentStats) {
         // Special formatting for Biggest Win
         if (isSpecial && typeof val1 === 'object' && typeof val2 === 'object') {
             val1Html = val1.score !== '-' 
-                ? `<div style="font-size: 1.5rem; font-weight: 700;">${val1.score}</div><div style="font-size: 0.8rem; color: #666;">${val1.date}</div><div style="font-size: 0.85rem; color: #888;">${val1.team}</div><div style="font-size: 0.8rem; color: #e74c3c; margin-top: 2px;">${val1.opponent || ''}</div>`
+                ? `<div style="font-size: 1.5rem; font-weight: 700;">${val1.score}</div>${val1.allWins && val1.allWins.length > 1 ? 
+                    val1.allWins.map(win => `<div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${win.date} - ${win.team} vs ${win.opponent}</div>`).join('') : 
+                    `<div style="font-size: 0.8rem; color: #666;">${val1.date}</div><div style="font-size: 0.85rem; color: #888;">${val1.team}</div><div style="font-size: 0.8rem; color: #e74c3c; margin-top: 2px;">${val1.opponent || ''}</div>`}`
                 : '-';
-            val2Html = val2.score !== '-'
-                ? `<div style="font-size: 1.5rem; font-weight: 700;">${val2.score}</div><div style="font-size: 0.8rem; color: #666;">${val2.date}</div><div style="font-size: 0.85rem; color: #888;">${val2.team}</div><div style="font-size: 0.8rem; color: #e74c3c; margin-top: 2px;">${val2.opponent || ''}</div>`
+            val2Html = val2.score !== '-' 
+                ? `<div style="font-size: 1.5rem; font-weight: 700;">${val2.score}</div>${val2.allWins && val2.allWins.length > 1 ? 
+                    val2.allWins.map(win => `<div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${win.date} - ${win.team} vs ${win.opponent}</div>`).join('') : 
+                    `<div style="font-size: 0.8rem; color: #666;">${val2.date}</div><div style="font-size: 0.85rem; color: #888;">${val2.team}</div><div style="font-size: 0.8rem; color: #e74c3c; margin-top: 2px;">${val2.opponent || ''}</div>`}`
                 : '-';
         } else {
             // Determine which value is higher (only if both are numbers and greater than 0)
