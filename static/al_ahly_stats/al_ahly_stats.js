@@ -6344,37 +6344,35 @@ function initializeGoalkeeperSearch() {
     });
 }
 
-// Function to select a goalkeeper and populate teams dropdown
+// Function to select a goalkeeper and populate teams checkboxes
 function selectGoalkeeper(goalkeeper) {
     goalkeepersData.selectedGoalkeeper = goalkeeper;
     
-    // Update teams dropdown
-    const teamFilter = document.getElementById('gk-team-filter');
-    if (teamFilter) {
-        // Clear existing options except "All Teams"
-        teamFilter.innerHTML = '<option value="">All Teams</option>';
-        
+    // Update teams checkboxes
+    const teamContainer = document.getElementById('gk-team-filter');
+    if (teamContainer) {
+        console.log('🔄 Updating GK team filter checkboxes...');
+        teamContainer.innerHTML = '';
         if (goalkeeper.teams && goalkeeper.teams.length > 0) {
-            // Sort teams alphabetically
             const sortedTeams = [...goalkeeper.teams].sort();
-            
-            // Add team options
             sortedTeams.forEach(team => {
-                const option = document.createElement('option');
-                option.value = team;
-                option.textContent = team;
-                teamFilter.appendChild(option);
+                const id = `gk-team-cb-${team.replace(/\s+/g,'-')}`;
+                const label = document.createElement('label');
+                label.className = 'checkbox-label';
+                label.innerHTML = `<input type="checkbox" class="gk-team-filter-checkbox" id="${id}" value="${team}"> <span class="checkmark"></span><span>${team}</span>`;
+                teamContainer.appendChild(label);
             });
             
-            // Enable the dropdown
-            teamFilter.disabled = false;
+            // Add event listeners to the new checkboxes
+            teamContainer.querySelectorAll('input.gk-team-filter-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', applyGoalkeeperTeamFilter);
+            });
+            teamContainer.removeAttribute('disabled');
         } else {
-            // Disable the dropdown if no teams
-            teamFilter.disabled = true;
+            console.log('⚠️ Goalkeeper has no teams');
+            teamContainer.innerHTML = '<div style="text-align: center; color: #9ca3af; font-style: italic;">No teams available</div>';
+            teamContainer.setAttribute('disabled', 'true');
         }
-        
-        // Reset to "All Teams"
-        teamFilter.value = '';
     }
     
     console.log(`Selected goalkeeper: ${goalkeeper.name}, Teams: ${goalkeeper.teams ? goalkeeper.teams.join(', ') : 'No teams'}`);
@@ -6403,54 +6401,66 @@ function selectGoalkeeper(goalkeeper) {
 
 // Initialize goalkeeper team filter functionality
 function initializeGoalkeeperTeamFilter() {
-    const teamFilter = document.getElementById('gk-team-filter');
-    if (!teamFilter) return;
+    const teamContainer = document.getElementById('gk-team-filter');
+    if (!teamContainer) return;
     
     // Add event listener for team filter changes
-    teamFilter.addEventListener('change', function() {
-        applyGoalkeeperTeamFilter();
+    teamContainer.addEventListener('change', function(e) {
+        if (e.target && e.target.classList && e.target.classList.contains('gk-team-filter-checkbox')) {
+            applyGoalkeeperTeamFilter();
+        }
     });
+}
+
+// Get selected goalkeeper teams from checkboxes
+function getSelectedGoalkeeperTeams() {
+    const container = document.getElementById('gk-team-filter');
+    if (!container) return [];
+    const checked = Array.from(container.querySelectorAll('input.gk-team-filter-checkbox:checked'));
+    return checked.map(cb => cb.value);
 }
 
 // Apply goalkeeper team filter
 function applyGoalkeeperTeamFilter() {
-    const teamFilter = document.getElementById('gk-team-filter');
-    const selectedTeam = teamFilter ? teamFilter.value : '';
+    const selectedTeams = getSelectedGoalkeeperTeams();
     
-    // Update goalkeeper statistics based on selected team
-    updateGoalkeeperStatisticsForTeam(selectedTeam);
+    // Update goalkeeper statistics based on selected teams
+    updateGoalkeeperStatisticsForTeams(selectedTeams);
     
-    console.log(`Filtering goalkeeper statistics for team: ${selectedTeam || 'All Teams'}`);
+    console.log(`Filtering goalkeeper statistics for teams: ${selectedTeams.length > 0 ? selectedTeams.join(', ') : 'All Teams'}`);
 }
 
-// Update goalkeeper statistics based on selected team
-function updateGoalkeeperStatisticsForTeam(selectedTeam) {
+// Update goalkeeper statistics based on selected teams
+function updateGoalkeeperStatisticsForTeams(selectedTeams) {
     if (!goalkeepersData.selectedGoalkeeper) {
         // If no goalkeeper selected, load default data
         loadGoalkeeperStats();
         return;
     }
     
+    // If no teams selected, show all teams
+    const teamFilter = selectedTeams.length > 0 ? selectedTeams.join(',') : '';
+    
     // Load goalkeeper statistics with team filter
-    loadGoalkeeperStatistics(goalkeepersData.selectedGoalkeeper.name, selectedTeam);
+    loadGoalkeeperStatistics(goalkeepersData.selectedGoalkeeper.name, teamFilter);
     
     // Load overview statistics with team filter
-    loadGKOverviewStats(goalkeepersData.selectedGoalkeeper.name, selectedTeam);
+    loadGKOverviewStats(goalkeepersData.selectedGoalkeeper.name, teamFilter);
     
     // Load goalkeeper matches with team filter
-    loadGKMatches(selectedTeam);
+    loadGKMatches(teamFilter);
     
     // Load goalkeeper championships with team filter
-    loadGKChampionships(selectedTeam);
+    loadGKChampionships(teamFilter);
     
     // Load goalkeeper seasons with team filter
-    loadGKSeasons(selectedTeam);
+    loadGKSeasons(teamFilter);
     
     // Load goalkeeper vs teams with team filter
-    loadGKVsTeams(selectedTeam);
+    loadGKVsTeams(teamFilter);
     
     // Load goalkeeper vs players with team filter
-    loadGKVsPlayers(selectedTeam);
+    loadGKVsPlayers(teamFilter);
 }
 // Load goalkeeper statistics
 async function loadGoalkeeperStatistics(goalkeeperName, selectedTeam = '') {
@@ -6615,9 +6625,15 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
     // Filter goalkeeper records for the selected goalkeeper
     let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
     
-    // Apply team filter if specified (filter by exact team name)
+    // Apply team filter if specified (filter by exact team names)
     if (teamFilter) {
-        gkRecords = gkRecords.filter(r => normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team) === normalizeStr(teamFilter));
+        const teamFilters = teamFilter.split(',').map(t => normalizeStr(t.trim())).filter(t => t);
+        if (teamFilters.length > 0) {
+            gkRecords = gkRecords.filter(r => {
+                const teamName = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team);
+                return teamFilters.includes(teamName);
+            });
+        }
     }
     
     // Filter by matches that passed the main filters
@@ -6928,10 +6944,16 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
     // Get match IDs for filtered matches
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID));
     
-    // Filter goalkeeper records for the selected goalkeeper and optional team
+    // Filter goalkeeper records for the selected goalkeeper and optional teams
     let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
     if (teamFilter) {
-        gkRecords = gkRecords.filter(r => normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team) === normalizeStr(teamFilter));
+        const teamFilters = teamFilter.split(',').map(t => normalizeStr(t.trim())).filter(t => t);
+        if (teamFilters.length > 0) {
+            gkRecords = gkRecords.filter(r => {
+                const teamName = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team);
+                return teamFilters.includes(teamName);
+            });
+        }
     }
     
     // Filter by matches that passed the main filters
@@ -7191,10 +7213,16 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
     
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID));
     
-    // Filter goalkeeper records for the selected goalkeeper and optional team
+    // Filter goalkeeper records for the selected goalkeeper and optional teams
     let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
     if (teamFilter) {
-        gkRecords = gkRecords.filter(r => normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team) === normalizeStr(teamFilter));
+        const teamFilters = teamFilter.split(',').map(t => normalizeStr(t.trim())).filter(t => t);
+        if (teamFilters.length > 0) {
+            gkRecords = gkRecords.filter(r => {
+                const teamName = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team);
+                return teamFilters.includes(teamName);
+            });
+        }
     }
     gkRecords = gkRecords.filter(r => filteredMatchIds.has(r.MATCH_ID));
     
@@ -7449,7 +7477,13 @@ function getGKVsTeamsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
 
     let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
     if (teamFilter) {
-        gkRecords = gkRecords.filter(r => normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team) === normalizeStr(teamFilter));
+        const teamFilters = teamFilter.split(',').map(t => normalizeStr(t.trim())).filter(t => t);
+        if (teamFilters.length > 0) {
+            gkRecords = gkRecords.filter(r => {
+                const teamName = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team);
+                return teamFilters.includes(teamName);
+            });
+        }
     }
     gkRecords = gkRecords.filter(r => filteredMatchIds.has(r.MATCH_ID));
     if (gkRecords.length === 0) return [];
@@ -7654,7 +7688,13 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
     let filteredGKRows = gkRows.filter(r => {
         const gkName = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player);
         if (gkName !== targetGKNorm) return false;
-        if (teamFilter && normalizeStr(r.TEAM || r['TEAM'] || r.team) !== normalizeStr(teamFilter)) return false;
+        if (teamFilter) {
+            const teamFilters = teamFilter.split(',').map(t => normalizeStr(t.trim())).filter(t => t);
+            if (teamFilters.length > 0) {
+                const teamName = normalizeStr(r.TEAM || r['TEAM'] || r.team);
+                if (!teamFilters.includes(teamName)) return false;
+            }
+        }
         return filteredMatchIds.has(r.MATCH_ID);
     });
 
@@ -7906,8 +7946,9 @@ function loadGKSubTabData(subTabName) {
         return;
     }
     
-    // Get team filter from dropdown
-    const teamFilter = document.getElementById('gk-team-filter') ? document.getElementById('gk-team-filter').value : '';
+    // Get team filter from checkboxes
+    const selectedTeams = getSelectedGoalkeeperTeams();
+    const teamFilter = selectedTeams.length > 0 ? selectedTeams.join(',') : '';
     console.log(`Team filter for sub-tab: ${teamFilter}`);
     
     switch(subTabName) {
@@ -8148,8 +8189,14 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             // Filter to exclude Al Ahly team
             gkRecords = gkRecords.filter(r => normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team) !== 'الأهلي');
         } else {
-            // Filter by exact team name (for individual GK Statistics page)
-            gkRecords = gkRecords.filter(r => normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team) === normalizeStr(teamFilter));
+            // Filter by exact team names (for individual GK Statistics page) - support multiple teams
+            const teamFilters = teamFilter.split(',').map(t => normalizeStr(t.trim())).filter(t => t);
+            if (teamFilters.length > 0) {
+                gkRecords = gkRecords.filter(r => {
+                    const teamName = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team);
+                    return teamFilters.includes(teamName);
+                });
+            }
         }
     }
     
@@ -13538,22 +13585,30 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
             let playerFound = false;
             
             for (const matchId of seasonMatchIds) {
-                // Check in LINEUPDETAILS
+                // Check in LINEUPDETAILS - all players here are with Al Ahly (no team column)
                 const inLineup = lineupSheet.some(row => {
                     return String(row['MATCH_ID']) === String(matchId) && 
                            row['PLAYER NAME'] === playerName;
                 });
                 
-                // Check in PLAYERDETAILS
+                // Check in PLAYERDETAILS - only count if player was with Al Ahly
                 const inPlayerDetails = playerDetailsSheet.some(row => {
-                    return String(row['MATCH_ID']) === String(matchId) && 
-                           row['PLAYER NAME'] === playerName;
+                    if (String(row['MATCH_ID']) !== String(matchId) || row['PLAYER NAME'] !== playerName) {
+                        return false;
+                    }
+                    // Check if player was with Al Ahly team
+                    const team = normalizeStr(row['TEAM'] || '');
+                    return team === 'الأهلي' || team === 'ahly';
                 });
                 
-                // Check in GKDETAILS
+                // Check in GKDETAILS - only count if player was with Al Ahly
                 const inGKDetails = gkDetailsSheet.some(row => {
-                    return String(row['MATCH_ID']) === String(matchId) && 
-                           row['PLAYER NAME'] === playerName;
+                    if (String(row['MATCH_ID']) !== String(matchId) || row['PLAYER NAME'] !== playerName) {
+                        return false;
+                    }
+                    // Check if player was with Al Ahly team
+                    const team = normalizeStr(row['TEAM'] || '');
+                    return team === 'الأهلي' || team === 'ahly';
                 });
                 
                 if (inLineup || inPlayerDetails || inGKDetails) {
