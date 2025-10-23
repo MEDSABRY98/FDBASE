@@ -169,7 +169,7 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const nameLower = playerName.toLowerCase();
-    const teamLower = (teamFilter || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
 
     // Apply main filters to matches first
     const filteredMatches = matches.filter(match => {
@@ -311,7 +311,7 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const nameLower = playerName.toLowerCase();
-    const teamLower = (teamFilter || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
 
     // Apply main filters to matches first, but exclude champion filter for championships tab
     const filteredMatches = matches.filter(match => {
@@ -472,7 +472,7 @@ function getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters = {})
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const nameLower = playerName.toLowerCase();
-    const teamLower = (teamFilter || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
 
     // Apply main filters to matches first (same logic as other functions)
     const filteredMatches = matches.filter(match => {
@@ -631,7 +631,7 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const nameLower = playerName.toLowerCase();
-    const teamLower = (teamFilter || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
 
     // Apply main filters to matches first (same logic as other functions)
     const filteredMatches = matches.filter(match => {
@@ -784,7 +784,7 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const gkRows = getSheetRowsByCandidates(['GKDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
-    const teamLower = (teamFilter || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
 
     if (!details.length || !gkRows.length) return [];
 
@@ -4357,7 +4357,7 @@ async function loadPlayerOverviewStats(playerName) {
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
-    const teamLower = (teamFilter || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
 
     // Filter rows for player (+team if provided + main filters)
     const playerRows = details.filter(r => {
@@ -5696,7 +5696,7 @@ function getPlayerGoalMinutesFromSheets(playerName, teamFilter, appliedFilters =
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
-    const teamLower = (teamFilter || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
     
     if (!details.length) return {};
     
@@ -5879,7 +5879,7 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
-    const teamLower = (teamFilter || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
     
     if (!details.length || !matches.length) return {};
     
@@ -8901,7 +8901,7 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = 
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
-    const teamLower = (teamFilter || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
     
     if (!details.length || !matches.length) {
         return { 
@@ -13679,7 +13679,7 @@ function loadPlayerAssistDetails() {
         
         // Filter player details by team filter
         const playerNameLower = normalizeStr(selectedPlayer).toLowerCase();
-        const teamLower = (teamFilter || '').toLowerCase();
+        const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
         
         // Get all player records for filtering
         const filteredDetails = playerDetails.filter(r => {
@@ -14039,7 +14039,7 @@ function loadPlayerWithCoachesStats() {
             const pdTeam = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '');
             
             const nameMatch = pdPlayerName.toLowerCase() === selectedPlayer.toLowerCase();
-            const teamMatch = !teamFilter || pdTeam.toLowerCase().includes(teamFilter.toLowerCase());
+            const teamMatch = !teamFilter || pdTeam.toLowerCase().includes(String(teamFilter || '').toLowerCase());
             
             // Apply main filters to match data
             const matchId = normalizeStr(pd.MATCH_ID || pd['MATCH ID'] || '');
@@ -14170,7 +14170,7 @@ function loadPlayerWithCoachesStats() {
                     
                     if (coach === stat.coach) {
                         const team = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '');
-                        return team.toLowerCase().includes(teamFilter.toLowerCase());
+                        return team.toLowerCase().includes(String(teamFilter || '').toLowerCase());
                     }
                     return false;
                 });
