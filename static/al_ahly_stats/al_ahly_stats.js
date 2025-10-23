@@ -2992,6 +2992,11 @@ function loadPlayerSubTabData(subTabName, selectedTeams = null) {
         case 'with-coaches':
             loadPlayerWithCoachesWithFilter(selectedTeams);
             break;
+        case 'trophies':
+            if (playersData.selectedPlayer && playersData.selectedPlayer.name) {
+                loadPlayerTrophies(playersData.selectedPlayer.name, selectedTeams);
+            }
+            break;
     }
 }
 
@@ -8817,6 +8822,9 @@ function loadPlayerSubTabData(subTabName, selectedTeams = null) {
             break;
         case 'with-coaches':
             loadPlayerWithCoachesWithFilter(selectedTeams || teamFilter);
+            break;
+        case 'trophies':
+            loadPlayerTrophies(selectedPlayer, selectedTeams || teamFilter);
             break;
     }
 }
