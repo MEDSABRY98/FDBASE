@@ -134,6 +134,34 @@ function safeInt(v, d = 0) {
     return isNaN(n) ? d : n;
 }
 
+// Normalize team names across languages and variants (e.g., الأهلي / Al Ahly / Ahly)
+function normalizeTeamKey(value) {
+    const s = normalizeStr(value).toLowerCase();
+    if (!s) return '';
+    // Common Ahly variants
+    if (
+        s.includes('ahly') || s.includes('الأهلي') || s.includes('الاهلي') || s.includes('اهلي')
+    ) {
+        return 'ahly';
+    }
+    return s;
+}
+
+// Accept single team or array of teams
+function teamMatchesFilter(rowTeamValue, selectedTeamFilter) {
+    const rowRaw = normalizeStr(rowTeamValue).toLowerCase();
+    const rowKey = normalizeTeamKey(rowTeamValue);
+    const filters = Array.isArray(selectedTeamFilter) ? selectedTeamFilter : [selectedTeamFilter];
+    const normalized = filters.map(f => ({ raw: normalizeStr(f).toLowerCase(), key: normalizeTeamKey(f) }))
+                              .filter(f => f.raw || f.key);
+    if (normalized.length === 0) return true;
+    return normalized.some(f => {
+        if (f.key && rowKey && f.key === rowKey) return true;
+        if (f.raw && rowRaw && (rowRaw.includes(f.raw) || f.raw.includes(rowRaw))) return true;
+        return false;
+    });
+}
+
 function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {}) {
     // This function returns ALL matches where the player participated (from LINEUPDETAILS)
     // with their goals/assists data (from PLAYERDETAILS) - shows 0 if no goals/assists
@@ -217,8 +245,8 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
         if (teamLower) {
-            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
-            if (team !== teamLower) return false;
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!filteredMatchIds.has(matchId)) return false;
@@ -246,9 +274,9 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
     const playerLineupMatches = lineup.filter(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
         if (p !== nameLower) return false;
+        // LINEUPDETAILS is Ahly-only; apply team filter accordingly
         if (teamLower) {
-            const team = normalizeStr(l.TEAM || l['AHLY TEAM']).toLowerCase();
-            if (team !== teamLower) return false;
+            if (normalizeTeamKey(teamFilter) !== 'ahly') return false;
         }
         const matchId = normalizeStr(l.MATCH_ID);
         return filteredMatchIds.has(matchId);
@@ -386,6 +414,10 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
     lineup.forEach(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
         if (p !== nameLower) return;
+        // LINEUPDETAILS is Ahly-only; if team filter is set and not Ahly, skip
+        if (teamLower) {
+            if (normalizeTeamKey(teamFilter) !== 'ahly') return;
+        }
         const mid = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
         if (!mid) return;
         processedMidChamp.add(mid);
@@ -542,6 +574,10 @@ function getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters = {})
     lineup.forEach(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
         if (p !== nameLower) return;
+        // LINEUPDETAILS is Ahly-only; if team filter is set and not Ahly, skip
+        if (teamLower) {
+            if (normalizeTeamKey(teamFilter) !== 'ahly') return;
+        }
         const mid = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
         if (!mid || !filteredMatchIds.has(mid)) return;
         const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
@@ -672,8 +708,8 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return;
         if (teamLower) {
-            const team = normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team).toLowerCase();
-            if (team !== teamLower) return;
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return;
         }
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!matchId || !filteredMatchIds.has(matchId)) return;
@@ -689,6 +725,10 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
     lineup.forEach(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
         if (p !== nameLower) return;
+        // LINEUPDETAILS is Ahly-only; if team filter is set and not Ahly, skip
+        if (teamLower) {
+            if (normalizeTeamKey(teamFilter) !== 'ahly') return;
+        }
         const mid = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
         if (!mid || !filteredMatchIds.has(mid)) return;
         const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
@@ -1536,6 +1576,183 @@ async function loadGoalkeeperStats() {
         throw error;
     }
 }
+
+function loadAllPlayersFromSheets() {
+    console.log('Loading all players from sheets...');
+    
+    const playerTeams = new Map(); // Player Name -> Set of Teams
+
+    // Process LINEUPDETAILS first (Ahly-only)
+    const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
+    if (lineupDetails) {
+        lineupDetails.forEach(row => {
+            const playerName = normalizeStr(row['PLAYER NAME'] || row.PLAYER);
+            if (playerName) {
+                if (!playerTeams.has(playerName)) {
+                    playerTeams.set(playerName, new Set());
+                }
+                playerTeams.get(playerName).add('الأهلي'); // As per user, LINEUPDETAILS implies "الأهلي"
+            }
+        });
+    }
+
+    // Process PLAYERDETAILS to add other teams from the specific 'TEAM' column
+    const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
+    if (playerDetails) {
+        playerDetails.forEach(row => {
+            const playerName = normalizeStr(row['PLAYER NAME'] || row.PLAYER);
+            if (playerName) {
+                if (!playerTeams.has(playerName)) {
+                    playerTeams.set(playerName, new Set());
+                }
+                // User specified the column is exactly 'TEAM'
+                const teamName = normalizeStr(row.TEAM);
+                if (teamName) {
+                    playerTeams.get(playerName).add(teamName);
+                }
+            }
+        });
+    }
+
+    const playersWithTeams = [];
+    playerTeams.forEach((teams, name) => {
+        playersWithTeams.push({ name: name, teams: Array.from(teams) });
+    });
+    
+    playersWithTeams.sort((a, b) => a.name.localeCompare(b.name));
+    
+    playersData.players = playersWithTeams;
+    
+    console.log(`Loaded ${playersData.players.length} players with their teams from sheets.`);
+    const playersWithTeamsSample = playersWithTeams.slice(0, 5);
+    console.log('Sample players with teams:', JSON.stringify(playersWithTeamsSample, null, 2));
+}
+
+// ============================================================================
+// BY PLAYER TAB FUNCTIONS
+// ============================================================================
+
+// This function will be called when a player is selected from the search dropdown
+function setupPlayerSearch() {
+    const playerSearchInput = document.getElementById('player-search-input');
+    const playerSearchDropdown = document.getElementById('player-search-dropdown');
+    const playerSearchResults = document.getElementById('player-search-results');
+
+    // Load all players from sheets
+    loadAllPlayersFromSheets();
+
+    // Event listener for input changes
+    playerSearchInput.addEventListener('input', debounce(handlePlayerSearchInput, 300));
+
+    // Event listener for dropdown item click
+    playerSearchDropdown.addEventListener('click', handlePlayerDropdownClick);
+
+    // Event listener for document click to close dropdown
+    document.addEventListener('click', handleDocumentClick);
+
+    // Function to handle player search input
+    function handlePlayerSearchInput(event) {
+        const searchTerm = event.target.value.trim().toLowerCase();
+        if (searchTerm.length < 3) {
+            // Hide dropdown if search term is too short
+            playerSearchDropdown.style.display = 'none';
+            return;
+        }
+
+        // Filter players based on search term
+        const filteredPlayers = playersData.players.filter(player =>
+            player.name.toLowerCase().includes(searchTerm)
+        );
+
+        // Update dropdown with filtered players
+        updatePlayerSearchDropdown(filteredPlayers);
+    }
+
+    // Function to update player search dropdown
+    function updatePlayerSearchDropdown(players) {
+        playerSearchResults.innerHTML = '';
+
+        if (players.length === 0) {
+            playerSearchDropdown.style.display = 'none';
+            return;
+        }
+
+        players.forEach(player => {
+            const playerItem = document.createElement('div');
+            playerItem.classList.add('dropdown-item');
+            playerItem.textContent = player.name;
+            playerItem.dataset.playerName = player.name;
+            playerSearchResults.appendChild(playerItem);
+        });
+
+        playerSearchDropdown.style.display = 'block';
+    }
+
+    // Function to handle player dropdown click
+    function handlePlayerDropdownClick(event) {
+        const target = event.target;
+        if (target.classList.contains('dropdown-item')) {
+            const playerName = target.dataset.playerName;
+            playerSearchInput.value = playerName;
+            playerSearchDropdown.style.display = 'none';
+            selectPlayer(playerName);
+        }
+    }
+
+    // Function to handle document click to close dropdown
+    function handleDocumentClick(event) {
+        if (!playerSearchInput.contains(event.target) && !playerSearchDropdown.contains(event.target)) {
+            playerSearchDropdown.style.display = 'none';
+        }
+    }
+
+    // Function to select a player
+    function selectPlayer(playerName) {
+        playersData.selectedPlayer = playerName;
+        updatePlayerTab();
+    }
+
+    // Function to update player tab
+    function updatePlayerTab() {
+        const playerTab = document.getElementById('player-tab');
+        const playerNameElement = document.getElementById('player-name');
+        const playerStatsElement = document.getElementById('player-stats');
+
+        if (playersData.selectedPlayer) {
+            playerTab.style.display = 'block';
+            playerNameElement.textContent = playersData.selectedPlayer;
+            playerStatsElement.innerHTML = '';
+
+            // Get player stats
+            const playerStats = getPlayerStats(playersData.selectedPlayer);
+            if (playerStats) {
+                const statsList = document.createElement('ul');
+                statsList.innerHTML = `
+                    <li>Goals: ${playerStats.goals}</li>
+                    <li>Assists: ${playerStats.assists}</li>
+                    <li>Matches: ${playerStats.matches}</li>
+                `;
+                playerStatsElement.appendChild(statsList);
+            } else {
+                playerStatsElement.textContent = 'No stats available';
+            }
+        } else {
+            playerTab.style.display = 'none';
+        }
+    }
+
+    // Function to get player stats
+    function getPlayerStats(playerName) {
+        // Implement this function to retrieve player stats from your data source
+        // For now, returning dummy data
+        return {
+            goals: 10,
+            assists: 5,
+            matches: 20
+        };
+    }
+}
+
 // ============================================================================
 // STATISTICS CALCULATION FUNCTIONS
 // ============================================================================
@@ -2203,7 +2420,6 @@ function updateHowWinUI(stats, excludedCount) {
         excludedElement.textContent = excludedCount || 0;
     }
 }
-
 // Calculate HOW WIN statistics for Opponents
 function calculateOpponentsHowWinStats() {
     // Initialize counters
@@ -2564,37 +2780,25 @@ function selectPlayer(player) {
     // Load data directly from API
     playersData.selectedPlayer = player;
     
-    // Update teams dropdown
-    const teamFilter = document.getElementById('player-team-filter');
-    if (teamFilter) {
-        console.log('🔄 Updating team filter dropdown...');
-        // Clear existing options except "All Teams"
-        teamFilter.innerHTML = '<option value="">All Teams</option>';
-        
+    // Update teams checkboxes (replaces old dropdown)
+    const teamContainer = document.getElementById('player-team-filter');
+    if (teamContainer) {
+        console.log('🔄 Updating team filter checkboxes...');
+        teamContainer.innerHTML = '';
         if (player.teams && player.teams.length > 0) {
-            console.log('✅ Player has teams, adding to dropdown');
-            // Sort teams alphabetically
             const sortedTeams = [...player.teams].sort();
-            console.log('📋 Sorted teams:', sortedTeams);
-            
-            // Add team options
             sortedTeams.forEach(team => {
-                const option = document.createElement('option');
-                option.value = team;
-                option.textContent = team;
-                teamFilter.appendChild(option);
+                const id = `team-cb-${team.replace(/\s+/g,'-')}`;
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" class="team-filter-checkbox" id="${id}" value="${team}"> <span>${team}</span>`;
+                teamContainer.appendChild(label);
             });
-            
-            // Enable the dropdown
-            teamFilter.disabled = false;
+            teamContainer.removeAttribute('disabled');
         } else {
-            console.log('⚠️ Player has no teams, disabling dropdown');
-            // Disable the dropdown if no teams
-            teamFilter.disabled = true;
+            console.log('⚠️ Player has no teams');
+            teamContainer.innerHTML = '<div style="text-align: center; color: #9ca3af; font-style: italic;">No teams available</div>';
+            teamContainer.setAttribute('disabled', '');
         }
-        
-        // Reset to "All Teams"
-        teamFilter.value = '';
     }
     
     console.log(`✅ Selected player: ${player.name}, Teams: ${player.teams ? player.teams.join(', ') : 'No teams'}`);
@@ -2604,7 +2808,7 @@ function selectPlayer(player) {
     loadPlayerOverviewStats(player.name);
     
     // Load player trophies
-    loadPlayerTrophies(player.name);
+    loadPlayerTrophies(player.name, '');
     
     // Apply team filter (will show all teams initially)
     applyPlayerTeamFilter();
@@ -2677,36 +2881,50 @@ function updateAllPlayerTabs(data) {
 
 // Initialize team filter functionality
 function initializeTeamFilter() {
-    const teamFilter = document.getElementById('player-team-filter');
-    if (!teamFilter) return;
-    
-    // Add event listener for team filter changes
-    teamFilter.addEventListener('change', function() {
-        applyPlayerTeamFilter();
+    const container = document.getElementById('player-team-filter');
+    if (!container) return;
+    if (container.tagName && container.tagName.toUpperCase() === 'SELECT') {
+        container.addEventListener('change', function() { applyPlayerTeamFilter(); });
+        return;
+    }
+    container.addEventListener('change', function(e) {
+        if (e.target && e.target.classList && e.target.classList.contains('team-filter-checkbox')) {
+            applyPlayerTeamFilter();
+        }
     });
 }
 
 // Apply player team filter
+function getSelectedPlayerTeams() {
+    const container = document.getElementById('player-team-filter');
+    if (!container) return [];
+    if (container.tagName && container.tagName.toUpperCase() === 'SELECT') {
+        const v = container.value || '';
+        return v ? [v] : [];
+    }
+    const checked = Array.from(container.querySelectorAll('input.team-filter-checkbox:checked'));
+    return checked.map(cb => cb.value);
+}
+
 function applyPlayerTeamFilter() {
-    const teamFilter = document.getElementById('player-team-filter');
-    const selectedTeam = teamFilter ? teamFilter.value : '';
+    const selectedTeams = getSelectedPlayerTeams();
     
     // Load data directly from API when team filter changes
     
     // Update all player statistics based on selected team
-    updatePlayerStatisticsForTeam(selectedTeam);
+    updatePlayerStatisticsForTeam(selectedTeams);
     // Reload the overview cards with team filter applied
     if (playersData.selectedPlayer && playersData.selectedPlayer.name) {
         loadPlayerOverviewStats(playersData.selectedPlayer.name);
         // Reload trophies with team filter
-        loadPlayerTrophies(playersData.selectedPlayer.name, selectedTeam);
+        loadPlayerTrophies(playersData.selectedPlayer.name, selectedTeams);
     }
     
-    console.log(`Filtering player statistics for team: ${selectedTeam || 'All Teams'}`);
+    console.log(`Filtering player statistics for teams: ${selectedTeams.join(', ') || 'All Teams'}`);
 }
 
 // Update player statistics based on selected team
-function updatePlayerStatisticsForTeam(selectedTeam) {
+function updatePlayerStatisticsForTeam(selectedTeams) {
     if (!playersData.selectedPlayer) {
         // If no player selected, load default data
         loadPlayerOverview();
@@ -2717,7 +2935,7 @@ function updatePlayerStatisticsForTeam(selectedTeam) {
     // For now, we'll just reload the current tab with filtered data
     const currentSubTab = getCurrentPlayerSubTab();
     if (currentSubTab) {
-        loadPlayerSubTabData(currentSubTab, selectedTeam);
+        loadPlayerSubTabData(currentSubTab, selectedTeams);
     }
 }
 
@@ -2731,28 +2949,28 @@ function getCurrentPlayerSubTab() {
 }
 
 // Load player sub-tab data with team filtering
-function loadPlayerSubTabData(subTabName, selectedTeam) {
+function loadPlayerSubTabData(subTabName, selectedTeams) {
     // This function will be called when team filter changes
     // It will reload the current sub-tab data with team filtering applied
     
     switch(subTabName) {
         case 'overview':
-            loadPlayerOverviewWithFilter(selectedTeam);
+            loadPlayerOverviewWithFilter(selectedTeams);
             break;
         case 'matches':
-            loadPlayerMatchesWithFilter(selectedTeam);
+            loadPlayerMatchesWithFilter(selectedTeams);
             break;
         case 'championships':
-            loadPlayerChampionshipsWithFilter(selectedTeam);
+            loadPlayerChampionshipsWithFilter(selectedTeams);
             break;
         case 'seasons':
-            loadPlayerSeasonsWithFilter(selectedTeam);
+            loadPlayerSeasonsWithFilter(selectedTeams);
             break;
         case 'vs-teams':
-            loadPlayerVsTeamsWithFilter(selectedTeam);
+            loadPlayerVsTeamsWithFilter(selectedTeams);
             break;
         case 'vs-gks':
-            loadPlayerVsGKsWithFilter(selectedTeam);
+            loadPlayerVsGKsWithFilter(selectedTeams);
             break;
     }
 }
@@ -2992,7 +3210,6 @@ function updateSelectOptions(selectId, options) {
         select.appendChild(optionElement);
     });
 }
-
 // Build custom searchable selects similar to AHLY MATCH UX
 function initializeSearchableFilters() {
     const selects = document.querySelectorAll('.filter-field select');
@@ -3000,7 +3217,6 @@ function initializeSearchableFilters() {
         makeSelectSearchable(select);
     });
 }
-
 function makeSelectSearchable(select) {
     if (!select || select.dataset.searchable === 'true') return;
     select.style.display = 'none';
@@ -3685,7 +3901,6 @@ function updateAllTabsWithFilteredData(filteredRecords) {
     // Update any other tab-specific content based on filtered data
     console.log(`Updated all tabs with ${filteredRecords.length} filtered matches`);
 }
-
 function clearFilters() {
     console.log('Clearing all filters...');
     
@@ -3764,7 +3979,7 @@ function clearFilters() {
                 cleanSheetsAgainst: alAhlyStatsData.cleanSheetsAgainst
             });
             
-            // Force immediate update of overview cards with fresh data
+            // Force immediate update of overview cards with fresh unfiltered data
             setTimeout(() => {
                 console.log('🔄 Force updating overview cards with fresh unfiltered data...');
                 const stats = {
@@ -4183,6 +4398,10 @@ async function loadPlayerOverviewStats(playerName) {
     const lineupRows = lineupRowsAll.filter(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
         if (p !== nameLower) return false;
+        // LINEUPDETAILS is Ahly-only; if a team filter is set and it's not Ahly, exclude
+        if (teamLower) {
+            if (normalizeTeamKey(teamFilter) !== 'ahly') return false;
+        }
         
         // Apply main filters to match data
         const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || '');
@@ -4254,12 +4473,12 @@ async function loadPlayerOverviewStats(playerName) {
     });
 
     // Calculate longest consecutive streaks using the same logic as popup functions
-    const gaStreak = findLongestConsecutiveGAStreak(lineupWithDates);
-    const noGAStreak = findLongestConsecutiveNoGAStreak(lineupWithDates);
-    const goalStreak = findLongestConsecutiveScoringStreak(lineupWithDates);
-    const noGoalStreak = findLongestConsecutiveNoGoalStreak(lineupWithDates);
-    const assistStreak = findLongestConsecutiveAssistStreak(lineupWithDates);
-    const noAssistStreak = findLongestConsecutiveNoAssistStreak(lineupWithDates);
+    const gaStreak = (typeof findLongestConsecutiveGAStreak === 'function') ? findLongestConsecutiveGAStreak(lineupWithDates) : [];
+    const noGAStreak = (typeof findLongestConsecutiveNoGAStreak === 'function') ? findLongestConsecutiveNoGAStreak(lineupWithDates) : [];
+    const goalStreak = (typeof findLongestConsecutiveScoringStreak === 'function') ? findLongestConsecutiveScoringStreak(lineupWithDates) : [];
+    const noGoalStreak = (typeof findLongestConsecutiveNoGoalStreak === 'function') ? findLongestConsecutiveNoGoalStreak(lineupWithDates) : [];
+    const assistStreak = (typeof findLongestConsecutiveAssistStreak === 'function') ? findLongestConsecutiveAssistStreak(lineupWithDates) : [];
+    const noAssistStreak = (typeof findLongestConsecutiveNoAssistStreak === 'function') ? findLongestConsecutiveNoAssistStreak(lineupWithDates) : [];
     
     const maxGAStreak = gaStreak.length;
     const maxNoGAStreak = noGAStreak.length;
@@ -4461,14 +4680,13 @@ function updatePlayerOverviewCards(stats) {
     }
 }
 
-function loadPlayerOverviewWithFilter(selectedTeam) {
+function loadPlayerOverviewWithFilter(selectedTeams) {
     // This function is now replaced by loadPlayerOverviewStats
     // but keeping it for compatibility with the filter system
     if (playersData.selectedPlayer) {
         loadPlayerOverviewStats(playersData.selectedPlayer.name);
     }
 }
-
 function loadPlayerOverview() {
     // Reset all cards to 0 when no player is selected
     updatePlayerOverviewCards({
@@ -4508,8 +4726,8 @@ function loadPlayerOverview() {
     });
 }
 
-function loadPlayerMatchesWithFilter(selectedTeam) {
-    console.log('Loading player matches with team filter:', selectedTeam);
+function loadPlayerMatchesWithFilter(selectedTeams) {
+    console.log('Loading player matches with team filter:', Array.isArray(selectedTeams) ? selectedTeams.join(', ') : selectedTeams);
     if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
         loadPlayerMatches();
         return;
@@ -4520,7 +4738,7 @@ function loadPlayerMatchesWithFilter(selectedTeam) {
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for player matches:', appliedFilters);
     
-    const rows = getPlayerMatchesFromSheets(playerName, selectedTeam, appliedFilters);
+    const rows = getPlayerMatchesFromSheets(playerName, selectedTeams, appliedFilters);
     console.log('Player matches rows:', rows.length);
     console.log('Player matches data:', rows);
     renderPlayerMatchesTable(rows);
@@ -5258,23 +5476,22 @@ function loadPlayerVsGKsStats() {
 }
 
 // Additional filtered functions for other sub-tabs
-function loadPlayerChampionshipsWithFilter(selectedTeam) {
-    console.log('Loading championships with team filter:', selectedTeam);
+function loadPlayerChampionshipsWithFilter(selectedTeams) {
+    console.log('Loading championships with team filter:', selectedTeams);
     loadPlayerChampionshipsStats();
 }
 
-function loadPlayerSeasonsWithFilter(selectedTeam) {
-    console.log('Loading seasons with team filter:', selectedTeam);
+function loadPlayerSeasonsWithFilter(selectedTeams) {
+    console.log('Loading seasons with team filter:', selectedTeams);
     loadPlayerSeasons();
 }
-
-function loadPlayerVsTeamsWithFilter(selectedTeam) {
-    console.log('Loading vs teams with team filter:', selectedTeam);
+function loadPlayerVsTeamsWithFilter(selectedTeams) {
+    console.log('Loading vs teams with team filter:', selectedTeams);
     loadPlayerVsTeams();
 }
 
-function loadPlayerVsGKsWithFilter(selectedTeam) {
-    console.log('Loading vs GKs with team filter:', selectedTeam);
+function loadPlayerVsGKsWithFilter(selectedTeams) {
+    console.log('Loading vs GKs with team filter:', selectedTeams);
     loadPlayerVsGKs();
 }
 
@@ -6056,7 +6273,6 @@ function updateGoalkeeperStatisticsForTeam(selectedTeam) {
     // Load goalkeeper vs players with team filter
     loadGKVsPlayers(selectedTeam);
 }
-
 // Load goalkeeper statistics
 async function loadGoalkeeperStatistics(goalkeeperName, selectedTeam = '') {
     console.log(`Loading statistics for goalkeeper: ${goalkeeperName}, Team: ${selectedTeam}`);
@@ -6747,7 +6963,6 @@ function loadGKSeasons(teamFilter = '') {
     console.log('Rendering table...');
     renderGKSeasonsTable(seasons);
 }
-
 // Excel: get goalkeeper seasons from GKDETAILS and MATCHDETAILS
 function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters = {}) {
     console.log(`Getting seasons for goalkeeper: ${goalkeeperName}, team filter: ${teamFilter}, applied filters:`, appliedFilters);
@@ -7545,7 +7760,6 @@ function loadGKSubTabData(subTabName) {
             console.log(`Unknown GK sub-tab: ${subTabName}`);
     }
 }
-
 // Load GK Overview statistics
 function loadGKOverview() {
     if (!goalkeepersData.selectedGoalkeeper || !goalkeepersData.selectedGoalkeeper.name) {
@@ -8265,11 +8479,6 @@ function updateGKOverviewCards(stats) {
         }
     }
 }
-
-// ============================================================================
-// TAB SWITCHING FUNCTIONS
-// ============================================================================
-
 // Main tabs switching (compatible with showStatsTab(event, 'name') and showStatsTab('name'))
 function showStatsTab(arg1, arg2) {
     const isEvent = arg1 && typeof arg1 === 'object' && typeof arg1.preventDefault === 'function';
@@ -9014,11 +9223,6 @@ function clearCacheAndReload() {
         console.log('Cache cleared and page reset');
     }
 }
-
-// ============================================================================
-// ALL PLAYERS FUNCTIONS
-// ============================================================================
-
 // Load and display All Players data
 function loadAllPlayersData(filteredRecords = null) {
     console.log('Loading All Players data...');
@@ -10587,9 +10791,6 @@ function setupH2HSearch(teamsData) {
     
     console.log('H2H search functionality initialized');
 }
-// ============================================================================
-// H2H TEAMS SUBTABS FUNCTIONS
-
 // Show H2H Teams sub-tab
 function showH2HTeamsSubTab(evt, tabName) {
     // Hide all sub-tab contents by removing active class
@@ -11300,7 +11501,6 @@ function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
         return null;
     }
 }
-
 // Calculate streak statistics for H2H T Details
 function calculateH2HStreaks(teamName, records) {
     try {
@@ -12091,7 +12291,6 @@ function renderCoachesTable(coachesData) {
     
     console.log(`Coaches table rendered with ${coachesData.length} coaches`);
 }
-
 // Setup Coaches team filter
 function setupCoachesFilter() {
     const teamFilter = document.getElementById('coaches-team-filter');
@@ -12878,7 +13077,6 @@ function setupMainStatsFilters() {
         championFilter.addEventListener('change', championFilter.mainStatsListener);
     }
 }
-
 // Initialize page when DOM is ready
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('=== DOM LOADED, INITIALIZING AL AHLY STATS PAGE ===');
@@ -13536,8 +13734,8 @@ function applyMainFiltersToMatch(matchDetail, filters) {
         return false;
     }
     
-    // Referee filter
-    if (filters.referee && normalizeStr(matchDetail.REFEREE || '') !== filters.referee) {
+    // Referee filter (sheet uses REFREE)
+    if (filters.referee && normalizeStr(matchDetail.REFREE || matchDetail.REFEREE || '') !== filters.referee) {
         return false;
     }
     
@@ -13546,13 +13744,13 @@ function applyMainFiltersToMatch(matchDetail, filters) {
         return false;
     }
     
-    // H/A/N filter
-    if (filters.hAN && normalizeStr(matchDetail['H/A/N'] || '') !== filters.hAN) {
+    // H-A-N filter (sheet uses H-A-N)
+    if (filters.hAN && normalizeStr(matchDetail['H-A-N'] || '') !== filters.hAN) {
         return false;
     }
     
-    // Stadium filter
-    if (filters.stadium && normalizeStr(matchDetail.STADIUM || '') !== filters.stadium) {
+    // Stadium filter (sheet uses STAD)
+    if (filters.stadium && normalizeStr(matchDetail.STAD || '') !== filters.stadium) {
         return false;
     }
     
@@ -13566,19 +13764,27 @@ function applyMainFiltersToMatch(matchDetail, filters) {
         return false;
     }
     
-    // Goals For filter
-    if (filters.goalsFor && safeInt(matchDetail['GOALS FOR'] || matchDetail['AHLY GOALS'] || 0) !== safeInt(filters.goalsFor)) {
+    // Goals For filter (sheet uses GF)
+    if (filters.goalsFor && safeInt(matchDetail['GF'] || 0) !== safeInt(filters.goalsFor)) {
         return false;
     }
     
-    // Goals Against filter
-    if (filters.goalsAgainst && safeInt(matchDetail['GOALS AGAINST'] || matchDetail['OPPONENT GOALS'] || 0) !== safeInt(filters.goalsAgainst)) {
+    // Goals Against filter (sheet uses GA)
+    if (filters.goalsAgainst && safeInt(matchDetail['GA'] || 0) !== safeInt(filters.goalsAgainst)) {
         return false;
     }
     
-    // Result filter
-    if (filters.result && normalizeStr(matchDetail.RESULT || '') !== filters.result) {
-        return false;
+    // Result filter (sheet uses W-D-L with variants)
+    if (filters.result) {
+        const recordValue = normalizeStr(matchDetail['W-D-L'] || '');
+        const filterValue = normalizeStr(filters.result);
+        if (filterValue === 'D WITH G') {
+            if (recordValue !== 'D WITH G') return false;
+        } else if (filterValue === 'D.') {
+            if (recordValue !== 'D.') return false;
+        } else {
+            if (recordValue !== filterValue) return false;
+        }
     }
     
     // Clean Sheet filter
@@ -13586,19 +13792,19 @@ function applyMainFiltersToMatch(matchDetail, filters) {
         return false;
     }
     
-    // Extra Time filter
-    if (filters.extraTime && normalizeStr(matchDetail['EXTRA TIME'] || '') !== filters.extraTime) {
+    // Extra Time filter (sheet uses ET)
+    if (filters.extraTime && normalizeStr(matchDetail['ET'] || '') !== filters.extraTime) {
         return false;
     }
     
-    // Penalties filter
-    if (filters.penalties && normalizeStr(matchDetail.PENALTIES || '') !== filters.penalties) {
+    // Penalties filter (sheet uses PEN)
+    if (filters.penalties && normalizeStr(matchDetail['PEN'] || '') !== filters.penalties) {
         return false;
     }
     
     // Date From filter
     if (filters.dateFrom) {
-        const matchDate = matchDetail.DATE || matchDetail['MATCH DATE'] || '';
+        const matchDate = normalizeStr(matchDetail.DATE || matchDetail['MATCH DATE'] || '');
         if (matchDate && matchDate < filters.dateFrom) {
             return false;
         }
@@ -13606,7 +13812,7 @@ function applyMainFiltersToMatch(matchDetail, filters) {
     
     // Date To filter
     if (filters.dateTo) {
-        const matchDate = matchDetail.DATE || matchDetail['MATCH DATE'] || '';
+        const matchDate = normalizeStr(matchDetail.DATE || matchDetail['MATCH DATE'] || '');
         if (matchDate && matchDate > filters.dateTo) {
             return false;
         }
@@ -13637,10 +13843,9 @@ function loadPlayerWithCoachesStats() {
         // Get all player matches from LINEUPDETAILS for minutes calculation
         const playerLineupData = lineupDetails.filter(row => {
             const playerName = normalizeStr(row['PLAYER NAME'] || row.PLAYER || '');
-            const team = normalizeStr(row.TEAM || row['AHLY TEAM'] || '');
-            
             const nameMatch = playerName.toLowerCase() === selectedPlayer.toLowerCase();
-            const teamMatch = !teamFilter || team.toLowerCase().includes(teamFilter.toLowerCase());
+            // LINEUPDETAILS is Ahly-only; if a specific team is selected and it's not Ahly, exclude
+            const teamMatch = !teamFilter || normalizeTeamKey(teamFilter) === 'ahly';
             
             // Apply main filters to match data
             const matchId = normalizeStr(row.MATCH_ID || row['MATCH ID'] || '');
@@ -13756,25 +13961,17 @@ function loadPlayerWithCoachesStats() {
         // Apply team filter to coaches
         if (teamFilter) {
             coachStatsArray = coachStatsArray.filter(stat => {
-                // Check if this coach has any matches that match the team filter
+                // For LINEUPDETAILS (Ahly-only): only include lineup matches when filter is Ahly
                 const hasMatchingMatches = playerLineupData.some(row => {
                     const matchId = normalizeStr(row.MATCH_ID || row['MATCH ID'] || '');
                     const matchDetail = matchDetails.find(match => 
                         normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
                     );
-                    
                     if (!matchDetail) return false;
-                    
-                    // Get coach for this match
-                    let coach = 'Unknown Coach';
-                    coach = normalizeStr(matchDetail['AHLY MANAGER'] || 'Unknown Coach');
-                    
-                    // Check if this coach matches and team matches filter
-                    if (coach === stat.coach) {
-                        const team = normalizeStr(row.TEAM || row['AHLY TEAM'] || '');
-                        return team.toLowerCase().includes(teamFilter.toLowerCase());
-                    }
-                    return false;
+                    const coach = normalizeStr(matchDetail['AHLY MANAGER'] || 'Unknown Coach');
+                    if (coach !== stat.coach) return false;
+                    // lineup contributes only if selected team is Ahly
+                    return normalizeTeamKey(teamFilter) === 'ahly';
                 });
                 
                 // Also check PLAYERDETAILS for goals/assists
@@ -14380,7 +14577,6 @@ window.addEventListener('pageshow', async function(event) {
 // ============================================================================
 // SEARCH MATCH FUNCTIONALITY
 // ============================================================================
-
 // Search for a match by ID
 function searchMatchById() {
     const searchInput = document.getElementById('match-id-search');
@@ -15194,93 +15390,6 @@ function showConsecutiveNoGoalStreak() {
     showStreakPopup('Consecutive No-Goal Streak', 'consecutive-no-goal-streak-data');
 }
 
-// Load consecutive G+A streak
-function loadConsecutiveGAStreak() {
-    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
-    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
-    if (!selectedPlayer) {
-        console.log('No player selected');
-        return;
-    }
-    
-    // Get applied filters
-    const appliedFilters = getCurrentFilters();
-    
-    // Get all player matches
-    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
-    // Find the longest consecutive G+A streak
-    const streak = findLongestConsecutiveGAStreak(allMatches);
-    
-    console.log(`Found consecutive G+A streak of ${streak.length} matches for ${selectedPlayer}`);
-    console.log('Streak matches:', streak);
-    
-    // Store streak data globally for popup
-    window.currentStreakData = streak;
-    
-    // Render the table
-    renderConsecutiveGAStreakTable(streak);
-}
-
-// Load consecutive no G+A streak
-function loadConsecutiveNoGAStreak() {
-    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
-    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
-    if (!selectedPlayer) {
-        console.log('No player selected');
-        return;
-    }
-    
-    // Get applied filters
-    const appliedFilters = getCurrentFilters();
-    
-    // Get all player matches
-    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
-    // Find the longest consecutive no G+A streak
-    const streak = findLongestConsecutiveNoGAStreak(allMatches);
-    
-    console.log(`Found consecutive no G+A streak of ${streak.length} matches for ${selectedPlayer}`);
-    console.log('Streak matches:', streak);
-    
-    // Store streak data globally for popup
-    window.currentStreakData = streak;
-    
-    // Render the table
-    renderConsecutiveNoGAStreakTable(streak);
-}
-
-// Load consecutive scoring streak
-function loadConsecutiveScoringStreak() {
-    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
-    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
-    if (!selectedPlayer) {
-        console.log('No player selected');
-        return;
-    }
-    
-    // Get applied filters
-    const appliedFilters = getCurrentFilters();
-    
-    // Get all player matches
-    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
-    // Find the longest consecutive scoring streak
-    const streak = findLongestConsecutiveScoringStreak(allMatches);
-    
-    console.log(`Found consecutive scoring streak of ${streak.length} matches for ${selectedPlayer}`);
-    console.log('Streak matches:', streak);
-    
-    // Store streak data globally for popup
-    window.currentStreakData = streak;
-    
-    // Render the table
-    renderConsecutiveScoringStreakTable(streak);
-}
-
 // Load consecutive no-goal streak
 function loadConsecutiveNoGoalStreak() {
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
@@ -15308,285 +15417,6 @@ function loadConsecutiveNoGoalStreak() {
     
     // Render the table
     renderConsecutiveNoGoalStreakTable(streak);
-}
-
-// Find longest consecutive G+A streak
-function findLongestConsecutiveGAStreak(matches) {
-    if (!matches || matches.length === 0) return [];
-    
-    // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-    
-    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
-    let longestStreak = [];
-    let currentStreak = [];
-    
-    for (const match of sortedMatches) {
-        if (match.goals > 0 || match.assists > 0) {
-            currentStreak.push(match);
-        } else {
-            if (currentStreak.length > longestStreak.length) {
-                longestStreak = [...currentStreak];
-            }
-            currentStreak = [];
-        }
-    }
-    
-    // Check if the last streak is the longest
-    if (currentStreak.length > longestStreak.length) {
-        longestStreak = [...currentStreak];
-    }
-    
-    console.log(`Longest G+A streak: ${longestStreak.length} matches`);
-    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
-    
-    return longestStreak;
-}
-
-// Find longest consecutive no G+A streak
-function findLongestConsecutiveNoGAStreak(matches) {
-    if (!matches || matches.length === 0) return [];
-    
-    // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-    
-    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
-    let longestStreak = [];
-    let currentStreak = [];
-    
-    for (const match of sortedMatches) {
-        if (match.goals === 0 && match.assists === 0) {
-            currentStreak.push(match);
-        } else {
-            if (currentStreak.length > longestStreak.length) {
-                longestStreak = [...currentStreak];
-            }
-            currentStreak = [];
-        }
-    }
-    
-    // Check if the last streak is the longest
-    if (currentStreak.length > longestStreak.length) {
-        longestStreak = [...currentStreak];
-    }
-    
-    console.log(`Longest no G+A streak: ${longestStreak.length} matches`);
-    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
-    
-    return longestStreak;
-}
-
-// Find longest consecutive scoring streak
-function findLongestConsecutiveScoringStreak(matches) {
-    if (!matches || matches.length === 0) return [];
-    
-    // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-    
-    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
-    let longestStreak = [];
-    let currentStreak = [];
-    
-    for (const match of sortedMatches) {
-        if (match.goals > 0) {
-            currentStreak.push(match);
-        } else {
-            if (currentStreak.length > longestStreak.length) {
-                longestStreak = [...currentStreak];
-            }
-            currentStreak = [];
-        }
-    }
-    
-    // Check if the last streak is the longest
-    if (currentStreak.length > longestStreak.length) {
-        longestStreak = [...currentStreak];
-    }
-    
-    console.log(`Longest scoring streak: ${longestStreak.length} matches`);
-    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals })));
-    
-    return longestStreak;
-}
-
-// Find longest consecutive no-goal streak
-function findLongestConsecutiveNoGoalStreak(matches) {
-    if (!matches || matches.length === 0) return [];
-    
-    // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-    
-    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
-    let longestStreak = [];
-    let currentStreak = [];
-    
-    for (const match of sortedMatches) {
-        if (match.goals === 0) {
-            currentStreak.push(match);
-        } else {
-            if (currentStreak.length > longestStreak.length) {
-                longestStreak = [...currentStreak];
-            }
-            currentStreak = [];
-        }
-    }
-    
-    // Check if the last streak is the longest
-    if (currentStreak.length > longestStreak.length) {
-        longestStreak = [...currentStreak];
-    }
-    
-    console.log(`Longest no-goal streak: ${longestStreak.length} matches`);
-    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals })));
-    
-    return longestStreak;
-}
-
-// Render consecutive scoring streak table
-function renderConsecutiveScoringStreakTable(matches) {
-    const tbody = document.querySelector('#consecutive-scoring-streak-data tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    if (!matches || matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No consecutive scoring streak found</td></tr>';
-        return;
-    }
-    
-    // Sort by date (newest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-
-    function formatSheetDateDisplay(s) {
-        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
-            const t = new Date((Number(s) - 25569) * 86400 * 1000);
-            if (!isNaN(t.getTime())) {
-                const dd = String(t.getDate()).padStart(2, '0');
-                const MMM = Object.keys(monthMap)[t.getMonth()];
-                const yyyy = t.getFullYear();
-                return `${dd}-${MMM}-${yyyy}`;
-            }
-        }
-        return String(s || '').trim() || 'N/A';
-    }
-    
-    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-    
-    sorted.forEach(m => {
-        const date = formatSheetDateDisplay(m.date);
-        const season = m.season || 'N/A';
-        const opponent = m.opponent || 'N/A';
-        const minutes = m.minutes || 0;
-        const goals = m.goals || 0;
-        
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${date}</td>
-            <td>${season}</td>
-            <td>${opponent}</td>
-            <td>${minutes}</td>
-            <td class="highlight-value">${goals}</td>
-        `;
-        tbody.appendChild(tr);
-    });
 }
 
 // Render consecutive no-goal streak table
@@ -15651,723 +15481,6 @@ function renderConsecutiveNoGoalStreakTable(matches) {
             <td>${opponent}</td>
             <td>${minutes}</td>
             <td>${goals}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// Show streak popup
-function showStreakPopup(title, tableId) {
-    // Create popup overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'streak-popup-overlay';
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 10000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-        box-sizing: border-box;
-    `;
-    
-    // Create popup content
-    const popup = document.createElement('div');
-    popup.style.cssText = `
-        background: white;
-        border-radius: 15px;
-        padding: 2rem;
-        max-width: 90%;
-        max-height: 90%;
-        width: 1000px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        position: relative;
-        overflow: auto;
-    `;
-    
-    // Create close button
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '×';
-    closeBtn.style.cssText = `
-        position: absolute;
-        top: 15px;
-        right: 20px;
-        background: none;
-        border: none;
-        font-size: 2rem;
-        cursor: pointer;
-        color: #666;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        transition: all 0.3s ease;
-    `;
-    
-    closeBtn.onmouseover = () => {
-        closeBtn.style.background = '#f0f0f0';
-        closeBtn.style.color = '#333';
-    };
-    
-    closeBtn.onmouseout = () => {
-        closeBtn.style.background = 'none';
-        closeBtn.style.color = '#666';
-    };
-    
-    closeBtn.onclick = () => {
-        document.body.removeChild(overlay);
-    };
-    
-    // Create title with streak count
-    const streakData = window.currentStreakData || [];
-    const titleElement = document.createElement('h2');
-    titleElement.innerHTML = `${title} <span style="color: #667eea; font-size: 1.2rem;">(${streakData.length} matches)</span>`;
-    titleElement.style.cssText = `
-        margin: 0 0 1.5rem 0;
-        color: #333;
-        font-size: 1.8rem;
-        font-weight: 600;
-        text-align: center;
-        padding-right: 50px;
-    `;
-    
-    // Create table dynamically with streak data
-    const table = document.createElement('table');
-    table.style.cssText = `
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0;
-    `;
-    
-    // Determine column headers based on table type
-    let lastColumnHeader = 'GOALS';
-    if (tableId.includes('assist')) {
-        lastColumnHeader = 'ASSISTS';
-    } else if (tableId.includes('ga')) {
-        lastColumnHeader = 'GOALS & ASSISTS';
-    }
-    
-    // Create table header
-    const thead = document.createElement('thead');
-    if (tableId.includes('ga')) {
-        // For G+A tables, show both GOALS and ASSISTS columns
-        thead.innerHTML = `
-            <tr>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">DATE</th>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">SEASON</th>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">OPPONENT TEAM</th>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">MINUTES</th>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">GOALS</th>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">ASSISTS</th>
-            </tr>
-        `;
-    } else {
-        // For single column tables (goals or assists)
-        thead.innerHTML = `
-            <tr>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">DATE</th>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">SEASON</th>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">OPPONENT TEAM</th>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">MINUTES</th>
-                <th style="background: #f8f9fa; padding: 1rem; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #333;">${lastColumnHeader}</th>
-            </tr>
-        `;
-    }
-    
-    // Create table body
-    const tbody = document.createElement('tbody');
-    
-    if (streakData.length === 0) {
-        const colspan = tableId.includes('ga') ? '6' : '5';
-        tbody.innerHTML = `<tr><td colspan="${colspan}" style="padding: 2rem; text-align: center; color: #999;">No streak data found</td></tr>`;
-    } else {
-        // Sort by date (newest first)
-        const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-        function parseSheetDate(s) {
-            const str = String(s || '').trim();
-            const d1 = Date.parse(str);
-            if (!isNaN(d1)) return d1;
-            const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-            if (m) {
-                const day = parseInt(m[1], 10);
-                const mon = monthMap[m[2].slice(0,3)];
-                const yr = parseInt(m[3], 10);
-                if (mon != null) {
-                    return new Date(yr, mon, day).getTime();
-                }
-            }
-            const num = Number(str);
-            if (!isNaN(num) && str !== '') {
-                return new Date((num - 25569) * 86400 * 1000).getTime();
-            }
-            return 0;
-        }
-
-        function formatSheetDateDisplay(s) {
-            if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
-                const t = new Date((Number(s) - 25569) * 86400 * 1000);
-                if (!isNaN(t.getTime())) {
-                    const dd = String(t.getDate()).padStart(2, '0');
-                    const MMM = Object.keys(monthMap)[t.getMonth()];
-                    const yyyy = t.getFullYear();
-                    return `${dd}-${MMM}-${yyyy}`;
-                }
-            }
-            return String(s || '').trim() || 'N/A';
-        }
-        
-        const sorted = [...streakData].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-        
-        sorted.forEach(m => {
-            const date = formatSheetDateDisplay(m.date);
-            const season = m.season || 'N/A';
-            const opponent = m.opponent || 'N/A';
-            const minutes = m.minutes || 0;
-            const goals = m.goals || 0;
-            const assists = m.assists || 0;
-            
-            const row = document.createElement('tr');
-            
-            if (tableId.includes('ga')) {
-                // For G+A tables, show both goals and assists
-                row.innerHTML = `
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${date}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${season}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${opponent}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${minutes}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${goals > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${goals}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${assists > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${assists}</td>
-                `;
-            } else if (tableId.includes('assist')) {
-                // For assist tables, show assists only
-                row.innerHTML = `
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${date}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${season}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${opponent}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${minutes}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${assists > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${assists}</td>
-                `;
-            } else {
-                // For goal tables, show goals only
-                row.innerHTML = `
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${date}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${season}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${opponent}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee;">${minutes}</td>
-                    <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${goals > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${goals}</td>
-                `;
-            }
-            
-            // Add hover effect
-            row.onmouseover = () => {
-                row.style.background = '#f8f9fa';
-            };
-            row.onmouseout = () => {
-                row.style.background = 'white';
-            };
-            
-            tbody.appendChild(row);
-        });
-    }
-    
-    table.appendChild(thead);
-    table.appendChild(tbody);
-    
-    // Assemble popup
-    popup.appendChild(closeBtn);
-    popup.appendChild(titleElement);
-    popup.appendChild(table);
-    overlay.appendChild(popup);
-    
-    // Add to page
-    document.body.appendChild(overlay);
-    
-    // Close on overlay click
-    overlay.onclick = (e) => {
-        if (e.target === overlay) {
-            document.body.removeChild(overlay);
-        }
-    };
-    
-    // Close on Escape key
-    const handleEscape = (e) => {
-        if (e.key === 'Escape') {
-            document.body.removeChild(overlay);
-            document.removeEventListener('keydown', handleEscape);
-        }
-    };
-    document.addEventListener('keydown', handleEscape);
-}
-
-// Show consecutive assist streak
-function showConsecutiveAssistStreak() {
-    console.log('Showing consecutive assist streak');
-    
-    // Check if player is selected
-    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
-    if (!selectedPlayer) {
-        alert('Please select a player first');
-        return;
-    }
-    
-    // Load and display consecutive assist streak in popup
-    loadConsecutiveAssistStreak();
-    showStreakPopup('Consecutive Assist Streak', 'consecutive-assist-streak-data');
-}
-
-// Show consecutive no-assist streak
-function showConsecutiveNoAssistStreak() {
-    console.log('Showing consecutive no-assist streak');
-    
-    // Check if player is selected
-    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
-    if (!selectedPlayer) {
-        alert('Please select a player first');
-        return;
-    }
-    
-    // Load and display consecutive no-assist streak in popup
-    loadConsecutiveNoAssistStreak();
-    showStreakPopup('Consecutive No-Assist Streak', 'consecutive-no-assist-streak-data');
-}
-
-// Load consecutive assist streak
-function loadConsecutiveAssistStreak() {
-    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
-    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
-    if (!selectedPlayer) {
-        console.log('No player selected');
-        return;
-    }
-    
-    // Get applied filters
-    const appliedFilters = getCurrentFilters();
-    
-    // Get all player matches
-    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
-    // Find the longest consecutive assist streak
-    const streak = findLongestConsecutiveAssistStreak(allMatches);
-    
-    console.log(`Found consecutive assist streak of ${streak.length} matches for ${selectedPlayer}`);
-    console.log('Streak matches:', streak);
-    
-    // Store streak data globally for popup
-    window.currentStreakData = streak;
-    
-    // Render the table
-    renderConsecutiveAssistStreakTable(streak);
-}
-// Load consecutive no-assist streak
-function loadConsecutiveNoAssistStreak() {
-    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
-    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
-    if (!selectedPlayer) {
-        console.log('No player selected');
-        return;
-    }
-    
-    // Get applied filters
-    const appliedFilters = getCurrentFilters();
-    
-    // Get all player matches
-    const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
-    // Find the longest consecutive no-assist streak
-    const streak = findLongestConsecutiveNoAssistStreak(allMatches);
-    
-    console.log(`Found consecutive no-assist streak of ${streak.length} matches for ${selectedPlayer}`);
-    console.log('Streak matches:', streak);
-    
-    // Store streak data globally for popup
-    window.currentStreakData = streak;
-    
-    // Render the table
-    renderConsecutiveNoAssistStreakTable(streak);
-}
-
-// Find longest consecutive assist streak
-function findLongestConsecutiveAssistStreak(matches) {
-    if (!matches || matches.length === 0) return [];
-    
-    // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-    
-    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
-    let longestStreak = [];
-    let currentStreak = [];
-    
-    for (const match of sortedMatches) {
-        if (match.assists > 0) {
-            currentStreak.push(match);
-        } else {
-            if (currentStreak.length > longestStreak.length) {
-                longestStreak = [...currentStreak];
-            }
-            currentStreak = [];
-        }
-    }
-    
-    // Check if the last streak is the longest
-    if (currentStreak.length > longestStreak.length) {
-        longestStreak = [...currentStreak];
-    }
-    
-    console.log(`Longest assist streak: ${longestStreak.length} matches`);
-    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, assists: m.assists })));
-    
-    return longestStreak;
-}
-
-// Find longest consecutive no-assist streak
-function findLongestConsecutiveNoAssistStreak(matches) {
-    if (!matches || matches.length === 0) return [];
-    
-    // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-    
-    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
-    let longestStreak = [];
-    let currentStreak = [];
-    
-    for (const match of sortedMatches) {
-        if (match.assists === 0) {
-            currentStreak.push(match);
-        } else {
-            if (currentStreak.length > longestStreak.length) {
-                longestStreak = [...currentStreak];
-            }
-            currentStreak = [];
-        }
-    }
-    
-    // Check if the last streak is the longest
-    if (currentStreak.length > longestStreak.length) {
-        longestStreak = [...currentStreak];
-    }
-    
-    console.log(`Longest no-assist streak: ${longestStreak.length} matches`);
-    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, assists: m.assists })));
-    
-    return longestStreak;
-}
-
-// Render consecutive assist streak table
-function renderConsecutiveAssistStreakTable(matches) {
-    const tbody = document.querySelector('#consecutive-assist-streak-data tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    if (!matches || matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No consecutive assist streak found</td></tr>';
-        return;
-    }
-    
-    // Sort by date (newest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-
-    function formatSheetDateDisplay(s) {
-        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
-            const t = new Date((Number(s) - 25569) * 86400 * 1000);
-            if (!isNaN(t.getTime())) {
-                const dd = String(t.getDate()).padStart(2, '0');
-                const MMM = Object.keys(monthMap)[t.getMonth()];
-                const yyyy = t.getFullYear();
-                return `${dd}-${MMM}-${yyyy}`;
-            }
-        }
-        return String(s || '').trim() || 'N/A';
-    }
-    
-    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-    
-    sorted.forEach(m => {
-        const date = formatSheetDateDisplay(m.date);
-        const season = m.season || 'N/A';
-        const opponent = m.opponent || 'N/A';
-        const minutes = m.minutes || 0;
-        const assists = m.assists || 0;
-        
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${date}</td>
-            <td>${season}</td>
-            <td>${opponent}</td>
-            <td>${minutes}</td>
-            <td class="highlight-value">${assists}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// Render consecutive no-assist streak table
-function renderConsecutiveNoAssistStreakTable(matches) {
-    const tbody = document.querySelector('#consecutive-no-assist-streak-data tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    if (!matches || matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No consecutive no-assist streak found</td></tr>';
-        return;
-    }
-    
-    // Sort by date (newest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-
-    function formatSheetDateDisplay(s) {
-        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
-            const t = new Date((Number(s) - 25569) * 86400 * 1000);
-            if (!isNaN(t.getTime())) {
-                const dd = String(t.getDate()).padStart(2, '0');
-                const MMM = Object.keys(monthMap)[t.getMonth()];
-                const yyyy = t.getFullYear();
-                return `${dd}-${MMM}-${yyyy}`;
-            }
-        }
-        return String(s || '').trim() || 'N/A';
-    }
-    
-    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-    
-    sorted.forEach(m => {
-        const date = formatSheetDateDisplay(m.date);
-        const season = m.season || 'N/A';
-        const opponent = m.opponent || 'N/A';
-        const minutes = m.minutes || 0;
-        const assists = m.assists || 0;
-        
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${date}</td>
-            <td>${season}</td>
-            <td>${opponent}</td>
-            <td>${minutes}</td>
-            <td>${assists}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// Render consecutive G+A streak table
-function renderConsecutiveGAStreakTable(matches) {
-    const tbody = document.querySelector('#consecutive-ga-streak-data tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    if (!matches || matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">No consecutive G+A streak found</td></tr>';
-        return;
-    }
-    
-    // Sort by date (newest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-
-    function formatSheetDateDisplay(s) {
-        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
-            const t = new Date((Number(s) - 25569) * 86400 * 1000);
-            if (!isNaN(t.getTime())) {
-                const dd = String(t.getDate()).padStart(2, '0');
-                const MMM = Object.keys(monthMap)[t.getMonth()];
-                const yyyy = t.getFullYear();
-                return `${dd}-${MMM}-${yyyy}`;
-            }
-        }
-        return String(s || '').trim() || 'N/A';
-    }
-    
-    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-    
-    sorted.forEach(m => {
-        const date = formatSheetDateDisplay(m.date);
-        const season = m.season || 'N/A';
-        const opponent = m.opponent || 'N/A';
-        const minutes = m.minutes || 0;
-        const goals = m.goals || 0;
-        const assists = m.assists || 0;
-        
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${date}</td>
-            <td>${season}</td>
-            <td>${opponent}</td>
-            <td>${minutes}</td>
-            <td class="${goals > 0 ? 'highlight-value' : ''}">${goals}</td>
-            <td class="${assists > 0 ? 'highlight-value' : ''}">${assists}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// Render consecutive no G+A streak table
-function renderConsecutiveNoGAStreakTable(matches) {
-    const tbody = document.querySelector('#consecutive-no-ga-streak-data tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    if (!matches || matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">No consecutive no G+A streak found</td></tr>';
-        return;
-    }
-    
-    // Sort by date (newest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    function parseSheetDate(s) {
-        const str = String(s || '').trim();
-        const d1 = Date.parse(str);
-        if (!isNaN(d1)) return d1;
-        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-        if (m) {
-            const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
-            const yr = parseInt(m[3], 10);
-            if (mon != null) {
-                return new Date(yr, mon, day).getTime();
-            }
-        }
-        const num = Number(str);
-        if (!isNaN(num) && str !== '') {
-            return new Date((num - 25569) * 86400 * 1000).getTime();
-        }
-        return 0;
-    }
-
-    function formatSheetDateDisplay(s) {
-        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
-            const t = new Date((Number(s) - 25569) * 86400 * 1000);
-            if (!isNaN(t.getTime())) {
-                const dd = String(t.getDate()).padStart(2, '0');
-                const MMM = Object.keys(monthMap)[t.getMonth()];
-                const yyyy = t.getFullYear();
-                return `${dd}-${MMM}-${yyyy}`;
-            }
-        }
-        return String(s || '').trim() || 'N/A';
-    }
-    
-    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-    
-    sorted.forEach(m => {
-        const date = formatSheetDateDisplay(m.date);
-        const season = m.season || 'N/A';
-        const opponent = m.opponent || 'N/A';
-        const minutes = m.minutes || 0;
-        const goals = m.goals || 0;
-        const assists = m.assists || 0;
-        
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${date}</td>
-            <td>${season}</td>
-            <td>${opponent}</td>
-            <td>${minutes}</td>
-            <td>${goals}</td>
-            <td>${assists}</td>
         `;
         tbody.appendChild(tr);
     });
