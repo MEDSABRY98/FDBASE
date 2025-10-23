@@ -1342,12 +1342,12 @@ function renderFaceToFaceTable(egyptStats, opponentStats) {
         // Special formatting for Biggest Win
         if (isSpecial && typeof val1 === 'object' && typeof val2 === 'object') {
             val1Html = val1.score !== '-' 
-                ? `<div style="font-size: 1.5rem; font-weight: 700;">${val1.score}</div>${val1.allWins && val1.allWins.length > 1 ? 
+                ? `${val1.allWins && val1.allWins.length > 1 ? 
                     val1.allWins.map(win => `<div style="font-size: 0.9rem; font-weight: 600; color: #333; margin-top: 4px;">${win.score}</div><div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${win.date} - ${win.team} vs ${win.opponent}</div>`).join('') : 
                     `<div style="font-size: 0.8rem; color: #666;">${val1.date}</div><div style="font-size: 0.85rem; color: #888;">${val1.team}</div><div style="font-size: 0.8rem; color: #e74c3c; margin-top: 2px;">${val1.opponent || ''}</div>`}`
                 : '-';
             val2Html = val2.score !== '-' 
-                ? `<div style="font-size: 1.5rem; font-weight: 700;">${val2.score}</div>${val2.allWins && val2.allWins.length > 1 ? 
+                ? `${val2.allWins && val2.allWins.length > 1 ? 
                     val2.allWins.map(win => `<div style="font-size: 0.9rem; font-weight: 600; color: #333; margin-top: 4px;">${win.score}</div><div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${win.date} - ${win.team} vs ${win.opponent}</div>`).join('') : 
                     `<div style="font-size: 0.8rem; color: #666;">${val2.date}</div><div style="font-size: 0.85rem; color: #888;">${val2.team}</div><div style="font-size: 0.8rem; color: #e74c3c; margin-top: 2px;">${val2.opponent || ''}</div>`}`
                 : '-';
