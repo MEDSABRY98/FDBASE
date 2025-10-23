@@ -1051,72 +1051,21 @@
             font-weight: 600;
         }
 
-        /* Trophy card color variations - Elegant Gold, Red, Silver theme */
-        .trophy-card:nth-child(5n+1) {
+        /* Unified trophy card design - Elegant Gold theme for all cards */
+        .trophy-card {
             background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: #1a1a1a;
             box-shadow: 0 8px 24px rgba(255, 215, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.3);
         }
 
-        .trophy-card:nth-child(5n+1):hover {
+        .trophy-card:hover {
+            transform: translateY(-8px) scale(1.02);
             box-shadow: 0 12px 32px rgba(255, 215, 0, 0.5);
         }
 
-        .trophy-card:nth-child(5n+2) {
-            background: linear-gradient(135deg, #DC143C 0%, #8B0000 100%);
-            color: white;
-            box-shadow: 0 8px 24px rgba(220, 20, 60, 0.3);
-        }
-
-        .trophy-card:nth-child(5n+2):hover {
-            box-shadow: 0 12px 32px rgba(220, 20, 60, 0.5);
-        }
-
-        .trophy-card:nth-child(5n+2) .trophy-card-count {
-            background: linear-gradient(180deg, #ffffff 0%, #ffcccc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .trophy-card:nth-child(5n+3) {
-            background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
-            color: #1a1a1a;
-            box-shadow: 0 8px 24px rgba(192, 192, 192, 0.3);
-        }
-
-        .trophy-card:nth-child(5n+3):hover {
-            box-shadow: 0 12px 32px rgba(192, 192, 192, 0.5);
-        }
-
-        .trophy-card:nth-child(5n+4) {
-            background: linear-gradient(135deg, #4169E1 0%, #1E3A8A 100%);
-            color: white;
-            box-shadow: 0 8px 24px rgba(65, 105, 225, 0.3);
-        }
-
-        .trophy-card:nth-child(5n+4):hover {
-            box-shadow: 0 12px 32px rgba(65, 105, 225, 0.5);
-        }
-
-        .trophy-card:nth-child(5n+4) .trophy-card-count {
-            background: linear-gradient(180deg, #ffffff 0%, #93c5fd 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .trophy-card:nth-child(5n) {
-            background: linear-gradient(135deg, #10B981 0%, #047857 100%);
-            color: white;
-            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
-        }
-
-        .trophy-card:nth-child(5n):hover {
-            box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5);
-        }
-
-        .trophy-card:nth-child(5n) .trophy-card-count {
-            background: linear-gradient(180deg, #ffffff 0%, #6ee7b7 100%);
+        .trophy-card .trophy-card-count {
+            background: linear-gradient(180deg, #1a1a1a 0%, #4a4a4a 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
