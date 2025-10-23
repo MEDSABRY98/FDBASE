@@ -15685,19 +15685,35 @@ function loadConsecutiveNoGoalStreak() {
 function findLongestConsecutiveGAStreak(matches) {
     if (!matches || matches.length === 0) return [];
     
-    // Sort matches by date
-    const sortedMatches = [...matches].sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
     
     let longestStreak = [];
     let currentStreak = [];
     
-    for (let i = 0; i < sortedMatches.length; i++) {
-        const match = sortedMatches[i];
-        const goals = parseInt(match.GOALS || 0);
-        const assists = parseInt(match.ASSISTS || 0);
-        const ga = goals + assists;
-        
-        if (ga > 0) {
+    for (const match of sortedMatches) {
+        if (match.goals > 0 || match.assists > 0) {
             currentStreak.push(match);
         } else {
             if (currentStreak.length > longestStreak.length) {
@@ -15711,6 +15727,9 @@ function findLongestConsecutiveGAStreak(matches) {
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
+    
+    console.log(`Longest G+A streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
     
     return longestStreak;
 }
@@ -15719,19 +15738,35 @@ function findLongestConsecutiveGAStreak(matches) {
 function findLongestConsecutiveNoGAStreak(matches) {
     if (!matches || matches.length === 0) return [];
     
-    // Sort matches by date
-    const sortedMatches = [...matches].sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
     
     let longestStreak = [];
     let currentStreak = [];
     
-    for (let i = 0; i < sortedMatches.length; i++) {
-        const match = sortedMatches[i];
-        const goals = parseInt(match.GOALS || 0);
-        const assists = parseInt(match.ASSISTS || 0);
-        const ga = goals + assists;
-        
-        if (ga === 0) {
+    for (const match of sortedMatches) {
+        if (match.goals === 0 && match.assists === 0) {
             currentStreak.push(match);
         } else {
             if (currentStreak.length > longestStreak.length) {
@@ -15745,6 +15780,9 @@ function findLongestConsecutiveNoGAStreak(matches) {
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
+    
+    console.log(`Longest no G+A streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
     
     return longestStreak;
 }
@@ -15753,17 +15791,35 @@ function findLongestConsecutiveNoGAStreak(matches) {
 function findLongestConsecutiveScoringStreak(matches) {
     if (!matches || matches.length === 0) return [];
     
-    // Sort matches by date
-    const sortedMatches = [...matches].sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
     
     let longestStreak = [];
     let currentStreak = [];
     
-    for (let i = 0; i < sortedMatches.length; i++) {
-        const match = sortedMatches[i];
-        const goals = parseInt(match.GOALS || 0);
-        
-        if (goals > 0) {
+    for (const match of sortedMatches) {
+        if (match.goals > 0) {
             currentStreak.push(match);
         } else {
             if (currentStreak.length > longestStreak.length) {
@@ -15777,6 +15833,9 @@ function findLongestConsecutiveScoringStreak(matches) {
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
+    
+    console.log(`Longest scoring streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
     
     return longestStreak;
 }
@@ -15785,17 +15844,35 @@ function findLongestConsecutiveScoringStreak(matches) {
 function findLongestConsecutiveNoGoalStreak(matches) {
     if (!matches || matches.length === 0) return [];
     
-    // Sort matches by date
-    const sortedMatches = [...matches].sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
     
     let longestStreak = [];
     let currentStreak = [];
     
-    for (let i = 0; i < sortedMatches.length; i++) {
-        const match = sortedMatches[i];
-        const goals = parseInt(match.GOALS || 0);
-        
-        if (goals === 0) {
+    for (const match of sortedMatches) {
+        if (match.goals === 0) {
             currentStreak.push(match);
         } else {
             if (currentStreak.length > longestStreak.length) {
@@ -15809,6 +15886,9 @@ function findLongestConsecutiveNoGoalStreak(matches) {
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
+    
+    console.log(`Longest no-goal streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
     
     return longestStreak;
 }
@@ -16022,23 +16102,65 @@ function renderConsecutiveGAStreakTable(matches) {
     tbody.innerHTML = '';
     
     if (!matches || matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No consecutive G+A streak found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6">No consecutive G+A streak found</td></tr>';
         return;
     }
     
-    matches.forEach(match => {
-        const row = document.createElement('tr');
-        const goals = parseInt(match.GOALS || 0);
-        const assists = parseInt(match.ASSISTS || 0);
-        const ga = goals + assists;
-        row.innerHTML = `
-            <td>${match.DATE || ''}</td>
-            <td>${match.OPPONENT || ''}</td>
-            <td>${ga}</td>
-            <td>${goals}</td>
-            <td>${assists}</td>
+    // Sort by date (newest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+
+    function formatSheetDateDisplay(s) {
+        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+            const t = new Date((Number(s) - 25569) * 86400 * 1000);
+            if (!isNaN(t.getTime())) {
+                const dd = String(t.getDate()).padStart(2, '0');
+                const MMM = Object.keys(monthMap)[t.getMonth()];
+                const yyyy = t.getFullYear();
+                return `${dd}-${MMM}-${yyyy}`;
+            }
+        }
+        return String(s || '').trim() || 'N/A';
+    }
+    
+    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    
+    sorted.forEach(m => {
+        const date = formatSheetDateDisplay(m.date);
+        const season = m.season || 'N/A';
+        const opponent = m.opponent || 'N/A';
+        const minutes = m.minutes || 0;
+        const goals = m.goals || 0;
+        const assists = m.assists || 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${season}</td>
+            <td>${opponent}</td>
+            <td>${minutes}</td>
+            <td class="${goals > 0 ? 'highlight-value' : ''}">${goals}</td>
+            <td class="${assists > 0 ? 'highlight-value' : ''}">${assists}</td>
         `;
-        tbody.appendChild(row);
+        tbody.appendChild(tr);
     });
 }
 
@@ -16049,23 +16171,65 @@ function renderConsecutiveNoGAStreakTable(matches) {
     tbody.innerHTML = '';
     
     if (!matches || matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No consecutive no G+A streak found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6">No consecutive no G+A streak found</td></tr>';
         return;
     }
     
-    matches.forEach(match => {
-        const row = document.createElement('tr');
-        const goals = parseInt(match.GOALS || 0);
-        const assists = parseInt(match.ASSISTS || 0);
-        const ga = goals + assists;
-        row.innerHTML = `
-            <td>${match.DATE || ''}</td>
-            <td>${match.OPPONENT || ''}</td>
-            <td>${ga}</td>
-            <td>${goals}</td>
-            <td>${assists}</td>
+    // Sort by date (newest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+
+    function formatSheetDateDisplay(s) {
+        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+            const t = new Date((Number(s) - 25569) * 86400 * 1000);
+            if (!isNaN(t.getTime())) {
+                const dd = String(t.getDate()).padStart(2, '0');
+                const MMM = Object.keys(monthMap)[t.getMonth()];
+                const yyyy = t.getFullYear();
+                return `${dd}-${MMM}-${yyyy}`;
+            }
+        }
+        return String(s || '').trim() || 'N/A';
+    }
+    
+    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    
+    sorted.forEach(m => {
+        const date = formatSheetDateDisplay(m.date);
+        const season = m.season || 'N/A';
+        const opponent = m.opponent || 'N/A';
+        const minutes = m.minutes || 0;
+        const goals = m.goals || 0;
+        const assists = m.assists || 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${season}</td>
+            <td>${opponent}</td>
+            <td>${minutes}</td>
+            <td class="${goals > 0 ? 'highlight-value' : ''}">${goals}</td>
+            <td class="${assists > 0 ? 'highlight-value' : ''}">${assists}</td>
         `;
-        tbody.appendChild(row);
+        tbody.appendChild(tr);
     });
 }
 
@@ -16076,20 +16240,65 @@ function renderConsecutiveScoringStreakTable(matches) {
     tbody.innerHTML = '';
     
     if (!matches || matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No consecutive scoring streak found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6">No consecutive scoring streak found</td></tr>';
         return;
     }
     
-    matches.forEach(match => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${match.DATE || ''}</td>
-            <td>${match.OPPONENT || ''}</td>
-            <td>${match.GOALS || 0}</td>
-            <td>${match.ASSISTS || 0}</td>
-            <td>${match.MINUTES || 0}</td>
+    // Sort by date (newest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+
+    function formatSheetDateDisplay(s) {
+        if (typeof s === 'number' || (/^\d+(\.\d+)?$/.test(String(s).trim()))) {
+            const t = new Date((Number(s) - 25569) * 86400 * 1000);
+            if (!isNaN(t.getTime())) {
+                const dd = String(t.getDate()).padStart(2, '0');
+                const MMM = Object.keys(monthMap)[t.getMonth()];
+                const yyyy = t.getFullYear();
+                return `${dd}-${MMM}-${yyyy}`;
+            }
+        }
+        return String(s || '').trim() || 'N/A';
+    }
+    
+    const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    
+    sorted.forEach(m => {
+        const date = formatSheetDateDisplay(m.date);
+        const season = m.season || 'N/A';
+        const opponent = m.opponent || 'N/A';
+        const minutes = m.minutes || 0;
+        const goals = m.goals || 0;
+        const assists = m.assists || 0;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${season}</td>
+            <td>${opponent}</td>
+            <td>${minutes}</td>
+            <td class="${goals > 0 ? 'highlight-value' : ''}">${goals}</td>
+            <td class="${assists > 0 ? 'highlight-value' : ''}">${assists}</td>
         `;
-        tbody.appendChild(row);
+        tbody.appendChild(tr);
     });
 }
 
