@@ -15897,17 +15897,35 @@ function findLongestConsecutiveNoGoalStreak(matches) {
 function findLongestConsecutiveAssistStreak(matches) {
     if (!matches || matches.length === 0) return [];
     
-    // Sort matches by date
-    const sortedMatches = [...matches].sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
     
     let longestStreak = [];
     let currentStreak = [];
     
-    for (let i = 0; i < sortedMatches.length; i++) {
-        const match = sortedMatches[i];
-        const assists = parseInt(match.ASSISTS || 0);
-        
-        if (assists > 0) {
+    for (const match of sortedMatches) {
+        if (match.assists > 0) {
             currentStreak.push(match);
         } else {
             if (currentStreak.length > longestStreak.length) {
@@ -15921,6 +15939,9 @@ function findLongestConsecutiveAssistStreak(matches) {
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
+    
+    console.log(`Longest assist streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
     
     return longestStreak;
 }
@@ -15929,17 +15950,35 @@ function findLongestConsecutiveAssistStreak(matches) {
 function findLongestConsecutiveNoAssistStreak(matches) {
     if (!matches || matches.length === 0) return [];
     
-    // Sort matches by date
-    const sortedMatches = [...matches].sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
+    // Sort matches by date (oldest first)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
     
     let longestStreak = [];
     let currentStreak = [];
     
-    for (let i = 0; i < sortedMatches.length; i++) {
-        const match = sortedMatches[i];
-        const assists = parseInt(match.ASSISTS || 0);
-        
-        if (assists === 0) {
+    for (const match of sortedMatches) {
+        if (match.assists === 0) {
             currentStreak.push(match);
         } else {
             if (currentStreak.length > longestStreak.length) {
@@ -15953,6 +15992,9 @@ function findLongestConsecutiveNoAssistStreak(matches) {
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
+    
+    console.log(`Longest no-assist streak: ${longestStreak.length} matches`);
+    console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
     
     return longestStreak;
 }
