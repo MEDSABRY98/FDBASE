@@ -4928,7 +4928,6 @@ function renderPlayerMatchesTable(matches) {
         tr.innerHTML = `
             <td>${date}</td>
             <td>${season}</td>
-            <td>${m.sy || ''}</td>
             <td>${manager}</td>
             <td>${opponent}</td>
             <td>${m.minutes || 0}</td>
