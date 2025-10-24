@@ -3292,9 +3292,8 @@ function makeSelectSearchable(select) {
                     select.value = value;
                     input.value = label;
                     dropdown.style.display = 'none';
-                    // Trigger change for filter logic
-                    const ev = new Event('change', { bubbles: true });
-                    select.dispatchEvent(ev);
+                    // Auto-filtering disabled - change event not triggered
+                    // Filters only apply when "Apply Filters" button is clicked
                 });
                 dropdown.appendChild(div);
             }
@@ -3525,6 +3524,9 @@ const debouncedApplyFilters = debounce(function() {
         penalties: document.getElementById('penalties-filter')?.value || ''
     };
     
+    // Update applied filters to enable filtering for other tabs
+    appliedFilters = filters;
+    
     // Load data directly from API when filters change
     
     applyFiltersWithData(filters);
@@ -3544,29 +3546,18 @@ const debouncedApplyFilters = debounce(function() {
     }
 }, 300); // Wait 300ms after user stops changing filters
 
+// Global variable to track applied filters
+let appliedFilters = null;
+
 function getCurrentFilteredRecords() {
-    // Get all current filter values
-    const filters = {
-        matchId: document.getElementById('match-id-filter')?.value || '',
-        championSystem: document.getElementById('champion-system-filter')?.value || '',
-        dateFrom: document.getElementById('date-from-filter')?.value || '',
-        dateTo: document.getElementById('date-to-filter')?.value || '',
-        champion: document.getElementById('champion-filter')?.value || '',
-        season: document.getElementById('season-filter')?.value || '',
-        sy: document.getElementById('sy-filter')?.value || '',
-        ahlyManager: document.getElementById('ahly-manager-filter')?.value || '',
-        opponentManager: document.getElementById('opponent-manager-filter')?.value || '',
-        referee: document.getElementById('referee-filter')?.value || '',
-        round: document.getElementById('round-filter')?.value || '',
-        hAN: document.getElementById('h-a-n-filter')?.value || '',
-        stadium: document.getElementById('stadium-filter')?.value || '',
-        ahlyTeam: document.getElementById('ahly-team-filter')?.value || '',
-        opponentTeam: document.getElementById('opponent-team-filter')?.value || '',
-        result: document.getElementById('result-filter')?.value || '',
-        cleanSheet: document.getElementById('clean-sheet-filter')?.value || '',
-        extraTime: document.getElementById('extra-time-filter')?.value || '',
-        penalties: document.getElementById('penalties-filter')?.value || ''
-    };
+    // Only return filtered records if filters have been applied via "Apply Filters" button
+    // This prevents auto-filtering when just changing filter values
+    if (!appliedFilters) {
+        return null;
+    }
+    
+    // Use the applied filters instead of reading from DOM
+    const filters = appliedFilters;
     
     // Check if any filters are active
     const hasActiveFilters = Object.values(filters).some(value => value !== '');
@@ -3960,6 +3951,9 @@ function updateAllTabsWithFilteredData(filteredRecords) {
 }
 function clearFilters() {
     console.log('Clearing all filters...');
+    
+    // Clear applied filters
+    appliedFilters = null;
     
     // Clear all filter inputs
     const filterInputs = document.querySelectorAll('.filter-field input, .filter-field select');
@@ -13324,6 +13318,7 @@ function setupMainFiltersForAllTabs() {
         'champion-system-filter', 
         'champion-filter',
         'season-filter',
+        'sy-filter',
         'ahly-manager-filter',
         'opponent-manager-filter',
         'referee-filter',
@@ -13342,31 +13337,19 @@ function setupMainFiltersForAllTabs() {
         'date-to-filter'
     ];
     
+    // Auto-filtering disabled - filters only apply when "Apply Filters" button is clicked
+    // This prevents automatic filtering when changing filter values
+    console.log('ℹ️ Auto-filtering disabled - filters only apply when "Apply Filters" button is clicked');
+    
     filterElements.forEach(filterId => {
         const element = document.getElementById(filterId);
         if (element) {
-            console.log(`✅ Setting up filter: ${filterId}`);
-            // Remove existing listener to prevent duplicates
+            console.log(`✅ Filter available: ${filterId}`);
+            // Remove any existing listeners to prevent auto-filtering
             if (element.mainFilterListener) {
                 element.removeEventListener('change', element.mainFilterListener);
                 element.removeEventListener('input', element.mainFilterListener);
-            }
-            
-            // Add new listener
-            element.mainFilterListener = function() {
-                console.log(`🔍 Main filter changed: ${filterId} = ${this.value}`);
-                console.log('🔄 Calling reloadCurrentActiveTab()...');
-                // Reload current active tab data
-                reloadCurrentActiveTab();
-            };
-            
-            // Add event listener (use 'input' for text inputs, 'change' for selects)
-            if (filterId.includes('filter') && !filterId.includes('date')) {
-                element.addEventListener('change', element.mainFilterListener);
-                console.log(`📝 Added 'change' listener to ${filterId}`);
-            } else {
-                element.addEventListener('input', element.mainFilterListener);
-                console.log(`📝 Added 'input' listener to ${filterId}`);
+                element.mainFilterListener = null;
             }
         } else {
             console.log(`❌ Filter element not found: ${filterId}`);
@@ -14403,13 +14386,13 @@ function loadChampionshipsStats() {
     try {
         console.log('📊 Loading Championships Statistics...');
         
-        // Get filter values
-        const selectedTeam = document.getElementById('team-filter')?.value || '';
-        const selectedSeason = document.getElementById('season-filter')?.value || '';
-        const selectedSY = document.getElementById('sy-filter')?.value || '';
-        const selectedChampion = document.getElementById('champion-filter')?.value || '';
+        // Get filter values - only use applied filters, not current DOM values
+        const selectedTeam = appliedFilters?.ahlyTeam || '';
+        const selectedSeason = appliedFilters?.season || '';
+        const selectedSY = appliedFilters?.sy || '';
+        const selectedChampion = appliedFilters?.champion || '';
         
-        console.log('🔍 Championships Filters:', { selectedTeam, selectedSeason, selectedSY, selectedChampion });
+        console.log('🔍 Championships Filters (from applied filters):', { selectedTeam, selectedSeason, selectedSY, selectedChampion });
         
         const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
         
@@ -14502,13 +14485,13 @@ function loadSeasonsStats() {
     try {
         console.log('📅 Loading Seasons Statistics...');
         
-        // Get filter values
-        const selectedTeam = document.getElementById('team-filter')?.value || '';
-        const selectedSeason = document.getElementById('season-filter')?.value || '';
-        const selectedSY = document.getElementById('sy-filter')?.value || '';
-        const selectedChampion = document.getElementById('champion-filter')?.value || '';
+        // Get filter values - only use applied filters, not current DOM values
+        const selectedTeam = appliedFilters?.ahlyTeam || '';
+        const selectedSeason = appliedFilters?.season || '';
+        const selectedSY = appliedFilters?.sy || '';
+        const selectedChampion = appliedFilters?.champion || '';
         
-        console.log('🔍 Seasons Filters:', { selectedTeam, selectedSeason, selectedSY, selectedChampion });
+        console.log('🔍 Seasons Filters (from applied filters):', { selectedTeam, selectedSeason, selectedSY, selectedChampion });
         
         const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
         
