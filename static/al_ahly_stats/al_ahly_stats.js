@@ -47,12 +47,13 @@ function rebuildMainFilterOptionsFrom(records) {
     console.log('🔧 Rebuilding filters from', records.length, 'records');
     
     const columnsForFilters = [
-        'CHAMPION SYSTEM','CHAMPION','SEASON','AHLY MANAGER','OPPONENT MANAGER','REFREE','ROUND','H-A-N','STAD','AHLY TEAM','OPPONENT TEAM','W-D-L','CLEAN SHEET','ET','PEN'
+        'CHAMPION SYSTEM','CHAMPION','SEASON','SY','AHLY MANAGER','OPPONENT MANAGER','REFREE','ROUND','H-A-N','STAD','AHLY TEAM','OPPONENT TEAM','W-D-L','CLEAN SHEET','ET','PEN'
     ];
     const idMap = {
         'CHAMPION SYSTEM': 'champion-system-filter',
         'CHAMPION': 'champion-filter',
         'SEASON': 'season-filter',
+        'SY': 'sy-filter',
         'AHLY MANAGER': 'ahly-manager-filter',
         'OPPONENT MANAGER': 'opponent-manager-filter',
         'REFREE': 'referee-filter',
@@ -70,6 +71,7 @@ function rebuildMainFilterOptionsFrom(records) {
     columnsForFilters.forEach(col => {
         const uniqueValues = [...new Set(records.map(r => r[col]).filter(v => v && String(v).trim()))].sort();
         const selectId = idMap[col] || col.toLowerCase().replace(/\s+/g, '-') + '-filter';
+        
         const select = document.getElementById(selectId);
         if (select) {
             console.log(`  ✅ Filter ${col}: ${uniqueValues.length} options`);
@@ -183,6 +185,7 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
                 'championSystem': 'CHAMPION SYSTEM',
                 'champion': 'CHAMPION',
                 'season': 'SEASON',
+                'sy': 'SY',
                 'ahlyManager': 'AHLY MANAGER',
                 'opponentManager': 'OPPONENT MANAGER',
                 'referee': 'REFREE',
@@ -328,6 +331,7 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
                 'championSystem': 'CHAMPION SYSTEM',
                 'champion': 'CHAMPION',
                 'season': 'SEASON',
+                'sy': 'SY',
                 'ahlyManager': 'AHLY MANAGER',
                 'opponentManager': 'OPPONENT MANAGER',
                 'referee': 'REFREE',
@@ -486,6 +490,7 @@ function getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters = {})
                 'championSystem': 'CHAMPION SYSTEM',
                 'champion': 'CHAMPION',
                 'season': 'SEASON',
+                'sy': 'SY',
                 'ahlyManager': 'AHLY MANAGER',
                 'opponentManager': 'OPPONENT MANAGER',
                 'referee': 'REFREE',
@@ -645,6 +650,7 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
                 'championSystem': 'CHAMPION SYSTEM',
                 'champion': 'CHAMPION',
                 'season': 'SEASON',
+                'sy': 'SY',
                 'ahlyManager': 'AHLY MANAGER',
                 'opponentManager': 'OPPONENT MANAGER',
                 'referee': 'REFREE',
@@ -800,6 +806,7 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
                 'championSystem': 'CHAMPION SYSTEM',
                 'champion': 'CHAMPION',
                 'season': 'SEASON',
+                'sy': 'SY',
                 'ahlyManager': 'AHLY MANAGER',
                 'opponentManager': 'OPPONENT MANAGER',
                 'referee': 'REFREE',
@@ -1030,6 +1037,7 @@ function getCurrentFilters() {
         championSystem: document.getElementById('champion-system-filter')?.value || '',
         champion: document.getElementById('champion-filter')?.value || '',
         season: document.getElementById('season-filter')?.value || '',
+        sy: document.getElementById('sy-filter')?.value || '',
         ahlyManager: document.getElementById('ahly-manager-filter')?.value || '',
         opponentManager: document.getElementById('opponent-manager-filter')?.value || '',
         referee: document.getElementById('referee-filter')?.value || '',
@@ -2075,6 +2083,7 @@ function updateGoalkeeperStatsTable() {
 function applyFilters() {
     // Get filter values
     currentFilters.season = document.getElementById('season-filter').value;
+    currentFilters.sy = document.getElementById('sy-filter').value;
     currentFilters.competition = document.getElementById('competition-filter').value;
     
     // Update all displays with filtered data
@@ -2087,11 +2096,13 @@ function applyFilters() {
 function clearFilters() {
     // Reset filter values
     currentFilters.season = '';
+    currentFilters.sy = '';
     currentFilters.competition = '';
     currentFilters.dateRange = { start: '', end: '' };
     
     // Reset filter controls
     document.getElementById('season-filter').value = '';
+    document.getElementById('sy-filter').value = '';
     document.getElementById('competition-filter').value = '';
     
     // Update displays with all data
@@ -3355,6 +3366,7 @@ function updateFilterOptionsFromFilteredData(filteredRecords) {
         'champion-system-filter': getUniqueValuesFromFiltered('CHAMPION SYSTEM'),
         'champion-filter': getUniqueValuesFromFiltered('CHAMPION'),
         'season-filter': getUniqueValuesFromFiltered('SEASON'),
+        'sy-filter': getUniqueValuesFromFiltered('SY'),
         'ahly-manager-filter': getUniqueValuesFromFiltered('AHLY MANAGER'),
         'opponent-manager-filter': getUniqueValuesFromFiltered('OPPONENT MANAGER'),
         'referee-filter': getUniqueValuesFromFiltered('REFREE'),
@@ -3431,6 +3443,7 @@ function updateFilterOptionsWithPreservedSelections(filteredRecords, preservedFi
         'champion-system-filter': getUniqueValuesFromFiltered('CHAMPION SYSTEM'),
         'champion-filter': getUniqueValuesFromFiltered('CHAMPION'),
         'season-filter': getUniqueValuesFromFiltered('SEASON'),
+        'sy-filter': getUniqueValuesFromFiltered('SY'),
         'ahly-manager-filter': getUniqueValuesFromFiltered('AHLY MANAGER'),
         'opponent-manager-filter': getUniqueValuesFromFiltered('OPPONENT MANAGER'),
         'referee-filter': getUniqueValuesFromFiltered('REFREE'),
@@ -3495,6 +3508,7 @@ const debouncedApplyFilters = debounce(function() {
         dateTo: document.getElementById('date-to-filter')?.value || '',
         champion: document.getElementById('champion-filter')?.value || '',
         season: document.getElementById('season-filter')?.value || '',
+        sy: document.getElementById('sy-filter')?.value || '',
         ahlyManager: document.getElementById('ahly-manager-filter')?.value || '',
         opponentManager: document.getElementById('opponent-manager-filter')?.value || '',
         referee: document.getElementById('referee-filter')?.value || '',
@@ -3539,6 +3553,7 @@ function getCurrentFilteredRecords() {
         dateTo: document.getElementById('date-to-filter')?.value || '',
         champion: document.getElementById('champion-filter')?.value || '',
         season: document.getElementById('season-filter')?.value || '',
+        sy: document.getElementById('sy-filter')?.value || '',
         ahlyManager: document.getElementById('ahly-manager-filter')?.value || '',
         opponentManager: document.getElementById('opponent-manager-filter')?.value || '',
         referee: document.getElementById('referee-filter')?.value || '',
@@ -3572,6 +3587,7 @@ function getCurrentFilteredRecords() {
                 'championSystem': 'CHAMPION SYSTEM',
                 'champion': 'CHAMPION',
                 'season': 'SEASON',
+                'sy': 'SY',
                 'ahlyManager': 'AHLY MANAGER',
                 'opponentManager': 'OPPONENT MANAGER',
                 'referee': 'REFREE',
@@ -3646,6 +3662,7 @@ function applyFiltersWithPreservedSelections(preservedFilters) {
         dateTo: document.getElementById('date-to-filter')?.value || '',
         champion: document.getElementById('champion-filter')?.value || '',
         season: document.getElementById('season-filter')?.value || '',
+        sy: document.getElementById('sy-filter')?.value || '',
         ahlyManager: document.getElementById('ahly-manager-filter')?.value || '',
         opponentManager: document.getElementById('opponent-manager-filter')?.value || '',
         referee: document.getElementById('referee-filter')?.value || '',
@@ -3678,6 +3695,7 @@ function applyFiltersWithData(filters, preservedFilters = null) {
                 'championSystem': 'CHAMPION SYSTEM',
                 'champion': 'CHAMPION',
                 'season': 'SEASON',
+                'sy': 'SY',
                 'ahlyManager': 'AHLY MANAGER',
                 'opponentManager': 'OPPONENT MANAGER',
                 'referee': 'REFREE',
@@ -3792,6 +3810,19 @@ function applyFiltersWithData(filters, preservedFilters = null) {
     
     // Update All Players data with current filters
     loadAllPlayersData(filteredRecords);
+    
+    // Update Main Stats data with current filters
+    const mainStatsTab = document.getElementById('main-stats-tab');
+    if (mainStatsTab && mainStatsTab.classList.contains('active')) {
+        loadChampionshipsStats();
+        loadSeasonsStats();
+    }
+    
+    // Update H2H T Details data with current filters
+    const h2hTDetailsTab = document.querySelector('.stats-tab.active');
+    if (h2hTDetailsTab && h2hTDetailsTab.getAttribute('onclick') && h2hTDetailsTab.getAttribute('onclick').includes('h2h-t-details')) {
+        loadH2HTDetailsTeamsWithFilteredData(filteredRecords);
+    }
     
     // Update Variety Goals data if the tab is active
     const varietyGoalsSubtab = document.getElementById('variety-goals-subtab');
@@ -3938,7 +3969,7 @@ function clearFilters() {
     
     // Also clear specific filter elements by ID
     const specificFilters = [
-        'match-id-filter', 'champion-system-filter', 'champion-filter', 'season-filter',
+        'match-id-filter', 'champion-system-filter', 'champion-filter', 'season-filter', 'sy-filter',
         'ahly-manager-filter', 'opponent-manager-filter', 'referee-filter', 'round-filter',
         'h-a-n-filter', 'stadium-filter', 'ahly-team-filter', 'opponent-team-filter',
         'goals-for-filter', 'goals-against-filter', 'result-filter', 'clean-sheet-filter',
@@ -4304,6 +4335,7 @@ function loadAllMatches(allRecords) {
             <td><strong>${match.MATCH_ID || 'N/A'}</strong></td>
             <td>${formattedDate}</td>
             <td>${match.SEASON || 'N/A'}</td>
+            <td>${match.SY || 'N/A'}</td>
             <td>${match['AHLY MANAGER'] || 'N/A'}</td>
             <td>${match['OPPONENT MANAGER'] || 'N/A'}</td>
             <td>${match.REFREE || 'N/A'}</td>
@@ -4902,6 +4934,7 @@ function renderPlayerMatchesTable(matches) {
         tr.innerHTML = `
             <td>${date}</td>
             <td>${season}</td>
+            <td>${m.sy || ''}</td>
             <td>${manager}</td>
             <td>${opponent}</td>
             <td>${m.minutes || 0}</td>
@@ -5900,6 +5933,7 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
                 'championSystem': 'CHAMPION SYSTEM',
                 'champion': 'CHAMPION',
                 'season': 'SEASON',
+                'sy': 'SY',
                 'ahlyManager': 'AHLY MANAGER',
                 'opponentManager': 'OPPONENT MANAGER',
                 'referee': 'REFREE',
@@ -6237,7 +6271,7 @@ function getGoalkeepersListFromSheets() {
 }
 
 // Function to load goalkeepers data
-async function loadGoalkeepersData() {
+async function loadGoalkeepersData(filteredRecords = null) {
     try {
         console.log('🔄 Loading goalkeepers from Excel (GKDETAILS)...');
         goalkeepersData.goalkeepers = getGoalkeepersListFromSheets();
@@ -6793,6 +6827,7 @@ function renderGKMatchesTable(matches) {
         row.innerHTML = `
             <td>${match.date}</td>
             <td>${match.season}</td>
+            <td>${match.sy || ''}</td>
             <td>${match.opponentTeam}</td>
             <td>${match.goalsConceded}</td>
             <td>${match.penaltyGoals}</td>
@@ -12620,10 +12655,10 @@ function countMatchPenalties(matchId, forAhly = true) {
 }
 
 // Load referees list from match data
-function loadRefereesData() {
+function loadRefereesData(filteredRecords = null) {
     console.log('Loading referees list...');
     
-    const records = alAhlyStatsData.allRecords || [];
+    const records = filteredRecords || alAhlyStatsData.allRecords || [];
     if (records.length === 0) {
         console.log('No records available for referees');
         return;
@@ -12993,6 +13028,7 @@ function loadRefereeMatches(matches) {
         row.innerHTML = `
             <td>${dateStr}</td>
             <td>${match.SEASON || match.season || ''}</td>
+            <td>${match.SY || ''}</td>
             <td>${match['OPPONENT TEAM'] || match.opponent_team || ''}</td>
             <td style="font-weight: 600;">${match.GF || 0}</td>
             <td style="font-weight: 600;">${match.GA || 0}</td>
@@ -13239,6 +13275,7 @@ function showRefereeSubTab(evt, subTabName) {
 function setupMainStatsFilters() {
     const teamFilter = document.getElementById('team-filter');
     const seasonFilter = document.getElementById('season-filter');
+    const syFilter = document.getElementById('sy-filter');
     const championFilter = document.getElementById('champion-filter');
     
     // Remove existing listeners to prevent duplicates
@@ -13248,66 +13285,14 @@ function setupMainStatsFilters() {
     if (seasonFilter && seasonFilter.mainStatsListener) {
         seasonFilter.removeEventListener('change', seasonFilter.mainStatsListener);
     }
+    if (syFilter && syFilter.mainStatsListener) {
+        syFilter.removeEventListener('change', syFilter.mainStatsListener);
+    }
     if (championFilter && championFilter.mainStatsListener) {
         championFilter.removeEventListener('change', championFilter.mainStatsListener);
     }
     
-    if (teamFilter) {
-        teamFilter.mainStatsListener = function() {
-            console.log('Team filter changed for Main Stats:', this.value);
-            // Reload current active Main Stats sub-tab
-            const activeSubTab = document.querySelector('#main-stats-tab .stats-subtab.active');
-            if (activeSubTab) {
-                const subTabName = activeSubTab.onclick.toString().match(/switchMainStatsSubTab\([^,]+,\s*'([^']+)'/);
-                if (subTabName && subTabName[1]) {
-                    if (subTabName[1] === 'championships') {
-                        loadChampionshipsStats();
-                    } else if (subTabName[1] === 'seasons') {
-                        loadSeasonsStats();
-                    }
-                }
-            }
-        };
-        teamFilter.addEventListener('change', teamFilter.mainStatsListener);
-    }
-    
-    if (seasonFilter) {
-        seasonFilter.mainStatsListener = function() {
-            console.log('Season filter changed for Main Stats:', this.value);
-            // Reload current active Main Stats sub-tab
-            const activeSubTab = document.querySelector('#main-stats-tab .stats-subtab.active');
-            if (activeSubTab) {
-                const subTabName = activeSubTab.onclick.toString().match(/switchMainStatsSubTab\([^,]+,\s*'([^']+)'/);
-                if (subTabName && subTabName[1]) {
-                    if (subTabName[1] === 'championships') {
-                        loadChampionshipsStats();
-                    } else if (subTabName[1] === 'seasons') {
-                        loadSeasonsStats();
-                    }
-                }
-            }
-        };
-        seasonFilter.addEventListener('change', seasonFilter.mainStatsListener);
-    }
-    
-    if (championFilter) {
-        championFilter.mainStatsListener = function() {
-            console.log('Champion filter changed for Main Stats:', this.value);
-            // Reload current active Main Stats sub-tab
-            const activeSubTab = document.querySelector('#main-stats-tab .stats-subtab.active');
-            if (activeSubTab) {
-                const subTabName = activeSubTab.onclick.toString().match(/switchMainStatsSubTab\([^,]+,\s*'([^']+)'/);
-                if (subTabName && subTabName[1]) {
-                    if (subTabName[1] === 'championships') {
-                        loadChampionshipsStats();
-                    } else if (subTabName[1] === 'seasons') {
-                        loadSeasonsStats();
-                    }
-                }
-            }
-        };
-        championFilter.addEventListener('change', championFilter.mainStatsListener);
-    }
+    // All Main Stats filters will only affect when Apply Filters is clicked, not on change
 }
 // Initialize page when DOM is ready
 document.addEventListener('DOMContentLoaded', async function() {
@@ -13459,15 +13444,9 @@ function reloadCurrentActiveTab() {
                     const currentFilteredRecords = getCurrentFilteredRecords();
                     loadCoachesData(currentFilteredRecords);
                 } else if (tabNameValue === 'h2h') {
-                    const currentFilteredRecords = getCurrentFilteredRecords();
-                    loadH2HTeamsData(currentFilteredRecords);
+                    // H2H Teams will only update when Apply Filters is clicked
                 } else if (tabNameValue === 'h2h-t-details') {
-                    console.log('🔄 Updating H2H T Details with filtered data');
-                    if (filteredRecords && filteredRecords.length > 0) {
-                        loadH2HTDetailsTeamsWithFilteredData(filteredRecords);
-                    } else {
-                        loadH2HTDetailsTeams();
-                    }
+                    // H2H T Details will only update when Apply Filters is clicked
                 } else if (tabNameValue === 'referees') {
                     const currentFilteredRecords = getCurrentFilteredRecords();
                     loadAllRefereesData(currentFilteredRecords);
@@ -13478,27 +13457,7 @@ function reloadCurrentActiveTab() {
         }
     }
     
-    // Update H2H T Details if it's currently active
-    const h2hTDetailsTab = document.getElementById('h2h-t-details-tab');
-    if (h2hTDetailsTab && h2hTDetailsTab.style.display !== 'none') {
-        console.log('🔄 Updating H2H T Details due to filter change');
-        console.log(`📊 Filtered records count: ${filteredRecords.length}`);
-        if (filteredRecords && filteredRecords.length > 0) {
-            loadH2HTDetailsTeamsWithFilteredData(filteredRecords);
-        } else {
-            loadH2HTDetailsTeams();
-        }
-    }
-    
-    // Also check if H2H T Details tab is active by checking if it's visible
-    if (activeTab && activeTab.getAttribute('onclick') && activeTab.getAttribute('onclick').includes('h2h-t-details')) {
-        console.log('🔄 H2H T Details tab is active, updating with filtered data');
-        if (filteredRecords && filteredRecords.length > 0) {
-            loadH2HTDetailsTeamsWithFilteredData(filteredRecords);
-        } else {
-            loadH2HTDetailsTeams();
-        }
-    }
+    // H2H T Details will only update when Apply Filters is clicked
 }
 
 // ============================================================================
@@ -14447,9 +14406,10 @@ function loadChampionshipsStats() {
         // Get filter values
         const selectedTeam = document.getElementById('team-filter')?.value || '';
         const selectedSeason = document.getElementById('season-filter')?.value || '';
+        const selectedSY = document.getElementById('sy-filter')?.value || '';
         const selectedChampion = document.getElementById('champion-filter')?.value || '';
         
-        console.log('🔍 Championships Filters:', { selectedTeam, selectedSeason, selectedChampion });
+        console.log('🔍 Championships Filters:', { selectedTeam, selectedSeason, selectedSY, selectedChampion });
         
         const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
         
@@ -14463,9 +14423,10 @@ function loadChampionshipsStats() {
         let filteredMatches = matches.filter(match => {
             const teamMatch = !selectedTeam || normalizeStr(match.TEAM || '').includes(normalizeStr(selectedTeam));
             const seasonMatch = !selectedSeason || normalizeStr(match.SEASON || '') === normalizeStr(selectedSeason);
+            const syMatch = !selectedSY || normalizeStr(match.SY || '') === normalizeStr(selectedSY);
             const championMatch = !selectedChampion || normalizeStr(match.CHAMPION || '') === normalizeStr(selectedChampion);
             
-            return teamMatch && seasonMatch && championMatch;
+            return teamMatch && seasonMatch && syMatch && championMatch;
         });
         
         console.log(`📊 Filtered matches for championships: ${filteredMatches.length} out of ${matches.length}`);
@@ -14544,9 +14505,10 @@ function loadSeasonsStats() {
         // Get filter values
         const selectedTeam = document.getElementById('team-filter')?.value || '';
         const selectedSeason = document.getElementById('season-filter')?.value || '';
+        const selectedSY = document.getElementById('sy-filter')?.value || '';
         const selectedChampion = document.getElementById('champion-filter')?.value || '';
         
-        console.log('🔍 Seasons Filters:', { selectedTeam, selectedSeason, selectedChampion });
+        console.log('🔍 Seasons Filters:', { selectedTeam, selectedSeason, selectedSY, selectedChampion });
         
         const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
         
@@ -14560,9 +14522,10 @@ function loadSeasonsStats() {
         let filteredMatches = matches.filter(match => {
             const teamMatch = !selectedTeam || normalizeStr(match.TEAM || '').includes(normalizeStr(selectedTeam));
             const seasonMatch = !selectedSeason || normalizeStr(match.SEASON || '') === normalizeStr(selectedSeason);
+            const syMatch = !selectedSY || normalizeStr(match.SY || '') === normalizeStr(selectedSY);
             const championMatch = !selectedChampion || normalizeStr(match.CHAMPION || '') === normalizeStr(selectedChampion);
             
-            return teamMatch && seasonMatch && championMatch;
+            return teamMatch && seasonMatch && syMatch && championMatch;
         });
         
         console.log(`📊 Filtered matches for seasons: ${filteredMatches.length} out of ${matches.length}`);
@@ -16257,6 +16220,7 @@ function renderConsecutiveGAStreakTable(matches) {
         tr.innerHTML = `
             <td>${date}</td>
             <td>${season}</td>
+            <td>${m.sy || ''}</td>
             <td>${opponent}</td>
             <td>${minutes}</td>
             <td class="${goals > 0 ? 'highlight-value' : ''}">${goals}</td>
@@ -16326,6 +16290,7 @@ function renderConsecutiveNoGAStreakTable(matches) {
         tr.innerHTML = `
             <td>${date}</td>
             <td>${season}</td>
+            <td>${m.sy || ''}</td>
             <td>${opponent}</td>
             <td>${minutes}</td>
             <td class="${goals > 0 ? 'highlight-value' : ''}">${goals}</td>
@@ -16395,6 +16360,7 @@ function renderConsecutiveScoringStreakTable(matches) {
         tr.innerHTML = `
             <td>${date}</td>
             <td>${season}</td>
+            <td>${m.sy || ''}</td>
             <td>${opponent}</td>
             <td>${minutes}</td>
             <td class="${goals > 0 ? 'highlight-value' : ''}">${goals}</td>
@@ -16713,6 +16679,7 @@ function renderConsecutiveNoGoalStreakTable(matches) {
         tr.innerHTML = `
             <td>${date}</td>
             <td>${season}</td>
+            <td>${m.sy || ''}</td>
             <td>${opponent}</td>
             <td>${minutes}</td>
             <td>${goals}</td>
