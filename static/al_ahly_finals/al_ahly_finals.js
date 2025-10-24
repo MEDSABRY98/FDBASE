@@ -1365,6 +1365,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
             season: match['SEASON'] || '-',
             han: match['H/A/N'] || '-',
             opponent: match['OPPONENT TEAM'] || '-',
+            finalWl: match['W-L FINAL'] || '-',
             goals: contributions.goals,
             assists: contributions.assists
         };
@@ -1391,11 +1392,23 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
             ? `<span class="highlight-value" style="font-size: 1.1em;">${match.assists}</span>` 
             : match.assists;
         
+        // Final W/L badge
+        let finalWlHTML = match.finalWl;
+        if (match.finalWl && match.finalWl !== '-') {
+            const finalWl = match.finalWl.toUpperCase().trim();
+            if (finalWl === 'W') {
+                finalWlHTML = '<span class="badge badge-success">W</span>';
+            } else if (finalWl === 'L') {
+                finalWlHTML = '<span class="badge badge-danger">L</span>';
+            }
+        }
+        
         row.innerHTML = `
             <td>${match.date}</td>
             <td>${match.season}</td>
             <td>${match.han}</td>
             <td>${match.opponent}</td>
+            <td>${finalWlHTML}</td>
             <td>${goalsHTML}</td>
             <td>${assistsHTML}</td>
         `;
@@ -1406,7 +1419,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
     if (playerMatchList.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td colspan="6" class="empty-state">
+            <td colspan="7" class="empty-state">
                 <div style="padding: 2rem; text-align: center; color: #6c757d;">
                     <h3>No Matches Found</h3>
                     <p>No matches found for this player with the selected team filter.</p>
