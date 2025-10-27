@@ -41,6 +41,7 @@ Thumbs.db
 
 # Cache
 .cache/
+.playwright-mcp/
 
 # Build files
 build_desktop.spec
