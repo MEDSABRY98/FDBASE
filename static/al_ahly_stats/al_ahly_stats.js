@@ -4329,7 +4329,6 @@ function loadAllMatches(allRecords) {
             <td><strong>${match.MATCH_ID || 'N/A'}</strong></td>
             <td>${formattedDate}</td>
             <td>${match.SEASON || 'N/A'}</td>
-            <td>${match.SY || 'N/A'}</td>
             <td>${match['AHLY MANAGER'] || 'N/A'}</td>
             <td>${match['OPPONENT MANAGER'] || 'N/A'}</td>
             <td>${match.REFREE || 'N/A'}</td>
@@ -6613,7 +6612,8 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 'result': 'W-D-L',
                 'cleanSheet': 'CLEAN SHEET',
                 'extraTime': 'ET',
-                'penalties': 'PEN'
+                'penalties': 'PEN',
+                'sy': 'SY'
             };
             
             const field = fieldMapping[key];
@@ -6936,7 +6936,8 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
                 'result': 'W-D-L',
                 'cleanSheet': 'CLEAN SHEET',
                 'extraTime': 'ET',
-                'penalties': 'PEN'
+                'penalties': 'PEN',
+                'sy': 'SY'
             };
             
             const field = fieldMapping[key];
@@ -7224,7 +7225,7 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 'ahlyManager': 'MANAGER AHLY', 'opponentManager': 'MANAGER OPPONENT', 'referee': 'REFREE',
                 'round': 'ROUND', 'hAN': 'H-A-N', 'stadium': 'STADIUM', 'ahlyTeam': 'AHLY TEAM',
                 'opponentTeam': 'OPPONENT TEAM', 'result': 'W-D-L', 'cleanSheet': 'CLEAN SHEET',
-                'extraTime': 'ET', 'penalties': 'PEN'
+                'extraTime': 'ET', 'penalties': 'PEN', 'sy': 'SY'
             };
             
             const field = fieldMapping[key];
@@ -7488,7 +7489,7 @@ function getGKVsTeamsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 'season': 'SEASON', 'ahlyManager': 'MANAGER AHLY', 'opponentManager': 'MANAGER OPPONENT',
                 'referee': 'REFREE', 'round': 'ROUND', 'hAN': 'H-A-N', 'stadium': 'STADIUM',
                 'ahlyTeam': 'AHLY TEAM', 'result': 'W-D-L', 'cleanSheet': 'CLEAN SHEET',
-                'extraTime': 'ET', 'penalties': 'PEN'
+                'extraTime': 'ET', 'penalties': 'PEN', 'sy': 'SY'
             };
             
             const field = fieldMapping[key];
@@ -7695,7 +7696,8 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
                 'season': 'SEASON', 'ahlyManager': 'MANAGER AHLY', 'opponentManager': 'MANAGER OPPONENT',
                 'referee': 'REFREE', 'round': 'ROUND', 'hAN': 'H-A-N', 'stadium': 'STADIUM',
                 'ahlyTeam': 'AHLY TEAM', 'opponentTeam': 'OPPONENT TEAM', 'result': 'W-D-L',
-                'cleanSheet': 'CLEAN SHEET', 'extraTime': 'EXTRA TIME', 'penalties': 'PKS'
+                'cleanSheet': 'CLEAN SHEET', 'extraTime': 'EXTRA TIME', 'penalties': 'PKS',
+                'sy': 'SY'
             };
             
             const field = fieldMapping[key];
@@ -8190,7 +8192,8 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
                 'season': 'SEASON', 'ahlyManager': 'MANAGER AHLY', 'opponentManager': 'MANAGER OPPONENT',
                 'referee': 'REFREE', 'round': 'ROUND', 'hAN': 'H-A-N', 'stadium': 'STADIUM',
                 'ahlyTeam': 'AHLY TEAM', 'opponentTeam': 'OPPONENT TEAM', 'result': 'W-D-L',
-                'cleanSheet': 'CLEAN SHEET', 'extraTime': 'EXTRA TIME', 'penalties': 'PKS'
+                'cleanSheet': 'CLEAN SHEET', 'extraTime': 'EXTRA TIME', 'penalties': 'PKS',
+                'sy': 'SY'
             };
             
             const field = fieldMapping[key];
