@@ -8406,7 +8406,7 @@ function loadAllGoalkeepersData(filteredRecords = null) {
         return;
     }
 
-    // Apply main filters to matches
+    // Apply main filters to matches - use appliedFilters which is null until "Apply Filters" is clicked
     const currentFilteredRecords = getCurrentFilteredRecords();
     let gkRecords = gkDetails;
     
@@ -8451,11 +8451,12 @@ function loadAllGoalkeepersData(filteredRecords = null) {
     });
 
     // Calculate statistics for each goalkeeper using the same logic as GK Statistics
-    const appliedFilters = getCurrentFilters();
+    // Use appliedFilters (null until button is clicked) instead of getCurrentFilters()
+    const currentFilters = appliedFilters || {};
     
     goalkeeperMap.forEach((goalkeeper, goalkeeperName) => {
         // Use the same calculation logic as GK Statistics page
-        const stats = getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter, appliedFilters);
+        const stats = getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter, currentFilters);
         
         // Update goalkeeper object with calculated stats
         goalkeeper.matches = stats.totalMatches;
