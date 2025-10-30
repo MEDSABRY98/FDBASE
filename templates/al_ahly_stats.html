@@ -1868,6 +1868,12 @@
                         </svg>
                         BY Player
                     </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'compare-player')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/>
+                        </svg>
+                        Compare Player
+                    </button>
                     <button class="stats-tab" onclick="showStatsTab(event, 'all-goalkeepers')">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 2L2 7l10 5 10-5-10-5z"/>
@@ -3922,6 +3928,68 @@
                         </div>
                     </div>
                     
+                </div>
+            </div>
+
+            <!-- Compare Player Tab -->
+            <div id="compare-player-tab" class="stats-tab-content">
+                <!-- Two Player Searches -->
+                <div class="player-search-section">
+                    <div class="player-search-container">
+                        <div class="search-field">
+                            <label>Player 1:</label>
+                            <div class="searchable-select-container">
+                                <input type="text" id="compare-player1-search" placeholder="Type to search players..." autocomplete="off">
+                                <div class="dropdown-options" id="compare-player1-options"></div>
+                            </div>
+                        </div>
+                        <div class="search-field">
+                            <label>Player 2:</label>
+                            <div class="searchable-select-container">
+                                <input type="text" id="compare-player2-search" placeholder="Type to search players..." autocomplete="off">
+                                <div class="dropdown-options" id="compare-player2-options"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compare Results: stacked rows -->
+                <div class="stats-section">
+                    <h2 class="section-title">Compare Players (Overview)</h2>
+                    <!-- Metrics filter control -->
+                    <div id="compare-metrics-controls" style="display:flex; justify-content:flex-end; margin-bottom:0.75rem; gap:0.5rem;">
+                        <button id="open-compare-metrics" style="padding:0.4rem 0.8rem; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb; cursor:pointer;">Select Metrics</button>
+                        <div id="compare-metrics-panel" style="display:none; position:relative;">
+                            <div style="position:absolute; right:0; z-index:5; background:white; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.08); padding:0.75rem; width:260px; max-height:320px; overflow:auto;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                                    <strong style="font-size:0.95rem; color:#374151;">Metrics</strong>
+                                    <div style="display:flex; gap:0.25rem;">
+                                        <button id="compare-metrics-selectall" style="padding:0.25rem 0.5rem; font-size:0.8rem; border:1px solid #e5e7eb; border-radius:6px; background:#f3f4f6; cursor:pointer;">All</button>
+                                        <button id="compare-metrics-clear" style="padding:0.25rem 0.5rem; font-size:0.8rem; border:1px solid #e5e7eb; border-radius:6px; background:#f3f4f6; cursor:pointer;">Clear</button>
+                                    </div>
+                                </div>
+                                <div id="compare-metrics-list" style="display:grid; gap:0.25rem;"></div>
+                                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+                                    <button id="compare-metrics-apply" style="padding:0.35rem 0.7rem; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;">Apply</button>
+                                    <button id="compare-metrics-close" style="padding:0.35rem 0.7rem; border:1px solid #e5e7eb; border-radius:8px; background:white; cursor:pointer;">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="compare-results">
+                        <table id="compare-f2f-table" class="stats-table" style="width:100%; background:white; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                            <thead>
+                                <tr>
+                                    <th id="compare-left-header" style="text-align:center; width:35%;">Player 1</th>
+                                    <th style="text-align:center; width:30%;">Metric</th>
+                                    <th id="compare-right-header" style="text-align:center; width:35%;">Player 2</th>
+                                </tr>
+                            </thead>
+                            <tbody id="compare-f2f-body">
+                                <!-- rows will be rendered by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

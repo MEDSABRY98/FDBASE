@@ -1324,6 +1324,9 @@ async function loadAlAhlyStatsData() {
             
             // Load players data for search functionality
             await loadPlayersData();
+            if (typeof initializeComparePlayerSearch === 'function') {
+                setTimeout(() => initializeComparePlayerSearch(), 0);
+            }
             
             // Load goalkeepers data for search functionality
             await loadGoalkeepersData();
@@ -1385,6 +1388,9 @@ async function loadAlAhlyStatsData() {
         
         // Load players data for search functionality
         await loadPlayersData();
+        if (typeof initializeComparePlayerSearch === 'function') {
+            setTimeout(() => initializeComparePlayerSearch(), 0);
+        }
         
         // Load goalkeepers data for search functionality
         await loadGoalkeepersData();
@@ -2091,24 +2097,45 @@ function applyFilters() {
     updateCharts();
     updateTables();
     calculateHowWinStats();
+    if (typeof renderComparePlayers === 'function') {
+        try { renderComparePlayers(); } catch (e) { console.warn('Compare render after filters failed', e); }
+    }
 }
 
 function clearFilters() {
-    // Reset filter values
-    currentFilters.season = '';
-    currentFilters.sy = '';
-    currentFilters.competition = '';
-    currentFilters.dateRange = { start: '', end: '' };
-    
-    // Reset filter controls
-    document.getElementById('season-filter').value = '';
-    document.getElementById('sy-filter').value = '';
-    document.getElementById('competition-filter').value = '';
-    
+    // Reset all filter values (align with getCurrentFilters)
+    currentFilters = {
+        season: '',
+        competition: '',
+        dateRange: { start: '', end: '' }
+    };
+
+    const idsToClear = [
+        'match-id-filter','champion-system-filter','champion-filter','season-filter','sy-filter',
+        'ahly-manager-filter','opponent-manager-filter','referee-filter','round-filter','h-a-n-filter',
+        'stadium-filter','ahly-team-filter','opponent-team-filter','goals-for-filter','goals-against-filter',
+        'result-filter','clean-sheet-filter','extra-time-filter','penalties-filter','date-from-filter','date-to-filter'
+    ];
+    idsToClear.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+
+    // If we use custom searchable inputs, sync visuals
+    if (typeof updateAllSearchableInputs === 'function') {
+        try { updateAllSearchableInputs(); } catch (_) {}
+    }
+
+    // Reset cached filtered records if used
+    if (alAhlyStatsData && Array.isArray(alAhlyStatsData.allRecords)) {
+        alAhlyStatsData.filteredRecords = [...alAhlyStatsData.allRecords];
+    }
+
     // Update displays with all data
     updateOverviewStats();
     updateCharts();
     updateTables();
+    calculateHowWinStats();
+    if (typeof renderComparePlayers === 'function') {
+        try { renderComparePlayers(); } catch (e) { console.warn('Compare render after clear failed', e); }
+    }
 }
 
 
@@ -2781,6 +2808,356 @@ function initializePlayerSearch() {
     });
 }
 
+// Compare Player: initialize two player searches using the same source list
+function initializeComparePlayerSearch() {
+    try {
+        const input1 = document.getElementById('compare-player1-search');
+        const input2 = document.getElementById('compare-player2-search');
+        const options1 = document.getElementById('compare-player1-options');
+        const options2 = document.getElementById('compare-player2-options');
+        if (!input1 || !input2 || !options1 || !options2) return;
+
+        // Ensure players list is available; if not, try to build from sheets and retry soon
+        if (!window.playersData) window.playersData = {};
+        if (!Array.isArray(playersData.players) || playersData.players.length === 0) {
+            try {
+                if (typeof getPlayersListFromSheets === 'function') {
+                    playersData.players = getPlayersListFromSheets() || [];
+                }
+            } catch (e) { /* ignore */ }
+        }
+        if (!Array.isArray(playersData.players) || playersData.players.length === 0) {
+            // Retry shortly after Excel loads
+            setTimeout(initializeComparePlayerSearch, 400);
+            return;
+        }
+
+        // Shared handler to bind a search input/options to select a player
+        function bindSearch(inputEl, optionsEl, side) {
+            let isOpen = false;
+            inputEl.addEventListener('input', function() {
+                const q = this.value.toLowerCase().trim();
+                if (!q) { optionsEl.style.display = 'none'; isOpen = false; return; }
+                // Build flattened list of (player, team) pairs so the same اللاعب يظهر بأكثر من فريق
+                const flattened = [];
+                (playersData.players || []).forEach(p => {
+                    const teams = Array.isArray(p.teams) && p.teams.length ? p.teams : [''];
+                    teams.forEach(t => { flattened.push({ name: p.name, team: t }); });
+                });
+                const filtered = flattened.filter(p => p.name.toLowerCase().includes(q));
+                if (filtered.length === 0) {
+                    optionsEl.innerHTML = '<div class="option-item no-results">No players found</div>';
+                } else {
+                    optionsEl.innerHTML = filtered.map(p => {
+                        const teamLabel = p.team ? ` (${p.team})` : '';
+                        const safeName = p.name.replace(/"/g,'&quot;');
+                        const safeTeam = String(p.team || '').replace(/"/g,'&quot;');
+                        return `<div class=\"option-item\" data-name=\"${safeName}\" data-team=\"${safeTeam}\">${p.name}${teamLabel}</div>`;
+                    }).join('');
+                }
+                optionsEl.style.display = 'block';
+                isOpen = true;
+            });
+            optionsEl.addEventListener('click', function(e){
+                const el = e.target;
+                if (!el.classList.contains('option-item') || el.classList.contains('no-results')) return;
+                const name = el.getAttribute('data-name');
+                const team = el.getAttribute('data-team') || '';
+                inputEl.value = team ? `${name} (${team})` : name;
+                optionsEl.style.display = 'none';
+                isOpen = false;
+                selectComparePlayer(side, name, team);
+            });
+            document.addEventListener('click', function(e){
+                if (!inputEl.contains(e.target) && !optionsEl.contains(e.target)) {
+                    optionsEl.style.display = 'none';
+                    isOpen = false;
+                }
+            });
+            inputEl.addEventListener('focus', function(){ if (this.value) { optionsEl.style.display = 'block'; isOpen = true; } });
+        }
+
+        window.compareData = window.compareData || { p1: null, p2: null };
+        bindSearch(input1, options1, 'p1');
+        bindSearch(input2, options2, 'p2');
+
+        // Initialize metrics chooser once
+        if (typeof initializeCompareMetricsFilter === 'function') {
+            try { initializeCompareMetricsFilter(); } catch (_) {}
+        }
+    } catch (e) { console.error('initializeComparePlayerSearch error', e); }
+}
+
+// Select compare player for a side and render rows
+function selectComparePlayer(side, playerName, teamName) {
+    window.compareData = window.compareData || { p1: null, p2: null };
+    const sel = { name: playerName, team: teamName || '' };
+    if (side === 'p1') window.compareData.p1 = sel; else window.compareData.p2 = sel;
+    renderComparePlayers();
+}
+
+// Compute overview stats by leveraging existing calculation, then read current card values
+// Compute player overview stats for Compare tab without touching BY Player DOM
+function computeOverviewStatsForCompare(playerName, teamFilterValue) {
+    try {
+        const teamFilter = typeof teamFilterValue === 'string' ? teamFilterValue : '';
+        const appliedFilters = getCurrentFilters();
+        const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
+        const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
+        const nameLower = (playerName || '').toLowerCase();
+        const teamLower = (teamFilter || '').toLowerCase();
+
+        const playerRows = details.filter(r => {
+            const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
+            if (p !== nameLower) return false;
+            if (teamLower) {
+                const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+                if (!teamMatchesFilter(teamVal, teamFilter)) return false;
+            }
+            const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
+            const matchDetail = matchDetails.find(match => normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId);
+            return applyMainFiltersToMatch(matchDetail, appliedFilters);
+        });
+
+        const perMatch = new Map();
+        let penGoal = 0, penAstGoal = 0, penMissed = 0, penAstMiss = 0, penMakeG = 0, penMakeM = 0, ownGoal = 0;
+        playerRows.forEach(r => {
+            const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
+            if (!matchId) return;
+            const gaVal = normalizeStr(r.GA).toUpperCase();
+            const typeVal = normalizeStr(r.TYPE).toUpperCase().replace(/[^A-Z]/g, '');
+            if (!perMatch.has(matchId)) perMatch.set(matchId, { goals: 0, assists: 0 });
+            const agg = perMatch.get(matchId);
+            if (gaVal === 'GOAL') agg.goals += 1;
+            if (gaVal === 'ASSIST') agg.assists += 1;
+            if (typeVal === 'OG') ownGoal += 1;
+            if (typeVal === 'PENGOAL') penGoal += 1;
+            if (typeVal === 'PENASSISTGOAL') penAstGoal += 1;
+            if (typeVal === 'PENMISSED') penMissed += 1;
+            if (typeVal === 'PENASSISTMISSED') penAstMiss += 1;
+            if (typeVal === 'PENMAKEGOAL') penMakeG += 1;
+            if (typeVal === 'PENMAKEMISSED') penMakeM += 1;
+            const gaNorm = gaVal.replace(/[^A-Z]/g, '');
+            if (gaNorm === 'PENGOAL') penGoal += 1;
+            if (gaNorm === 'PENASSISTGOAL') penAstGoal += 1;
+            if (gaNorm === 'PENMISSED') penMissed += 1;
+            if (gaNorm === 'PENASSISTMISSED') penAstMiss += 1;
+            if (gaNorm === 'PENMAKEGOAL') penMakeG += 1;
+            if (gaNorm === 'PENMAKEMISSED') penMakeM += 1;
+        });
+
+        const lineupRowsAll = getSheetRowsByCandidates(['LINEUPDETAILS']);
+        const lineupRows = lineupRowsAll.filter(l => {
+            const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
+            if (p !== nameLower) return false;
+            if (teamLower) {
+                if (normalizeTeamKey(teamFilter) !== 'ahly') return false;
+            }
+            const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || '');
+            const matchDetail = matchDetails.find(match => normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId);
+            return applyMainFiltersToMatch(matchDetail, appliedFilters);
+        });
+        const totalMatches = lineupRows.length;
+        let totalMinutes = 0;
+        lineupRows.forEach(l => { totalMinutes += safeInt(l.MINTOTAL || l['MIN TOTAL'] || l.MINUTES || 0); });
+
+        let totalGoals = 0, totalAssists = 0;
+        let braceGoals = 0, hatTrickGoals = 0, threePlusGoals = 0;
+        let braceAssists = 0, hatTrickAssists = 0, threePlusAssists = 0;
+        perMatch.forEach(({ goals, assists }) => {
+            totalGoals += goals; totalAssists += assists;
+            if (goals >= 2) braceGoals += 1;
+            if (goals >= 3) hatTrickGoals += 1;
+            if (goals >= 4) threePlusGoals += 1;
+            if (assists >= 2) braceAssists += 1;
+            if (assists >= 3) hatTrickAssists += 1;
+            if (assists >= 4) threePlusAssists += 1;
+        });
+
+        let matchesWithGoals = 0, matchesWithoutGoals = 0;
+        lineupRows.forEach(l => {
+            const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
+            if (!matchId) return;
+            const matchStats = perMatch.get(matchId);
+            if (matchStats && matchStats.goals > 0) matchesWithGoals += 1; else matchesWithoutGoals += 1;
+        });
+
+        // Streaks: only lengths needed for compare
+        const lineupWithDates = lineupRows.map(l => {
+            const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
+            const match = matchDetails.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID'] || m.match_id) === matchId);
+            const matchStats = perMatch.get(matchId) || { goals: 0, assists: 0 };
+            return { date: match ? (match.DATE || 0) : 0, goals: matchStats.goals, assists: matchStats.assists };
+        }).filter(m => m.date !== undefined);
+        lineupWithDates.sort((a,b) => (parseFloat(a.date)||0) - (parseFloat(b.date)||0));
+        const gaStreak = (typeof findLongestConsecutiveGAStreak === 'function') ? findLongestConsecutiveGAStreak(lineupWithDates) : [];
+        const noGAStreak = (typeof findLongestConsecutiveNoGAStreak === 'function') ? findLongestConsecutiveNoGAStreak(lineupWithDates) : [];
+        const goalStreak = (typeof findLongestConsecutiveScoringStreak === 'function') ? findLongestConsecutiveScoringStreak(lineupWithDates) : [];
+        const noGoalStreak = (typeof findLongestConsecutiveNoGoalStreak === 'function') ? findLongestConsecutiveNoGoalStreak(lineupWithDates) : [];
+        const assistStreak = (typeof findLongestConsecutiveAssistStreak === 'function') ? findLongestConsecutiveAssistStreak(lineupWithDates) : [];
+        const noAssistStreak = (typeof findLongestConsecutiveNoAssistStreak === 'function') ? findLongestConsecutiveNoAssistStreak(lineupWithDates) : [];
+
+        return {
+            total_matches: totalMatches,
+            total_minutes: totalMinutes,
+            matches_with_goals: matchesWithGoals,
+            matches_without_goals: matchesWithoutGoals,
+            consecutive_ga: gaStreak.length,
+            consecutive_ga_period: '',
+            consecutive_no_ga: noGAStreak.length,
+            consecutive_no_ga_period: '',
+            consecutive_goals: goalStreak.length,
+            consecutive_goals_period: '',
+            consecutive_no_goals: noGoalStreak.length,
+            consecutive_no_goals_period: '',
+            consecutive_assists: assistStreak.length,
+            consecutive_assists_period: '',
+            consecutive_no_assists: noAssistStreak.length,
+            consecutive_no_assists_period: '',
+            total_goals: totalGoals,
+            total_assists: totalAssists,
+            brace_goals: braceGoals,
+            brace_assists: braceAssists,
+            hat_trick_goals: hatTrickGoals,
+            hat_trick_assists: hatTrickAssists,
+            three_plus_goals: threePlusGoals,
+            three_plus_assists: threePlusAssists,
+            pen_goal: penGoal,
+            pen_ast_goal: penAstGoal,
+            pen_missed: penMissed,
+            pen_ast_miss: penAstMiss,
+            pen_make_g: penMakeG,
+            pen_make_m: penMakeM,
+            own_goal: ownGoal
+        };
+    } catch (e) { console.error('computeOverviewStatsForCompare error', e); return null; }
+}
+
+// Render rows for a player's overview into container
+function getCompareRowsDefinition() {
+    return [
+        { label: 'Total Matches', key: 'total_matches' },
+        { label: 'Total Minutes', key: 'total_minutes' },
+        { label: 'Matches with Goals', key: 'matches_with_goals' },
+        { label: 'Matches without Goals', key: 'matches_without_goals' },
+        { label: 'Total Goals', key: 'total_goals' },
+        { label: 'Total Assists', key: 'total_assists' },
+        { label: 'Brace Goals', key: 'brace_goals' },
+        { label: 'Brace Assists', key: 'brace_assists' },
+        { label: 'Hat-trick Goals', key: 'hat_trick_goals' },
+        { label: 'Hat-trick Assists', key: 'hat_trick_assists' },
+        { label: '3+ Goals', key: 'three_plus_goals' },
+        { label: '3+ Assists', key: 'three_plus_assists' },
+        { label: 'Consecutive GA', key: 'consecutive_ga' },
+        { label: 'Consecutive No GA', key: 'consecutive_no_ga' },
+        { label: 'Consecutive Goals', key: 'consecutive_goals' },
+        { label: 'Consecutive No Goals', key: 'consecutive_no_goals' },
+        { label: 'Consecutive Assists', key: 'consecutive_assists' },
+        { label: 'Consecutive No Assists', key: 'consecutive_no_assists' },
+        { label: 'Penalty Goal', key: 'pen_goal' },
+        { label: 'Penalty Assist-Goal', key: 'pen_ast_goal' },
+        { label: 'Penalty Missed', key: 'pen_missed' },
+        { label: 'Penalty Assist-Missed', key: 'pen_ast_miss' },
+        { label: 'Penalty Make Goal', key: 'pen_make_g' },
+        { label: 'Penalty Make Missed', key: 'pen_make_m' },
+        { label: 'Own Goal', key: 'own_goal' }
+    ];
+}
+
+function renderCompareF2FTable(stats1, stats2, leftName, rightName) {
+    const tbody = document.getElementById('compare-f2f-body');
+    const leftHeader = document.getElementById('compare-left-header');
+    const rightHeader = document.getElementById('compare-right-header');
+    if (leftHeader) leftHeader.textContent = leftName || 'Player 1';
+    if (rightHeader) rightHeader.textContent = rightName || 'Player 2';
+    if (!tbody) return;
+
+    const defAll = getCompareRowsDefinition();
+    const selectedKeys = (window.comparePrefs && Array.isArray(window.comparePrefs.metrics) && window.comparePrefs.metrics.length)
+        ? new Set(window.comparePrefs.metrics)
+        : new Set(defAll.map(d => d.key));
+    const def = defAll.filter(d => selectedKeys.has(d.key));
+    tbody.innerHTML = def.map(({ label, key }) => {
+        const v1 = stats1 && (stats1[key] !== undefined && stats1[key] !== null) ? stats1[key] : 0;
+        const v2 = stats2 && (stats2[key] !== undefined && stats2[key] !== null) ? stats2[key] : 0;
+
+        // numeric comparison highlight (robust parsing to handle commas, spaces, symbols)
+        function toNumber(val) {
+            const str = String(val).replace(/[^0-9.-]/g, '');
+            const num = parseFloat(str);
+            return isNaN(num) ? NaN : num;
+        }
+        const n1 = toNumber(v1);
+        const n2 = toNumber(v2);
+        const bothNumeric = !isNaN(n1) && !isNaN(n2);
+        const highlightStyle = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.1rem 0.4rem; border-radius: 6px;';
+        const leftIsHigher = bothNumeric && n1 > n2;
+        const rightIsHigher = bothNumeric && n2 > n1;
+        const leftSpan = leftIsHigher ? `<span style="${highlightStyle}">${v1}</span>` : `<span>${v1}</span>`;
+        const rightSpan = rightIsHigher ? `<span style="${highlightStyle}">${v2}</span>` : `<span>${v2}</span>`;
+
+        return `<tr>
+            <td style=\"text-align:center; font-weight:700; font-size:1.1rem;\">${leftSpan}</td>
+            <td style=\"text-align:center; font-weight:600; color:#374151;\">${label}</td>
+            <td style=\"text-align:center; font-weight:700; font-size:1.1rem;\">${rightSpan}</td>
+        </tr>`;
+    }).join('');
+}
+
+// Render both selected players into stacked blocks
+function renderComparePlayers() {
+    const p1Sel = (window.compareData && window.compareData.p1) ? window.compareData.p1 : null;
+    const p2Sel = (window.compareData && window.compareData.p2) ? window.compareData.p2 : null;
+
+    const stats1 = p1Sel && p1Sel.name ? computeOverviewStatsForCompare(p1Sel.name, p1Sel.team || '') : null;
+    const stats2 = p2Sel && p2Sel.name ? computeOverviewStatsForCompare(p2Sel.name, p2Sel.team || '') : null;
+
+    const leftHeader = p1Sel ? (p1Sel.team ? `${p1Sel.name} (${p1Sel.team})` : p1Sel.name) : '';
+    const rightHeader = p2Sel ? (p2Sel.team ? `${p2Sel.name} (${p2Sel.team})` : p2Sel.name) : '';
+
+    renderCompareF2FTable(stats1, stats2, leftHeader, rightHeader);
+}
+
+// ================= Compare Metrics Filter =================
+function initializeCompareMetricsFilter() {
+    window.comparePrefs = window.comparePrefs || { metrics: [] };
+    const openBtn = document.getElementById('open-compare-metrics');
+    const panelWrap = document.getElementById('compare-metrics-panel');
+    const list = document.getElementById('compare-metrics-list');
+    const applyBtn = document.getElementById('compare-metrics-apply');
+    const closeBtn = document.getElementById('compare-metrics-close');
+    const selectAllBtn = document.getElementById('compare-metrics-selectall');
+    const clearBtn = document.getElementById('compare-metrics-clear');
+    if (!openBtn || !panelWrap || !list) return;
+
+    function buildList() {
+        const def = getCompareRowsDefinition();
+        const selected = new Set(window.comparePrefs.metrics && window.comparePrefs.metrics.length ? window.comparePrefs.metrics : def.map(d => d.key));
+        list.innerHTML = def.map(d => {
+            const checked = selected.has(d.key) ? 'checked' : '';
+            return `<label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; color:#374151;">
+                <input type="checkbox" class="cmp-metric-cb" value="${d.key}" ${checked}>
+                <span>${d.label}</span>
+            </label>`;
+        }).join('');
+    }
+
+    openBtn.addEventListener('click', () => { buildList(); panelWrap.style.display = panelWrap.style.display === 'none' ? 'block' : 'none'; });
+    closeBtn && closeBtn.addEventListener('click', () => { panelWrap.style.display = 'none'; });
+    selectAllBtn && selectAllBtn.addEventListener('click', () => {
+        list.querySelectorAll('input.cmp-metric-cb').forEach(cb => { cb.checked = true; });
+    });
+    clearBtn && clearBtn.addEventListener('click', () => {
+        list.querySelectorAll('input.cmp-metric-cb').forEach(cb => { cb.checked = false; });
+    });
+    applyBtn && applyBtn.addEventListener('click', () => {
+        const keys = Array.from(list.querySelectorAll('input.cmp-metric-cb:checked')).map(cb => cb.value);
+        window.comparePrefs.metrics = keys;
+        panelWrap.style.display = 'none';
+        if (typeof renderComparePlayers === 'function') renderComparePlayers();
+    });
+}
+
 // Function to select a player and populate teams dropdown
 function selectPlayer(player) {
     console.log('🎯 Player selected:', player);
@@ -3077,6 +3454,7 @@ function loadAlAhlyStats() {
         loadAllRefereesData();
         loadAllGoalkeepersData();
         loadAllPlayersData();
+        if (typeof initializeComparePlayerSearch === 'function') initializeComparePlayerSearch();
         if (typeof addAutoFilterListeners === 'function') setTimeout(() => addAutoFilterListeners(), 100);
         return;
     }
@@ -3141,6 +3519,7 @@ function loadAlAhlyStats() {
         loadPlayerOverview();
         loadTopPerformers();
         loadGoalkeeperStats();
+        if (typeof initializeComparePlayerSearch === 'function') initializeComparePlayerSearch();
         setTimeout(() => { addAutoFilterListeners(); }, 100);
         
         return;
@@ -3630,6 +4009,9 @@ function applyFilters() {
     
     console.log('🔄 Applying filters...');
     debouncedApplyFilters();
+    if (typeof renderComparePlayers === 'function') {
+        try { renderComparePlayers(); } catch (e) { console.warn('Compare render after debounced filters failed', e); }
+    }
     
     // Update H2H T Details if it's currently active
     const currentActiveTab = document.querySelector('.stats-tab.active');
@@ -13901,6 +14283,11 @@ function applyMainFiltersToMatch(matchDetail, filters) {
     
     // Season filter
     if (filters.season && normalizeStr(matchDetail.SEASON || '') !== filters.season) {
+        return false;
+    }
+    
+    // SY filter (sheet uses SY)
+    if (filters.sy && normalizeStr(matchDetail.SY || '') !== filters.sy) {
         return false;
     }
     

@@ -38,6 +38,8 @@ class CacheManager:
         # Egypt Teams
         'egypt_teams': 'Egypt_Teams',
         'youth_egypt': 'Egypt_Youth',
+        # National Men Halls
+        'national_men_halls': 'Halls_national_men',
         # Database Lists
         'ahly_players_list': 'Al_Ahly_Stats',
         'egypt_players_list': 'Egypt_Teams',

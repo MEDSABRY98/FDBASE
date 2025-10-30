@@ -687,6 +687,96 @@ def prepare_data_row(data_type, data):
 def index():
     return render_template('main_dashboard.html')
 
+# ============================================================================
+# NATIONAL MEN HALLS - PAGE & CONFIG ENDPOINT
+# ============================================================================
+
+@app.route('/national-men-halls')
+def national_men_halls():
+    return render_template('national_men_halls.html')
+
+@app.route('/api/national-men-halls/config')
+def api_national_men_halls_config():
+    try:
+        apps_script_url = os.environ.get('NATIONAL_MEN_HALLS_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbxIpY5Qkg0m4ZW0ARyPYIA0J1Q8zNBR_tCfMBzF32ghf8zGvBA-uoRxhMUQHaTnaSo/exec')
+        return jsonify({
+            'success': True,
+            'appsScriptUrl': apps_script_url or ''
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/national-men-halls/data')
+def api_national_men_halls_data():
+    """API endpoint to get National Men Halls data with caching"""
+    try:
+        # Check if force refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true' or request.args.get('force_refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('national_men_halls', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached National Men Halls data")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        print("📊 Loading National Men Halls data from Google Apps Script...")
+        
+        # Get Apps Script URL
+        apps_script_url = os.environ.get('NATIONAL_MEN_HALLS_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbxIpY5Qkg0m4ZW0ARyPYIA0J1Q8zNBR_tCfMBzF32ghf8zGvBA-uoRxhMUQHaTnaSo/exec')
+        
+        if not apps_script_url:
+            return jsonify({'success': False, 'error': 'Apps Script URL not configured'}), 500
+        
+        # Fetch from Google Apps Script
+        import requests
+        response = requests.get(apps_script_url, timeout=30)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        if not data.get('success'):
+            error_msg = data.get('error', 'Unknown error from Google Apps Script')
+            print(f"❌ Error from Google Apps Script: {error_msg}")
+            return jsonify({'success': False, 'error': error_msg}), 500
+        
+        records = data.get('data', [])
+        
+        # Clean records (convert all values to strings, preserve numeric zeros)
+        cleaned_records = []
+        for record in records:
+            cleaned_record = {}
+            for key, value in record.items():
+                # Match Al Ahly stats behavior: keep 0 as '0', only None -> ''
+                if value is None:
+                    cleaned_record[key] = ''
+                else:
+                    cleaned_record[key] = str(value).strip()
+            cleaned_records.append(cleaned_record)
+        
+        print(f"✅ Successfully loaded {len(cleaned_records)} National Men Halls records")
+        
+        # Create final successful response object
+        result = {'success': True, 'data': cleaned_records}
+        
+        # Save to cache before returning
+        cache.set('national_men_halls', result)
+        
+        return jsonify(result)
+        
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Network error loading National Men Halls data: {e}")
+        return jsonify({'success': False, 'error': f'Network error: {str(e)}'}), 500
+    except Exception as e:
+        print(f"❌ Error loading National Men Halls data: {e}")
+        return jsonify({'success': False, 'error': f'Failed to load data: {str(e)}'}), 500
+
 @app.route('/data-entry-login')
 def data_entry_login():
     return render_template('data_entry_login.html')

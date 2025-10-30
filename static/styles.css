@@ -1680,7 +1680,25 @@ body {
 /* Table Search Container */
 .table-search-container {
     position: relative;
-    margin-bottom: 20px;
+    margin: 0 auto 20px auto; /* Centered with bottom margin */
+    max-width: 500px;       /* Max width for larger screens */
+    width: 100%;            /* Responsive width */
+}
+
+.table-search-input {
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 25px; /* Pill shape */
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.table-search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
 }
 
 /* Trophy Cards Styles */

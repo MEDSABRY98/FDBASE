@@ -22,6 +22,9 @@ class Config:
     # Google Apps Script URL for AHLY PKs
     GOOGLE_APPS_SCRIPT_PKS_URL = os.environ.get('GOOGLE_APPS_SCRIPT_PKS_URL', 'https://script.google.com/macros/s/AKfycbwZSSm87FRLr4Pez8-CiSZ_cN1Q5JQKBkw-oNOEQeNGvedNM77z19CFspt_xJMADXU/exec')
     
+    # Google Apps Script for National Men Halls data
+    NATIONAL_MEN_HALLS_APPS_SCRIPT_URL = os.environ.get('NATIONAL_MEN_HALLS_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbxIpY5Qkg0m4ZW0ARyPYIA0J1Q8zNBR_tCfMBzF32ghf8zGvBA-uoRxhMUQHaTnaSo/exec')
+    
     # Sheet IDs for different match types
     SHEET_IDS = {
         'ahly_match': os.environ.get('AHLY_MATCH_SHEET_ID', '1zeSlEN7VS2S6KPZH7_uvQeeY3Iu5INUyi12V0_Wi9G4'),
