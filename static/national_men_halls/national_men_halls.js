@@ -3,6 +3,7 @@
 window.nationalMenHalls = (function () {
     let allRecords = [];
     let appsScriptUrl = '';
+    let filtersApplied = false;
 
     function setupDynamicTableSearch() {
         const searchInput = document.getElementById('matches-search-input');
@@ -108,14 +109,7 @@ window.nationalMenHalls = (function () {
                 const dStr = r['Date'];
                 if (dStr) {
                     const d = new Date(dStr);
-                    if (dateFrom) {
-                        const from = new Date(dateFrom);
-                        if (isFinite(d) && d < from) return false;
-                    }
-                    if (dateTo) {
-                        const to = new Date(dateTo);
-                        if (isFinite(d) && d > to) return false;
-                    }
+                    if (isFinite(d) && d < from) return false;
                 }
             }
             return true;
@@ -585,24 +579,45 @@ window.nationalMenHalls = (function () {
     function hookTabs() {
         const btnMatches = document.getElementById('nmh-tab-matches-btn');
         const btnTeams = document.getElementById('nmh-tab-teams-btn');
+        const btnRanking = document.getElementById('nmh-tab-ranking-btn');
         const tabMatches = document.getElementById('nmh-matches-tab');
         const tabTeams = document.getElementById('nmh-teams-tab');
-        if (!btnMatches || !btnTeams || !tabMatches || !tabTeams) return;
+        const tabRanking = document.getElementById('nmh-ranking-tab');
+        if (!btnMatches || !btnTeams || !btnRanking || !tabMatches || !tabTeams || !tabRanking) return;
         const activate = (name) => {
             // Close modal when switching tabs
             closeTeamDetailsModal();
+            // Reset all buttons
+            [btnMatches, btnTeams, btnRanking].forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = '#f1f3f5';
+                btn.style.color = '#495057';
+            });
+            // Hide all tabs
+            [tabMatches, tabTeams, tabRanking].forEach(tab => {
+                tab.style.display = 'none';
+            });
+            
             if (name === 'matches') {
-                btnMatches.classList.add('active'); btnMatches.style.background = '#007bff'; btnMatches.style.color = '#fff';
-                btnTeams.classList.remove('active'); btnTeams.style.background = '#f1f3f5'; btnTeams.style.color = '#495057';
-                tabMatches.style.display = 'block'; tabTeams.style.display = 'none';
-            } else {
-                btnTeams.classList.add('active'); btnTeams.style.background = '#007bff'; btnTeams.style.color = '#fff';
-                btnMatches.classList.remove('active'); btnMatches.style.background = '#f1f3f5'; btnMatches.style.color = '#495057';
-                tabTeams.style.display = 'block'; tabMatches.style.display = 'none';
+                btnMatches.classList.add('active');
+                btnMatches.style.background = '#007bff';
+                btnMatches.style.color = '#fff';
+                tabMatches.style.display = 'block';
+            } else if (name === 'teams') {
+                btnTeams.classList.add('active');
+                btnTeams.style.background = '#007bff';
+                btnTeams.style.color = '#fff';
+                tabTeams.style.display = 'block';
+            } else if (name === 'ranking') {
+                btnRanking.classList.add('active');
+                btnRanking.style.background = '#007bff';
+                btnRanking.style.color = '#fff';
+                tabRanking.style.display = 'block';
             }
         };
         btnMatches.addEventListener('click', () => activate('matches'));
         btnTeams.addEventListener('click', () => activate('teams'));
+        btnRanking.addEventListener('click', () => activate('ranking'));
         // default active is matches
         activate('matches');
     }
@@ -637,6 +652,8 @@ window.nationalMenHalls = (function () {
             renderTeamStats(filtered);
             hookTabs();
             setupDynamicTeamsSearch();
+            setupRankingTeamSearch();
+            setupRankingSubTabs();
             showLoading(false);
         } catch (e) {
             console.error('Failed to load National Men Halls data:', e);
@@ -648,6 +665,7 @@ window.nationalMenHalls = (function () {
     }
 
     function applyFilters() {
+        filtersApplied = true;
         const filtered = applyCurrentFilters();
         renderTable(filtered);
         renderTeamStats(filtered);
@@ -657,9 +675,21 @@ window.nationalMenHalls = (function () {
         if (searchInput) searchInput.value = '';
         const teamSearchInput = document.getElementById('nmh-teams-search-input');
         if (teamSearchInput) teamSearchInput.value = '';
+        
+        // Recalculate rankings if a team is selected
+        if (window.__nmh_selected_team) {
+            const btnLastAge = document.getElementById('nmh-subtab-last-age-btn');
+            const isLastAgeActive = btnLastAge && btnLastAge.classList.contains('active');
+            if (isLastAgeActive) {
+                calculateAndRenderRankingsLastAge(window.__nmh_selected_team);
+            } else {
+                calculateAndRenderRankingsLastSeason(window.__nmh_selected_team);
+            }
+        }
     }
 
     function clearFilters() {
+        filtersApplied = false;
         const cols = window.NATIONAL_MEN_HALLS_COLUMNS || [];
         cols.forEach((c) => {
             const el = document.getElementById(`filter-${c}`);
@@ -678,6 +708,35 @@ window.nationalMenHalls = (function () {
         applyFilters();
     }
 
+    // Refresh data with visual feedback
+    async function refreshData() {
+        const refreshBtn = event.target.closest('button');
+        const originalText = refreshBtn.innerHTML;
+        
+        // Show loading state
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<svg style="animation: spin 1s linear infinite; width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refreshing...';
+        
+        try {
+            await loadData(true);
+            
+            // Show success message
+            refreshBtn.innerHTML = '<svg style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Refreshed!';
+            
+            setTimeout(() => {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.disabled = false;
+            }, 2000);
+        } catch (error) {
+            refreshBtn.innerHTML = '<svg style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>Error!';
+            
+            setTimeout(() => {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.disabled = false;
+            }, 2000);
+        }
+    }
+
     const initPage = () => {
         loadData(false);
         setupDynamicTableSearch();
@@ -694,12 +753,578 @@ window.nationalMenHalls = (function () {
         loadData,
         applyFilters,
         clearFilters,
+        refreshData,
         showTeamDetails,
         closeTeamDetailsModal,
         toggleGameDetails,
-        closeGameDetailsModal
+        closeGameDetailsModal,
+        applyCurrentFilters,
+        get filtersApplied() { return filtersApplied; }
     };
 })();
+
+// ============================================================================
+// RANKING FUNCTIONS
+// ============================================================================
+
+// Setup ranking team search
+function setupRankingTeamSearch() {
+    const input = document.getElementById('nmh-ranking-team-search');
+    const dropdown = document.getElementById('nmh-ranking-team-dropdown');
+    
+    if (!input || !dropdown) return;
+    
+    // Get all unique teams from TeamA and TeamB
+    const allTeams = new Set();
+    const records = window.__nmh_records || [];
+    
+    records.forEach(record => {
+        if (record['TeamA']) allTeams.add(String(record['TeamA']).trim());
+        if (record['TeamB']) allTeams.add(String(record['TeamB']).trim());
+    });
+    
+    const sortedTeams = Array.from(allTeams).filter(t => t).sort();
+    
+    // Remove previous listeners by cloning
+    const container = input.parentElement;
+    const newContainer = container.cloneNode(true);
+    container.parentNode.replaceChild(newContainer, container);
+    
+    const newInput = newContainer.querySelector('input');
+    const newDropdown = newContainer.querySelector('.dropdown-options');
+    
+    if (!newInput || !newDropdown) return;
+    
+    // Setup search
+    newInput.addEventListener('focus', () => {
+        renderTeamOptions(newInput, newDropdown, sortedTeams, newInput.value || '');
+    });
+    
+    newInput.addEventListener('input', (e) => {
+        renderTeamOptions(newInput, newDropdown, sortedTeams, e.target.value);
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.searchable-select-container')) {
+            newDropdown.style.display = 'none';
+        }
+    });
+}
+
+function renderTeamOptions(input, dropdown, teams, filterText) {
+    const filter = filterText.toLowerCase().trim();
+    const filtered = teams.filter(team => 
+        team.toLowerCase().includes(filter)
+    );
+    
+    dropdown.innerHTML = '';
+    
+    if (filtered.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    filtered.forEach(team => {
+        const div = document.createElement('div');
+        div.className = 'dropdown-option';
+        div.textContent = team;
+        div.addEventListener('click', () => {
+            input.value = team;
+            dropdown.style.display = 'none';
+            // Store selected team globally
+            window.__nmh_selected_team = team;
+            // Calculate and display rankings - Last AGE is now the default
+            calculateAndRenderRankingsLastAge(team);
+        });
+        dropdown.appendChild(div);
+    });
+    
+    dropdown.style.display = 'block';
+}
+
+// Setup ranking sub tabs
+function setupRankingSubTabs() {
+    const btnLastSeason = document.getElementById('nmh-subtab-last-season-btn');
+    const btnLastAge = document.getElementById('nmh-subtab-last-age-btn');
+    const contentLastSeason = document.getElementById('nmh-subtab-last-season-content');
+    const contentLastAge = document.getElementById('nmh-subtab-last-age-content');
+    
+    if (!btnLastSeason || !btnLastAge || !contentLastSeason || !contentLastAge) return;
+    
+    const activate = (type) => {
+        // Reset all buttons
+        [btnLastSeason, btnLastAge].forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = '#f1f3f5';
+            btn.style.color = '#495057';
+        });
+        
+        // Hide all contents
+        [contentLastSeason, contentLastAge].forEach(content => {
+            content.style.display = 'none';
+        });
+        
+        if (type === 'last-age') {
+            btnLastAge.classList.add('active');
+            btnLastAge.style.background = '#007bff';
+            btnLastAge.style.color = '#fff';
+            contentLastAge.style.display = 'block';
+            // Recalculate if team is selected
+            if (window.__nmh_selected_team) {
+                calculateAndRenderRankingsLastAge(window.__nmh_selected_team);
+            }
+        } else if (type === 'last-season') {
+            btnLastSeason.classList.add('active');
+            btnLastSeason.style.background = '#007bff';
+            btnLastSeason.style.color = '#fff';
+            contentLastSeason.style.display = 'block';
+            // Recalculate if team is selected
+            if (window.__nmh_selected_team) {
+                calculateAndRenderRankingsLastSeason(window.__nmh_selected_team);
+            }
+        }
+    };
+    
+    btnLastAge.addEventListener('click', () => activate('last-age'));
+    btnLastSeason.addEventListener('click', () => activate('last-season'));
+}
+
+// Calculate team rankings - Last Season (last position in last season for each GAME+AGE)
+function calculateAndRenderRankingsLastSeason(teamName) {
+    // Use filtered records only if Apply Filter was clicked
+    const records = window.nationalMenHalls?.filtersApplied ? 
+        (window.nationalMenHalls.applyCurrentFilters ? window.nationalMenHalls.applyCurrentFilters() : window.__nmh_records || []) :
+        (window.__nmh_records || []);
+    const teamNameLower = String(teamName).toLowerCase().trim();
+    
+    const teamMatches = records.filter(r => {
+        const teamA = String(r['TeamA'] || '').toLowerCase().trim();
+        const teamB = String(r['TeamB'] || '').toLowerCase().trim();
+        return teamA === teamNameLower || teamB === teamNameLower;
+    });
+    
+    if (teamMatches.length === 0) {
+        showRankingMessage('No matches found for this team');
+        return;
+    }
+    
+    // Group matches by (GAME, AGE)
+    const groupedByGameAge = {};
+    teamMatches.forEach(match => {
+        const game = String(match['GAME'] || '').trim();
+        const age = String(match['AGE'] || '').trim();
+        if (!game && !age) return;
+        const key = `${game}|${age}`;
+        if (!groupedByGameAge[key]) groupedByGameAge[key] = [];
+        groupedByGameAge[key].push(match);
+    });
+    
+    const rankings = [];
+
+    const getRoundPriority = (round) => {
+        const roundLower = String(round).toLowerCase().trim();
+        if (roundLower === 'final' || roundLower.includes('final')) return 1;
+        const num = parseInt(round);
+        if (!isNaN(num) && num >= 1 && num <= 7) return num + 1;
+        return 999;
+    };
+
+    Object.keys(groupedByGameAge).forEach(key => {
+        const matches = groupedByGameAge[key];
+        const [game, competition] = key.split('|');
+        
+        // Find the last match to get context like season and result
+        const sortedMatches = matches.slice().sort((a, b) => {
+            const seasonA = String(a['Season'] || '');
+            const seasonB = String(b['Season'] || '');
+            if (seasonA !== seasonB) return seasonB.localeCompare(seasonA);
+            
+            const dateA = new Date(String(a['Date'] || ''));
+            const dateB = new Date(String(b['Date'] || ''));
+            if (!isNaN(dateA) && !isNaN(dateB)) return dateB - dateA;
+            return 0;
+        });
+        
+        if (sortedMatches.length === 0) return;
+        const lastMatch = sortedMatches[0];
+        
+        const lastSeason = String(lastMatch['Season'] || '');
+        const gameFull = String(lastMatch['GAME'] || game || '');
+        
+        const position = String(lastMatch['Round'] || '');
+
+        // Always add a row
+        let result = '-';
+        const teamA = String(lastMatch['TeamA'] || '').toLowerCase().trim();
+        const teamB = String(lastMatch['TeamB'] || '').toLowerCase().trim();
+        const scoreA = parseInt(lastMatch['TeamAScore'] || '0', 10);
+        const scoreB = parseInt(lastMatch['TeamBScore'] || '0', 10);
+        
+        if (teamA === teamNameLower) {
+            if (scoreA > scoreB) result = 'W'; else if (scoreA < scoreB) result = 'L'; else result = 'D';
+        } else if (teamB === teamNameLower) {
+            if (scoreB > scoreA) result = 'W'; else if (scoreB < scoreA) result = 'L'; else result = 'D';
+        }
+        
+        rankings.push({
+            game: gameFull,
+            age: competition,
+            position: position,
+            season: lastSeason,
+            result: result
+        });
+     });
+     
+     rankings.sort((a, b) => {
+         if (a.game !== b.game) return a.game.localeCompare(b.game);
+         if (a.age !== b.age) return a.age.localeCompare(b.age);
+         return getRoundPriority(a.position) - getRoundPriority(b.position);
+     });
+     
+     renderRankingTableLastSeason(rankings);
+ }
+ 
+// Calculate team rankings - Last AGE (last position in last AGE for each GAME+Season)
+function calculateAndRenderRankingsLastAge(teamName) {
+    // Use filtered records only if Apply Filter was clicked
+    const records = window.nationalMenHalls?.filtersApplied ? 
+        (window.nationalMenHalls.applyCurrentFilters ? window.nationalMenHalls.applyCurrentFilters() : window.__nmh_records || []) :
+        (window.__nmh_records || []);
+    const teamNameLower = String(teamName).toLowerCase().trim();
+    
+    const teamMatches = records.filter(r => {
+        const teamA = String(r['TeamA'] || '').toLowerCase().trim();
+        const teamB = String(r['TeamB'] || '').toLowerCase().trim();
+        return teamA === teamNameLower || teamB === teamNameLower;
+    });
+    
+    if (teamMatches.length === 0) {
+        showRankingMessageLastAge('No matches found for this team');
+        return;
+    }
+    
+    // Group matches by (GAME, Season)
+    const groupedByGameSeason = {};
+    teamMatches.forEach(match => {
+        const game = String(match['GAME'] || '').trim();
+        const season = String(match['Season'] || '').trim();
+        if (!game && !season) return;
+        const key = `${game}|${season}`;
+        if (!groupedByGameSeason[key]) groupedByGameSeason[key] = [];
+        groupedByGameSeason[key].push(match);
+    });
+    
+    const rankings = [];
+
+    const getRoundPriority = (round) => {
+        const roundLower = String(round).toLowerCase().trim();
+        if (roundLower === 'final' || roundLower.includes('final')) return 1;
+        const num = parseInt(round);
+        if (!isNaN(num) && num >= 1 && num <= 7) return num + 1;
+        return 999;
+    };
+
+    Object.keys(groupedByGameSeason).forEach(key => {
+        const matches = groupedByGameSeason[key];
+        const [game, season] = key.split('|');
+        
+        // Find the last match to get context like AGE and result
+        const sortedMatches = matches.slice().sort((a, b) => {
+            const ageA = String(a['AGE'] || '').trim();
+            const ageB = String(b['AGE'] || '').trim();
+            if (ageA !== ageB) return ageB.localeCompare(ageA);
+            
+            const dateA = new Date(String(a['Date'] || ''));
+            const dateB = new Date(String(b['Date'] || ''));
+            if (!isNaN(dateA) && !isNaN(dateB)) return dateB - dateA;
+            return 0;
+        });
+        
+        if (sortedMatches.length === 0) return;
+        const lastMatch = sortedMatches[0];
+        
+        const gameFull = String(lastMatch['GAME'] || game || '');
+        const age = String(lastMatch['AGE'] || '').trim();
+        const position = String(lastMatch['Round'] || '');
+
+        // Always add a row
+        let result = '-';
+        const teamA = String(lastMatch['TeamA'] || '').toLowerCase().trim();
+        const teamB = String(lastMatch['TeamB'] || '').toLowerCase().trim();
+        const scoreA = parseInt(lastMatch['TeamAScore'] || '0', 10);
+        const scoreB = parseInt(lastMatch['TeamBScore'] || '0', 10);
+        
+        if (teamA === teamNameLower) {
+            if (scoreA > scoreB) result = 'W'; else if (scoreA < scoreB) result = 'L'; else result = 'D';
+        } else if (teamB === teamNameLower) {
+            if (scoreB > scoreA) result = 'W'; else if (scoreB < scoreA) result = 'L'; else result = 'D';
+        }
+        
+        rankings.push({
+            game: gameFull,
+            age: age,
+            position: position,
+            season: season,
+            result: result
+        });
+     });
+     
+     rankings.sort((a, b) => {
+         if (a.game !== b.game) return a.game.localeCompare(b.game);
+         if (a.age !== b.age) return a.age.localeCompare(b.age);
+         if (a.season !== b.season) return b.season.localeCompare(a.season);
+         return getRoundPriority(a.position) - getRoundPriority(b.position);
+     });
+     
+     renderRankingTableLastAge(rankings);
+ }
+
+function renderRankingTableLastSeason(rankings) {
+    const tbody = document.getElementById('nmh-ranking-tbody');
+    const resultsDiv = document.getElementById('nmh-ranking-results');
+    const noTeamDiv = document.getElementById('nmh-ranking-no-team');
+    const searchInput = document.getElementById('nmh-ranking-search');
+    
+    if (!tbody || !resultsDiv || !noTeamDiv) return;
+    
+    if (rankings.length === 0) {
+        resultsDiv.style.display = 'none';
+        noTeamDiv.style.display = 'block';
+        if (searchInput) searchInput.style.display = 'none';
+        return;
+    }
+    
+    noTeamDiv.style.display = 'none';
+    resultsDiv.style.display = 'block';
+    if (searchInput) searchInput.style.display = 'block';
+    
+    // Store rankings globally for filtering
+    window.__nmh_last_season_rankings = rankings;
+    
+    // Format position for display
+    const formatPosition = (pos) => {
+        if (pos.toLowerCase() === 'final') return 'Final';
+        return pos;
+    };
+    
+    // Format result for display
+    const formatResult = (result) => {
+        const resultUpper = String(result || '').toUpperCase();
+        if (resultUpper === 'W') return '<span style="color: #28a745; font-weight: 700;">W</span>';
+        if (resultUpper === 'D') return '<span style="color: #ffc107; font-weight: 700;">D</span>';
+        if (resultUpper === 'L') return '<span style="color: #dc3545; font-weight: 700;">L</span>';
+        return '<span style="color: #6c757d;">-</span>';
+    };
+    
+    // Render function
+    const renderRows = (data) => {
+        tbody.innerHTML = data.map(r => {
+            return `
+                <tr>
+                    <td>${escapeHtml(r.game || '')}</td>
+                    <td>${escapeHtml(r.age || '')}</td>
+                    <td style="font-weight: 600; color: #007bff;">${formatPosition(r.position)}</td>
+                    <td style="text-align: center;">${formatResult(r.result)}</td>
+                    <td>${escapeHtml(r.season || '')}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        // Show message if no results
+        if (data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: #666;">
+                        No results found matching your search
+                    </td>
+                </tr>
+            `;
+        }
+    };
+    
+    // Initial render
+    renderRows(rankings);
+    
+    // Setup search functionality
+    if (searchInput) {
+        // Remove previous listeners
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+        
+        newSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            const sourceRankings = window.__nmh_last_season_rankings;
+            
+            if (!sourceRankings) return;
+            
+            if (!searchTerm) {
+                renderRows(sourceRankings);
+                return;
+            }
+            
+            const filtered = sourceRankings.filter(r => {
+                const game = String(r.game || '').toLowerCase();
+                const age = String(r.age || '').toLowerCase();
+                const position = String(r.position || '').toLowerCase();
+                const result = String(r.result || '').toLowerCase();
+                const season = String(r.season || '').toLowerCase();
+                
+                return game.includes(searchTerm) ||
+                       age.includes(searchTerm) ||
+                       position.includes(searchTerm) ||
+                       result.includes(searchTerm) ||
+                       season.includes(searchTerm);
+            });
+            
+            renderRows(filtered);
+        });
+    }
+}
+
+function renderRankingTableLastAge(rankings) {
+    const tbody = document.getElementById('nmh-last-age-tbody');
+    const resultsDiv = document.getElementById('nmh-last-age-results');
+    const noTeamDiv = document.getElementById('nmh-last-age-no-team');
+    const searchInput = document.getElementById('nmh-last-age-search');
+    
+    if (!tbody || !resultsDiv || !noTeamDiv) return;
+    
+    if (rankings.length === 0) {
+        resultsDiv.style.display = 'none';
+        noTeamDiv.style.display = 'block';
+        if (searchInput) searchInput.style.display = 'none';
+        return;
+    }
+    
+    noTeamDiv.style.display = 'none';
+    resultsDiv.style.display = 'block';
+    if (searchInput) searchInput.style.display = 'block';
+    
+    // Store rankings globally for filtering
+    window.__nmh_last_age_rankings = rankings;
+    
+    // Format position for display
+    const formatPosition = (pos) => {
+        if (pos.toLowerCase() === 'final') return 'Final';
+        return pos;
+    };
+    
+    // Format result for display
+    const formatResult = (result) => {
+        const resultUpper = String(result || '').toUpperCase();
+        if (resultUpper === 'W') return '<span style="color: #28a745; font-weight: 700;">W</span>';
+        if (resultUpper === 'D') return '<span style="color: #ffc107; font-weight: 700;">D</span>';
+        if (resultUpper === 'L') return '<span style="color: #dc3545; font-weight: 700;">L</span>';
+        return '<span style="color: #6c757d;">-</span>';
+    };
+    
+    // Render function
+    const renderRows = (data) => {
+        tbody.innerHTML = data.map(r => {
+            return `
+                <tr>
+                    <td>${escapeHtml(r.game || '')}</td>
+                    <td>${escapeHtml(r.age || '')}</td>
+                    <td style="font-weight: 600; color: #007bff;">${formatPosition(r.position)}</td>
+                    <td style="text-align: center;">${formatResult(r.result)}</td>
+                    <td>${escapeHtml(r.season || '')}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        // Show message if no results
+        if (data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: #666;">
+                        No results found matching your search
+                    </td>
+                </tr>
+            `;
+        }
+    };
+    
+    // Initial render
+    renderRows(rankings);
+    
+    // Setup search functionality
+    if (searchInput) {
+        // Remove previous listeners
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+        
+        newSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            const sourceRankings = window.__nmh_last_age_rankings;
+            
+            if (!sourceRankings) return;
+            
+            if (!searchTerm) {
+                renderRows(sourceRankings);
+                return;
+            }
+            
+            const filtered = sourceRankings.filter(r => {
+                const game = String(r.game || '').toLowerCase();
+                const age = String(r.age || '').toLowerCase();
+                const position = String(r.position || '').toLowerCase();
+                const result = String(r.result || '').toLowerCase();
+                const season = String(r.season || '').toLowerCase();
+                
+                return game.includes(searchTerm) ||
+                       age.includes(searchTerm) ||
+                       position.includes(searchTerm) ||
+                       result.includes(searchTerm) ||
+                       season.includes(searchTerm);
+            });
+            
+            renderRows(filtered);
+        });
+    }
+}
+
+function showRankingMessageLastAge(message) {
+    const resultsDiv = document.getElementById('nmh-last-age-results');
+    const noTeamDiv = document.getElementById('nmh-last-age-no-team');
+    
+    if (resultsDiv) resultsDiv.style.display = 'none';
+    if (noTeamDiv) {
+        noTeamDiv.innerHTML = `
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem; opacity: 0.5;">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <p style="font-size: 1.1rem; margin-top: 1rem;">${message}</p>
+        `;
+        noTeamDiv.style.display = 'block';
+    }
+}
+
+function showRankingMessage(message) {
+    const resultsDiv = document.getElementById('nmh-ranking-results');
+    const noTeamDiv = document.getElementById('nmh-ranking-no-team');
+    
+    if (resultsDiv) resultsDiv.style.display = 'none';
+    if (noTeamDiv) {
+        noTeamDiv.innerHTML = `
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem; opacity: 0.5;">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <p style="font-size: 1.1rem; margin-top: 1rem;">${message}</p>
+        `;
+        noTeamDiv.style.display = 'block';
+    }
+}
+
+function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 // Build unique options and attach datalists to filter inputs
 function populateFilterOptions(records) {
