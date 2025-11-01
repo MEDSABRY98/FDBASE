@@ -309,6 +309,140 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
     return result;
 }
 
+function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, playedMatches) {
+    // This function returns both played matches and non-participated matches in the date range
+    if (!playedMatches || playedMatches.length === 0) {
+        return { played: [], nonPlayed: [] };
+    }
+    
+    // Date parsing function (same as in renderPlayerMatchesTable)
+    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    function parseSheetDate(s) {
+        const str = String(s || '').trim();
+        // Try native parse first
+        const d1 = Date.parse(str);
+        if (!isNaN(d1)) return d1;
+        // Try dd-MMM-yyyy (e.g., 29-May-1976)
+        const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const mon = monthMap[m[2].slice(0,3)];
+            const yr = parseInt(m[3], 10);
+            if (mon != null) {
+                return new Date(yr, mon, day).getTime();
+            }
+        }
+        // Excel serial number
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') {
+            return new Date((num - 25569) * 86400 * 1000).getTime();
+        }
+        return 0;
+    }
+    
+    // Get all match dates from played matches
+    const playedDates = playedMatches.map(m => parseSheetDate(m.date)).filter(d => d > 0);
+    if (playedDates.length === 0) {
+        return { played: playedMatches, nonPlayed: [] };
+    }
+    
+    // Find first and last match dates
+    const firstMatchDate = Math.min(...playedDates);
+    const lastMatchDate = Math.max(...playedDates);
+    
+    console.log(`Player ${playerName} date range: ${new Date(firstMatchDate).toISOString()} to ${new Date(lastMatchDate).toISOString()}`);
+    
+    // Get all team matches
+    const allMatches = getSheetRowsByCandidates(['MATCHDETAILS']);
+    const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
+    const nameLower = playerName.toLowerCase();
+    
+    // Apply filters to all matches
+    const filteredMatches = allMatches.filter(match => {
+        return Object.keys(appliedFilters).every(key => {
+            const filterValue = appliedFilters[key];
+            if (!filterValue) return true;
+            
+            const recordKeyMap = {
+                'matchId': 'MATCH_ID',
+                'championSystem': 'CHAMPION SYSTEM',
+                'champion': 'CHAMPION',
+                'season': 'SEASON',
+                'sy': 'SY',
+                'ahlyManager': 'AHLY MANAGER',
+                'opponentManager': 'OPPONENT MANAGER',
+                'referee': 'REFREE',
+                'round': 'ROUND',
+                'hAN': 'H-A-N',
+                'stadium': 'STAD',
+                'ahlyTeam': 'AHLY TEAM',
+                'opponentTeam': 'OPPONENT TEAM',
+                'result': 'W-D-L'
+            };
+            
+            const recordKey = recordKeyMap[key];
+            if (!recordKey) return true;
+            
+            const recordValue = match[recordKey] || '';
+            
+            // Special handling for date filters
+            if (key === 'dateFrom') {
+                const matchDate = parseSheetDate(match['DATE']);
+                return matchDate >= parseSheetDate(filterValue);
+            } else if (key === 'dateTo') {
+                const matchDate = parseSheetDate(match['DATE']);
+                return matchDate <= parseSheetDate(filterValue);
+            } else if (key === 'goalsFor') {
+                return parseInt(match['GF'] || 0) >= parseInt(filterValue);
+            } else if (key === 'goalsAgainst') {
+                return parseInt(match['GA'] || 0) <= parseInt(filterValue);
+            } else {
+                return normalizeStr(recordValue).toLowerCase().includes(normalizeStr(filterValue).toLowerCase());
+            }
+        });
+    });
+    
+    // Get all match IDs where player participated
+    const playerMatchIds = new Set();
+    lineup.forEach(l => {
+        const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
+        if (p === nameLower) {
+            const matchId = normalizeStr(l.MATCH_ID);
+            if (matchId) playerMatchIds.add(matchId);
+        }
+    });
+    
+    // Find non-participated matches in the date range
+    const nonPlayedMatches = [];
+    filteredMatches.forEach(match => {
+        const matchDate = parseSheetDate(match.DATE);
+        // Check if match is in the date range
+        if (matchDate >= firstMatchDate && matchDate <= lastMatchDate) {
+            const matchId = normalizeStr(match.MATCH_ID);
+            // Check if player didn't participate
+            if (!playerMatchIds.has(matchId)) {
+                nonPlayedMatches.push({
+                    date: normalizeStr(match.DATE),
+                    season: normalizeStr(match.SEASON),
+                    manager: normalizeStr(match['AHLY MANAGER']),
+                    opponent: normalizeStr(match['OPPONENT TEAM']),
+                    goals: 0,
+                    assists: 0,
+                    minutes: 0,
+                    nonPlayed: true // Flag to indicate non-participation
+                });
+            }
+        }
+    });
+    
+    console.log(`Found ${nonPlayedMatches.length} non-participated matches in date range`);
+    
+    return {
+        played: playedMatches,
+        nonPlayed: nonPlayedMatches
+    };
+}
+
 function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters = {}) {
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
@@ -1007,6 +1141,12 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
 let playersData = {
     players: [],
     selectedPlayer: null
+};
+
+// Global variable to store player matches data for filtering
+let playerMatchesData = {
+    played: [],
+    nonPlayed: []
 };
 
 // Global variables for goalkeepers data
@@ -4848,9 +4988,31 @@ async function loadPlayerOverviewStats(playerName) {
     });
     const totalMatches = lineupRows.length;
     let totalMinutes = 0;
+    let starterMatches = 0;
+    let substituteMatches = 0;
+    
+    // Count unique matches by status (STATUS column in LINEUPDETAILS)
+    const starterMatchIds = new Set();
+    const substituteMatchIds = new Set();
+    
     lineupRows.forEach(l => {
         totalMinutes += safeInt(l.MINTOTAL || l['MIN TOTAL'] || l.MINUTES || 0);
+        
+        // Get STATUS from LINEUPDETAILS (can be "اساسي" or "احتياطي")
+        const status = normalizeStr(l.STATUS || l.STATU || '').toLowerCase();
+        const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || '');
+        
+        if (matchId) {
+            if (status === 'اساسي' || status === 'starter') {
+                starterMatchIds.add(matchId);
+            } else if (status === 'احتياطي' || status === 'substitute' || status === 'sub') {
+                substituteMatchIds.add(matchId);
+            }
+        }
     });
+    
+    starterMatches = starterMatchIds.size;
+    substituteMatches = substituteMatchIds.size;
 
     // Totals from per-match
     let totalGoals = 0, totalAssists = 0;
@@ -5002,6 +5164,8 @@ async function loadPlayerOverviewStats(playerName) {
     updatePlayerOverviewCards({
         total_matches: totalMatches,
         total_minutes: totalMinutes,
+        starter_matches: starterMatches,
+        substitute_matches: substituteMatches,
         matches_with_goals: matchesWithGoals,
         matches_without_goals: matchesWithoutGoals,
         consecutive_ga: maxGAStreak,
@@ -5075,6 +5239,18 @@ function updatePlayerOverviewCards(stats) {
         }
     }
     
+    // Update starter and substitute matches counts
+    const starterMatchesEl = document.getElementById('player-starter-matches');
+    const substituteMatchesEl = document.getElementById('player-substitute-matches');
+    
+    if (starterMatchesEl) {
+        starterMatchesEl.textContent = stats.starter_matches || 0;
+    }
+    
+    if (substituteMatchesEl) {
+        substituteMatchesEl.textContent = stats.substitute_matches || 0;
+    }
+    
     // Update period details for consecutive streaks
     const consecutiveGAPeriod = document.getElementById('player-consecutive-ga-period');
     if (consecutiveGAPeriod) {
@@ -5143,6 +5319,8 @@ function loadPlayerOverview() {
     updatePlayerOverviewCards({
         total_matches: 0,
         total_minutes: 0,
+        starter_matches: 0,
+        substitute_matches: 0,
         matches_with_goals: 0,
         matches_without_goals: 0,
         consecutive_ga: 0,
@@ -5189,10 +5367,25 @@ function loadPlayerMatchesWithFilter(selectedTeams) {
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for player matches:', appliedFilters);
     
-    const rows = getPlayerMatchesFromSheets(playerName, selectedTeams, appliedFilters);
-    console.log('Player matches rows:', rows.length);
-    console.log('Player matches data:', rows);
-    renderPlayerMatchesTable(rows);
+    if (window.__ahlySheetsJson) {
+        const rows = getPlayerMatchesFromSheets(playerName, selectedTeams, appliedFilters);
+        console.log('Player matches rows:', rows.length);
+        console.log('Player matches data:', rows);
+        
+        // Get all team matches in the date range and find non-participated matches
+        const allMatchesWithNonPlayed = getPlayerMatchesWithNonPlayed(playerName, selectedTeams, appliedFilters, rows);
+        // Store matches data globally for filtering
+        playerMatchesData.played = allMatchesWithNonPlayed.played || [];
+        playerMatchesData.nonPlayed = allMatchesWithNonPlayed.nonPlayed || [];
+        // Update match counts
+        updatePlayerMatchesCounts();
+        renderPlayerMatchesTable(allMatchesWithNonPlayed.played, allMatchesWithNonPlayed.nonPlayed);
+    } else {
+        playerMatchesData.played = [];
+        playerMatchesData.nonPlayed = [];
+        updatePlayerMatchesCounts();
+        renderPlayerMatchesTable([], []);
+    }
 }
 
 function loadPlayerMatches() {
@@ -5219,36 +5412,100 @@ function loadPlayerMatches() {
     if (window.__ahlySheetsJson) {
         rows = getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters);
         console.log('Excel data - player matches rows:', rows.length);
+        
+        // Get all team matches in the date range and find non-participated matches
+        const allMatchesWithNonPlayed = getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, rows);
+        // Store matches data globally for filtering
+        playerMatchesData.played = allMatchesWithNonPlayed.played || [];
+        playerMatchesData.nonPlayed = allMatchesWithNonPlayed.nonPlayed || [];
+        // Update match counts
+        updatePlayerMatchesCounts();
+        renderPlayerMatchesTable(allMatchesWithNonPlayed.played, allMatchesWithNonPlayed.nonPlayed);
     } else {
         console.log('No Excel data, using API fallback');
         // Fallback to API call if Excel data not available
         fetch(`/api/player-matches/${encodeURIComponent(playerName)}${teamFilter ? `?team=${encodeURIComponent(teamFilter)}` : ''}`)
             .then(response => response.json())
             .then(data => {
+                playerMatchesData.played = data.matches || [];
+                playerMatchesData.nonPlayed = [];
+                // Update match counts
+                updatePlayerMatchesCounts();
                 if (data.matches) {
-                    renderPlayerMatchesTable(data.matches);
+                    renderPlayerMatchesTable(data.matches, []);
                 } else {
-                    renderPlayerMatchesTable([]);
+                    renderPlayerMatchesTable([], []);
                 }
             })
             .catch(error => {
                 console.error('Error loading player matches:', error);
-                renderPlayerMatchesTable([]);
+                playerMatchesData.played = [];
+                playerMatchesData.nonPlayed = [];
+                // Update match counts
+                updatePlayerMatchesCounts();
+                renderPlayerMatchesTable([], []);
             });
         return;
     }
-    
-    renderPlayerMatchesTable(rows);
 }
 
-function renderPlayerMatchesTable(matches) {
+// Function to update player matches counts display
+function updatePlayerMatchesCounts() {
+    const playedCountEl = document.getElementById('played-matches-count');
+    const nonPlayedCountEl = document.getElementById('non-played-matches-count');
+    
+    if (playedCountEl) {
+        playedCountEl.textContent = playerMatchesData.played.length || 0;
+    }
+    
+    if (nonPlayedCountEl) {
+        nonPlayedCountEl.textContent = playerMatchesData.nonPlayed.length || 0;
+    }
+}
+
+// Function to filter player matches based on dropdown selection
+function filterPlayerMatches() {
+    const filterSelect = document.getElementById('player-matches-filter');
+    if (!filterSelect) return;
+    
+    const filterType = filterSelect.value || 'all';
+    console.log('Filtering player matches:', filterType);
+    
+    // Use stored matches data to re-render with filter
+    renderPlayerMatchesTable(playerMatchesData.played, playerMatchesData.nonPlayed, filterType);
+}
+
+function renderPlayerMatchesTable(playedMatches, nonPlayedMatches = [], filterType = 'all') {
     const tbody = document.querySelector('#player-matches-table tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (!matches || matches.length === 0) {
+    
+    // Get filter type from dropdown if not provided
+    if (filterType === 'all' || filterType === undefined || filterType === null) {
+        const filterSelect = document.getElementById('player-matches-filter');
+        if (filterSelect) {
+            filterType = filterSelect.value || 'all';
+        } else {
+            filterType = 'all';
+        }
+    }
+    
+    // Filter matches based on selection
+    let matchesToDisplay = [];
+    if (filterType === 'played') {
+        matchesToDisplay = [...(playedMatches || [])];
+    } else if (filterType === 'non-played') {
+        matchesToDisplay = [...(nonPlayedMatches || [])];
+    } else {
+        // 'all' - combine both arrays
+        matchesToDisplay = [...(playedMatches || []), ...(nonPlayedMatches || [])];
+    }
+    
+    if (matchesToDisplay.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7">No matches data available</td></tr>';
         return;
     }
+    
     // Sort by date (newest first) while displaying the sheet value (string) or a formatted Excel serial
     const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
     function parseSheetDate(s) {
@@ -5288,8 +5545,8 @@ function renderPlayerMatchesTable(matches) {
         return String(s || '').trim() || 'N/A';
     }
 
-    // Show all matches where the player participated (from LINEUPDETAILS)
-    const sorted = [...(matches || [])].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
+    // Sort all matches by date (newest first)
+    const sorted = [...matchesToDisplay].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
 
     sorted.forEach(m => {
         const date = formatSheetDateDisplay(m.date);
@@ -5298,22 +5555,35 @@ function renderPlayerMatchesTable(matches) {
         const opponent = m.opponent || 'N/A';
         const goals = typeof m.goals === 'number' ? m.goals : (m.ga === 'GOAL' ? 1 : 0);
         const assists = typeof m.assists === 'number' ? m.assists : (m.ga === 'ASSIST' ? 1 : 0);
-        // minutes column removed
         
-        // Add highlighting for values > 0
-        const goalsClass = goals > 0 ? 'highlight-value' : '';
-        const assistsClass = assists > 0 ? 'highlight-value' : '';
+        // Check if this is a non-participated match
+        const isNonPlayed = m.nonPlayed === true;
         
+        // Add highlighting for values > 0 (only for played matches)
+        const goalsClass = (!isNonPlayed && goals > 0) ? 'highlight-value' : '';
+        const assistsClass = (!isNonPlayed && assists > 0) ? 'highlight-value' : '';
+        
+        // Style for non-participated matches
+        const rowClass = isNonPlayed ? 'non-played-match' : '';
+        const rowStyle = isNonPlayed ? 'background-color: #f5f5f5; opacity: 0.7; color: #999;' : '';
         
         const tr = document.createElement('tr');
+        if (rowClass) tr.className = rowClass;
+        if (rowStyle) tr.style.cssText = rowStyle;
+        
+        // Add visual indicator for non-played matches (dash or special text)
+        const minutesDisplay = isNonPlayed ? '-' : (m.minutes || 0);
+        const goalsDisplay = isNonPlayed ? '-' : goals;
+        const assistsDisplay = isNonPlayed ? '-' : assists;
+        
         tr.innerHTML = `
             <td>${date}</td>
             <td>${season}</td>
             <td>${manager}</td>
             <td>${opponent}</td>
-            <td>${m.minutes || 0}</td>
-            <td class="${goalsClass}">${goals}</td>
-            <td class="${assistsClass}">${assists}</td>
+            <td>${minutesDisplay}</td>
+            <td class="${goalsClass}">${goalsDisplay}</td>
+            <td class="${assistsClass}">${assistsDisplay}</td>
         `;
         tbody.appendChild(tr);
     });
