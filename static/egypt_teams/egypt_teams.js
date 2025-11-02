@@ -35,6 +35,18 @@ let egyptTeamsData = {
     goalkeepersData: []
 };
 
+// Virtual Scrolling state
+let virtualScrollState = {
+    allData: [],
+    currentViewData: [],
+    startIndex: 0,
+    endIndex: 25, // Render first 25 rows initially
+    bufferSize: 25, // Buffer rows above and below visible area
+    rowHeight: 50, // Estimated row height in pixels
+    tableContainer: null,
+    scrollHandler: null
+};
+
 // ============================================================================
 // MAIN DATA LOADING FUNCTION
 // ============================================================================
@@ -69,6 +81,7 @@ async function loadEgyptTeamsData(forceRefresh = false) {
         // Update UI
         updateOverviewStats();
         displayMatches();
+        setupDynamicTableSearch();
         
         // If force refresh and players data is loaded, refresh player details too
         if (forceRefresh && egyptTeamsData.playersLoaded) {
@@ -158,57 +171,239 @@ function updateOverviewStats() {
     document.getElementById('longest-loss-streak').textContent = egyptTeamsData.longestLossStreak;
 }
 
+// Helper function to render a single row
+function renderMatchRow(match) {
+    const matchId = match['MATCH_ID'] || '';
+    const date = match['DATE'] || '';
+    const managerEgy = match['MANAGER EGY'] || '';
+    const managerOpponent = match['MANAGER OPPONENT'] || '';
+    const season = match['SEASON'] || '';
+    const place = match['PLACE'] || '';
+    const egyptTeam = match['Egypt TEAM'] || '';
+    const gf = match['GF'] || 0;
+    const ga = match['GA'] || 0;
+    const opponent = match['OPPONENT TEAM'] || '';
+    const result = match['W-D-L'] || '';
+    
+    let resultBadge = '';
+    if (result === 'W') {
+        resultBadge = '<span class="badge badge-success">W</span>';
+    } else if (result === 'D' || result === 'D WITH G' || result === 'D.') {
+        resultBadge = '<span class="badge badge-warning">D</span>';
+    } else if (result === 'L') {
+        resultBadge = '<span class="badge badge-danger">L</span>';
+    }
+    
+    return `
+        <tr>
+            <td><strong>${escapeHtml(matchId)}</strong></td>
+            <td>${escapeHtml(date)}</td>
+            <td>${escapeHtml(managerEgy)}</td>
+            <td>${escapeHtml(managerOpponent)}</td>
+            <td>${escapeHtml(season)}</td>
+            <td>${escapeHtml(place)}</td>
+            <td>${escapeHtml(egyptTeam)}</td>
+            <td><strong>${gf}</strong></td>
+            <td><strong>${ga}</strong></td>
+            <td>${escapeHtml(opponent)}</td>
+            <td>${resultBadge}</td>
+        </tr>
+    `;
+}
+
+// Virtual scrolling render function
+function renderVisibleMatchRows() {
+    const tbody = document.getElementById('matches-tbody');
+    if (!tbody) return;
+    
+    const { allData, startIndex, endIndex } = virtualScrollState;
+    const visibleData = allData.slice(startIndex, endIndex);
+    
+    // Create spacer row for top
+    const topSpacer = `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="11"></td></tr>`;
+    // Render visible rows
+    const rowsHtml = visibleData.map(renderMatchRow).join('');
+    // Create spacer row for bottom
+    const bottomSpacer = `<tr style="height: ${Math.max(0, allData.length - endIndex) * virtualScrollState.rowHeight}px;"><td colspan="11"></td></tr>`;
+    
+    tbody.innerHTML = topSpacer + rowsHtml + bottomSpacer;
+}
+
 function displayMatches() {
     const tbody = document.getElementById('matches-tbody');
-    tbody.innerHTML = '';
+    if (!tbody) return;
     
     const matches = egyptTeamsData.filteredRecords.slice().reverse(); // Show latest first
     
     if (matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
+        // Remove scroll handlers if they exist
+        if (virtualScrollState.scrollHandler) {
+            const container = document.querySelector('.matches-table-container');
+            if (container) {
+                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+                virtualScrollState.scrollHandler = null;
+            }
+        }
         return;
     }
     
-    matches.forEach(match => {
-        const row = document.createElement('tr');
+    // For small datasets (< 1000 rows), render everything at once for better compatibility
+    if (matches.length <= 1000) {
+        const rowsHtml = matches.map(renderMatchRow).join('');
+        tbody.innerHTML = rowsHtml;
+        // Remove scroll handlers if they exist
+        if (virtualScrollState.scrollHandler) {
+            const container = document.querySelector('.matches-table-container');
+            if (container) {
+                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+                virtualScrollState.scrollHandler = null;
+            }
+        }
+        return;
+    }
+    
+    // For large datasets, use virtual scrolling
+    virtualScrollState.allData = matches;
+    virtualScrollState.currentViewData = matches;
+    
+    // Reset scroll state
+    virtualScrollState.startIndex = 0;
+    virtualScrollState.endIndex = Math.min(25, matches.length);
+    
+    // Reset scroll position
+    const container = document.querySelector('.matches-table-container');
+    if (container) {
+        container.scrollTop = 0;
+    }
+    
+    // Initial render
+    renderVisibleMatchRows();
+    
+    // Setup virtual scrolling
+    setupVirtualScrolling();
+}
+
+function setupVirtualScrolling() {
+    // Remove old scroll handler if exists
+    if (virtualScrollState.scrollHandler) {
+        const container = document.querySelector('.matches-table-container');
+        if (container) {
+            container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+        }
+    }
+    
+    // Create new scroll handler
+    virtualScrollState.scrollHandler = function handleScroll(e) {
+        const container = e.target;
+        if (!container) return;
         
-        const matchId = match['MATCH_ID'] || '';
-        const date = match['DATE'] || '';
-        const managerEgy = match['MANAGER EGY'] || '';
-        const managerOpponent = match['MANAGER OPPONENT'] || '';
-        const season = match['SEASON'] || '';
-        const place = match['PLACE'] || '';
-        const egyptTeam = match['Egypt TEAM'] || '';
-        const gf = match['GF'] || 0;
-        const ga = match['GA'] || 0;
-        const opponent = match['OPPONENT TEAM'] || '';
-        const result = match['W-D-L'] || '';
+        const scrollTop = container.scrollTop || 0;
+        const containerHeight = container.clientHeight || 0;
+        const { allData, rowHeight, bufferSize } = virtualScrollState;
         
-        let resultBadge = '';
-        if (result === 'W') {
-            resultBadge = '<span class="badge badge-success">W</span>';
-        } else if (result === 'D' || result === 'D WITH G' || result === 'D.') {
-            resultBadge = '<span class="badge badge-warning">D</span>';
-        } else if (result === 'L') {
-            resultBadge = '<span class="badge badge-danger">L</span>';
+        // Calculate which rows should be visible
+        const visibleStart = Math.floor(scrollTop / rowHeight);
+        const visibleEnd = Math.ceil((scrollTop + containerHeight) / rowHeight);
+        
+        // Add buffer
+        const bufferStart = Math.max(0, visibleStart - bufferSize);
+        const bufferEnd = Math.min(allData.length, visibleEnd + bufferSize);
+        
+        // Only re-render if the visible range has changed significantly
+        if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 || 
+            Math.abs(bufferEnd - virtualScrollState.endIndex) > 5) {
+            virtualScrollState.startIndex = bufferStart;
+            virtualScrollState.endIndex = bufferEnd;
+            renderVisibleMatchRows();
+        }
+    };
+    
+    // Attach scroll listener to the table container
+    const container = document.querySelector('.matches-table-container');
+    if (container) {
+        container.addEventListener('scroll', virtualScrollState.scrollHandler);
+    }
+}
+
+// Setup dynamic table search
+function setupDynamicTableSearch() {
+    const searchInput = document.getElementById('matches-search-input');
+    if (!searchInput) return;
+
+    // Remove previous listeners by cloning the input
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+
+    newSearchInput.addEventListener('keyup', () => {
+        const searchTerm = newSearchInput.value.toLowerCase().trim();
+        
+        // Get current filtered records (after apply filters button)
+        const currentMatches = egyptTeamsData.filteredRecords.slice().reverse();
+        
+        // If dataset is small, use regular filtering without virtual scroll
+        if (currentMatches.length <= 1000) {
+            if (!searchTerm) {
+                // No search term, restore full data
+                displayMatches();
+                return;
+            } else {
+                // Filter data based on search
+                const tbody = document.getElementById('matches-tbody');
+                if (!tbody) return;
+                
+                const filtered = currentMatches.filter((match) => {
+                    const cols = ['MATCH_ID', 'DATE', 'MANAGER EGY', 'MANAGER OPPONENT', 'SEASON', 'PLACE', 'Egypt TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-D-L'];
+                    const rowText = cols.map(c => String(match[c] || '')).join(' ').toLowerCase();
+                    return rowText.includes(searchTerm);
+                });
+                
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
+                } else {
+                    const rowsHtml = filtered.map(renderMatchRow).join('');
+                    tbody.innerHTML = rowsHtml;
+                }
+                return;
+            }
         }
         
-        row.innerHTML = `
-            <td><strong>${matchId}</strong></td>
-            <td>${date}</td>
-            <td>${managerEgy}</td>
-            <td>${managerOpponent}</td>
-            <td>${season}</td>
-            <td>${place}</td>
-            <td>${egyptTeam}</td>
-            <td><strong>${gf}</strong></td>
-            <td><strong>${ga}</strong></td>
-            <td>${opponent}</td>
-            <td>${resultBadge}</td>
-        `;
+        // For large datasets with virtual scrolling
+        if (!searchTerm) {
+            // No search term, restore full data
+            virtualScrollState.allData = currentMatches;
+            virtualScrollState.currentViewData = currentMatches;
+        } else {
+            // Filter data based on search from current filtered records
+            const filtered = currentMatches.filter((match) => {
+                const cols = ['MATCH_ID', 'DATE', 'MANAGER EGY', 'MANAGER OPPONENT', 'SEASON', 'PLACE', 'Egypt TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-D-L'];
+                const rowText = cols.map(c => String(match[c] || '')).join(' ').toLowerCase();
+                return rowText.includes(searchTerm);
+            });
+            virtualScrollState.allData = filtered;
+            // Keep currentViewData as the original (before search) for when user clears search
+            virtualScrollState.currentViewData = currentMatches;
+        }
         
-        tbody.appendChild(row);
+        // Reset scroll position
+        const container = document.querySelector('.matches-table-container');
+        if (container) {
+            container.scrollTop = 0;
+        }
+        
+        // Reset scroll and re-render
+        virtualScrollState.startIndex = 0;
+        virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
+        renderVisibleMatchRows();
     });
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (text == null) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // ============================================================================
@@ -382,6 +577,10 @@ function applyFilters() {
     calculateStatistics();
     updateOverviewStats();
     displayMatches();
+    
+    // Clear search input when filters are applied
+    const searchInput = document.getElementById('matches-search-input');
+    if (searchInput) searchInput.value = '';
     
     // Recalculate H2H stats
     loadH2HStats();
@@ -3800,5 +3999,9 @@ function showEgyptMatchSubTab(event, tabName) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Egypt Teams page loaded');
     loadEgyptTeamsData();
+    // Setup search after a short delay to ensure DOM is ready
+    setTimeout(() => {
+        setupDynamicTableSearch();
+    }, 500);
 });
 

@@ -217,6 +217,42 @@
         .matches-table tbody tr:hover {
             background: #f8f9fa;
         }
+        
+        /* Virtual Scrolling support */
+        .matches-table-container { 
+            max-height: 2000px; 
+            overflow-y: auto; 
+            overflow-x: auto; 
+            position: relative;
+        }
+        /* Sticky header - keep thead fixed during scroll */
+        .matches-table-container .matches-table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .matches-table-container .matches-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f8f9fa;
+        }
+        
+        /* Table search input */
+        .table-search-container {
+            margin-bottom: 1rem;
+        }
+        .table-search-input {
+            width: 100%;
+            max-width: 500px;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .table-search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
 
         .badge {
             padding: 0.25rem 0.5rem;
@@ -1218,8 +1254,11 @@
                     <div id="matches-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <h2 class="section-title">Match History</h2>
-                            <div style="overflow-x: auto;">
-                                <table class="matches-table">
+                            <div class="table-search-container">
+                                <input type="search" id="matches-search-input" class="table-search-input" placeholder="Search in matches table...">
+                            </div>
+                            <div class="matches-table-container">
+                                <table class="matches-table" id="egypt-teams-matches-table">
                                     <thead>
                                         <tr>
                                             <th>Match ID</th>

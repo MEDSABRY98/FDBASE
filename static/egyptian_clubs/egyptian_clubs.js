@@ -16,6 +16,18 @@ let egyptianClubsData = {
     }
 };
 
+// Virtual Scrolling state
+let virtualScrollState = {
+    allData: [],
+    currentViewData: [],
+    startIndex: 0,
+    endIndex: 25, // Render first 25 rows initially
+    bufferSize: 25, // Buffer rows above and below visible area
+    rowHeight: 50, // Estimated row height in pixels
+    tableContainer: null,
+    scrollHandler: null
+};
+
 /**
  * Load Egyptian Clubs data from Google Apps Script
  */
@@ -71,6 +83,9 @@ async function loadEgyptianClubsData() {
             
             // Add filter event listeners
             addFilterListeners();
+            
+            // Setup dynamic table search
+            setupDynamicTableSearch();
             
             showLoading(false);
         } else {
@@ -204,27 +219,9 @@ document.addEventListener('click', function(event) {
  * Add filter event listeners
  */
 function addFilterListeners() {
-    // Select filters
-    const selectFilters = [
-        'champion-system-filter', 'year-filter', 'champion-filter', 'season-filter',
-        'round-filter', 'place-filter', 'egypt-team-filter',
-        'opponent-team-filter', 'country-team-filter', 'result-filter',
-        'clean-sheet-filter', 'pen-filter'
-    ];
-    
-    selectFilters.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('change', applyFilters);
-        }
-    });
-    
-    // Date filters
-    document.getElementById('date-from-filter')?.addEventListener('change', applyFilters);
-    document.getElementById('date-to-filter')?.addEventListener('change', applyFilters);
-    
-    // Match ID filter
-    document.getElementById('match-id-filter')?.addEventListener('input', applyFilters);
+    // Filters will only be applied when user clicks "Apply Filters" button
+    // No automatic event listeners to prevent auto-filtering
+    // Users must click "Apply Filters" button to apply changes
 }
 
 /**
@@ -288,6 +285,10 @@ function applyFilters() {
     renderTable();
     calculateH2HStats();
     
+    // Clear search input when filters are applied
+    const searchInput = document.getElementById('matches-search-input');
+    if (searchInput) searchInput.value = '';
+    
     // Update Face to Face if teams are selected
     const hasF2FSelection = document.getElementById('f2f-egypt-team')?.value || 
                            document.getElementById('f2f-egypt-all')?.value || 
@@ -332,6 +333,10 @@ function clearAllFilters() {
     document.getElementById('date-from-filter').value = '';
     document.getElementById('date-to-filter').value = '';
     document.getElementById('table-search').value = '';
+    
+    // Clear table search input
+    const searchInput = document.getElementById('matches-search-input');
+    if (searchInput) searchInput.value = '';
     
     // Reset filtered records and sort
     egyptianClubsData.filteredRecords = [...egyptianClubsData.allRecords];
@@ -442,6 +447,43 @@ function calculateDoubleLosses(data) {
     return doubleLossesCount;
 }
 
+// Helper function to render a single row
+function renderTableRow(row, columns) {
+    return '<tr>' + columns.map(col => {
+        let value = row[col] !== null && row[col] !== undefined ? row[col] : '';
+        
+        // Format DATE column to show only date without time
+        if (col === 'DATE' && value) {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+                // Format as YYYY-MM-DD
+                value = date.toISOString().split('T')[0];
+            }
+        }
+        
+        return `<td>${escapeHtml(String(value))}</td>`;
+    }).join('') + '</tr>';
+}
+
+// Virtual scrolling render function
+function renderVisibleTableRows() {
+    const tbody = document.getElementById('table-body');
+    if (!tbody) return;
+    
+    const { allData, startIndex, endIndex } = virtualScrollState;
+    const visibleData = allData.slice(startIndex, endIndex);
+    const columns = ['DATE', 'SEASON', 'ROUND', 'H-A-N', 'EGYPT TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-L MATCH'];
+    
+    // Create spacer row for top
+    const topSpacer = `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="${columns.length}"></td></tr>`;
+    // Render visible rows
+    const rowsHtml = visibleData.map(row => renderTableRow(row, columns)).join('');
+    // Create spacer row for bottom
+    const bottomSpacer = `<tr style="height: ${Math.max(0, allData.length - endIndex) * virtualScrollState.rowHeight}px;"><td colspan="${columns.length}"></td></tr>`;
+    
+    tbody.innerHTML = topSpacer + rowsHtml + bottomSpacer;
+}
+
 /**
  * Render table with data
  */
@@ -450,8 +492,18 @@ function renderTable() {
     const thead = document.getElementById('table-headers');
     const tbody = document.getElementById('table-body');
     
+    if (!thead || !tbody) return;
+    
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="100%" class="no-data">No data available</td></tr>';
+        // Remove scroll handlers if they exist
+        if (virtualScrollState.scrollHandler) {
+            const container = document.querySelector('.matches-table-container');
+            if (container) {
+                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+                virtualScrollState.scrollHandler = null;
+            }
+        }
         return;
     }
     
@@ -473,23 +525,169 @@ function renderTable() {
         });
     }
     
-    // Generate rows
-    tbody.innerHTML = sortedData.map(row => {
-        return '<tr>' + columns.map(col => {
-            let value = row[col] !== null && row[col] !== undefined ? row[col] : '';
-            
-            // Format DATE column to show only date without time
-            if (col === 'DATE' && value) {
-                const date = new Date(value);
-                if (!isNaN(date.getTime())) {
-                    // Format as YYYY-MM-DD
-                    value = date.toISOString().split('T')[0];
-                }
+    // For small datasets (< 1000 rows), render everything at once for better compatibility
+    if (sortedData.length <= 1000) {
+        tbody.innerHTML = sortedData.map(row => renderTableRow(row, columns)).join('');
+        // Remove scroll handlers if they exist
+        if (virtualScrollState.scrollHandler) {
+            const container = document.querySelector('.matches-table-container');
+            if (container) {
+                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+                virtualScrollState.scrollHandler = null;
             }
-            
-            return `<td>${value}</td>`;
-        }).join('') + '</tr>';
-    }).join('');
+        }
+        return;
+    }
+    
+    // For large datasets, use virtual scrolling
+    virtualScrollState.allData = sortedData;
+    virtualScrollState.currentViewData = sortedData;
+    
+    // Reset scroll state
+    virtualScrollState.startIndex = 0;
+    virtualScrollState.endIndex = Math.min(25, sortedData.length);
+    
+    // Reset scroll position
+    const container = document.querySelector('.matches-table-container');
+    if (container) {
+        container.scrollTop = 0;
+    }
+    
+    // Initial render
+    renderVisibleTableRows();
+    
+    // Setup virtual scrolling
+    setupVirtualScrolling();
+}
+
+function setupVirtualScrolling() {
+    // Remove old scroll handler if exists
+    if (virtualScrollState.scrollHandler) {
+        const container = document.querySelector('.matches-table-container');
+        if (container) {
+            container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+        }
+    }
+    
+    // Create new scroll handler
+    virtualScrollState.scrollHandler = function handleScroll(e) {
+        const container = e.target;
+        if (!container) return;
+        
+        const scrollTop = container.scrollTop || 0;
+        const containerHeight = container.clientHeight || 0;
+        const { allData, rowHeight, bufferSize } = virtualScrollState;
+        
+        // Calculate which rows should be visible
+        const visibleStart = Math.floor(scrollTop / rowHeight);
+        const visibleEnd = Math.ceil((scrollTop + containerHeight) / rowHeight);
+        
+        // Add buffer
+        const bufferStart = Math.max(0, visibleStart - bufferSize);
+        const bufferEnd = Math.min(allData.length, visibleEnd + bufferSize);
+        
+        // Only re-render if the visible range has changed significantly
+        if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 || 
+            Math.abs(bufferEnd - virtualScrollState.endIndex) > 5) {
+            virtualScrollState.startIndex = bufferStart;
+            virtualScrollState.endIndex = bufferEnd;
+            renderVisibleTableRows();
+        }
+    };
+    
+    // Attach scroll listener to the table container
+    const container = document.querySelector('.matches-table-container');
+    if (container) {
+        container.addEventListener('scroll', virtualScrollState.scrollHandler);
+    }
+}
+
+// Setup dynamic table search
+function setupDynamicTableSearch() {
+    const searchInput = document.getElementById('matches-search-input');
+    if (!searchInput) return;
+
+    // Remove previous listeners by cloning the input
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+
+    newSearchInput.addEventListener('keyup', () => {
+        const searchTerm = newSearchInput.value.toLowerCase().trim();
+        
+        // Get current filtered records
+        const currentData = egyptianClubsData.filteredRecords;
+        const columns = ['DATE', 'SEASON', 'ROUND', 'H-A-N', 'EGYPT TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-L MATCH'];
+        
+        // Sort data by DATE (newest first) if no custom sort is applied
+        let sortedData = [...currentData];
+        if (!egyptianClubsData.currentSort.column) {
+            sortedData.sort((a, b) => {
+                const dateA = new Date(a['DATE'] || '');
+                const dateB = new Date(b['DATE'] || '');
+                return dateB - dateA;
+            });
+        }
+        
+        // If dataset is small, use regular filtering without virtual scroll
+        if (sortedData.length <= 1000) {
+            if (!searchTerm) {
+                // No search term, restore full data
+                renderTable();
+                return;
+            } else {
+                // Filter data based on search
+                const tbody = document.getElementById('table-body');
+                if (!tbody) return;
+                
+                const filtered = sortedData.filter((row) => {
+                    const rowText = columns.map(c => String(row[c] || '')).join(' ').toLowerCase();
+                    return rowText.includes(searchTerm);
+                });
+                
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="100%" class="no-data">No data available</td></tr>';
+                } else {
+                    tbody.innerHTML = filtered.map(row => renderTableRow(row, columns)).join('');
+                }
+                return;
+            }
+        }
+        
+        // For large datasets with virtual scrolling
+        if (!searchTerm) {
+            // No search term, restore full data
+            virtualScrollState.allData = sortedData;
+            virtualScrollState.currentViewData = sortedData;
+        } else {
+            // Filter data based on search from current filtered records
+            const filtered = sortedData.filter((row) => {
+                const rowText = columns.map(c => String(row[c] || '')).join(' ').toLowerCase();
+                return rowText.includes(searchTerm);
+            });
+            virtualScrollState.allData = filtered;
+            // Keep currentViewData as the original (before search) for when user clears search
+            virtualScrollState.currentViewData = sortedData;
+        }
+        
+        // Reset scroll position
+        const container = document.querySelector('.matches-table-container');
+        if (container) {
+            container.scrollTop = 0;
+        }
+        
+        // Reset scroll and re-render
+        virtualScrollState.startIndex = 0;
+        virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
+        renderVisibleTableRows();
+    });
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (text == null) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 /**
@@ -527,21 +725,18 @@ function sortTable(column) {
 }
 
 /**
- * Search in table
+ * Search in table (legacy function - kept for compatibility, but now uses setupDynamicTableSearch)
  */
 function searchMainTable(searchValue) {
-    const tbody = document.getElementById('table-body');
-    const rows = tbody.querySelectorAll('tr');
-    const searchTerm = searchValue.toLowerCase().trim();
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        if (text.includes(searchTerm)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
+    // This function is kept for backward compatibility
+    // The new search is handled by setupDynamicTableSearch
+    const searchInput = document.getElementById('matches-search-input');
+    if (searchInput) {
+        searchInput.value = searchValue;
+        // Trigger the keyup event to use the new search
+        const event = new Event('keyup');
+        searchInput.dispatchEvent(event);
+    }
 }
 
 /**

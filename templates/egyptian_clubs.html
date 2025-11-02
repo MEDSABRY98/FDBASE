@@ -461,6 +461,50 @@
             overflow-x: auto;
             margin-top: 2rem;
         }
+        
+        /* Virtual Scrolling support for matches table */
+        .matches-table-container { 
+            max-height: 2000px; 
+            overflow-y: auto; 
+            overflow-x: auto; 
+            position: relative;
+        }
+        /* Sticky header - keep thead fixed during scroll */
+        .matches-table-container table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .matches-table-container table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f8f9fa !important;
+            color: #333;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .matches-table-container table thead th:hover {
+            background: #e9ecef !important;
+        }
+        
+        /* Table search input */
+        .table-search-container {
+            margin-bottom: 1rem;
+        }
+        .table-search-input {
+            width: 100%;
+            max-width: 500px;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .table-search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
 
         table {
             width: 100%;
@@ -469,8 +513,8 @@
         }
 
         thead {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #f8f9fa;
+            color: #333;
         }
 
         th, td {
@@ -487,7 +531,7 @@
         }
 
         th:hover {
-            background: rgba(0, 0, 0, 0.1);
+            background: #e9ecef;
         }
 
         tbody tr:hover {
@@ -949,16 +993,15 @@
                 <!-- Matches Tab -->
                 <div id="matches-tab" class="stats-tab-content">
                     <!-- Search Box -->
-                    <div class="search-box">
-                    <input type="text" 
-                           class="search-input" 
-                           id="table-search"
-                           placeholder="Search in table..." 
-                           oninput="searchMainTable(this.value)">
-                </div>
+                    <div class="table-search-container">
+                        <input type="search" 
+                               id="matches-search-input" 
+                               class="table-search-input" 
+                               placeholder="Search in matches table...">
+                    </div>
 
                 <!-- Data Table -->
-                <div class="table-container">
+                <div class="matches-table-container">
                     <table id="main-table">
                         <thead>
                             <tr id="table-headers">
