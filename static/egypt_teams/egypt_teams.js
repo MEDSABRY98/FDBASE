@@ -1209,29 +1209,26 @@ function loadPlayerChampionships(playerName, playerMatchIds) {
         if (championSystem === 'FRI') friendlyMatchIds.add(matchId);
     });
     
-    // Get all match IDs where player has stats (goals or assists)
-    const playerStatsMatchIds = new Set();
+    // Get all match IDs where player played (from LINEUPEGYPT)
+    const playerPlayedMatchIds = new Set();
     
-    egyptTeamsData.playerDetails.forEach(detail => {
-        const name = (detail['PLAYER NAME'] || '').trim();
-        const matchId = (detail['MATCH_ID'] || '').trim();
+    egyptTeamsData.lineupDetails.forEach(lineup => {
+        const name = (lineup['PLAYER NAME'] || '').trim();
+        const lineupMatchId = (lineup['MATCH_ID'] || '').trim();
         
-        if (name === playerName && matchIdToChampionship.has(matchId)) {
-            const gaValue = (detail['GA'] || '').trim();
-            if (gaValue === 'GOAL' || gaValue === 'ASSIST') {
-                playerStatsMatchIds.add(matchId);
-            }
+        if (name === playerName && matchIdToChampionship.has(lineupMatchId)) {
+            playerPlayedMatchIds.add(lineupMatchId);
         }
     });
     
-    if (playerStatsMatchIds.size === 0) {
+    if (playerPlayedMatchIds.size === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #999;">No championships found</td></tr>';
         return;
     }
     
-    // First, get all championships where player has stats
+    // First, get all championships where player has played
     const championshipsWithStats = new Set();
-    playerStatsMatchIds.forEach(matchId => {
+    playerPlayedMatchIds.forEach(matchId => {
         const championship = matchIdToChampionship.get(matchId) || 'Unknown';
         championshipsWithStats.add(championship);
     });
@@ -1263,8 +1260,8 @@ function loadPlayerChampionships(playerName, playerMatchIds) {
             }
         });
         
-        // Get goals and assists for matches with stats
-        playerStatsMatchIds.forEach(matchId => {
+        // Get goals and assists for matches where player played
+        playerPlayedMatchIds.forEach(matchId => {
             if (matchIdToChampionship.get(matchId) !== championship) return;
             
             egyptTeamsData.playerDetails.forEach(detail => {
@@ -1343,29 +1340,26 @@ function loadPlayerSeasons(playerName, playerMatchIds) {
         if (championSystem === 'FRI') friendlyMatchIds.add(matchId);
     });
     
-    // Get all match IDs where player has stats (goals or assists)
-    const playerStatsMatchIds = new Set();
+    // Get all match IDs where player played (from LINEUPEGYPT)
+    const playerPlayedMatchIds = new Set();
     
-    egyptTeamsData.playerDetails.forEach(detail => {
-        const name = (detail['PLAYER NAME'] || '').trim();
-        const matchId = (detail['MATCH_ID'] || '').trim();
+    egyptTeamsData.lineupDetails.forEach(lineup => {
+        const name = (lineup['PLAYER NAME'] || '').trim();
+        const lineupMatchId = (lineup['MATCH_ID'] || '').trim();
         
-        if (name === playerName && matchIdToSeason.has(matchId)) {
-            const gaValue = (detail['GA'] || '').trim();
-            if (gaValue === 'GOAL' || gaValue === 'ASSIST') {
-                playerStatsMatchIds.add(matchId);
-            }
+        if (name === playerName && matchIdToSeason.has(lineupMatchId)) {
+            playerPlayedMatchIds.add(lineupMatchId);
         }
     });
     
-    if (playerStatsMatchIds.size === 0) {
+    if (playerPlayedMatchIds.size === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #999;">No seasons found</td></tr>';
         return;
     }
     
-    // First, get all seasons where player has stats
+    // First, get all seasons where player has played
     const seasonsWithStats = new Set();
-    playerStatsMatchIds.forEach(matchId => {
+    playerPlayedMatchIds.forEach(matchId => {
         const season = matchIdToSeason.get(matchId) || 'Unknown';
         seasonsWithStats.add(season);
     });
@@ -1397,8 +1391,8 @@ function loadPlayerSeasons(playerName, playerMatchIds) {
             }
         });
         
-        // Get goals and assists for matches with stats
-        playerStatsMatchIds.forEach(matchId => {
+        // Get goals and assists for matches where player played
+        playerPlayedMatchIds.forEach(matchId => {
             if (matchIdToSeason.get(matchId) !== season) return;
             
             egyptTeamsData.playerDetails.forEach(detail => {
@@ -1481,29 +1475,26 @@ function loadPlayerVsTeams(playerName, playerMatchIds) {
         if (championSystem === 'FRI') friendlyMatchIds.add(matchId);
     });
     
-    // Get all match IDs where player has stats (goals or assists)
-    const playerStatsMatchIds = new Set();
+    // Get all match IDs where player played (from LINEUPEGYPT)
+    const playerPlayedMatchIds = new Set();
     
-    egyptTeamsData.playerDetails.forEach(detail => {
-        const name = (detail['PLAYER NAME'] || '').trim();
-        const matchId = (detail['MATCH_ID'] || '').trim();
+    egyptTeamsData.lineupDetails.forEach(lineup => {
+        const name = (lineup['PLAYER NAME'] || '').trim();
+        const lineupMatchId = (lineup['MATCH_ID'] || '').trim();
         
-        if (name === playerName && matchIdToOpponent.has(matchId)) {
-            const gaValue = (detail['GA'] || '').trim();
-            if (gaValue === 'GOAL' || gaValue === 'ASSIST') {
-                playerStatsMatchIds.add(matchId);
-            }
+        if (name === playerName && matchIdToOpponent.has(lineupMatchId)) {
+            playerPlayedMatchIds.add(lineupMatchId);
         }
     });
     
-    if (playerStatsMatchIds.size === 0) {
+    if (playerPlayedMatchIds.size === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #999;">No opponent teams found</td></tr>';
         return;
     }
     
-    // First, get all opponent teams where player has stats
+    // First, get all opponent teams where player has played
     const opponentsWithStats = new Set();
-    playerStatsMatchIds.forEach(matchId => {
+    playerPlayedMatchIds.forEach(matchId => {
         const opponent = matchIdToOpponent.get(matchId) || 'Unknown';
         opponentsWithStats.add(opponent);
     });
@@ -1535,8 +1526,8 @@ function loadPlayerVsTeams(playerName, playerMatchIds) {
             }
         });
         
-        // Get goals and assists for matches with stats
-        playerStatsMatchIds.forEach(matchId => {
+        // Get goals and assists for matches where player played
+        playerPlayedMatchIds.forEach(matchId => {
             if (matchIdToOpponent.get(matchId) !== opponent) return;
             
             egyptTeamsData.playerDetails.forEach(detail => {
@@ -1612,10 +1603,18 @@ async function loadPlayerElnadyStats(playerName, playerMatchIds) {
     // Group goals by ELNADY (club)
     const clubGoals = {};
     
-    console.log(`🔍 Calculating ELNADY stats for ${playerName}...`);
-    console.log(`📊 Player has ${playerMatchIds.size} matches`);
-    console.log(`📝 Total playerDetails records: ${egyptTeamsData.playerDetails.length}`);
+    // Get all clubs from LINEUPEGYPT where player played
+    egyptTeamsData.lineupDetails.forEach(lineup => {
+        const name = (lineup['PLAYER NAME'] || '').trim();
+        if (name !== playerName) return;
+        
+        const elnady = (lineup['ELNADY'] || '').trim();
+        if (elnady && !clubGoals[elnady]) {
+            clubGoals[elnady] = 0;
+        }
+    });
     
+    // Count goals for each club
     egyptTeamsData.playerDetails.forEach(detail => {
         const name = (detail['PLAYER NAME'] || '').trim();
         if (name !== playerName) return;
@@ -1624,15 +1623,12 @@ async function loadPlayerElnadyStats(playerName, playerMatchIds) {
         const matchId = (detail['MATCH_ID'] || '').trim();
         const elnady = (detail['ELNADY'] || '').trim();
         
-        // Count ALL goals for this player (not filtering by playerMatchIds)
+        // Count ALL goals for this player
         if (gaValue === 'GOAL' && elnady) {
             const gatotal = parseInt(detail['GATOTAL']) || 0;
             clubGoals[elnady] = (clubGoals[elnady] || 0) + gatotal;
-            console.log(`⚽ Found ${gatotal} goals for ${elnady} in match ${matchId}`);
         }
     });
-    
-    console.log(`✅ Found ${Object.keys(clubGoals).length} clubs with goals:`, clubGoals);
     
     // Convert to array and sort by goals descending, then by club name ascending
     const clubsArray = Object.entries(clubGoals).map(([club, goals]) => ({
