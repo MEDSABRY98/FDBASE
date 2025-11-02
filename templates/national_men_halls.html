@@ -46,6 +46,24 @@
         .wl-win { background: rgba(40, 167, 69, 0.15); color: #0f5132; }
         .wl-draw { background: rgba(255, 159, 67, 0.2); color: #7a4d12; }
         .wl-loss { background: rgba(220, 53, 69, 0.15); color: #842029; }
+        /* Virtual Scrolling support */
+        .matches-table-container { 
+            max-height: 1300px; 
+            overflow-y: auto; 
+            overflow-x: auto; 
+            position: relative;
+        }
+        /* Sticky header - keep thead fixed during scroll */
+        .matches-table-container .matches-table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .matches-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f8f9fa;
+        }
         @media (max-width: 1200px) { .filter-row { grid-template-columns: repeat(2, 1fr);} }
         @media (max-width: 768px) { .filter-row { grid-template-columns: 1fr;} }
         
@@ -185,7 +203,7 @@
                         <div class="table-search-container">
                             <input type="search" id="matches-search-input" class="table-search-input" placeholder="Search in matches table...">
                         </div>
-                        <div style="overflow-x: auto;">
+                        <div class="matches-table-container">
                             <table class="matches-table" id="national-men-halls-table">
                                 <thead>
                                     <tr>

@@ -4,26 +4,44 @@ window.nationalMenHalls = (function () {
     let allRecords = [];
     let appsScriptUrl = '';
     let filtersApplied = false;
+    
+    // Virtual Scrolling state
+    let virtualScrollState = {
+        allData: [],
+        currentViewData: [],
+        startIndex: 0,
+        endIndex: 25, // Render first 25 rows initially
+        bufferSize: 25, // Buffer rows above and below visible area
+        rowHeight: 50, // Estimated row height in pixels
+        tableContainer: null,
+        scrollHandler: null
+    };
 
     function setupDynamicTableSearch() {
         const searchInput = document.getElementById('matches-search-input');
         if (!searchInput) return;
 
         searchInput.addEventListener('keyup', () => {
-            const tableBody = document.getElementById('national-men-halls-tbody');
-            if (!tableBody) return;
-            
             const searchTerm = searchInput.value.toLowerCase().trim();
-            const rows = tableBody.getElementsByTagName('tr');
-
-            for (const row of rows) {
-                const rowText = row.textContent.toLowerCase();
-                if (rowText.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
+            
+            if (!searchTerm) {
+                // No search term, restore full data
+                virtualScrollState.allData = virtualScrollState.currentViewData || [];
+            } else {
+                // Filter data based on search
+                const filtered = (virtualScrollState.currentViewData || []).filter((rec) => {
+                    const n = normalizeRecord(rec);
+                    const cols = ['GAME','AGE','Season','Round','TeamA','TeamAScore','TeamBScore','TeamB'];
+                    const rowText = cols.map(c => String(n[c] || '')).join(' ').toLowerCase();
+                    return rowText.includes(searchTerm);
+                });
+                virtualScrollState.allData = filtered;
             }
+            
+            // Reset scroll and re-render
+            virtualScrollState.startIndex = 0;
+            virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
+            renderVisibleRows();
         });
     }
 
@@ -146,19 +164,115 @@ window.nationalMenHalls = (function () {
         return 'wl-cell';
     }
 
+    // Helper function to render a single row
+    function renderRow(rec) {
+        const cols = ['GAME','AGE','Season','Round','TeamA','TeamAScore','TeamBScore','TeamB'];
+        const n = normalizeRecord(rec);
+        const tds = cols.map((c) => `<td>${escapeHtml(String(n[c] ?? ''))}</td>`).join('');
+        const wl = getResultSymbol(n);
+        const wlClass = getResultClass(wl);
+        return `<tr>${tds}<td><span class="${wlClass}">${wl}</span></td></tr>`;
+    }
+
+    // Virtual scrolling render function
+    function renderVisibleRows() {
+        const tbody = document.getElementById('national-men-halls-tbody');
+        if (!tbody) return;
+        
+        const { allData, startIndex, endIndex } = virtualScrollState;
+        const visibleData = allData.slice(startIndex, endIndex);
+        
+        // Create spacer row for top
+        const topSpacer = `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="9"></td></tr>`;
+        // Render visible rows
+        const rowsHtml = visibleData.map(renderRow).join('');
+        // Create spacer row for bottom
+        const bottomSpacer = `<tr style="height: ${Math.max(0, allData.length - endIndex) * virtualScrollState.rowHeight}px;"><td colspan="9"></td></tr>`;
+        
+        tbody.innerHTML = topSpacer + rowsHtml + bottomSpacer;
+    }
+
     function renderTable(records) {
         const tbody = document.getElementById('national-men-halls-tbody');
         if (!tbody) return;
-        // Match the headers in the template (exact order requested + W/L computed at the end)
-        const cols = ['GAME','AGE','Season','Round','TeamA','TeamAScore','TeamBScore','TeamB'];
-        const rowsHtml = records.map((rec) => {
-            const n = normalizeRecord(rec);
-            const tds = cols.map((c) => `<td>${escapeHtml(String(n[c] ?? ''))}</td>`).join('');
-            const wl = getResultSymbol(n);
-            const wlClass = getResultClass(wl);
-            return `<tr>${tds}<td><span class="${wlClass}">${wl}</span></td></tr>`;
-        }).join('');
-        tbody.innerHTML = rowsHtml;
+        
+        // For small datasets (< 1000 rows), render everything at once for better compatibility
+        if (records.length <= 1000) {
+            const cols = ['GAME','AGE','Season','Round','TeamA','TeamAScore','TeamBScore','TeamB'];
+            const rowsHtml = records.map((rec) => {
+                const n = normalizeRecord(rec);
+                const tds = cols.map((c) => `<td>${escapeHtml(String(n[c] ?? ''))}</td>`).join('');
+                const wl = getResultSymbol(n);
+                const wlClass = getResultClass(wl);
+                return `<tr>${tds}<td><span class="${wlClass}">${wl}</span></td></tr>`;
+            }).join('');
+            tbody.innerHTML = rowsHtml;
+            // Remove scroll handlers if they exist
+            if (virtualScrollState.scrollHandler) {
+                const container = document.querySelector('.matches-table-container');
+                if (container) {
+                    container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+                    virtualScrollState.scrollHandler = null;
+                }
+            }
+            return;
+        }
+        
+        // For large datasets, use virtual scrolling
+        virtualScrollState.allData = records;
+        virtualScrollState.currentViewData = records;
+        
+        // Reset scroll state
+        virtualScrollState.startIndex = 0;
+        virtualScrollState.endIndex = Math.min(25, records.length);
+        
+        // Initial render
+        renderVisibleRows();
+        
+        // Setup virtual scrolling
+        setupVirtualScrolling();
+    }
+    
+    function setupVirtualScrolling() {
+        // Remove old scroll handler if exists
+        if (virtualScrollState.scrollHandler) {
+            const container = document.querySelector('.matches-table-container');
+            if (container) {
+                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+            }
+        }
+        
+        // Create new scroll handler
+        virtualScrollState.scrollHandler = function handleScroll(e) {
+            const container = e.target;
+            if (!container) return;
+            
+            const scrollTop = container.scrollTop || 0;
+            const containerHeight = container.clientHeight || 0;
+            const { allData, rowHeight, bufferSize } = virtualScrollState;
+            
+            // Calculate which rows should be visible
+            const visibleStart = Math.floor(scrollTop / rowHeight);
+            const visibleEnd = Math.ceil((scrollTop + containerHeight) / rowHeight);
+            
+            // Add buffer
+            const bufferStart = Math.max(0, visibleStart - bufferSize);
+            const bufferEnd = Math.min(allData.length, visibleEnd + bufferSize);
+            
+            // Only re-render if the visible range has changed significantly
+            if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 || 
+                Math.abs(bufferEnd - virtualScrollState.endIndex) > 5) {
+                virtualScrollState.startIndex = bufferStart;
+                virtualScrollState.endIndex = bufferEnd;
+                renderVisibleRows();
+            }
+        };
+        
+        // Attach scroll listener to the table container
+        const container = document.querySelector('.matches-table-container');
+        if (container) {
+            container.addEventListener('scroll', virtualScrollState.scrollHandler);
+        }
     }
 
     function computeTeamStats(records) {

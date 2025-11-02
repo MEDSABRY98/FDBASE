@@ -21,8 +21,8 @@ let egyptianClubsData = {
  */
 async function loadEgyptianClubsData() {
     try {
-        showLoading(true);
         hideError();
+        showLoading(true);
 
         // Get Apps Script URL from server
         const configResponse = await fetch('/api/egyptian-clubs/config');
@@ -69,11 +69,10 @@ async function loadEgyptianClubsData() {
             calculateH2HStats();
             populateFaceToFaceDropdowns();
             
-            showLoading(false);
-            document.getElementById('main-content').style.display = 'block';
-            
             // Add filter event listeners
             addFilterListeners();
+            
+            showLoading(false);
         } else {
             throw new Error(result.error || 'No Data Available');
         }
@@ -581,9 +580,15 @@ async function syncData() {
  * Show/hide loading state
  */
 function showLoading(show) {
-    const loading = document.getElementById('loading');
-    if (loading) {
-        loading.style.display = show ? 'block' : 'none';
+    const loadingContainer = document.getElementById('loading-container');
+    const contentContainer = document.getElementById('main-content');
+    
+    if (loadingContainer) {
+        loadingContainer.style.display = show ? 'flex' : 'none';
+    }
+    
+    if (contentContainer) {
+        contentContainer.style.display = show ? 'none' : 'block';
     }
 }
 

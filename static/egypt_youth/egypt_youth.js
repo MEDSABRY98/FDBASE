@@ -64,11 +64,6 @@ async function loadYouthEgyptData(forceRefresh = false) {
             // Generate filter options
             generateFilterOptions();
             
-            // Show filters and content
-            document.getElementById('filters-section').style.display = 'block';
-            document.getElementById('content-tabs').style.display = 'block';
-            hideLoading();
-            
             // Load overview stats
             loadOverviewStats();
             
@@ -80,6 +75,9 @@ async function loadYouthEgyptData(forceRefresh = false) {
             
             // Load youth players data
             loadYouthPlayersData();
+            
+            // Show content, hide loading
+            hideLoading();
             
         } else {
             throw new Error(data.error || 'No Data Available');
@@ -1359,11 +1357,29 @@ function closeModal() {
 // ============================================================================
 
 function showLoading() {
-    document.getElementById('loading-container').style.display = 'flex';
+    const loadingContainer = document.getElementById('loading-container');
+    const contentTabs = document.getElementById('content-tabs');
+    
+    if (loadingContainer) {
+        loadingContainer.style.display = 'flex';
+    }
+    
+    if (contentTabs) {
+        contentTabs.style.display = 'none';
+    }
 }
 
 function hideLoading() {
-    document.getElementById('loading-container').style.display = 'none';
+    const loadingContainer = document.getElementById('loading-container');
+    const contentTabs = document.getElementById('content-tabs');
+    
+    if (loadingContainer) {
+        loadingContainer.style.display = 'none';
+    }
+    
+    if (contentTabs) {
+        contentTabs.style.display = 'block';
+    }
 }
 
 function showError(message) {

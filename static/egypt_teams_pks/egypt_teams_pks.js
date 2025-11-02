@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load PKS data from API
 async function loadPKSData(forceRefresh = false) {
     try {
+        // Show loading container, hide content
+        showPKSLoading(true);
+        
         const url = forceRefresh ? '/api/egypt-teams-pks?force_refresh=true' : '/api/egypt-teams-pks';
         const response = await fetch(url);
         const data = await response.json();
@@ -28,11 +31,28 @@ async function loadPKSData(forceRefresh = false) {
         applyPKSFilters();
         
         // Hide loading, show content
-        document.getElementById('pks-loading').style.display = 'none';
-        document.getElementById('pks-main-content').style.display = 'block';
+        showPKSLoading(false);
     } catch (error) {
         console.error('Error loading PKS data:', error);
-        document.getElementById('pks-loading').innerHTML = '<p style="color: red;">No Data Available</p>';
+        const loadingContainer = document.getElementById('pks-loading-container');
+        if (loadingContainer) {
+            loadingContainer.innerHTML = '<p style="color: red;">No Data Available</p>';
+        }
+        showPKSLoading(false);
+    }
+}
+
+// Show/hide loading state
+function showPKSLoading(show) {
+    const loadingContainer = document.getElementById('pks-loading-container');
+    const contentContainer = document.getElementById('pks-main-content');
+    
+    if (loadingContainer) {
+        loadingContainer.style.display = show ? 'flex' : 'none';
+    }
+    
+    if (contentContainer) {
+        contentContainer.style.display = show ? 'none' : 'block';
     }
 }
 

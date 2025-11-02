@@ -2804,15 +2804,58 @@ function displayClubOpponents(opponentsArray) {
 // ============================================================================
 
 function showLoading() {
-    document.getElementById('loading-container').style.display = 'flex';
-    document.getElementById('content-tabs').style.display = 'none';
-    document.getElementById('filters-section').style.display = 'none';
+    const loadingContainer = document.getElementById('loading-container');
+    const contentTabs = document.getElementById('content-tabs');
+    
+    if (loadingContainer) {
+        loadingContainer.style.display = 'flex';
+    }
+    
+    if (contentTabs) {
+        contentTabs.style.display = 'none';
+    }
 }
 
 function hideLoading() {
-    document.getElementById('loading-container').style.display = 'none';
-    document.getElementById('content-tabs').style.display = 'block';
-    document.getElementById('filters-section').style.display = 'block';
+    const loadingContainer = document.getElementById('loading-container');
+    const contentTabs = document.getElementById('content-tabs');
+    
+    if (loadingContainer) {
+        loadingContainer.style.display = 'none';
+    }
+    
+    if (contentTabs) {
+        contentTabs.style.display = 'block';
+    }
+}
+
+// Refresh Egypt Teams data with visual feedback
+async function refreshEgyptTeamsData() {
+    const refreshBtn = event.target.closest('button');
+    const originalText = refreshBtn.innerHTML;
+    
+    // Show loading state
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<svg class="filter-btn-icon" style="animation: spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refreshing...';
+    
+    try {
+        await loadEgyptTeamsData(true);
+        
+        // Show success message
+        refreshBtn.innerHTML = '<svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Refreshed!';
+        
+        setTimeout(() => {
+            refreshBtn.innerHTML = originalText;
+            refreshBtn.disabled = false;
+        }, 2000);
+    } catch (error) {
+        refreshBtn.innerHTML = '<svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>Error!';
+        
+        setTimeout(() => {
+            refreshBtn.innerHTML = originalText;
+            refreshBtn.disabled = false;
+        }, 2000);
+    }
 }
 
 function showError(message) {
