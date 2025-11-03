@@ -164,6 +164,34 @@ function teamMatchesFilter(rowTeamValue, selectedTeamFilter) {
     });
 }
 
+// Global prefs for SY selection per player
+window.playerSYPrefs = window.playerSYPrefs || {};
+
+function renderPlayerSYChecklist(syValues, playerName) {
+    const box = document.getElementById('player-sy-checkboxes');
+    const btnAll = document.getElementById('player-sy-select-all');
+    const btnClear = document.getElementById('player-sy-clear');
+    const btnApply = document.getElementById('player-sy-apply');
+    if (!box || !btnAll || !btnClear || !btnApply) return;
+
+    const current = (window.playerSYPrefs[playerName] && window.playerSYPrefs[playerName].length) ? new Set(window.playerSYPrefs[playerName]) : new Set(syValues);
+    box.innerHTML = syValues.map(v => {
+        const checked = current.has(v) ? 'checked' : '';
+        return `<label style="display:flex; align-items:center; justify-content:center; gap:6px; background:#f8fafc; border:1px solid #e5e7eb; padding:6px 8px; border-radius:6px; min-width:140px; text-align:center;">
+            <input type="checkbox" class="player-sy-cb" value="${v}" ${checked}>
+            <span>${v}</span>
+        </label>`;
+    }).join('');
+
+    btnAll.onclick = () => { box.querySelectorAll('input.player-sy-cb').forEach(cb => cb.checked = true); };
+    btnClear.onclick = () => { box.querySelectorAll('input.player-sy-cb').forEach(cb => cb.checked = false); };
+    btnApply.onclick = () => {
+        const selected = Array.from(box.querySelectorAll('input.player-sy-cb:checked')).map(cb => cb.value);
+        window.playerSYPrefs[playerName] = selected;
+        loadPlayerSYWithFilter(document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '');
+    };
+}
+
 function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {}) {
     // This function returns ALL matches where the player participated (from LINEUPDETAILS)
     // with their goals/assists data (from PLAYERDETAILS) - shows 0 if no goals/assists
@@ -4296,6 +4324,13 @@ function applyFiltersWithData(filters, preservedFilters = null) {
         loadPlayerChampionshipsStats();
         loadPlayerVsTeamsStats();
         loadPlayerVsGKsStats();
+        // Refresh current BY Player sub-tab (ensures SY updates with filters)
+        if (typeof getCurrentPlayerSubTab === 'function' && typeof loadPlayerSubTabData === 'function') {
+            try {
+                const currentSubTab = getCurrentPlayerSubTab();
+                if (currentSubTab) loadPlayerSubTabData(currentSubTab);
+            } catch (_) {}
+        }
     }
     
     // Update goalkeeper statistics with current filters
@@ -6240,6 +6275,393 @@ function loadPlayerSeasonsWithFilter(selectedTeams) {
     console.log('Seasons items with filter:', items.length);
     renderPlayerSeasonsTable(items);
 }
+
+// ===== SY (by SY column) =====
+function computeOverviewStatsForFilters(playerName, teamFilterValue, overrideFilters) {
+    try {
+        const teamFilter = typeof teamFilterValue === 'string' ? teamFilterValue : '';
+        const baseFilters = getCurrentFilters ? getCurrentFilters() : {};
+        const appliedFilters = Object.assign({}, baseFilters, overrideFilters || {});
+        const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
+        const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
+        const nameLower = (playerName || '').toLowerCase();
+        const teamLower = (teamFilter || '').toLowerCase();
+
+        const playerRows = details.filter(r => {
+            const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
+            if (p !== nameLower) return false;
+            if (teamLower) {
+                const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+                if (!teamMatchesFilter(teamVal, teamFilter)) return false;
+            }
+            const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
+            const matchDetail = matchDetails.find(match => normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId);
+            return applyMainFiltersToMatch(matchDetail, appliedFilters);
+        });
+
+        const perMatch = new Map();
+        let penGoal = 0, penAstGoal = 0, penMissed = 0, penAstMiss = 0, penMakeG = 0, penMakeM = 0, ownGoal = 0;
+        playerRows.forEach(r => {
+            const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
+            if (!matchId) return;
+            const gaVal = normalizeStr(r.GA).toUpperCase();
+            const typeVal = normalizeStr(r.TYPE).toUpperCase().replace(/[^A-Z]/g, '');
+            if (!perMatch.has(matchId)) perMatch.set(matchId, { goals: 0, assists: 0 });
+            const agg = perMatch.get(matchId);
+            if (gaVal === 'GOAL') agg.goals += 1;
+            if (gaVal === 'ASSIST') agg.assists += 1;
+            if (typeVal === 'OG') ownGoal += 1;
+            if (typeVal === 'PENGOAL') penGoal += 1;
+            if (typeVal === 'PENASSISTGOAL') penAstGoal += 1;
+            if (typeVal === 'PENMISSED') penMissed += 1;
+            if (typeVal === 'PENASSISTMISSED') penAstMiss += 1;
+            if (typeVal === 'PENMAKEGOAL') penMakeG += 1;
+            if (typeVal === 'PENMAKEMISSED') penMakeM += 1;
+            const gaNorm = gaVal.replace(/[^A-Z]/g, '');
+            if (gaNorm === 'PENGOAL') penGoal += 1;
+            if (gaNorm === 'PENASSISTGOAL') penAstGoal += 1;
+            if (gaNorm === 'PENMISSED') penMissed += 1;
+            if (gaNorm === 'PENASSISTMISSED') penAstMiss += 1;
+            if (gaNorm === 'PENMAKEGOAL') penMakeG += 1;
+            if (gaNorm === 'PENMAKEMISSED') penMakeM += 1;
+        });
+
+        const lineupRowsAll = getSheetRowsByCandidates(['LINEUPDETAILS']);
+        const lineupRows = lineupRowsAll.filter(l => {
+            const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
+            if (p !== nameLower) return false;
+            if (teamLower) {
+                if (normalizeTeamKey(teamFilter) !== 'ahly') return false;
+            }
+            const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || '');
+            const matchDetail = matchDetails.find(match => normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId);
+            return applyMainFiltersToMatch(matchDetail, appliedFilters);
+        });
+        const totalMatches = lineupRows.length;
+        let totalMinutes = 0;
+        lineupRows.forEach(l => { totalMinutes += safeInt(l.MINTOTAL || l['MIN TOTAL'] || l.MINUTES || 0); });
+
+        let totalGoals = 0, totalAssists = 0;
+        let braceGoals = 0, hatTrickGoals = 0, threePlusGoals = 0;
+        let braceAssists = 0, hatTrickAssists = 0, threePlusAssists = 0;
+        perMatch.forEach(({ goals, assists }) => {
+            totalGoals += goals; totalAssists += assists;
+            if (goals >= 2) braceGoals += 1;
+            if (goals >= 3) hatTrickGoals += 1;
+            if (goals >= 4) threePlusGoals += 1;
+            if (assists >= 2) braceAssists += 1;
+            if (assists >= 3) hatTrickAssists += 1;
+            if (assists >= 4) threePlusAssists += 1;
+        });
+
+        let matchesWithGoals = 0, matchesWithoutGoals = 0;
+        lineupRows.forEach(l => {
+            const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
+            if (!matchId) return;
+            const matchStats = perMatch.get(matchId);
+            if (matchStats && matchStats.goals > 0) matchesWithGoals += 1; else matchesWithoutGoals += 1;
+        });
+
+        // Calculate winning and equalizing matches
+        let winningMatches = 0, equalizingMatches = 0;
+        const playerGoals = playerRows.filter(r => normalizeStr(r.GA || '').toUpperCase() === 'GOAL');
+        const goalsByMatch = new Map();
+        playerGoals.forEach(g => {
+            const matchId = normalizeStr(g.MATCH_ID || g['MATCH ID'] || g.match_id);
+            if (!matchId) return;
+            if (!goalsByMatch.has(matchId)) goalsByMatch.set(matchId, []);
+            goalsByMatch.get(matchId).push(g);
+        });
+        
+        goalsByMatch.forEach((playerGoalsInMatch, matchId) => {
+            const matchDetail = matchDetails.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID']) === matchId);
+            if (!matchDetail) return;
+            const gf = parseInt(matchDetail.GF || 0);
+            const ga = parseInt(matchDetail.GA || 0);
+            
+            // Get all goals in this match sorted by minute
+            const allGoals = details.filter(r => {
+                const mid = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
+                if (mid !== matchId) return false;
+                return normalizeStr(r.GA || '').toUpperCase() === 'GOAL';
+            });
+            
+            // Helper to parse minute
+            function parseMinuteForSort(minStr) {
+                const num = parseInt(String(minStr).replace(/[^0-9]/g, '') || '0');
+                return isNaN(num) ? 999 : num;
+            }
+            
+            allGoals.sort((a, b) => {
+                const minA = parseMinuteForSort(normalizeStr(a.MINUTE || a.minute || '0'));
+                const minB = parseMinuteForSort(normalizeStr(b.MINUTE || b.minute || '0'));
+                return minA - minB;
+            });
+            
+            // Find last Al Ahly goal
+            let lastAhlyGoal = null;
+            for (let i = allGoals.length - 1; i >= 0; i--) {
+                const goal = allGoals[i];
+                const team = normalizeStr(goal.TEAM || goal['AHLY TEAM'] || '').toLowerCase();
+                if (team.includes('ahly') || team.includes('الاهلي') || team.includes('الأهلي')) {
+                    lastAhlyGoal = goal;
+                    break;
+                }
+            }
+            
+            if (!lastAhlyGoal) return;
+            const lastGoalPlayer = normalizeStr(lastAhlyGoal['PLAYER NAME'] || lastAhlyGoal.PLAYER || '').toLowerCase();
+            if (lastGoalPlayer !== nameLower) return;
+            
+            // Winning: won by exactly 1 goal
+            if (gf > ga && (gf - ga) === 1) {
+                winningMatches++;
+            }
+            // Equalizing: draw
+            else if (gf === ga) {
+                equalizingMatches++;
+            }
+        });
+
+        const lineupWithDates = lineupRows.map(l => {
+            const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
+            const match = matchDetails.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID'] || m.match_id) === matchId);
+            const matchStats = perMatch.get(matchId) || { goals: 0, assists: 0 };
+            return { date: match ? (match.DATE || 0) : 0, goals: matchStats.goals, assists: matchStats.assists };
+        }).filter(m => m.date !== undefined);
+        lineupWithDates.sort((a,b) => (parseFloat(a.date)||0) - (parseFloat(b.date)||0));
+        const gaStreak = (typeof findLongestConsecutiveGAStreak === 'function') ? findLongestConsecutiveGAStreak(lineupWithDates) : [];
+        const noGAStreak = (typeof findLongestConsecutiveNoGAStreak === 'function') ? findLongestConsecutiveNoGAStreak(lineupWithDates) : [];
+        const goalStreak = (typeof findLongestConsecutiveScoringStreak === 'function') ? findLongestConsecutiveScoringStreak(lineupWithDates) : [];
+        const noGoalStreak = (typeof findLongestConsecutiveNoGoalStreak === 'function') ? findLongestConsecutiveNoGoalStreak(lineupWithDates) : [];
+        const assistStreak = (typeof findLongestConsecutiveAssistStreak === 'function') ? findLongestConsecutiveAssistStreak(lineupWithDates) : [];
+        const noAssistStreak = (typeof findLongestConsecutiveNoAssistStreak === 'function') ? findLongestConsecutiveNoAssistStreak(lineupWithDates) : [];
+
+        return {
+            total_matches: totalMatches,
+            total_minutes: totalMinutes,
+            matches_with_goals: matchesWithGoals,
+            matches_without_goals: matchesWithoutGoals,
+            winning_matches: winningMatches,
+            equalizing_matches: equalizingMatches,
+            consecutive_ga: gaStreak.length,
+            consecutive_ga_period: '',
+            consecutive_no_ga: noGAStreak.length,
+            consecutive_no_ga_period: '',
+            consecutive_goals: goalStreak.length,
+            consecutive_goals_period: '',
+            consecutive_no_goals: noGoalStreak.length,
+            consecutive_no_goals_period: '',
+            consecutive_assists: assistStreak.length,
+            consecutive_assists_period: '',
+            consecutive_no_assists: noAssistStreak.length,
+            consecutive_no_assists_period: '',
+            total_goals: totalGoals,
+            total_assists: totalAssists,
+            brace_goals: braceGoals,
+            brace_assists: braceAssists,
+            hat_trick_goals: hatTrickGoals,
+            hat_trick_assists: hatTrickAssists,
+            three_plus_goals: threePlusGoals,
+            three_plus_assists: threePlusAssists,
+            pen_goal: penGoal,
+            pen_ast_goal: penAstGoal,
+            pen_missed: penMissed,
+            pen_ast_miss: penAstMiss,
+            pen_make_g: penMakeG,
+            pen_make_m: penMakeM,
+            own_goal: ownGoal
+        };
+    } catch (_) { return null; }
+}
+
+function loadPlayerSYWithFilter(selectedTeams) {
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        const tbody = document.getElementById('player-sy-body');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="2">No player selected</td></tr>';
+        return;
+    }
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+
+    // derive distinct SY values from matches that the player participated in (respecting filters except sy)
+    const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
+    const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
+    const applied = getCurrentFilters ? getCurrentFilters() : {};
+    const nameLower = (playerName || '').toLowerCase();
+    const teamLower = (teamFilter || '').toLowerCase();
+
+    const playerMatchIds = new Set();
+    lineup.forEach(l => {
+        const p = (normalizeStr(l.PLAYER || l['PLAYER NAME']) || '').toLowerCase();
+        if (p !== nameLower) return;
+        if (teamLower && normalizeTeamKey(teamFilter) !== 'ahly') return;
+        const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || '');
+        if (!matchId) return;
+        const md = matchDetails.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID'] || '') === matchId);
+        // apply all filters EXCEPT sy (we will group by it)
+        const { sy, SY, Sy, ...rest } = applied || {};
+        if (applyMainFiltersToMatch(md, rest)) playerMatchIds.add(matchId);
+    });
+
+    const syValues = [];
+    matchDetails.forEach(m => {
+        const id = normalizeStr(m.MATCH_ID || m['MATCH ID'] || '');
+        if (!id || !playerMatchIds.has(id)) return;
+        const rawVal = m.SY || m.sy || m.Sy || '';
+        const v = String(rawVal).trim();
+        if (!v) return;
+        if (!syValues.includes(v)) syValues.push(v); // preserve first-seen order from sheet
+    });
+
+    // Render checklist controls
+    try { renderPlayerSYChecklist(syValues, playerName); } catch (_) {}
+
+    // Determine visible SYs based on user selection (default = all)
+    const selectedForPlayer = (window.playerSYPrefs && window.playerSYPrefs[playerName]) ? window.playerSYPrefs[playerName] : null;
+    const selectedSet = selectedForPlayer && selectedForPlayer.length ? new Set(selectedForPlayer) : null;
+    const visibleSYs = selectedSet ? syValues.filter(v => selectedSet.has(v)) : syValues.slice();
+
+    // Build table header
+    const headerRow = document.getElementById('player-sy-header-row');
+    const body = document.getElementById('player-sy-body');
+    if (!headerRow || !body) return;
+    // reset
+    headerRow.innerHTML = '<th>Statistic</th>' + visibleSYs.map(v => `<th>${v}</th>`).join('');
+    body.innerHTML = '';
+
+    const rowsDef = getSYRowsDefinition();
+
+    // Filter rows by user stat selection (if any)
+    const allowedKeys = (window.playerSYStatPrefs && Array.isArray(window.playerSYStatPrefs) && window.playerSYStatPrefs.length)
+        ? new Set(window.playerSYStatPrefs)
+        : null;
+    const rowsToRender = allowedKeys ? rowsDef.filter(r => allowedKeys.has(r.key)) : rowsDef;
+
+    // compute per SY and render
+    const perSYStats = visibleSYs.map(v => computeOverviewStatsForFilters(playerName, teamFilter, { sy: v }) || {});
+
+    // keys where lower value is better (green for min)
+    const lowerIsBetter = new Set([
+        'matches_without_goals', 'consecutive_no_ga', 'consecutive_no_goals', 'consecutive_no_assists',
+        'pen_missed', 'pen_ast_miss'
+    ]);
+
+    function toNum(v) {
+        if (v === null || v === undefined) return NaN;
+        const n = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
+        return isNaN(n) ? NaN : n;
+    }
+
+    rowsToRender.forEach(row => {
+        const rawVals = perSYStats.map(s => (s[row.key] !== undefined && s[row.key] !== null) ? s[row.key] : null);
+        const nums = rawVals.map(toNum);
+        const valid = nums.filter(n => !isNaN(n) && n !== 0);
+        let maxVal = NaN, minVal = NaN, isAllSame = false;
+        if (valid.length > 0) {
+            maxVal = Math.max.apply(null, valid);
+            minVal = Math.min.apply(null, valid);
+            isAllSame = maxVal === minVal;
+        }
+        const preferLower = lowerIsBetter.has(row.key);
+
+        const tr = document.createElement('tr');
+        let html = `<td>${row.label}</td>`;
+        for (let i = 0; i < rawVals.length; i++) {
+            const raw = rawVals[i];
+            const n = nums[i];
+            const missing = raw === null || raw === undefined || raw === '' || isNaN(n) || n === 0;
+            let bg = '', color = '#111827', prefix = '';
+            if (!missing && !isAllSame) {
+                const isMax = n === maxVal;
+                const isMin = n === minVal;
+                if (!preferLower) {
+                    if (isMax) { bg = '#e8f7ee'; color = '#166534'; prefix = '↗ '; }
+                    else if (isMin) { bg = '#fdeaea'; color = '#b91c1c'; prefix = '↘ '; }
+                } else {
+                    if (isMin) { bg = '#e8f7ee'; color = '#166534'; prefix = '↗ '; }
+                    else if (isMax) { bg = '#fdeaea'; color = '#b91c1c'; prefix = '↘ '; }
+                }
+            }
+            const display = missing ? '–' : String(raw);
+            const style = `padding:8px; text-align:center; background:${bg}; color:${color}; font-weight:${bg ? '700' : '600'};`;
+            html += `<td style="${style}">${prefix}${display}</td>`;
+        }
+        tr.innerHTML = html;
+        body.appendChild(tr);
+    });
+}
+function getSYRowsDefinition() {
+    return [
+        { label: 'Total Matches', key: 'total_matches' },
+        { label: 'Total Minutes', key: 'total_minutes' },
+        { label: 'Matches with Goals', key: 'matches_with_goals' },
+        { label: 'Matches without Goals', key: 'matches_without_goals' },
+        { label: 'Winning Matches', key: 'winning_matches' },
+        { label: 'Equalizing Matches', key: 'equalizing_matches' },
+        { label: 'Consecutive G+A Streak', key: 'consecutive_ga' },
+        { label: 'Consecutive No G+A Streak', key: 'consecutive_no_ga' },
+        { label: 'Consecutive Scoring Streak', key: 'consecutive_goals' },
+        { label: 'Consecutive No-Goal Streak', key: 'consecutive_no_goals' },
+        { label: 'Consecutive Assist Streak', key: 'consecutive_assists' },
+        { label: 'Consecutive No-Assist Streak', key: 'consecutive_no_assists' },
+        { label: 'Total Goals', key: 'total_goals' },
+        { label: 'Total Assists', key: 'total_assists' },
+        { label: 'Brace Goals', key: 'brace_goals' },
+        { label: 'Brace Assists', key: 'brace_assists' },
+        { label: 'Hat Trick Goals', key: 'hat_trick_goals' },
+        { label: 'Hat Trick Assists', key: 'hat_trick_assists' },
+        { label: '3+ Goals', key: 'three_plus_goals' },
+        { label: '3+ Assists', key: 'three_plus_assists' },
+        { label: 'PEN Goal', key: 'pen_goal' },
+        { label: 'PEN Ast Goal', key: 'pen_ast_goal' },
+        { label: 'PEN Missed', key: 'pen_missed' },
+        { label: 'PEN Ast Missed', key: 'pen_ast_miss' },
+        { label: 'PEN Make Goal', key: 'pen_make_g' },
+        { label: 'PEN Make Missed', key: 'pen_make_m' },
+        { label: 'Own Goal', key: 'own_goal' }
+    ];
+}
+
+// Build dropdown checklist for stats
+function initializeSYStatsUI() {
+    const toggleBtn = document.getElementById('player-sy-stats-toggle');
+    const panel = document.getElementById('player-sy-stats-panel');
+    const list = document.getElementById('player-sy-stats-list');
+    const applyBtn = document.getElementById('player-sy-stats-apply');
+    const clearBtn = document.getElementById('player-sy-stats-clear');
+    const selectAllBtn = document.getElementById('player-sy-stats-selectall');
+    if (!toggleBtn || !panel || !list || !applyBtn || !clearBtn || !selectAllBtn) return;
+
+    function buildList() {
+        const def = getSYRowsDefinition();
+        const selected = new Set(window.playerSYStatPrefs && window.playerSYStatPrefs.length ? window.playerSYStatPrefs : def.map(d => d.key));
+        list.innerHTML = def.map(d => {
+            const checked = selected.has(d.key) ? 'checked' : '';
+            return `<label style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #e5e7eb; padding:6px 8px; border-radius:6px; min-width:180px;">
+                <input type="checkbox" class="sy-stat-cb" value="${d.key}" ${checked}>
+                <span>${d.label}</span>
+            </label>`;
+        }).join('');
+    }
+
+    toggleBtn.onclick = () => {
+        buildList();
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    };
+    clearBtn.onclick = () => { list.querySelectorAll('input.sy-stat-cb').forEach(cb => cb.checked = false); };
+    selectAllBtn.onclick = () => { list.querySelectorAll('input.sy-stat-cb').forEach(cb => cb.checked = true); };
+    applyBtn.onclick = () => {
+        const keys = Array.from(list.querySelectorAll('input.sy-stat-cb:checked')).map(cb => cb.value);
+        window.playerSYStatPrefs = keys;
+        panel.style.display = 'none';
+        // Rebuild table using current selection
+        if (typeof loadPlayerSYWithFilter === 'function') loadPlayerSYWithFilter(document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '');
+    };
+}
+
+// init UI on DOM ready (safe re-run)
+document.addEventListener('DOMContentLoaded', () => { try { initializeSYStatsUI(); } catch (_) {} });
 function loadPlayerVsTeamsWithFilter(selectedTeams) {
     console.log('Loading vs teams with team filter:', selectedTeams);
     if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
@@ -9539,6 +9961,9 @@ function loadPlayerSubTabData(subTabName, selectedTeams = null) {
             break;
         case 'seasons':
             loadPlayerSeasonsWithFilter(selectedTeams || teamFilter);
+            break;
+        case 'sy':
+            loadPlayerSYWithFilter(selectedTeams || teamFilter);
             break;
         case 'vs-teams':
             loadPlayerVsTeamsWithFilter(selectedTeams || teamFilter);
