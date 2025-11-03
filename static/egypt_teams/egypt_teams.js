@@ -602,6 +602,11 @@ function applyFilters() {
         calculatePlayerIndividualStats(egyptTeamsData.selectedPlayer);
     }
     
+    // Recalculate selected goalkeeper stats if a goalkeeper is selected
+    if (selectedGoalkeeper) {
+        calculateGoalkeeperIndividualStats(selectedGoalkeeper);
+    }
+    
     // Update ELNADY tab if it's active
     const elnadyTab = document.getElementById('elnady-tab');
     if (elnadyTab && elnadyTab.classList.contains('active')) {
@@ -628,6 +633,24 @@ function applyFilters() {
     const goalkeepersTab = document.getElementById('goalkeepers-tab');
     if (goalkeepersTab && goalkeepersTab.classList.contains('active') && egyptTeamsData.playersLoaded) {
         loadGoalkeepersStats();
+    }
+    
+    // Recalculate selected goalkeeper stats if BY Goalkeepers tab is active
+    const byGoalkeepersTab = document.getElementById('bygoalkeepers-tab');
+    if (byGoalkeepersTab && byGoalkeepersTab.classList.contains('active') && selectedGoalkeeper) {
+        calculateGoalkeeperIndividualStats(selectedGoalkeeper);
+    }
+    
+    // Update main stats if mainstats tab is active
+    const mainstatsTab = document.getElementById('mainstats-tab');
+    if (mainstatsTab && mainstatsTab.classList.contains('active')) {
+        // Check which sub-tab is active
+        const championshipsTab = document.getElementById('mainstats-championships-tab');
+        if (championshipsTab && championshipsTab.classList.contains('active')) {
+            loadMainStatsChampionships();
+        } else {
+            loadMainStatsSeasons();
+        }
     }
     
     console.log(`Filtered ${egyptTeamsData.filteredRecords.length} of ${egyptTeamsData.allRecords.length} matches`);
@@ -681,6 +704,11 @@ function clearFilters() {
     // Recalculate selected player stats if a player is selected
     if (egyptTeamsData.selectedPlayer) {
         calculatePlayerIndividualStats(egyptTeamsData.selectedPlayer);
+    }
+    
+    // Recalculate selected goalkeeper stats if a goalkeeper is selected
+    if (selectedGoalkeeper) {
+        calculateGoalkeeperIndividualStats(selectedGoalkeeper);
     }
     
     // Update ELNADY tab if it's active
@@ -997,15 +1025,40 @@ function sortPlayersBy(column) {
 
 function displayPlayers() {
     const tbody = document.getElementById('players-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
     
-    if (egyptTeamsData.players.length === 0) {
+    // Check if there's an active search
+    const searchInput = document.getElementById('all-players-search');
+    const searchTerm = searchInput && searchInput.value ? searchInput.value.toLowerCase().trim() : '';
+    
+    // Determine which players to display
+    let playersToDisplay = egyptTeamsData.players;
+    
+    // If there's a search term, filter the players
+    if (searchTerm) {
+        playersToDisplay = egyptTeamsData.players.filter((player) => {
+            const playerName = String(player.playerName || '').toLowerCase();
+            const matches = String(player.matches || '').toLowerCase();
+            const minutes = String(player.minutes || '').toLowerCase();
+            const totalGA = String(player.totalGA || '').toLowerCase();
+            const officialGoals = String(player.officialGoals || '').toLowerCase();
+            const friendlyGoals = String(player.friendlyGoals || '').toLowerCase();
+            const officialAssists = String(player.officialAssists || '').toLowerCase();
+            const friendlyAssists = String(player.friendlyAssists || '').toLowerCase();
+            
+            const rowText = `${playerName} ${matches} ${minutes} ${totalGA} ${officialGoals} ${friendlyGoals} ${officialAssists} ${friendlyAssists}`;
+            return rowText.includes(searchTerm);
+        });
+    }
+    
+    if (playersToDisplay.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;">No players found</td></tr>';
         return;
     }
     
     // Sort players based on current sort column and direction
-    const sortedPlayers = [...egyptTeamsData.players].sort((a, b) => {
+    const sortedPlayers = [...playersToDisplay].sort((a, b) => {
         const column = egyptTeamsData.currentSortColumn;
         const direction = egyptTeamsData.currentSortDirection;
         
@@ -1039,7 +1092,7 @@ function displayPlayers() {
         
         row.innerHTML = `
             <td>${index + 1}</td>
-            <td><strong>${player.playerName}</strong></td>
+            <td><strong>${escapeHtml(player.playerName)}</strong></td>
             <td style="text-align: center;"><span style="font-weight: 600;">${player.matches}</span></td>
             <td style="text-align: center;"><span style="font-weight: 600;">${player.minutes}</span></td>
             <td style="text-align: center; background-color: #f0f3ff;"><span style="color: #667eea; font-weight: bold; font-size: 1.2rem;">${player.totalGA}</span></td>
@@ -1483,7 +1536,7 @@ function loadPlayerChampionships(playerName, playerMatchIds) {
         });
     });
     
-    // Convert to array and sort by G+A (descending)
+    // Convert to array and sort by G+A (descending), then by Matches (descending)
     const championshipArray = Array.from(championshipStats.entries()).map(([championship, stats]) => {
         const totalGA = stats.officialGoals + stats.friendlyGoals + stats.officialAssists + stats.friendlyAssists;
         return {
@@ -1496,7 +1549,10 @@ function loadPlayerChampionships(playerName, playerMatchIds) {
             officialAssists: stats.officialAssists,
             friendlyAssists: stats.friendlyAssists
         };
-    }).sort((a, b) => b.totalGA - a.totalGA);
+    }).sort((a, b) => {
+        if (b.totalGA !== a.totalGA) return b.totalGA - a.totalGA;
+        return b.matches - a.matches;
+    });
     
     // Display championships
     championshipArray.forEach(stats => {
@@ -1749,7 +1805,7 @@ function loadPlayerVsTeams(playerName, playerMatchIds) {
         });
     });
     
-    // Convert to array and sort by G+A (descending)
+    // Convert to array and sort by G+A (descending), then by Matches (descending)
     const teamArray = Array.from(teamStats.entries()).map(([opponent, stats]) => {
         const totalGA = stats.officialGoals + stats.friendlyGoals + stats.officialAssists + stats.friendlyAssists;
         return {
@@ -1762,7 +1818,10 @@ function loadPlayerVsTeams(playerName, playerMatchIds) {
             officialAssists: stats.officialAssists,
             friendlyAssists: stats.friendlyAssists
         };
-    }).sort((a, b) => b.totalGA - a.totalGA);
+    }).sort((a, b) => {
+        if (b.totalGA !== a.totalGA) return b.totalGA - a.totalGA;
+        return b.matches - a.matches;
+    });
     
     // Display opponent teams
     teamArray.forEach(stats => {
@@ -1931,9 +1990,21 @@ function showStatsTab(arg1, arg2) {
         } else {
             loadGoalkeepersStats();
         }
+    } else if (tabName === 'bygoalkeepers') {
+        // Load player details if not already loaded (needed for gkDetails)
+        if (!egyptTeamsData.playerDetailsLoaded) {
+            loadPlayerDetailsOnly().then(() => {
+                setupGoalkeeperSearch();
+            });
+        } else {
+            setupGoalkeeperSearch();
+        }
     } else if (tabName === 'elnady') {
         // Load all clubs stats by default
         loadAllClubsStats();
+    } else if (tabName === 'mainstats') {
+        // Load main stats championships by default
+        loadMainStatsChampionships();
     }
 }
 
@@ -3992,8 +4063,828 @@ function showEgyptMatchSubTab(event, tabName) {
 }
 
 // ============================================================================
+// ALL PLAYERS SEARCH FUNCTIONALITY
+// ============================================================================
+
+function setupAllPlayersSearch() {
+    const searchInput = document.getElementById('all-players-search');
+    if (!searchInput) return;
+    
+    searchInput.addEventListener('keyup', () => {
+        // Simply call displayPlayers, which now handles search internally
+        displayPlayers();
+    });
+}
+
+// ============================================================================
+// MAIN STATS TAB FUNCTIONALITY
+// ============================================================================
+
+function switchMainStatsTab(tabName) {
+    // Update tab buttons
+    const tabButtons = document.querySelectorAll('#mainstats-tab > .tabs-header .tab-button');
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    
+    // Add active class to clicked button using selector
+    const clickedBtn = document.querySelector(`#mainstats-tab > .tabs-header .tab-button[onclick*="'${tabName}'"]`);
+    if (clickedBtn) clickedBtn.classList.add('active');
+    
+    // Update tab content
+    document.getElementById('mainstats-championships-tab').classList.remove('active');
+    document.getElementById('mainstats-seasons-tab').classList.remove('active');
+    
+    if (tabName === 'championships') {
+        document.getElementById('mainstats-championships-tab').classList.add('active');
+        loadMainStatsChampionships();
+    } else if (tabName === 'seasons') {
+        document.getElementById('mainstats-seasons-tab').classList.add('active');
+        loadMainStatsSeasons();
+    }
+}
+
+function loadMainStatsChampionships() {
+    const tbody = document.getElementById('mainstats-championships-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    // Group stats by championship
+    const championshipStats = new Map();
+    
+    egyptTeamsData.filteredRecords.forEach(match => {
+        const championship = (match['CHAMPION'] || 'Unknown').trim();
+        const result = match['W-D-L'] || '';
+        const gf = parseInt(match['GF']) || 0;
+        const ga = parseInt(match['GA']) || 0;
+        
+        if (!championshipStats.has(championship)) {
+            championshipStats.set(championship, {
+                championship,
+                matches: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                gf: 0,
+                ga: 0,
+                cleanSheetsFor: 0,
+                cleanSheetsAgainst: 0
+            });
+        }
+        
+        const stats = championshipStats.get(championship);
+        stats.matches++;
+        stats.gf += gf;
+        stats.ga += ga;
+        
+        if (result === 'W') stats.wins++;
+        else if (result === 'D' || result === 'D.') stats.draws++;
+        else if (result === 'L') stats.losses++;
+        
+        if (ga === 0) stats.cleanSheetsFor++;
+        if (gf === 0) stats.cleanSheetsAgainst++;
+    });
+    
+    // Convert to array and sort by matches (descending)
+    const championshipsArray = Array.from(championshipStats.values())
+        .sort((a, b) => b.matches - a.matches);
+    
+    if (championshipsArray.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;">No championship data available</td></tr>';
+        return;
+    }
+    
+    // Display championships
+    championshipsArray.forEach(stats => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td style="font-weight: 600;">${escapeHtml(stats.championship)}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.matches}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #10b981;">${stats.wins}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #f59e0b;">${stats.draws}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #ef4444;">${stats.losses}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #10b981;">${stats.gf}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #ef4444;">${stats.ga}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #17a2b8;">${stats.cleanSheetsFor}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #fd7e14;">${stats.cleanSheetsAgainst}</td>
+        `;
+    });
+    
+    // Add totals row
+    const totalMatches = championshipsArray.reduce((sum, s) => sum + s.matches, 0);
+    const totalWins = championshipsArray.reduce((sum, s) => sum + s.wins, 0);
+    const totalDraws = championshipsArray.reduce((sum, s) => sum + s.draws, 0);
+    const totalLosses = championshipsArray.reduce((sum, s) => sum + s.losses, 0);
+    const totalGF = championshipsArray.reduce((sum, s) => sum + s.gf, 0);
+    const totalGA = championshipsArray.reduce((sum, s) => sum + s.ga, 0);
+    const totalCleanSheetsFor = championshipsArray.reduce((sum, s) => sum + s.cleanSheetsFor, 0);
+    const totalCleanSheetsAgainst = championshipsArray.reduce((sum, s) => sum + s.cleanSheetsAgainst, 0);
+    
+    const totalRow = tbody.insertRow();
+    totalRow.style.backgroundColor = '#f3f4f6';
+    totalRow.style.borderTop = '2px solid #333';
+    totalRow.innerHTML = `
+        <td style="font-weight: 700; color: #1f2937;">Total</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #1f2937;">${totalMatches}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #10b981;">${totalWins}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #f59e0b;">${totalDraws}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #ef4444;">${totalLosses}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #10b981;">${totalGF}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #ef4444;">${totalGA}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #17a2b8;">${totalCleanSheetsFor}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #fd7e14;">${totalCleanSheetsAgainst}</td>
+    `;
+}
+
+function loadMainStatsSeasons() {
+    const tbody = document.getElementById('mainstats-seasons-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    // Group stats by season
+    const seasonStats = new Map();
+    
+    egyptTeamsData.filteredRecords.forEach(match => {
+        const season = (match['SEASON'] || 'Unknown').trim();
+        const result = match['W-D-L'] || '';
+        const gf = parseInt(match['GF']) || 0;
+        const ga = parseInt(match['GA']) || 0;
+        
+        if (!seasonStats.has(season)) {
+            seasonStats.set(season, {
+                season,
+                matches: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                gf: 0,
+                ga: 0,
+                cleanSheetsFor: 0,
+                cleanSheetsAgainst: 0
+            });
+        }
+        
+        const stats = seasonStats.get(season);
+        stats.matches++;
+        stats.gf += gf;
+        stats.ga += ga;
+        
+        if (result === 'W') stats.wins++;
+        else if (result === 'D' || result === 'D.') stats.draws++;
+        else if (result === 'L') stats.losses++;
+        
+        if (ga === 0) stats.cleanSheetsFor++;
+        if (gf === 0) stats.cleanSheetsAgainst++;
+    });
+    
+    // Convert to array and sort alphabetically in reverse order (newest first)
+    const seasonsArray = Array.from(seasonStats.values())
+        .sort((a, b) => b.season.localeCompare(a.season));
+    
+    if (seasonsArray.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;">No season data available</td></tr>';
+        return;
+    }
+    
+    // Display seasons
+    seasonsArray.forEach(stats => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td style="font-weight: 600;">${escapeHtml(stats.season)}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.matches}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #10b981;">${stats.wins}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #f59e0b;">${stats.draws}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #ef4444;">${stats.losses}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #10b981;">${stats.gf}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #ef4444;">${stats.ga}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #17a2b8;">${stats.cleanSheetsFor}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #fd7e14;">${stats.cleanSheetsAgainst}</td>
+        `;
+    });
+    
+    // Add totals row
+    const totalMatches = seasonsArray.reduce((sum, s) => sum + s.matches, 0);
+    const totalWins = seasonsArray.reduce((sum, s) => sum + s.wins, 0);
+    const totalDraws = seasonsArray.reduce((sum, s) => sum + s.draws, 0);
+    const totalLosses = seasonsArray.reduce((sum, s) => sum + s.losses, 0);
+    const totalGF = seasonsArray.reduce((sum, s) => sum + s.gf, 0);
+    const totalGA = seasonsArray.reduce((sum, s) => sum + s.ga, 0);
+    const totalCleanSheetsFor = seasonsArray.reduce((sum, s) => sum + s.cleanSheetsFor, 0);
+    const totalCleanSheetsAgainst = seasonsArray.reduce((sum, s) => sum + s.cleanSheetsAgainst, 0);
+    
+    const totalRow = tbody.insertRow();
+    totalRow.style.backgroundColor = '#f3f4f6';
+    totalRow.style.borderTop = '2px solid #333';
+    totalRow.innerHTML = `
+        <td style="font-weight: 700; color: #1f2937;">Total</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #1f2937;">${totalMatches}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #10b981;">${totalWins}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #f59e0b;">${totalDraws}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #ef4444;">${totalLosses}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #10b981;">${totalGF}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #ef4444;">${totalGA}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #17a2b8;">${totalCleanSheetsFor}</td>
+        <td style="text-align: center; font-size: 1.4rem; font-weight: bold; color: #fd7e14;">${totalCleanSheetsAgainst}</td>
+    `;
+}
+
+// ============================================================================
 // INITIALIZATION
 // ============================================================================
+
+// ============================================================================
+// BY GOALKEEPER FUNCTIONS
+// ============================================================================
+
+let selectedGoalkeeper = null;
+
+function setupGoalkeeperSearch() {
+    const searchInput = document.getElementById('goalkeeper-search');
+    if (!searchInput) return;
+    
+    // Remove existing listener if any
+    searchInput.removeEventListener('input', handleGoalkeeperSearch);
+    searchInput.addEventListener('input', handleGoalkeeperSearch);
+    
+    // Close search results when clicking outside
+    document.addEventListener('click', function(e) {
+        const searchResults = document.getElementById('goalkeeper-search-results');
+        if (!searchInput.contains(e.target) && searchResults && !searchResults.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+}
+
+function handleGoalkeeperSearch(e) {
+    const searchTerm = e.target.value.toLowerCase().trim();
+    const searchResults = document.getElementById('goalkeeper-search-results');
+    
+    if (!searchResults) return;
+    
+    if (!searchTerm) {
+        searchResults.style.display = 'none';
+        return;
+    }
+    
+    // Get unique goalkeeper names from goalkeepersData
+    const gkDetails = egyptTeamsData.gkDetails || [];
+    const uniqueGoalkeepers = [...new Set(gkDetails
+        .map(gk => (gk['PLAYER NAME'] || '').trim())
+        .filter(name => name && name.toLowerCase().includes(searchTerm))
+    )].sort();
+    
+    if (uniqueGoalkeepers.length === 0) {
+        searchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: #999;">No goalkeepers found</div>';
+        searchResults.style.display = 'block';
+        return;
+    }
+    
+    searchResults.innerHTML = uniqueGoalkeepers.map(gkName => 
+        `<div class="player-search-item" onclick="selectGoalkeeper('${gkName.replace(/'/g, "\\'")}')">${gkName}</div>`
+    ).join('');
+    
+    searchResults.style.display = 'block';
+}
+
+function selectGoalkeeper(goalkeeperName) {
+    selectedGoalkeeper = goalkeeperName;
+    
+    // Hide search results
+    const searchResults = document.getElementById('goalkeeper-search-results');
+    if (searchResults) searchResults.style.display = 'none';
+    const searchInput = document.getElementById('goalkeeper-search');
+    if (searchInput) searchInput.value = goalkeeperName;
+    
+    // Calculate and display goalkeeper stats
+    calculateGoalkeeperIndividualStats(goalkeeperName);
+    
+    // Show goalkeeper info container
+    const infoContainer = document.getElementById('goalkeeper-info-container');
+    const noGKSelected = document.getElementById('no-goalkeeper-selected');
+    const selectedGKName = document.getElementById('selected-goalkeeper-name');
+    
+    if (infoContainer) infoContainer.style.display = 'block';
+    if (noGKSelected) noGKSelected.style.display = 'none';
+    if (selectedGKName) selectedGKName.textContent = goalkeeperName;
+}
+
+function calculateGoalkeeperIndividualStats(goalkeeperName) {
+    // Get match IDs from filtered matches
+    const filteredMatchIds = new Set(egyptTeamsData.filteredRecords.map(match => match['MATCH_ID']));
+    
+    // Get goalkeeper matches from gkDetails
+    const gkDetails = egyptTeamsData.gkDetails || [];
+    const goalkeeperMatches = new Set();
+    
+    gkDetails.forEach(gk => {
+        const name = (gk['PLAYER NAME'] || '').trim();
+        const matchId = (gk['MATCH_ID'] || gk['MATCH ID'] || '').trim();
+        const team = (gk['TEAM'] || '').trim().toLowerCase();
+        
+        // Only include Egypt team goalkeepers
+        if (name === goalkeeperName && filteredMatchIds.has(matchId) && team === 'egypt') {
+            goalkeeperMatches.add(matchId);
+        }
+    });
+    
+    // Load goalkeeper sub-tabs
+    loadGoalkeeperMatches(goalkeeperName, goalkeeperMatches);
+    loadGoalkeeperChampionships(goalkeeperName, goalkeeperMatches);
+    loadGoalkeeperSeasons(goalkeeperName, goalkeeperMatches);
+    loadGoalkeeperVsTeams(goalkeeperName, goalkeeperMatches);
+}
+
+function loadGoalkeeperMatches(goalkeeperName, goalkeeperMatchIds) {
+    const tbody = document.getElementById('goalkeeper-matches-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (goalkeeperMatchIds.size === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
+        return;
+    }
+    
+    // Get match details for goalkeeper matches
+    const goalkeeperMatchesList = egyptTeamsData.filteredRecords.filter(match => 
+        goalkeeperMatchIds.has(match['MATCH_ID'])
+    ).reverse(); // Latest first
+    
+    const gkDetails = egyptTeamsData.gkDetails || [];
+    const playerDetails = egyptTeamsData.playerDetails || [];
+    const howPenMissed = egyptTeamsData.howPenMissed || [];
+    
+    // Get all GKs by match for penalty calculation
+    const allGKsByMatch = new Map();
+    gkDetails.forEach(record => {
+        const matchId = record.MATCH_ID || record['MATCH ID'] || '';
+        const team = (record.TEAM || '').trim().toLowerCase();
+        if (team === 'egypt' && goalkeeperMatchIds.has(matchId)) {
+            const key = `${matchId}_${team}`;
+            if (!allGKsByMatch.has(key)) {
+                allGKsByMatch.set(key, []);
+            }
+            allGKsByMatch.get(key).push(record);
+        }
+    });
+    
+    // Get penalty saves for this goalkeeper
+    const penaltySavesByMatch = new Map();
+    howPenMissed.forEach(record => {
+        const matchId = record.MATCH_ID || record['MATCH ID'] || '';
+        const gkName = (record['PLAYER NAME'] || '').trim();
+        if (gkName === goalkeeperName && goalkeeperMatchIds.has(matchId)) {
+            penaltySavesByMatch.set(matchId, (penaltySavesByMatch.get(matchId) || 0) + 1);
+        }
+    });
+    
+    goalkeeperMatchesList.forEach(match => {
+        const matchId = match['MATCH_ID'];
+        
+        // Get goalkeeper details for goals conceded
+        const gkRecord = gkDetails.find(gk => 
+            (gk['PLAYER NAME'] || '').trim() === goalkeeperName && 
+            (gk['MATCH_ID'] || gk['MATCH ID'] || '').trim() === matchId &&
+            (gk['TEAM'] || '').trim().toLowerCase() === 'egypt'
+        );
+        const goalsConceded = gkRecord ? (parseInt(gkRecord['GOALS CONCEDED'] || 0)) : 0;
+        
+        // Calculate penalties conceded (same logic as loadGoalkeepersStats)
+        let penaltiesConceded = 0;
+        const team = 'egypt';
+        const key = `${matchId}_${team}`;
+        const allGKsInMatch = allGKsByMatch.get(key) || [];
+        const onlyOneGK = allGKsInMatch.length === 1;
+        const gkGoalMinutes = gkRecord ? (gkRecord['GOAL MINUTE'] || '').toString().trim() : '';
+        
+        // Get penalties for this match from playerDetails
+        playerDetails.forEach(detail => {
+            const detailMatchId = detail['MATCH_ID'] || detail['MATCH ID'] || '';
+            const detailTeam = (detail['TEAM'] || '').trim();
+            const typeValue = (detail['TYPE'] || '').trim();
+            const gaValue = (detail['GA'] || '').trim();
+            const minute = (detail['MINUTE'] || '').toString().trim();
+            
+            // Only count PENGOAL scored by opponent (not Egypt)
+            if (detailMatchId === matchId && gaValue === 'GOAL' && typeValue && detailTeam && detailTeam !== 'EGYPT') {
+                const pengoalMatches = typeValue.match(/PENGOAL/g);
+                if (pengoalMatches) {
+                    pengoalMatches.forEach(() => {
+                        if (onlyOneGK) {
+                            penaltiesConceded += 1;
+                        } else if (gkGoalMinutes && minute) {
+                            const gkMinutesArray = gkGoalMinutes.split(',').map(m => m.trim());
+                            if (gkMinutesArray.includes(minute)) {
+                                penaltiesConceded += 1;
+                            }
+                        }
+                    });
+                }
+            }
+        });
+        
+        // Get penalties saved for this match
+        const penaltiesSaved = penaltySavesByMatch.get(matchId) || 0;
+        
+        // Create searchable text from all columns
+        const searchableText = [
+            match['DATE'] || '',
+            match['SEASON'] || '',
+            match['MANAGER EGY'] || '',
+            match['OPPONENT TEAM'] || '',
+            goalsConceded.toString(),
+            penaltiesConceded.toString(),
+            penaltiesSaved.toString()
+        ].join(' ').toLowerCase();
+        
+        const row = document.createElement('tr');
+        row.setAttribute('data-search', searchableText);
+        row.innerHTML = `
+            <td>${match['DATE'] || ''}</td>
+            <td>${match['SEASON'] || ''}</td>
+            <td>${match['MANAGER EGY'] || ''}</td>
+            <td>${match['OPPONENT TEAM'] || ''}</td>
+            <td style="text-align: center;">${goalsConceded === 0 ? '-' : goalsConceded}</td>
+            <td style="text-align: center;">${penaltiesConceded === 0 ? '-' : penaltiesConceded}</td>
+            <td style="text-align: center;">${penaltiesSaved === 0 ? '-' : penaltiesSaved}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Setup search functionality
+    setupGoalkeeperMatchesSearch();
+}
+
+function setupGoalkeeperMatchesSearch() {
+    const searchInput = document.getElementById('goalkeeper-matches-search-input');
+    if (!searchInput) return;
+    
+    // Remove previous listeners by cloning the input
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+    
+    newSearchInput.addEventListener('keyup', () => {
+        const searchTerm = newSearchInput.value.toLowerCase().trim();
+        const tbody = document.getElementById('goalkeeper-matches-tbody');
+        if (!tbody) return;
+        
+        const rows = tbody.querySelectorAll('tr');
+        
+        rows.forEach(row => {
+            const searchText = row.getAttribute('data-search') || '';
+            if (!searchTerm || searchText.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+}
+
+// Helper function to calculate penalties for a goalkeeper in a match
+function calculateGoalkeeperPenaltiesForMatch(goalkeeperName, matchId, allGKsByMatch, playerDetails, howPenMissed) {
+    const team = 'egypt';
+    const key = `${matchId}_${team}`;
+    const allGKsInMatch = allGKsByMatch.get(key) || [];
+    const onlyOneGK = allGKsInMatch.length === 1;
+    
+    // Get goalkeeper record
+    const gkRecord = allGKsInMatch.find(gk => 
+        (gk['PLAYER NAME'] || '').trim() === goalkeeperName
+    );
+    const gkGoalMinutes = gkRecord ? (gkRecord['GOAL MINUTE'] || '').toString().trim() : '';
+    
+    // Calculate penalties conceded
+    let penaltiesConceded = 0;
+    playerDetails.forEach(detail => {
+        const detailMatchId = detail['MATCH_ID'] || detail['MATCH ID'] || '';
+        const detailTeam = (detail['TEAM'] || '').trim();
+        const typeValue = (detail['TYPE'] || '').trim();
+        const gaValue = (detail['GA'] || '').trim();
+        const minute = (detail['MINUTE'] || '').toString().trim();
+        
+        // Only count PENGOAL scored by opponent (not Egypt)
+        if (detailMatchId === matchId && gaValue === 'GOAL' && typeValue && detailTeam && detailTeam !== 'EGYPT') {
+            const pengoalMatches = typeValue.match(/PENGOAL/g);
+            if (pengoalMatches) {
+                pengoalMatches.forEach(() => {
+                    if (onlyOneGK) {
+                        penaltiesConceded += 1;
+                    } else if (gkGoalMinutes && minute) {
+                        const gkMinutesArray = gkGoalMinutes.split(',').map(m => m.trim());
+                        if (gkMinutesArray.includes(minute)) {
+                            penaltiesConceded += 1;
+                        }
+                    }
+                });
+            }
+        }
+    });
+    
+    // Calculate penalties saved
+    let penaltiesSaved = 0;
+    howPenMissed.forEach(record => {
+        const recordMatchId = record.MATCH_ID || record['MATCH ID'] || '';
+        const gkName = (record['PLAYER NAME'] || '').trim();
+        if (recordMatchId === matchId && gkName === goalkeeperName) {
+            penaltiesSaved += 1;
+        }
+    });
+    
+    return { penaltiesConceded, penaltiesSaved };
+}
+
+function loadGoalkeeperChampionships(goalkeeperName, goalkeeperMatchIds) {
+    const tbody = document.getElementById('goalkeeper-championships-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (goalkeeperMatchIds.size === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">No championships found</td></tr>';
+        return;
+    }
+    
+    // Group stats by championship
+    const championshipStats = new Map();
+    const gkDetails = egyptTeamsData.gkDetails || [];
+    const playerDetails = egyptTeamsData.playerDetails || [];
+    const howPenMissed = egyptTeamsData.howPenMissed || [];
+    
+    // Get all GKs by match for penalty calculation
+    const allGKsByMatch = new Map();
+    gkDetails.forEach(record => {
+        const matchId = record.MATCH_ID || record['MATCH ID'] || '';
+        const team = (record.TEAM || '').trim().toLowerCase();
+        if (team === 'egypt' && goalkeeperMatchIds.has(matchId)) {
+            const key = `${matchId}_${team}`;
+            if (!allGKsByMatch.has(key)) {
+                allGKsByMatch.set(key, []);
+            }
+            allGKsByMatch.get(key).push(record);
+        }
+    });
+    
+    egyptTeamsData.filteredRecords.forEach(match => {
+        const matchId = match['MATCH_ID'];
+        if (!goalkeeperMatchIds.has(matchId)) return;
+        
+        const championship = match['CHAMPION'] || 'Unknown';
+        
+        // Get goalkeeper details for goals conceded
+        const gkRecord = gkDetails.find(gk => 
+            (gk['PLAYER NAME'] || '').trim() === goalkeeperName && 
+            (gk['MATCH_ID'] || gk['MATCH ID'] || '').trim() === matchId &&
+            (gk['TEAM'] || '').trim().toLowerCase() === 'egypt'
+        );
+        
+        if (!championshipStats.has(championship)) {
+            championshipStats.set(championship, {
+                matches: 0,
+                goalsConceded: 0,
+                penaltiesConceded: 0,
+                penaltiesSaved: 0
+            });
+        }
+        
+        const stats = championshipStats.get(championship);
+        stats.matches++;
+        if (gkRecord) {
+            stats.goalsConceded += parseInt(gkRecord['GOALS CONCEDED'] || 0);
+            
+            // Calculate penalties for this match
+            const penalties = calculateGoalkeeperPenaltiesForMatch(goalkeeperName, matchId, allGKsByMatch, playerDetails, howPenMissed);
+            stats.penaltiesConceded += penalties.penaltiesConceded;
+            stats.penaltiesSaved += penalties.penaltiesSaved;
+        }
+    });
+    
+    // Convert to array and sort by matches (desc) then goals conceded (desc)
+    const championshipArray = Array.from(championshipStats.entries()).map(([championship, stats]) => ({
+        championship,
+        ...stats
+    })).sort((a, b) => {
+        // First sort by matches (descending)
+        if (b.matches !== a.matches) {
+            return b.matches - a.matches;
+        }
+        // Then sort by goals conceded (descending)
+        return b.goalsConceded - a.goalsConceded;
+    });
+    
+    // Display championships
+    championshipArray.forEach(stats => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td style="font-weight: 600;">${stats.championship}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.matches}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.goalsConceded === 0 ? '-' : stats.goalsConceded}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesConceded === 0 ? '-' : stats.penaltiesConceded}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesSaved === 0 ? '-' : stats.penaltiesSaved}</td>
+        `;
+    });
+}
+
+function loadGoalkeeperSeasons(goalkeeperName, goalkeeperMatchIds) {
+    const tbody = document.getElementById('goalkeeper-seasons-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (goalkeeperMatchIds.size === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">No seasons found</td></tr>';
+        return;
+    }
+    
+    // Group stats by season
+    const seasonStats = new Map();
+    const gkDetails = egyptTeamsData.gkDetails || [];
+    const playerDetails = egyptTeamsData.playerDetails || [];
+    const howPenMissed = egyptTeamsData.howPenMissed || [];
+    
+    // Get all GKs by match for penalty calculation
+    const allGKsByMatch = new Map();
+    gkDetails.forEach(record => {
+        const matchId = record.MATCH_ID || record['MATCH ID'] || '';
+        const team = (record.TEAM || '').trim().toLowerCase();
+        if (team === 'egypt' && goalkeeperMatchIds.has(matchId)) {
+            const key = `${matchId}_${team}`;
+            if (!allGKsByMatch.has(key)) {
+                allGKsByMatch.set(key, []);
+            }
+            allGKsByMatch.get(key).push(record);
+        }
+    });
+    
+    egyptTeamsData.filteredRecords.forEach(match => {
+        const matchId = match['MATCH_ID'];
+        if (!goalkeeperMatchIds.has(matchId)) return;
+        
+        const season = match['SEASON'] || 'Unknown';
+        
+        // Get goalkeeper details for goals conceded
+        const gkRecord = gkDetails.find(gk => 
+            (gk['PLAYER NAME'] || '').trim() === goalkeeperName && 
+            (gk['MATCH_ID'] || gk['MATCH ID'] || '').trim() === matchId &&
+            (gk['TEAM'] || '').trim().toLowerCase() === 'egypt'
+        );
+        
+        if (!seasonStats.has(season)) {
+            seasonStats.set(season, {
+                matches: 0,
+                goalsConceded: 0,
+                penaltiesConceded: 0,
+                penaltiesSaved: 0
+            });
+        }
+        
+        const stats = seasonStats.get(season);
+        stats.matches++;
+        if (gkRecord) {
+            stats.goalsConceded += parseInt(gkRecord['GOALS CONCEDED'] || 0);
+            
+            // Calculate penalties for this match
+            const penalties = calculateGoalkeeperPenaltiesForMatch(goalkeeperName, matchId, allGKsByMatch, playerDetails, howPenMissed);
+            stats.penaltiesConceded += penalties.penaltiesConceded;
+            stats.penaltiesSaved += penalties.penaltiesSaved;
+        }
+    });
+    
+    // Convert to array and sort alphabetically (newest first - reverse alphabetical by year)
+    const seasonArray = Array.from(seasonStats.entries()).map(([season, stats]) => ({
+        season,
+        ...stats
+    })).sort((a, b) => b.season.localeCompare(a.season));
+    
+    // Display seasons
+    seasonArray.forEach(stats => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td style="font-weight: 600;">${stats.season}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.matches}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.goalsConceded === 0 ? '-' : stats.goalsConceded}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesConceded === 0 ? '-' : stats.penaltiesConceded}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesSaved === 0 ? '-' : stats.penaltiesSaved}</td>
+        `;
+    });
+}
+
+function loadGoalkeeperVsTeams(goalkeeperName, goalkeeperMatchIds) {
+    const tbody = document.getElementById('goalkeeper-vsteams-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (goalkeeperMatchIds.size === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">No teams found</td></tr>';
+        return;
+    }
+    
+    // Group stats by opponent team
+    const teamStats = new Map();
+    const gkDetails = egyptTeamsData.gkDetails || [];
+    const playerDetails = egyptTeamsData.playerDetails || [];
+    const howPenMissed = egyptTeamsData.howPenMissed || [];
+    
+    // Get all GKs by match for penalty calculation
+    const allGKsByMatch = new Map();
+    gkDetails.forEach(record => {
+        const matchId = record.MATCH_ID || record['MATCH ID'] || '';
+        const team = (record.TEAM || '').trim().toLowerCase();
+        if (team === 'egypt' && goalkeeperMatchIds.has(matchId)) {
+            const key = `${matchId}_${team}`;
+            if (!allGKsByMatch.has(key)) {
+                allGKsByMatch.set(key, []);
+            }
+            allGKsByMatch.get(key).push(record);
+        }
+    });
+    
+    egyptTeamsData.filteredRecords.forEach(match => {
+        const matchId = match['MATCH_ID'];
+        if (!goalkeeperMatchIds.has(matchId)) return;
+        
+        const opponentTeam = match['OPPONENT TEAM'] || 'Unknown';
+        
+        // Get goalkeeper details for goals conceded
+        const gkRecord = gkDetails.find(gk => 
+            (gk['PLAYER NAME'] || '').trim() === goalkeeperName && 
+            (gk['MATCH_ID'] || gk['MATCH ID'] || '').trim() === matchId &&
+            (gk['TEAM'] || '').trim().toLowerCase() === 'egypt'
+        );
+        
+        if (!teamStats.has(opponentTeam)) {
+            teamStats.set(opponentTeam, {
+                matches: 0,
+                goalsConceded: 0,
+                penaltiesConceded: 0,
+                penaltiesSaved: 0
+            });
+        }
+        
+        const stats = teamStats.get(opponentTeam);
+        stats.matches++;
+        if (gkRecord) {
+            stats.goalsConceded += parseInt(gkRecord['GOALS CONCEDED'] || 0);
+            
+            // Calculate penalties for this match
+            const penalties = calculateGoalkeeperPenaltiesForMatch(goalkeeperName, matchId, allGKsByMatch, playerDetails, howPenMissed);
+            stats.penaltiesConceded += penalties.penaltiesConceded;
+            stats.penaltiesSaved += penalties.penaltiesSaved;
+        }
+    });
+    
+    // Convert to array and sort by matches (desc) then goals conceded (desc)
+    const teamArray = Array.from(teamStats.entries()).map(([team, stats]) => ({
+        team,
+        ...stats
+    })).sort((a, b) => {
+        // First sort by matches (descending)
+        if (b.matches !== a.matches) {
+            return b.matches - a.matches;
+        }
+        // Then sort by goals conceded (descending)
+        return b.goalsConceded - a.goalsConceded;
+    });
+    
+    // Display teams
+    teamArray.forEach(stats => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td style="font-weight: 600;">${stats.team}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.matches}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.goalsConceded === 0 ? '-' : stats.goalsConceded}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesConceded === 0 ? '-' : stats.penaltiesConceded}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesSaved === 0 ? '-' : stats.penaltiesSaved}</td>
+        `;
+    });
+}
+
+function switchGoalkeeperTab(tabName) {
+    // Remove active class from goalkeeper tab buttons
+    const goalkeeperTabButtons = document.querySelectorAll('#goalkeeper-info-container .tab-button');
+    goalkeeperTabButtons.forEach(button => button.classList.remove('active'));
+    
+    // Hide all goalkeeper tab contents
+    document.querySelectorAll('#goalkeeper-matches-tab, #goalkeeper-championships-tab, #goalkeeper-seasons-tab, #goalkeeper-vsteams-tab').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Show selected tab
+    if (tabName === 'goalkeeper-matches') {
+        document.getElementById('goalkeeper-matches-tab').classList.add('active');
+        goalkeeperTabButtons[0].classList.add('active');
+    } else if (tabName === 'goalkeeper-championships') {
+        document.getElementById('goalkeeper-championships-tab').classList.add('active');
+        goalkeeperTabButtons[1].classList.add('active');
+    } else if (tabName === 'goalkeeper-seasons') {
+        document.getElementById('goalkeeper-seasons-tab').classList.add('active');
+        goalkeeperTabButtons[2].classList.add('active');
+    } else if (tabName === 'goalkeeper-vsteams') {
+        document.getElementById('goalkeeper-vsteams-tab').classList.add('active');
+        goalkeeperTabButtons[3].classList.add('active');
+    }
+}
 
 // Load data when page loads
 document.addEventListener('DOMContentLoaded', function() {
@@ -4002,6 +4893,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Setup search after a short delay to ensure DOM is ready
     setTimeout(() => {
         setupDynamicTableSearch();
+        setupAllPlayersSearch();
     }, 500);
 });
 

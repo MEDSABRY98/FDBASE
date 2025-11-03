@@ -651,7 +651,8 @@
         }
 
         /* Player Search Results */
-        #player-search-results {
+        #player-search-results,
+        #goalkeeper-search-results {
             background: white;
             border: 2px solid #667eea;
             border-radius: 10px;
@@ -1055,6 +1056,12 @@
                                     </svg>
                                     Matches
                                 </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'mainstats')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                    </svg>
+                                    Main Stats
+                                </button>
                                 <button class="stats-tab" onclick="showStatsTab(event, 'h2h')">
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -1108,6 +1115,13 @@
                                         <line x1="3" y1="10" x2="21" y2="10"/>
                                     </svg>
                                     All Goalkeepers
+                                </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'bygoalkeepers')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                    </svg>
+                                    BY Goalkeepers
                                 </button>
                                 <button class="stats-tab" onclick="showStatsTab(event, 'elnady')">
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1433,6 +1447,12 @@
                                     <option value="egypt">With Egypt (Egyptian Players)</option>
                                     <option value="opponent">Against Egypt (Opponent Players)</option>
                                 </select>
+                            </div>
+                            
+                            <!-- Players Search -->
+                            <div style="margin-bottom: 2rem; text-align: center;">
+                                <input type="text" id="all-players-search" placeholder="🔍 Search in players table..." 
+                                    style="padding: 0.75rem 1rem; width: 400px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;" autocomplete="off">
                             </div>
                             
                             <!-- Players Loading -->
@@ -1774,6 +1794,133 @@
                         </div>
                     </div>
 
+                    <!-- BY Goalkeepers Tab -->
+                    <div id="bygoalkeepers-tab" class="stats-tab-content">
+                        <div class="matches-section">
+                            <!-- Goalkeeper Search -->
+                            <div style="margin-bottom: 2rem; text-align: center;">
+                                <label for="goalkeeper-search" style="font-weight: 600; color: #333; margin-right: 1rem;">Search Goalkeeper:</label>
+                                <input type="text" id="goalkeeper-search" class="filter-control" style="max-width: 400px; display: inline-block;" placeholder="Type goalkeeper name..." autocomplete="off">
+                                <div id="goalkeeper-search-results" style="max-width: 400px; margin: 0.5rem auto; display: none;"></div>
+                            </div>
+
+                            <!-- Goalkeeper Info Container -->
+                            <div id="goalkeeper-info-container" style="display: none;">
+                                <h3 id="selected-goalkeeper-name" style="text-align: center; font-size: 1.8rem; color: #333; margin-bottom: 2rem;"></h3>
+
+                                <!-- Sub Tabs -->
+                                <div class="tabs-header" style="margin-bottom: 2rem;">
+                                    <button class="tab-button active" onclick="switchGoalkeeperTab('goalkeeper-matches')">
+                                        ⚽ Matches
+                                    </button>
+                                    <button class="tab-button" onclick="switchGoalkeeperTab('goalkeeper-championships')">
+                                        🏆 Championships
+                                    </button>
+                                    <button class="tab-button" onclick="switchGoalkeeperTab('goalkeeper-seasons')">
+                                        📅 Seasons
+                                    </button>
+                                    <button class="tab-button" onclick="switchGoalkeeperTab('goalkeeper-vsteams')">
+                                        🆚 VS Teams
+                                    </button>
+                                </div>
+
+                                <!-- Goalkeeper Matches Tab -->
+                                <div id="goalkeeper-matches-tab" class="tab-content active">
+                                    <div class="table-search-container" style="margin-bottom: 1rem;">
+                                        <input type="search" id="goalkeeper-matches-search-input" class="table-search-input" placeholder="Search in matches table...">
+                                    </div>
+                                    <div style="overflow-x: auto;">
+                                        <table class="matches-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Season</th>
+                                                    <th>Egypt Manager</th>
+                                                    <th>Opponent</th>
+                                                    <th>Goals Conceded</th>
+                                                    <th>Penalties Conceded</th>
+                                                    <th>Penalties Saved</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="goalkeeper-matches-tbody">
+                                                <!-- Goalkeeper matches will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Goalkeeper Championships Tab -->
+                                <div id="goalkeeper-championships-tab" class="tab-content">
+                                    <div style="overflow-x: auto;">
+                                        <table class="matches-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Championship</th>
+                                                    <th>Matches</th>
+                                                    <th>Goals Conceded</th>
+                                                    <th>Penalties Conceded</th>
+                                                    <th>Penalties Saved</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="goalkeeper-championships-tbody">
+                                                <!-- Goalkeeper championships stats will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Goalkeeper Seasons Tab -->
+                                <div id="goalkeeper-seasons-tab" class="tab-content">
+                                    <div style="overflow-x: auto;">
+                                        <table class="matches-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Season</th>
+                                                    <th>Matches</th>
+                                                    <th>Goals Conceded</th>
+                                                    <th>Penalties Conceded</th>
+                                                    <th>Penalties Saved</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="goalkeeper-seasons-tbody">
+                                                <!-- Goalkeeper seasons stats will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Goalkeeper VS Teams Tab -->
+                                <div id="goalkeeper-vsteams-tab" class="tab-content">
+                                    <div style="overflow-x: auto;">
+                                        <table class="matches-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Team</th>
+                                                    <th>Matches</th>
+                                                    <th>Goals Conceded</th>
+                                                    <th>Penalties Conceded</th>
+                                                    <th>Penalties Saved</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="goalkeeper-vsteams-tbody">
+                                                <!-- Goalkeeper vs teams stats will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- No Goalkeeper Selected Message -->
+                            <div id="no-goalkeeper-selected" style="text-align: center; padding: 4rem; color: #666;">
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem;">
+                                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Search for a Goalkeeper</h3>
+                                <p>Start typing a goalkeeper name to view their statistics</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- ELNADY Tab -->
                     <div id="elnady-tab" class="stats-tab-content">
                         <!-- Sub Tabs for ELNADY -->
@@ -1918,6 +2065,67 @@
                                 </svg>
                                 <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Search for a Club</h3>
                                 <p>Start typing a club name to view statistics</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Stats Tab -->
+                    <div id="mainstats-tab" class="stats-tab-content">
+                        <!-- Sub Tabs for Main Stats -->
+                        <div class="tabs-header" style="margin-bottom: 2rem;">
+                            <button class="tab-button active" onclick="switchMainStatsTab('championships')">
+                                🏆 Championships
+                            </button>
+                            <button class="tab-button" onclick="switchMainStatsTab('seasons')">
+                                📅 Seasons
+                            </button>
+                        </div>
+
+                        <!-- Championships Sub-Tab -->
+                        <div id="mainstats-championships-tab" class="tab-content active">
+                            <div style="overflow-x: auto;">
+                                <table class="matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Championship</th>
+                                            <th>Matches</th>
+                                            <th>Win</th>
+                                            <th>Draw</th>
+                                            <th>Loss</th>
+                                            <th>GF</th>
+                                            <th>GA</th>
+                                            <th>Clean Sheets For</th>
+                                            <th>Clean Sheets Against</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mainstats-championships-tbody">
+                                        <!-- Main stats championships will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Seasons Sub-Tab -->
+                        <div id="mainstats-seasons-tab" class="tab-content">
+                            <div style="overflow-x: auto;">
+                                <table class="matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Season</th>
+                                            <th>Matches</th>
+                                            <th>Win</th>
+                                            <th>Draw</th>
+                                            <th>Loss</th>
+                                            <th>GF</th>
+                                            <th>GA</th>
+                                            <th>Clean Sheets For</th>
+                                            <th>Clean Sheets Against</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mainstats-seasons-tbody">
+                                        <!-- Main stats seasons will be loaded here -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
