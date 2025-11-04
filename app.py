@@ -688,17 +688,17 @@ def index():
     return render_template('main_dashboard.html')
 
 # ============================================================================
-# NATIONAL MEN HALLS - PAGE & CONFIG ENDPOINT
+# NATIONAL MEN WW - PAGE & CONFIG ENDPOINT
 # ============================================================================
 
-@app.route('/national-men-halls')
-def national_men_halls():
-    return render_template('national_men_halls.html')
+@app.route('/national-men-WW')
+def national_men_WW():
+    return render_template('national_men_WW.html')
 
-@app.route('/api/national-men-halls/config')
-def api_national_men_halls_config():
+@app.route('/api/national-men-WW/config')
+def api_national_men_WW_config():
     try:
-        apps_script_url = os.environ.get('NATIONAL_MEN_HALLS_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbxIpY5Qkg0m4ZW0ARyPYIA0J1Q8zNBR_tCfMBzF32ghf8zGvBA-uoRxhMUQHaTnaSo/exec')
+        apps_script_url = os.environ.get('NATIONAL_MEN_WW_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbxIpY5Qkg0m4ZW0ARyPYIA0J1Q8zNBR_tCfMBzF32ghf8zGvBA-uoRxhMUQHaTnaSo/exec')
         return jsonify({
             'success': True,
             'appsScriptUrl': apps_script_url or ''
@@ -706,9 +706,9 @@ def api_national_men_halls_config():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/national-men-halls/data')
-def api_national_men_halls_data():
-    """API endpoint to get National Men Halls data with caching"""
+@app.route('/api/national-men-WW/data')
+def api_national_men_WW_data():
+    """API endpoint to get National Men WW data with caching"""
     try:
         # Check if force refresh is requested
         force_refresh = request.args.get('refresh', 'false').lower() == 'true' or request.args.get('force_refresh', 'false').lower() == 'true'
@@ -717,19 +717,19 @@ def api_national_men_halls_data():
         if not force_refresh:
             from cache_manager import get_cache_manager
             cache = get_cache_manager()
-            cached_data = cache.get('national_men_halls', ttl_hours=6)
+            cached_data = cache.get('WW_Halls_national_men', ttl_hours=6)
             if cached_data:
-                print(f"✅ Returning cached National Men Halls data")
+                print(f"✅ Returning cached National Men WW data")
                 return jsonify(cached_data)
         else:
             print("🔄 Force refresh requested - bypassing cache")
             from cache_manager import get_cache_manager
             cache = get_cache_manager()
         
-        print("📊 Loading National Men Halls data from Google Apps Script...")
+        print("📊 Loading National Men WW data from Google Apps Script...")
         
         # Get Apps Script URL
-        apps_script_url = os.environ.get('NATIONAL_MEN_HALLS_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbxIpY5Qkg0m4ZW0ARyPYIA0J1Q8zNBR_tCfMBzF32ghf8zGvBA-uoRxhMUQHaTnaSo/exec')
+        apps_script_url = os.environ.get('NATIONAL_MEN_WW_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbxIpY5Qkg0m4ZW0ARyPYIA0J1Q8zNBR_tCfMBzF32ghf8zGvBA-uoRxhMUQHaTnaSo/exec')
         
         if not apps_script_url:
             return jsonify({'success': False, 'error': 'Apps Script URL not configured'}), 500
@@ -760,21 +760,21 @@ def api_national_men_halls_data():
                     cleaned_record[key] = str(value).strip()
             cleaned_records.append(cleaned_record)
         
-        print(f"✅ Successfully loaded {len(cleaned_records)} National Men Halls records")
+        print(f"✅ Successfully loaded {len(cleaned_records)} National Men WW records")
         
         # Create final successful response object
         result = {'success': True, 'data': cleaned_records}
         
         # Save to cache before returning
-        cache.set('national_men_halls', result)
+        cache.set('WW_Halls_national_men', result)
         
         return jsonify(result)
         
     except requests.exceptions.RequestException as e:
-        print(f"❌ Network error loading National Men Halls data: {e}")
+        print(f"❌ Network error loading National Men WW data: {e}")
         return jsonify({'success': False, 'error': f'Network error: {str(e)}'}), 500
     except Exception as e:
-        print(f"❌ Error loading National Men Halls data: {e}")
+        print(f"❌ Error loading National Men WW data: {e}")
         return jsonify({'success': False, 'error': f'Failed to load data: {str(e)}'}), 500
 
 @app.route('/data-entry-login')
@@ -814,6 +814,11 @@ def ahly_vs_zamalek():
 def egypt_teams():
     """Egypt National Teams Statistics Page"""
     return render_template('egypt_teams.html')
+
+@app.route('/ww-egypt-teams')
+def ww_egypt_teams():
+    """WW Egypt National Teams Statistics Page"""
+    return render_template('ww_egypt_teams.html')
 
 @app.route('/youth-egypt-teams')
 def youth_egypt_teams():
@@ -4710,6 +4715,170 @@ def api_egypt_teams_matches():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e), 'matches': []}), 500
+
+@app.route('/api/ww-egypt-teams/matches')
+def api_ww_egypt_teams_matches():
+    """API endpoint to get WW Egypt National Teams matches from Google Sheets"""
+    try:
+        print("⚽ Loading WW Egypt National Teams matches from Google Sheets...")
+        
+        # Check if refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('ww_egypt_teams_matches', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached WW Egypt Teams matches ({len(cached_data.get('matches', []))} matches)")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        # Check environment variable first
+        creds_env = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
+        if creds_env:
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        else:
+            # Fallback to local file
+            creds_file = get_resource_path('credentials/egyptnationalteam.json')
+            print(f"Using credentials file: {creds_file}")
+            if not os.path.exists(creds_file):
+                print(f"❌ Credentials file not found: {creds_file}")
+                return jsonify({'error': 'Credentials file not found', 'matches': []}), 404
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPE)
+        
+        client = gspread.authorize(creds)
+        
+        # Get Sheet ID from environment or use default (same as Egypt Teams)
+        sheet_id = os.environ.get('EGYPT_TEAMS_SHEET_ID', '10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8')
+        print(f"Using Sheet ID: {sheet_id}")
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get WWMATCHDETAILS worksheet
+        try:
+            worksheet = spreadsheet.worksheet('WWMATCHDETAILS')
+        except gspread.WorksheetNotFound:
+            print("❌ WWMATCHDETAILS worksheet not found")
+            return jsonify({'error': 'No Data Available', 'matches': []}), 404
+        
+        # Get all records as list of dictionaries
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ WWMATCHDETAILS is empty or has no data: {e}")
+            return jsonify({'error': 'No Data Available', 'matches': []}), 200
+        
+        # Filter out empty rows and clean data
+        matches = []
+        for record in records:
+            # Check if row has any data
+            has_data = any(str(v).strip() != '' for v in record.values())
+            if has_data:
+                cleaned_record = {}
+                for key, value in record.items():
+                    cleaned_record[key] = str(value).strip() if value else ''
+                matches.append(cleaned_record)
+        
+        print(f"✅ Loaded {len(matches)} WW Egypt National Teams matches")
+        
+        # Cache the data
+        result = {'matches': matches}
+        cache.set('ww_egypt_teams_matches', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error loading WW Egypt National Teams matches: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'matches': []}), 500
+
+@app.route('/api/ww-egypt-teams/players')
+def api_ww_egypt_teams_players():
+    """API endpoint to get WW Egypt National Teams players from Google Sheets"""
+    try:
+        print("⚽ Loading WW Egypt National Teams players from Google Sheets...")
+        
+        # Check if refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('ww_egypt_teams_players', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached WW Egypt Teams players ({len(cached_data.get('playerDetails', []))} records)")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        # Check environment variable first
+        creds_env = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
+        if creds_env:
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        else:
+            # Fallback to local file
+            creds_file = get_resource_path('credentials/egyptnationalteam.json')
+            print(f"Using credentials file: {creds_file}")
+            if not os.path.exists(creds_file):
+                print(f"❌ Credentials file not found: {creds_file}")
+                return jsonify({'error': 'Credentials file not found', 'playerDetails': []}), 404
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPE)
+        
+        client = gspread.authorize(creds)
+        
+        # Get Sheet ID from environment or use default (same as Egypt Teams)
+        sheet_id = os.environ.get('EGYPT_TEAMS_SHEET_ID', '10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8')
+        print(f"Using Sheet ID: {sheet_id}")
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get WWPLAYERDETAILS worksheet
+        try:
+            worksheet = spreadsheet.worksheet('WWPLAYERDETAILS')
+        except gspread.WorksheetNotFound:
+            print("❌ WWPLAYERDETAILS worksheet not found")
+            return jsonify({'error': 'No Data Available', 'playerDetails': []}), 404
+        
+        # Get all records as list of dictionaries
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ WWPLAYERDETAILS is empty or has no data: {e}")
+            return jsonify({'error': 'No Data Available', 'playerDetails': []}), 200
+        
+        # Filter out empty rows and clean data
+        playerDetails = []
+        for record in records:
+            # Check if row has any data
+            has_data = any(str(v).strip() != '' for v in record.values())
+            if has_data:
+                cleaned_record = {}
+                for key, value in record.items():
+                    cleaned_record[key] = str(value).strip() if value else ''
+                playerDetails.append(cleaned_record)
+        
+        print(f"✅ Loaded {len(playerDetails)} WW Egypt National Teams player records")
+        
+        # Cache the data
+        result = {'playerDetails': playerDetails}
+        cache.set('ww_egypt_teams_players', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error loading WW Egypt National Teams players: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'playerDetails': []}), 500
 
 @app.route('/api/youth-egypt/matches', methods=['GET'])
 def api_youth_egypt_matches():

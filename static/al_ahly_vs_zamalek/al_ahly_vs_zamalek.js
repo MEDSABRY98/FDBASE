@@ -684,8 +684,8 @@ function updateOverviewStats() {
     const ahlyLosses = matches.filter(m => m['W-D-L'] === 'L').length;
     const ahlyGoalsFor = matches.reduce((sum, m) => sum + (parseInt(m.GF) || 0), 0);
     const ahlyGoalsAgainst = matches.reduce((sum, m) => sum + (parseInt(m.GA) || 0), 0);
-    const ahlyCleanSheetsFor = matches.filter(m => (m.GA === '0' || m.GA === 0)).length;
-    const ahlyCleanSheetsAgainst = matches.filter(m => (m.GF === '0' || m.GF === 0)).length;
+    const ahlyCleanSheetsFor = matches.filter(m => (parseInt(m.GA) || 0) === 0).length;
+    const ahlyCleanSheetsAgainst = matches.filter(m => (parseInt(m.GF) || 0) === 0).length;
     const ahlyWinRate = matches.length > 0 ? ((ahlyWins / matches.length) * 100).toFixed(1) : 0;
     
     // Calculate streaks

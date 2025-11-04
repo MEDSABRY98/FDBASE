@@ -1,6 +1,6 @@
-/* National Men Halls - Frontend Module */
+/* National Men WW - Frontend Module */
 
-window.nationalMenHalls = (function () {
+window.nationalMenWW = (function () {
     let allRecords = [];
     let appsScriptUrl = '';
     let filtersApplied = false;
@@ -25,10 +25,10 @@ window.nationalMenHalls = (function () {
             const searchTerm = searchInput.value.toLowerCase().trim();
             
             if (!searchTerm) {
-                // No search term, restore full data
+                // No search term, restore full filtered data
                 virtualScrollState.allData = virtualScrollState.currentViewData || [];
             } else {
-                // Filter data based on search
+                // Filter data based on search within the already filtered view
                 const filtered = (virtualScrollState.currentViewData || []).filter((rec) => {
                     const n = normalizeRecord(rec);
                     const cols = ['GAME','AGE','Season','Round','TeamA','TeamAScore','TeamBScore','TeamB'];
@@ -38,19 +38,43 @@ window.nationalMenHalls = (function () {
                 virtualScrollState.allData = filtered;
             }
             
-            // Reset scroll and re-render
-            virtualScrollState.startIndex = 0;
-            virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
-            renderVisibleRows();
+            // Reset scroll position
+            const container = document.querySelector('.matches-table-container');
+            if (container) {
+                container.scrollTop = 0;
+            }
+            
+            // For small datasets, render all at once; for large datasets, use virtual scrolling
+            if (virtualScrollState.allData.length <= 1000) {
+                const tbody = document.getElementById('national-men-WW-tbody');
+                if (tbody) {
+                    const cols = ['GAME','AGE','Season','Round','TeamA','TeamAScore','TeamBScore','TeamB'];
+                    const rowsHtml = virtualScrollState.allData.map((rec) => {
+                        const n = normalizeRecord(rec);
+                        const tds = cols.map((c) => `<td>${escapeHtml(String(n[c] ?? ''))}</td>`).join('');
+                        const wl = getResultSymbol(n);
+                        const wlClass = getResultClass(wl);
+                        return `<tr>${tds}<td><span class="${wlClass}">${wl}</span></td></tr>`;
+                    }).join('');
+                    tbody.innerHTML = rowsHtml;
+                }
+                virtualScrollState.startIndex = 0;
+                virtualScrollState.endIndex = virtualScrollState.allData.length;
+            } else {
+                // Use virtual scrolling for large datasets
+                virtualScrollState.startIndex = 0;
+                virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
+                renderVisibleRows();
+            }
         });
     }
 
     function setupDynamicTeamsSearch() {
-        const searchInput = document.getElementById('nmh-teams-search-input');
+        const searchInput = document.getElementById('nmww-teams-search-input');
         if (!searchInput) return;
 
         searchInput.addEventListener('keyup', () => {
-            const tableBody = document.getElementById('nmh-teams-stats-tbody');
+            const tableBody = document.getElementById('nmww-teams-stats-tbody');
             if (!tableBody) return;
             const searchTerm = searchInput.value.toLowerCase().trim();
             const rows = tableBody.getElementsByTagName('tr');
@@ -62,7 +86,7 @@ window.nationalMenHalls = (function () {
     }
 
     async function getConfig() {
-        const res = await fetch('/api/national-men-halls/config');
+        const res = await fetch('/api/national-men-WW/config');
         if (!res.ok) throw new Error('Failed to load config');
         const cfg = await res.json();
         if (!cfg.success || !cfg.appsScriptUrl) throw new Error('Apps Script URL not configured');
@@ -73,8 +97,8 @@ window.nationalMenHalls = (function () {
         const fetchFunction = async () => {
             // Use backend API endpoint with caching instead of direct Google Apps Script
             const url = forceRefresh 
-                ? '/api/national-men-halls/data?refresh=true'
-                : '/api/national-men-halls/data';
+                ? '/api/national-men-WW/data?refresh=true'
+                : '/api/national-men-WW/data';
             const res = await fetch(url);
             if (!res.ok) throw new Error('Failed to fetch data');
             const json = await res.json();
@@ -84,13 +108,13 @@ window.nationalMenHalls = (function () {
             return json.data;
         };
         // Backend already handles caching, so we can still use browser cache for offline support
-        const records = await fetchWithBrowserCache('national_men_halls', fetchFunction, forceRefresh);
+        const records = await fetchWithBrowserCache('WW_Halls_national_men', fetchFunction, forceRefresh);
         return Array.isArray(records) ? records : [];
     }
 
     function normalizeRecord(rec) {
         const obj = {};
-        (window.NATIONAL_MEN_HALLS_COLUMNS || []).forEach((k) => {
+        (window.NATIONAL_MEN_WW_COLUMNS || []).forEach((k) => {
             const value = rec ? rec[k] : null;
             // This logic is borrowed from al_ahly_stats.js to correctly handle zero values
             obj[k] = (value == null ? '' : String(value)).trim();
@@ -99,37 +123,59 @@ window.nationalMenHalls = (function () {
     }
 
     function applyCurrentFilters() {
-        const cols = window.NATIONAL_MEN_HALLS_COLUMNS || [];
+        const cols = window.NATIONAL_MEN_WW_COLUMNS || [];
         const textFilters = {};
         cols.forEach((c) => {
             const el = document.getElementById(`filter-${c}`);
             if (el && el.value && c !== 'Date') {
-                textFilters[c] = String(el.value).toLowerCase().trim();
+                const filterValue = String(el.value).trim();
+                if (filterValue) {
+                    textFilters[c] = filterValue.toLowerCase();
+                }
             }
         });
         // combined Teams filter (matches TeamA or TeamB)
         const teamFilterEl = document.getElementById('filter-Teams');
-        const teamFilter = teamFilterEl && teamFilterEl.value ? String(teamFilterEl.value).toLowerCase().trim() : '';
+        const teamFilter = teamFilterEl && teamFilterEl.value ? String(teamFilterEl.value).trim().toLowerCase() : '';
         const dateFrom = document.getElementById('filter-DateFrom')?.value;
         const dateTo = document.getElementById('filter-DateTo')?.value;
 
         return allRecords.filter((r) => {
+            // Apply all text filters (GAME, AGE, etc.) - must match ALL filters
             for (const k in textFilters) {
-                const v = String(r[k] || '').toLowerCase();
-                if (!v.includes(textFilters[k])) return false;
+                const filterValue = textFilters[k];
+                if (!filterValue) continue; // Skip empty filters
+                
+                const recordValue = String(r[k] || '').trim().toLowerCase();
+                if (!recordValue || !recordValue.includes(filterValue)) {
+                    return false;
+                }
             }
+            
+            // Apply team filter
             if (teamFilter) {
-                const ta = String(r['TeamA'] || '').toLowerCase();
-                const tb = String(r['TeamB'] || '').toLowerCase();
-                if (!ta.includes(teamFilter) && !tb.includes(teamFilter)) return false;
+                const ta = String(r['TeamA'] || '').trim().toLowerCase();
+                const tb = String(r['TeamB'] || '').trim().toLowerCase();
+                if ((!ta || !ta.includes(teamFilter)) && (!tb || !tb.includes(teamFilter))) {
+                    return false;
+                }
             }
+            
+            // Apply date filters
             if (dateFrom || dateTo) {
                 const dStr = r['Date'];
                 if (dStr) {
                     const d = new Date(dStr);
-                    if (isFinite(d) && d < from) return false;
+                    if (isFinite(d)) {
+                        if (dateFrom && d < new Date(dateFrom)) return false;
+                        if (dateTo && d > new Date(dateTo)) return false;
+                    }
+                } else if (dateFrom || dateTo) {
+                    // If date filter is set but record has no date, exclude it
+                    return false;
                 }
             }
+            
             return true;
         });
     }
@@ -176,7 +222,7 @@ window.nationalMenHalls = (function () {
 
     // Virtual scrolling render function
     function renderVisibleRows() {
-        const tbody = document.getElementById('national-men-halls-tbody');
+        const tbody = document.getElementById('national-men-WW-tbody');
         if (!tbody) return;
         
         const { allData, startIndex, endIndex } = virtualScrollState;
@@ -193,8 +239,27 @@ window.nationalMenHalls = (function () {
     }
 
     function renderTable(records) {
-        const tbody = document.getElementById('national-men-halls-tbody');
+        const tbody = document.getElementById('national-men-WW-tbody');
         if (!tbody) return;
+        
+        // Always update virtualScrollState to track current data for search functionality
+        virtualScrollState.allData = records;
+        virtualScrollState.currentViewData = records;
+        
+        // Remove old scroll handlers first to prevent conflicts
+        if (virtualScrollState.scrollHandler) {
+            const container = document.querySelector('.matches-table-container');
+            if (container) {
+                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+                virtualScrollState.scrollHandler = null;
+            }
+        }
+        
+        // Reset scroll position to top when filters change
+        const container = document.querySelector('.matches-table-container');
+        if (container) {
+            container.scrollTop = 0;
+        }
         
         // For small datasets (< 1000 rows), render everything at once for better compatibility
         if (records.length <= 1000) {
@@ -207,21 +272,13 @@ window.nationalMenHalls = (function () {
                 return `<tr>${tds}<td><span class="${wlClass}">${wl}</span></td></tr>`;
             }).join('');
             tbody.innerHTML = rowsHtml;
-            // Remove scroll handlers if they exist
-            if (virtualScrollState.scrollHandler) {
-                const container = document.querySelector('.matches-table-container');
-                if (container) {
-                    container.removeEventListener('scroll', virtualScrollState.scrollHandler);
-                    virtualScrollState.scrollHandler = null;
-                }
-            }
+            // Reset scroll indices for consistency
+            virtualScrollState.startIndex = 0;
+            virtualScrollState.endIndex = records.length;
             return;
         }
         
         // For large datasets, use virtual scrolling
-        virtualScrollState.allData = records;
-        virtualScrollState.currentViewData = records;
-        
         // Reset scroll state
         virtualScrollState.startIndex = 0;
         virtualScrollState.endIndex = Math.min(25, records.length);
@@ -312,15 +369,15 @@ window.nationalMenHalls = (function () {
     }
 
     function renderTeamStats(records) {
-        const tbody = document.getElementById('nmh-teams-stats-tbody');
+        const tbody = document.getElementById('nmww-teams-stats-tbody');
         if (!tbody) return;
         const stats = computeTeamStats(records);
         // Store filtered records for details view
-        window.__nmh_filtered_records = records;
+        window.__nmww_filtered_records = records;
         const rows = stats.map((s) => {
             return `
             <tr>
-                <td style="cursor:pointer; color:#007bff; text-decoration:underline;" onclick="window.nationalMenHalls.showTeamDetails('${escapeHtml(s.team).replace(/'/g, "\\'")}')">${escapeHtml(s.team)}</td>
+                <td style="cursor:pointer; color:#007bff; text-decoration:underline;" onclick="window.nationalMenWW.showTeamDetails('${escapeHtml(s.team).replace(/'/g, "\\'")}')">${escapeHtml(s.team)}</td>
                 <td>${s.participations || 0}</td>
                 <td>${s.matches}</td>
                 <td>${s.win}</td>
@@ -445,7 +502,7 @@ window.nationalMenHalls = (function () {
     }
 
     function showTeamDetails(teamName) {
-        const records = Array.isArray(window.__nmh_filtered_records) ? window.__nmh_filtered_records : [];
+        const records = Array.isArray(window.__nmww_filtered_records) ? window.__nmww_filtered_records : [];
         const details = computeTeamStatsByGame(teamName, records);
         
         if (!details || details.length === 0) {
@@ -454,15 +511,15 @@ window.nationalMenHalls = (function () {
         }
         
         // Create unique ID for this modal
-        const modalId = `nmh-team-modal-${Date.now()}`;
+        const modalId = `nmww-team-modal-${Date.now()}`;
         
         // Create modal content
         let modalContent = `
-            <div class="modal-overlay" id="${modalId}" onclick="window.nationalMenHalls.closeTeamDetailsModal()">
+            <div class="modal-overlay" id="${modalId}" onclick="window.nationalMenWW.closeTeamDetailsModal()">
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h3>${escapeHtml(teamName)} - Statistics by Game</h3>
-                        <button class="modal-close" onclick="window.nationalMenHalls.closeTeamDetailsModal()">&times;</button>
+                        <button class="modal-close" onclick="window.nationalMenWW.closeTeamDetailsModal()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <table class="modal-table">
@@ -540,7 +597,7 @@ window.nationalMenHalls = (function () {
                         </table>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="window.nationalMenHalls.closeTeamDetailsModal()">Close</button>
+                        <button class="btn btn-secondary" onclick="window.nationalMenWW.closeTeamDetailsModal()">Close</button>
                     </div>
                 </div>
             </div>
@@ -573,7 +630,7 @@ window.nationalMenHalls = (function () {
     function toggleGameDetails(teamName, gameName, expandRowId, modalId) {
         // Get records from modal or global
         const modal = document.getElementById(modalId);
-        const records = modal && modal._records ? modal._records : (Array.isArray(window.__nmh_filtered_records) ? window.__nmh_filtered_records : []);
+        const records = modal && modal._records ? modal._records : (Array.isArray(window.__nmww_filtered_records) ? window.__nmww_filtered_records : []);
         const stats = getTeamStatsByGameAndAge(teamName, gameName, records);
         
         if (!stats || stats.length === 0) {
@@ -582,14 +639,14 @@ window.nationalMenHalls = (function () {
         }
         
         // Create a new modal for game statistics by AGE
-        const gameModalId = `nmh-game-modal-${Date.now()}`;
+        const gameModalId = `nmww-game-modal-${Date.now()}`;
         
         let modalContent = `
-            <div class="modal-overlay" id="${gameModalId}" onclick="window.nationalMenHalls.closeGameDetailsModal()">
+            <div class="modal-overlay" id="${gameModalId}" onclick="window.nationalMenWW.closeGameDetailsModal()">
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h3>${escapeHtml(teamName)} - ${escapeHtml(gameName)} - Statistics by AGE</h3>
-                        <button class="modal-close" onclick="window.nationalMenHalls.closeGameDetailsModal()">&times;</button>
+                        <button class="modal-close" onclick="window.nationalMenWW.closeGameDetailsModal()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <table class="modal-table">
@@ -662,7 +719,7 @@ window.nationalMenHalls = (function () {
                         </table>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="window.nationalMenHalls.closeGameDetailsModal()">Close</button>
+                        <button class="btn btn-secondary" onclick="window.nationalMenWW.closeGameDetailsModal()">Close</button>
                     </div>
                 </div>
             </div>
@@ -673,17 +730,17 @@ window.nationalMenHalls = (function () {
     }
     
     function closeGameDetailsModal() {
-        const modals = document.querySelectorAll('.modal-overlay[id^="nmh-game-modal-"]');
+        const modals = document.querySelectorAll('.modal-overlay[id^="nmww-game-modal-"]');
         modals.forEach(modal => modal.remove());
     }
-    
+
     function closeTeamDetailsModal() {
         // Close only team details modal, not game details modals
         const modals = document.querySelectorAll('.modal-overlay');
         modals.forEach(modal => {
-            if (modal.id && modal.id.startsWith('nmh-team-modal-')) {
+            if (modal.id && modal.id.startsWith('nmww-team-modal-')) {
                 modal.remove();
-            } else if (!modal.id || !modal.id.startsWith('nmh-game-modal-')) {
+            } else if (!modal.id || !modal.id.startsWith('nmww-game-modal-')) {
                 // Fallback for modals without ID
                 modal.remove();
             }
@@ -691,12 +748,12 @@ window.nationalMenHalls = (function () {
     }
 
     function hookTabs() {
-        const btnMatches = document.getElementById('nmh-tab-matches-btn');
-        const btnTeams = document.getElementById('nmh-tab-teams-btn');
-        const btnRanking = document.getElementById('nmh-tab-ranking-btn');
-        const tabMatches = document.getElementById('nmh-matches-tab');
-        const tabTeams = document.getElementById('nmh-teams-tab');
-        const tabRanking = document.getElementById('nmh-ranking-tab');
+        const btnMatches = document.getElementById('nmww-tab-matches-btn');
+        const btnTeams = document.getElementById('nmww-tab-teams-btn');
+        const btnRanking = document.getElementById('nmww-tab-ranking-btn');
+        const tabMatches = document.getElementById('nmww-matches-tab');
+        const tabTeams = document.getElementById('nmww-teams-tab');
+        const tabRanking = document.getElementById('nmww-ranking-tab');
         if (!btnMatches || !btnTeams || !btnRanking || !tabMatches || !tabTeams || !tabRanking) return;
         const activate = (name) => {
             // Close modal when switching tabs
@@ -758,7 +815,7 @@ window.nationalMenHalls = (function () {
             const data = await fetchData(forceRefresh);
             allRecords = data.map(normalizeRecord);
             // expose for other helpers
-            window.__nmh_records = allRecords;
+            window.__nmww_records = allRecords;
             populateFilterOptions(allRecords);
             setupAllSearchableSelects();
             const filtered = applyCurrentFilters();
@@ -770,7 +827,7 @@ window.nationalMenHalls = (function () {
             setupRankingSubTabs();
             showLoading(false);
         } catch (e) {
-            console.error('Failed to load National Men Halls data:', e);
+            console.error('Failed to load National Men WW data:', e);
             allRecords = [];
             renderTable([]);
             renderTeamStats([]);
@@ -787,24 +844,24 @@ window.nationalMenHalls = (function () {
         closeTeamDetailsModal();
         const searchInput = document.getElementById('matches-search-input');
         if (searchInput) searchInput.value = '';
-        const teamSearchInput = document.getElementById('nmh-teams-search-input');
+        const teamSearchInput = document.getElementById('nmww-teams-search-input');
         if (teamSearchInput) teamSearchInput.value = '';
         
         // Recalculate rankings if a team is selected
-        if (window.__nmh_selected_team) {
-            const btnLastAge = document.getElementById('nmh-subtab-last-age-btn');
+        if (window.__nmww_selected_team) {
+            const btnLastAge = document.getElementById('nmww-subtab-last-age-btn');
             const isLastAgeActive = btnLastAge && btnLastAge.classList.contains('active');
             if (isLastAgeActive) {
-                calculateAndRenderRankingsLastAge(window.__nmh_selected_team);
+                calculateAndRenderRankingsLastAge(window.__nmww_selected_team);
             } else {
-                calculateAndRenderRankingsLastSeason(window.__nmh_selected_team);
+                calculateAndRenderRankingsLastSeason(window.__nmww_selected_team);
             }
         }
     }
 
     function clearFilters() {
         filtersApplied = false;
-        const cols = window.NATIONAL_MEN_HALLS_COLUMNS || [];
+        const cols = window.NATIONAL_MEN_WW_COLUMNS || [];
         cols.forEach((c) => {
             const el = document.getElementById(`filter-${c}`);
             if (el) el.value = '';
@@ -883,14 +940,14 @@ window.nationalMenHalls = (function () {
 
 // Setup ranking team search
 function setupRankingTeamSearch() {
-    const input = document.getElementById('nmh-ranking-team-search');
-    const dropdown = document.getElementById('nmh-ranking-team-dropdown');
+    const input = document.getElementById('nmww-ranking-team-search');
+    const dropdown = document.getElementById('nmww-ranking-team-dropdown');
     
     if (!input || !dropdown) return;
     
     // Get all unique teams from TeamA and TeamB
     const allTeams = new Set();
-    const records = window.__nmh_records || [];
+    const records = window.__nmww_records || [];
     
     records.forEach(record => {
         if (record['TeamA']) allTeams.add(String(record['TeamA']).trim());
@@ -947,7 +1004,7 @@ function renderTeamOptions(input, dropdown, teams, filterText) {
             input.value = team;
             dropdown.style.display = 'none';
             // Store selected team globally
-            window.__nmh_selected_team = team;
+            window.__nmww_selected_team = team;
             // Calculate and display rankings - Last AGE is now the default
             calculateAndRenderRankingsLastAge(team);
         });
@@ -959,10 +1016,10 @@ function renderTeamOptions(input, dropdown, teams, filterText) {
 
 // Setup ranking sub tabs
 function setupRankingSubTabs() {
-    const btnLastSeason = document.getElementById('nmh-subtab-last-season-btn');
-    const btnLastAge = document.getElementById('nmh-subtab-last-age-btn');
-    const contentLastSeason = document.getElementById('nmh-subtab-last-season-content');
-    const contentLastAge = document.getElementById('nmh-subtab-last-age-content');
+    const btnLastSeason = document.getElementById('nmww-subtab-last-season-btn');
+    const btnLastAge = document.getElementById('nmww-subtab-last-age-btn');
+    const contentLastSeason = document.getElementById('nmww-subtab-last-season-content');
+    const contentLastAge = document.getElementById('nmww-subtab-last-age-content');
     
     if (!btnLastSeason || !btnLastAge || !contentLastSeason || !contentLastAge) return;
     
@@ -985,8 +1042,8 @@ function setupRankingSubTabs() {
             btnLastAge.style.color = '#fff';
             contentLastAge.style.display = 'block';
             // Recalculate if team is selected
-            if (window.__nmh_selected_team) {
-                calculateAndRenderRankingsLastAge(window.__nmh_selected_team);
+            if (window.__nmww_selected_team) {
+                calculateAndRenderRankingsLastAge(window.__nmww_selected_team);
             }
         } else if (type === 'last-season') {
             btnLastSeason.classList.add('active');
@@ -994,8 +1051,8 @@ function setupRankingSubTabs() {
             btnLastSeason.style.color = '#fff';
             contentLastSeason.style.display = 'block';
             // Recalculate if team is selected
-            if (window.__nmh_selected_team) {
-                calculateAndRenderRankingsLastSeason(window.__nmh_selected_team);
+            if (window.__nmww_selected_team) {
+                calculateAndRenderRankingsLastSeason(window.__nmww_selected_team);
             }
         }
     };
@@ -1007,9 +1064,9 @@ function setupRankingSubTabs() {
 // Calculate team rankings - Last Season (last position in last season for each GAME+AGE)
 function calculateAndRenderRankingsLastSeason(teamName) {
     // Use filtered records only if Apply Filter was clicked
-    const records = window.nationalMenHalls?.filtersApplied ? 
-        (window.nationalMenHalls.applyCurrentFilters ? window.nationalMenHalls.applyCurrentFilters() : window.__nmh_records || []) :
-        (window.__nmh_records || []);
+    const records = window.nationalMenWW?.filtersApplied ? 
+        (window.nationalMenWW.applyCurrentFilters ? window.nationalMenWW.applyCurrentFilters() : window.__nmww_records || []) :
+        (window.__nmww_records || []);
     const teamNameLower = String(teamName).toLowerCase().trim();
     
     const teamMatches = records.filter(r => {
@@ -1102,9 +1159,9 @@ function calculateAndRenderRankingsLastSeason(teamName) {
 // Calculate team rankings - Last AGE (last position in last AGE for each GAME+Season)
 function calculateAndRenderRankingsLastAge(teamName) {
     // Use filtered records only if Apply Filter was clicked
-    const records = window.nationalMenHalls?.filtersApplied ? 
-        (window.nationalMenHalls.applyCurrentFilters ? window.nationalMenHalls.applyCurrentFilters() : window.__nmh_records || []) :
-        (window.__nmh_records || []);
+    const records = window.nationalMenWW?.filtersApplied ? 
+        (window.nationalMenWW.applyCurrentFilters ? window.nationalMenWW.applyCurrentFilters() : window.__nmww_records || []) :
+        (window.__nmww_records || []);
     const teamNameLower = String(teamName).toLowerCase().trim();
     
     const teamMatches = records.filter(r => {
@@ -1195,10 +1252,10 @@ function calculateAndRenderRankingsLastAge(teamName) {
  }
 
 function renderRankingTableLastSeason(rankings) {
-    const tbody = document.getElementById('nmh-ranking-tbody');
-    const resultsDiv = document.getElementById('nmh-ranking-results');
-    const noTeamDiv = document.getElementById('nmh-ranking-no-team');
-    const searchInput = document.getElementById('nmh-ranking-search');
+    const tbody = document.getElementById('nmww-ranking-tbody');
+    const resultsDiv = document.getElementById('nmww-ranking-results');
+    const noTeamDiv = document.getElementById('nmww-ranking-no-team');
+    const searchInput = document.getElementById('nmww-ranking-search');
     
     if (!tbody || !resultsDiv || !noTeamDiv) return;
     
@@ -1214,7 +1271,7 @@ function renderRankingTableLastSeason(rankings) {
     if (searchInput) searchInput.style.display = 'block';
     
     // Store rankings globally for filtering
-    window.__nmh_last_season_rankings = rankings;
+    window.__nmww_last_season_rankings = rankings;
     
     // Format position for display
     const formatPosition = (pos) => {
@@ -1268,7 +1325,7 @@ function renderRankingTableLastSeason(rankings) {
         
         newSearchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase().trim();
-            const sourceRankings = window.__nmh_last_season_rankings;
+            const sourceRankings = window.__nmww_last_season_rankings;
             
             if (!sourceRankings) return;
             
@@ -1297,10 +1354,10 @@ function renderRankingTableLastSeason(rankings) {
 }
 
 function renderRankingTableLastAge(rankings) {
-    const tbody = document.getElementById('nmh-last-age-tbody');
-    const resultsDiv = document.getElementById('nmh-last-age-results');
-    const noTeamDiv = document.getElementById('nmh-last-age-no-team');
-    const searchInput = document.getElementById('nmh-last-age-search');
+    const tbody = document.getElementById('nmww-last-age-tbody');
+    const resultsDiv = document.getElementById('nmww-last-age-results');
+    const noTeamDiv = document.getElementById('nmww-last-age-no-team');
+    const searchInput = document.getElementById('nmww-last-age-search');
     
     if (!tbody || !resultsDiv || !noTeamDiv) return;
     
@@ -1316,7 +1373,7 @@ function renderRankingTableLastAge(rankings) {
     if (searchInput) searchInput.style.display = 'block';
     
     // Store rankings globally for filtering
-    window.__nmh_last_age_rankings = rankings;
+    window.__nmww_last_age_rankings = rankings;
     
     // Format position for display
     const formatPosition = (pos) => {
@@ -1370,7 +1427,7 @@ function renderRankingTableLastAge(rankings) {
         
         newSearchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase().trim();
-            const sourceRankings = window.__nmh_last_age_rankings;
+            const sourceRankings = window.__nmww_last_age_rankings;
             
             if (!sourceRankings) return;
             
@@ -1399,8 +1456,8 @@ function renderRankingTableLastAge(rankings) {
 }
 
 function showRankingMessageLastAge(message) {
-    const resultsDiv = document.getElementById('nmh-last-age-results');
-    const noTeamDiv = document.getElementById('nmh-last-age-no-team');
+    const resultsDiv = document.getElementById('nmww-last-age-results');
+    const noTeamDiv = document.getElementById('nmww-last-age-no-team');
     
     if (resultsDiv) resultsDiv.style.display = 'none';
     if (noTeamDiv) {
@@ -1415,8 +1472,8 @@ function showRankingMessageLastAge(message) {
 }
 
 function showRankingMessage(message) {
-    const resultsDiv = document.getElementById('nmh-ranking-results');
-    const noTeamDiv = document.getElementById('nmh-ranking-no-team');
+    const resultsDiv = document.getElementById('nmww-ranking-results');
+    const noTeamDiv = document.getElementById('nmww-ranking-no-team');
     
     if (resultsDiv) resultsDiv.style.display = 'none';
     if (noTeamDiv) {
@@ -1495,7 +1552,7 @@ function setupSearchableSelect(inputId, fieldName) {
     if (!dropdown) return;
 
     const getUniqueValues = () => {
-        const recs = Array.isArray(window.__nmh_records) ? window.__nmh_records : [];
+        const recs = Array.isArray(window.__nmww_records) ? window.__nmww_records : [];
         const vals = recs.map(r => r[fieldName]).filter(v => v !== undefined && v !== null);
         const unique = Array.from(new Set(vals.map(v => String(v).trim()).filter(v => v !== '')));
         return unique.sort((a,b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
@@ -1558,7 +1615,7 @@ function setupTeamsSearchableSelect() {
     if (!dropdown) return;
 
     const getTeamOptions = () => {
-        const recs = Array.isArray(window.__nmh_records) ? window.__nmh_records : [];
+        const recs = Array.isArray(window.__nmww_records) ? window.__nmww_records : [];
         const teams = [];
         recs.forEach(r => {
             if (r['TeamA']) teams.push(String(r['TeamA']).trim());

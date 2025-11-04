@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>National Men Halls - Football Data</title>
+    <title>National Men WW - Football Data</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
         .stats-container { min-height: 100vh; background: #ffffff; }
@@ -73,12 +73,12 @@
         }
     </style>
     <script>
-        window.NATIONAL_MEN_HALLS_COLUMNS = [
+        window.NATIONAL_MEN_WW_COLUMNS = [
             'GAME','AGE','Season','Host Country','Date','Category','Round','TeamA','TeamAScore','TeamBScore','TeamB','TeamAPEN','TeamBPEN'
         ];
     </script>
     <script src="{{ url_for('static', filename='browser_cache.js') }}"></script>
-    <script src="{{ url_for('static', filename='national_men_halls/national_men_halls.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='national_men_WW/national_men_WW.js') }}" defer></script>
     </head>
 <body>
     <div class="stats-container">
@@ -93,7 +93,7 @@
             </div>
             <div class="stats-content">
                 <div class="page-header">
-                    <h1 class="page-title">National Men Halls</h1>
+                    <h1 class="page-title">National Men WW</h1>
                 </div>
 
                 <div class="filters-section">
@@ -178,9 +178,9 @@
                         </div>
                     </div>
                     <div class="filter-actions">
-                        <button class="btn btn-apply" onclick="window.nationalMenHalls.applyFilters()">Apply Filters</button>
-                        <button class="btn btn-clear" onclick="window.nationalMenHalls.clearFilters()">Clear All</button>
-                        <button class="btn btn-refresh" onclick="window.nationalMenHalls.refreshData()">Sync Data</button>
+                        <button class="btn btn-apply" onclick="window.nationalMenWW.applyFilters()">Apply Filters</button>
+                        <button class="btn btn-clear" onclick="window.nationalMenWW.clearFilters()">Clear All</button>
+                        <button class="btn btn-refresh" onclick="window.nationalMenWW.refreshData()">Sync Data</button>
                     </div>
                 </div>
 
@@ -192,19 +192,19 @@
                 <div id="content-container" style="display: none;">
                     <!-- Simple Tabs -->
                     <div style="display:flex; gap:0.5rem; margin-bottom:1rem; justify-content:center; max-width:780px; margin-left:auto; margin-right:auto; width:100%;">
-                        <button id="nmh-tab-matches-btn" class="stats-tab active" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#007bff; color:#fff; font-weight:600; cursor:pointer; flex:1;">Matches</button>
-                        <button id="nmh-tab-teams-btn" class="stats-tab" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#f1f3f5; color:#495057; font-weight:600; cursor:pointer; flex:1;">Teams Stats</button>
-                        <button id="nmh-tab-ranking-btn" class="stats-tab" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#f1f3f5; color:#495057; font-weight:600; cursor:pointer; flex:1;">Ranking</button>
+                        <button id="nmww-tab-matches-btn" class="stats-tab active" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#007bff; color:#fff; font-weight:600; cursor:pointer; flex:1;">Matches</button>
+                        <button id="nmww-tab-teams-btn" class="stats-tab" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#f1f3f5; color:#495057; font-weight:600; cursor:pointer; flex:1;">Teams Stats</button>
+                        <button id="nmww-tab-ranking-btn" class="stats-tab" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#f1f3f5; color:#495057; font-weight:600; cursor:pointer; flex:1;">Ranking</button>
                     </div>
 
                     <!-- Matches Tab -->
-                    <div id="nmh-matches-tab" class="matches-section">
+                    <div id="nmww-matches-tab" class="matches-section">
                         <h2 class="section-title">Matches</h2>
                         <div class="table-search-container">
                             <input type="search" id="matches-search-input" class="table-search-input" placeholder="Search in matches table...">
                         </div>
                         <div class="matches-table-container">
-                            <table class="matches-table" id="national-men-halls-table">
+                            <table class="matches-table" id="national-men-WW-table">
                                 <thead>
                                     <tr>
                                         <th>GAME</th>
@@ -218,16 +218,16 @@
                                         <th>W/L</th>
                                     </tr>
                                 </thead>
-                                <tbody id="national-men-halls-tbody"></tbody>
+                                <tbody id="national-men-WW-tbody"></tbody>
                             </table>
                         </div>
                     </div>
 
                     <!-- Teams Stats Tab -->
-                    <div id="nmh-teams-tab" class="matches-section" style="display:none;">
+                    <div id="nmww-teams-tab" class="matches-section" style="display:none;">
                         <h2 class="section-title">Teams Statistics</h2>
                         <div class="table-search-container">
-                            <input type="search" id="nmh-teams-search-input" class="table-search-input" placeholder="Search in teams table...">
+                            <input type="search" id="nmww-teams-search-input" class="table-search-input" placeholder="Search in teams table...">
                         </div>
                         <div style="overflow-x:auto;">
                             <table class="matches-table">
@@ -243,35 +243,35 @@
                                         <th>GA</th>
                                     </tr>
                                 </thead>
-                                <tbody id="nmh-teams-stats-tbody"></tbody>
+                                <tbody id="nmww-teams-stats-tbody"></tbody>
                             </table>
                         </div>
                     </div>
 
                     <!-- Ranking Tab -->
-                    <div id="nmh-ranking-tab" class="matches-section" style="display:none;">
+                    <div id="nmww-ranking-tab" class="matches-section" style="display:none;">
                         <h2 class="section-title">Team Ranking History</h2>
                         
                         <!-- Team Search -->
                         <div style="margin-bottom: 2rem; display: flex; justify-content: center; align-items: center; gap: 1rem; flex-wrap: wrap;">
                             <div class="searchable-select-container" style="width: 100%; max-width: 500px; position: relative;">
-                                <input type="text" id="nmh-ranking-team-search" class="filter-control" placeholder="Search team (Team A or Team B)..." autocomplete="off" style="width: 100%;">
-                                <div class="dropdown-options" id="nmh-ranking-team-dropdown" style="display: none;"></div>
+                                <input type="text" id="nmww-ranking-team-search" class="filter-control" placeholder="Search team (Team A or Team B)..." autocomplete="off" style="width: 100%;">
+                                <div class="dropdown-options" id="nmww-ranking-team-dropdown" style="display: none;"></div>
                             </div>
                         </div>
 
                         <!-- Sub Tabs -->
                         <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; justify-content:center; max-width:600px; margin-left:auto; margin-right:auto;">
-                            <button id="nmh-subtab-last-age-btn" class="stats-tab active" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#007bff; color:#fff; font-weight:600; cursor:pointer; flex:1;">Last AGE</button>
-                            <button id="nmh-subtab-last-season-btn" class="stats-tab" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#f1f3f5; color:#495057; font-weight:600; cursor:pointer; flex:1;">Last Season</button>
+                            <button id="nmww-subtab-last-age-btn" class="stats-tab active" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#007bff; color:#fff; font-weight:600; cursor:pointer; flex:1;">Last AGE</button>
+                            <button id="nmww-subtab-last-season-btn" class="stats-tab" style="padding:0.6rem 1rem; border-radius:10px; border:none; background:#f1f3f5; color:#495057; font-weight:600; cursor:pointer; flex:1;">Last Season</button>
                         </div>
 
                         <!-- Last AGE Sub Tab -->
-                        <div id="nmh-subtab-last-age-content" class="ranking-subtab-content">
-                            <div id="nmh-last-age-results" style="display: none;">
+                        <div id="nmww-subtab-last-age-content" class="ranking-subtab-content">
+                            <div id="nmww-last-age-results" style="display: none;">
                                 <!-- Search Box -->
                                 <div style="margin-bottom: 1rem; display: flex; justify-content: center;">
-                                    <input type="text" id="nmh-last-age-search" class="filter-control" placeholder="Search in table (GAME, AGE, Position, Result, Season)..." autocomplete="off" style="width: 100%; max-width: 500px;">
+                                    <input type="text" id="nmww-last-age-search" class="filter-control" placeholder="Search in table (GAME, AGE, Position, Result, Season)..." autocomplete="off" style="width: 100%; max-width: 500px;">
                                 </div>
                                 <div style="overflow-x: auto;">
                                     <table class="matches-table">
@@ -284,7 +284,7 @@
                                                 <th>Year (Season)</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="nmh-last-age-tbody">
+                                        <tbody id="nmww-last-age-tbody">
                                             <!-- Ranking data will be loaded here -->
                                         </tbody>
                                     </table>
@@ -292,7 +292,7 @@
                             </div>
 
                             <!-- No Team Selected Message -->
-                            <div id="nmh-last-age-no-team" style="text-align: center; padding: 3rem; color: #666;">
+                            <div id="nmww-last-age-no-team" style="text-align: center; padding: 3rem; color: #666;">
                                 <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem; opacity: 0.5;">
                                     <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
@@ -301,11 +301,11 @@
                         </div>
 
                         <!-- Last Season Sub Tab -->
-                        <div id="nmh-subtab-last-season-content" class="ranking-subtab-content" style="display: none;">
-                            <div id="nmh-ranking-results" style="display: none;">
+                        <div id="nmww-subtab-last-season-content" class="ranking-subtab-content" style="display: none;">
+                            <div id="nmww-ranking-results" style="display: none;">
                                 <!-- Search Box -->
                                 <div style="margin-bottom: 1rem; display: flex; justify-content: center;">
-                                    <input type="text" id="nmh-ranking-search" class="filter-control" placeholder="Search in table (GAME, AGE, Position, Result, Season)..." autocomplete="off" style="width: 100%; max-width: 500px;">
+                                    <input type="text" id="nmww-ranking-search" class="filter-control" placeholder="Search in table (GAME, AGE, Position, Result, Season)..." autocomplete="off" style="width: 100%; max-width: 500px;">
                                 </div>
                                 <div style="overflow-x: auto;">
                                     <table class="matches-table">
@@ -318,7 +318,7 @@
                                                 <th>Year (Season)</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="nmh-ranking-tbody">
+                                        <tbody id="nmww-ranking-tbody">
                                             <!-- Ranking data will be loaded here -->
                                         </tbody>
                                     </table>
@@ -326,7 +326,7 @@
                             </div>
 
                             <!-- No Team Selected Message -->
-                            <div id="nmh-ranking-no-team" style="text-align: center; padding: 3rem; color: #666;">
+                            <div id="nmww-ranking-no-team" style="text-align: center; padding: 3rem; color: #666;">
                                 <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem; opacity: 0.5;">
                                     <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>

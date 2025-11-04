@@ -393,14 +393,20 @@ function renderMatchesTable() {
     youthEgyptData.filteredRecords.forEach((record, index) => {
         const row = document.createElement('tr');
         
+        // Extract numeric values with proper defaults
+        const round = record['ROUND'] || 0;
+        const gf = record['GF'] || 0;
+        const ga = record['GA'] || 0;
+        
         row.innerHTML = `
             <td>${record['DATE'] || ''}</td>
             <td>${record['AGE'] || ''}</td>
             <td>${record['MANAGER EGY'] || ''}</td>
             <td>${record['SEASON'] || ''}</td>
-            <td>${record['PLACE'] || ''}</td>
-            <td>${record['GF'] || ''}</td>
-            <td>${record['GA'] || ''}</td>
+            <td>${round}</td>
+            <td>EGY</td>
+            <td>${gf}</td>
+            <td>${ga}</td>
             <td>${record['OPPONENT TEAM'] || ''}</td>
             <td><span class="badge ${getResultBadgeClass(record['W-D-L'])}">${record['W-D-L'] || ''}</span></td>
             <td><span class="badge ${record['CLEAN SHEET'] === 'YES' ? 'badge-success' : 'badge-warning'}">${record['CLEAN SHEET'] || ''}</span></td>
