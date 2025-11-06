@@ -2840,14 +2840,20 @@
                                         <th class="sortable" onclick="sortAllPlayersTable('goals')">
                                             Goals <span class="sort-icon">⇅</span>
                                         </th>
+                                        <th class="sortable" onclick="sortAllPlayersTable('penaltyGoals')">
+                                            PEN G <span class="sort-icon">⇅</span>
+                                        </th>
                                         <th class="sortable" onclick="sortAllPlayersTable('assists')">
                                             Assists <span class="sort-icon">⇅</span>
                                         </th>
+                                        <th class="sortable" onclick="sortAllPlayersTable('goals90Plus')">
+                                            90+ <span class="sort-icon">⇅</span>
+                                        </th>
                                         <th class="sortable" onclick="sortAllPlayersTable('winningMatches')">
-                                            Winning Matches <span class="sort-icon">⇅</span>
+                                            Win M <span class="sort-icon">⇅</span>
                                         </th>
                                         <th class="sortable" onclick="sortAllPlayersTable('equalizingMatches')">
-                                            Equalizing Matches <span class="sort-icon">⇅</span>
+                                            Equal M <span class="sort-icon">⇅</span>
                                         </th>
                                     </tr>
                                 </thead>
@@ -2899,6 +2905,9 @@
                                         </th>
                                         <th class="sortable" onclick="sortTrophyScorersTable('goals')">
                                             Goals <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyScorersTable('penaltyGoals')">
+                                            PEN G <span class="sort-icon">⇅</span>
                                         </th>
                                         <th class="sortable" onclick="sortTrophyScorersTable('assists')">
                                             Assists <span class="sort-icon">⇅</span>
@@ -3604,9 +3613,8 @@
                     <!-- Matches Sub-tab -->
                     <div id="player-matches-sub" class="player-sub-tab-content">
                         <div class="stats-section">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                                <h2 class="section-title" style="margin: 0;">Player Match Statistics</h2>
-                                <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                            <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 1.5rem; gap: 1.5rem;">
+                                <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
                                     <div style="display: flex; gap: 0.75rem; align-items: center;">
                                         <span style="font-size: 0.9rem; color: #666; font-weight: 500;">Played Matches:</span>
                                         <span id="played-matches-count" style="background: #e3f2fd; color: #1976d2; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem;">0</span>
@@ -3615,12 +3623,27 @@
                                         <span style="font-size: 0.9rem; color: #666; font-weight: 500;">Non-Played Matches:</span>
                                         <span id="non-played-matches-count" style="background: #f5f5f5; color: #999; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem;">0</span>
                                     </div>
-                                    <select id="player-matches-filter" style="padding: 0.5rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; background: white; cursor: pointer; font-weight: 500;" onchange="filterPlayerMatches()">
-                                        <option value="all">All Matches</option>
-                                        <option value="played">Played Matches Only</option>
-                                        <option value="non-played">Non-Played Matches Only</option>
-                                    </select>
+                                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                        <span style="font-size: 0.9rem; color: #666; font-weight: 500;">Matches with Goals:</span>
+                                        <span id="matches-with-goals-count" style="background: #fff3e0; color: #f57c00; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem;">0</span>
+                                    </div>
+                                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                        <span style="font-size: 0.9rem; color: #666; font-weight: 500;">Matches with Assists:</span>
+                                        <span id="matches-with-assists-count" style="background: #f3e5f5; color: #7b1fa2; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem;">0</span>
+                                    </div>
+                                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                        <span style="font-size: 0.9rem; color: #666; font-weight: 500;">Matches with G & A:</span>
+                                        <span id="matches-with-goals-assists-count" style="background: #e8f5e9; color: #388e3c; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem;">0</span>
+                                    </div>
                                 </div>
+                                <select id="player-matches-filter" style="padding: 0.5rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; background: white; cursor: pointer; font-weight: 500;" onchange="filterPlayerMatches()">
+                                    <option value="all">All Matches</option>
+                                    <option value="played">Played Matches Only</option>
+                                    <option value="non-played">Non-Played Matches Only</option>
+                                    <option value="with-goals">Matches with Goals</option>
+                                    <option value="with-assists">Matches with Assists</option>
+                                    <option value="with-goals-assists">Matches with Goals & Assists</option>
+                                </select>
                             </div>
                             <div class="stats-table-container">
                                 <table class="stats-table" id="player-matches-table">

@@ -5532,6 +5532,9 @@ function loadPlayerMatches() {
 function updatePlayerMatchesCounts() {
     const playedCountEl = document.getElementById('played-matches-count');
     const nonPlayedCountEl = document.getElementById('non-played-matches-count');
+    const matchesWithGoalsEl = document.getElementById('matches-with-goals-count');
+    const matchesWithAssistsEl = document.getElementById('matches-with-assists-count');
+    const matchesWithGoalsAssistsEl = document.getElementById('matches-with-goals-assists-count');
     
     if (playedCountEl) {
         playedCountEl.textContent = playerMatchesData.played.length || 0;
@@ -5539,6 +5542,40 @@ function updatePlayerMatchesCounts() {
     
     if (nonPlayedCountEl) {
         nonPlayedCountEl.textContent = playerMatchesData.nonPlayed.length || 0;
+    }
+    
+    // Calculate matches with goals, assists, and both
+    let matchesWithGoals = 0;
+    let matchesWithAssists = 0;
+    let matchesWithGoalsAssists = 0;
+    
+    if (playerMatchesData.played && playerMatchesData.played.length > 0) {
+        playerMatchesData.played.forEach(match => {
+            const goals = typeof match.goals === 'number' ? match.goals : (match.ga === 'GOAL' ? 1 : 0);
+            const assists = typeof match.assists === 'number' ? match.assists : (match.ga === 'ASSIST' ? 1 : 0);
+            
+            if (goals > 0 && assists > 0) {
+                matchesWithGoalsAssists++;
+                matchesWithGoals++;
+                matchesWithAssists++;
+            } else if (goals > 0) {
+                matchesWithGoals++;
+            } else if (assists > 0) {
+                matchesWithAssists++;
+            }
+        });
+    }
+    
+    if (matchesWithGoalsEl) {
+        matchesWithGoalsEl.textContent = matchesWithGoals || 0;
+    }
+    
+    if (matchesWithAssistsEl) {
+        matchesWithAssistsEl.textContent = matchesWithAssists || 0;
+    }
+    
+    if (matchesWithGoalsAssistsEl) {
+        matchesWithGoalsAssistsEl.textContent = matchesWithGoalsAssists || 0;
     }
 }
 
@@ -5571,7 +5608,26 @@ function renderPlayerMatchesTable(playedMatches, nonPlayedMatches = [], filterTy
     
     // Filter matches based on selection
     let matchesToDisplay = [];
-    if (filterType === 'played') {
+    
+    // For goals/assists filters, only use played matches (non-played matches don't have goals/assists)
+    if (filterType === 'with-goals' || filterType === 'with-assists' || filterType === 'with-goals-assists') {
+        matchesToDisplay = [...(playedMatches || [])];
+        
+        // Apply goals/assists filtering
+        matchesToDisplay = matchesToDisplay.filter(m => {
+            const goals = typeof m.goals === 'number' ? m.goals : (m.ga === 'GOAL' ? 1 : 0);
+            const assists = typeof m.assists === 'number' ? m.assists : (m.ga === 'ASSIST' ? 1 : 0);
+            
+            if (filterType === 'with-goals') {
+                return goals > 0;
+            } else if (filterType === 'with-assists') {
+                return assists > 0;
+            } else if (filterType === 'with-goals-assists') {
+                return goals > 0 && assists > 0;
+            }
+            return true;
+        });
+    } else if (filterType === 'played') {
         matchesToDisplay = [...(playedMatches || [])];
     } else if (filterType === 'non-played') {
         matchesToDisplay = [...(nonPlayedMatches || [])];
@@ -10633,6 +10689,24 @@ function loadAllPlayersData(filteredRecords = null) {
     // Calculate stats for each player from LINEUPDETAILS
     const playersStats = {};
     
+    // Helper function to parse minute for 90+ calculation
+    function parseMinuteFor90Plus(minuteStr) {
+        const str = String(minuteStr || '').trim();
+        if (!str) return 0;
+        
+        // Handle formats like "90+5" or "90+3"
+        if (str.includes('+')) {
+            const parts = str.split('+');
+            const base = parseInt(parts[0]) || 0;
+            const extra = parseInt(parts[1]) || 0;
+            // Return a fractional value: 90+5 becomes 90.5, so it sorts between 90 and 91
+            return base + (extra / 100);
+        }
+        
+        // Regular minute
+        return parseInt(str) || 0;
+    }
+    
     // LINEUPDETAILS contains ONLY Al Ahly players
     // So we only use it if teamFilter is not 'AGAINST_AHLY'
     if (teamFilter !== 'AGAINST_AHLY') {
@@ -10651,7 +10725,9 @@ function loadAllPlayersData(filteredRecords = null) {
                     matches: new Set(),
                     minutes: 0,
                     goals: 0,
+                    penaltyGoals: 0,
                     assists: 0,
+                    goals90Plus: 0,
                     winningMatches: new Set(),
                     equalizingMatches: new Set()
                 };
@@ -10687,15 +10763,32 @@ function loadAllPlayersData(filteredRecords = null) {
                 matches: new Set(),
                 minutes: 0,
                 goals: 0,
+                penaltyGoals: 0,
                 assists: 0,
+                goals90Plus: 0,
                 winningMatches: new Set(),
                 equalizingMatches: new Set()
             };
         }
         
-        // Count goals - exact match with 'GOAL'
-        if (ga === 'GOAL') {
+        // Check for penalty goals in TYPE or GA field
+        const typeVal = normalizeStr(record.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
+        const gaNorm = normalizeStr(record.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
+        
+        // Count penalty goals (PENGOAL in TYPE or GA)
+        if (typeVal === 'PENGOAL' || gaNorm === 'PENGOAL') {
+            playersStats[playerName].penaltyGoals++;
+        }
+        
+        // Count goals - exact match with 'GOAL' (but not penalty goals)
+        if (ga === 'GOAL' && typeVal !== 'PENGOAL' && gaNorm !== 'PENGOAL') {
             playersStats[playerName].goals++;
+            
+            // Check if goal is in 90+ minute
+            const minute = parseMinuteFor90Plus(record.MINUTE || record.minute || '');
+            if (minute >= 90) {
+                playersStats[playerName].goals90Plus++;
+            }
         }
         // Count assists - exact match with 'ASSIST'
         else if (ga === 'ASSIST') {
@@ -10717,7 +10810,9 @@ function loadAllPlayersData(filteredRecords = null) {
         minutes: player.minutes,
         goalsAssists: player.goals + player.assists,
         goals: player.goals,
+        penaltyGoals: player.penaltyGoals,
         assists: player.assists,
+        goals90Plus: player.goals90Plus,
         winningMatches: player.winningMatches.size,
         equalizingMatches: player.equalizingMatches.size
     }));
@@ -10859,7 +10954,7 @@ function renderAllPlayersTable(playersData) {
     tbody.innerHTML = '';
     
     if (playersData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">No data available</td></tr>';
         return;
     }
     
@@ -10869,7 +10964,9 @@ function renderAllPlayersTable(playersData) {
         minutes: 0,
         goalsAssists: 0,
         goals: 0,
+        penaltyGoals: 0,
         assists: 0,
+        goals90Plus: 0,
         winningMatches: 0,
         equalizingMatches: 0
     };
@@ -10882,7 +10979,9 @@ function renderAllPlayersTable(playersData) {
             <td>${player.minutes}</td>
             <td><strong>${player.goalsAssists}</strong></td>
             <td>${player.goals}</td>
+            <td>${player.penaltyGoals || 0}</td>
             <td>${player.assists}</td>
+            <td>${player.goals90Plus || 0}</td>
             <td>${player.winningMatches || 0}</td>
             <td>${player.equalizingMatches || 0}</td>
         `;
@@ -10892,7 +10991,9 @@ function renderAllPlayersTable(playersData) {
         totals.minutes += player.minutes;
         totals.goalsAssists += player.goalsAssists;
         totals.goals += player.goals;
+        totals.penaltyGoals += (player.penaltyGoals || 0);
         totals.assists += player.assists;
+        totals.goals90Plus += (player.goals90Plus || 0);
         totals.winningMatches += (player.winningMatches || 0);
         totals.equalizingMatches += (player.equalizingMatches || 0);
     });
@@ -10908,7 +11009,9 @@ function renderAllPlayersTable(playersData) {
         <td>${totals.minutes}</td>
         <td><strong>${totals.goalsAssists}</strong></td>
         <td>${totals.goals}</td>
+        <td>${totals.penaltyGoals}</td>
         <td>${totals.assists}</td>
+        <td>${totals.goals90Plus}</td>
         <td>${totals.winningMatches}</td>
         <td>${totals.equalizingMatches}</td>
     `;
@@ -10980,9 +11083,11 @@ function sortAllPlayersTable(column) {
         'minutes': 2,
         'goalsAssists': 3,
         'goals': 4,
-        'assists': 5,
-        'winningMatches': 6,
-        'equalizingMatches': 7
+        'penaltyGoals': 5,
+        'assists': 6,
+        'goals90Plus': 7,
+        'winningMatches': 8,
+        'equalizingMatches': 9
     };
     
     const headerIndex = columnMap[column];
@@ -11095,6 +11200,7 @@ function loadTrophyScorersData(filteredRecords = null) {
                     matches: new Set(),
                     minutes: 0,
                     goals: 0,
+                    penaltyGoals: 0,
                     assists: 0,
                     winningMatches: new Set(),
                     equalizingMatches: new Set()
@@ -11131,14 +11237,24 @@ function loadTrophyScorersData(filteredRecords = null) {
                 matches: new Set(),
                 minutes: 0,
                 goals: 0,
+                penaltyGoals: 0,
                 assists: 0,
                 winningMatches: new Set(),
                 equalizingMatches: new Set()
             };
         }
         
-        // Count goals - exact match with 'GOAL'
-        if (ga === 'GOAL') {
+        // Check for penalty goals in TYPE or GA field
+        const typeVal = normalizeStr(record.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
+        const gaNorm = normalizeStr(record.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
+        
+        // Count penalty goals (PENGOAL in TYPE or GA)
+        if (typeVal === 'PENGOAL' || gaNorm === 'PENGOAL') {
+            playersStats[playerName].penaltyGoals++;
+        }
+        
+        // Count goals - exact match with 'GOAL' (but not penalty goals)
+        if (ga === 'GOAL' && typeVal !== 'PENGOAL' && gaNorm !== 'PENGOAL') {
             playersStats[playerName].goals++;
         }
         // Count assists - exact match with 'ASSIST'
@@ -11161,6 +11277,7 @@ function loadTrophyScorersData(filteredRecords = null) {
         minutes: player.minutes,
         goalsAssists: player.goals + player.assists,
         goals: player.goals,
+        penaltyGoals: player.penaltyGoals,
         assists: player.assists,
         winningMatches: player.winningMatches.size,
         equalizingMatches: player.equalizingMatches.size
@@ -11205,7 +11322,7 @@ function renderTrophyScorersTable(playersData) {
     tbody.innerHTML = '';
     
     if (playersData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No data available</td></tr>';
         return;
     }
     
@@ -11215,6 +11332,7 @@ function renderTrophyScorersTable(playersData) {
         minutes: 0,
         goalsAssists: 0,
         goals: 0,
+        penaltyGoals: 0,
         assists: 0,
         winningMatches: 0,
         equalizingMatches: 0
@@ -11228,6 +11346,7 @@ function renderTrophyScorersTable(playersData) {
             <td>${player.minutes}</td>
             <td><strong>${player.goalsAssists}</strong></td>
             <td>${player.goals}</td>
+            <td>${player.penaltyGoals || 0}</td>
             <td>${player.assists}</td>
             <td>${player.winningMatches || 0}</td>
             <td>${player.equalizingMatches || 0}</td>
@@ -11238,6 +11357,7 @@ function renderTrophyScorersTable(playersData) {
         totals.minutes += player.minutes;
         totals.goalsAssists += player.goalsAssists;
         totals.goals += player.goals;
+        totals.penaltyGoals += (player.penaltyGoals || 0);
         totals.assists += player.assists;
         totals.winningMatches += (player.winningMatches || 0);
         totals.equalizingMatches += (player.equalizingMatches || 0);
@@ -11254,6 +11374,7 @@ function renderTrophyScorersTable(playersData) {
         <td>${totals.minutes}</td>
         <td><strong>${totals.goalsAssists}</strong></td>
         <td>${totals.goals}</td>
+        <td>${totals.penaltyGoals}</td>
         <td>${totals.assists}</td>
         <td>${totals.winningMatches}</td>
         <td>${totals.equalizingMatches}</td>
@@ -11319,9 +11440,10 @@ function sortTrophyScorersTable(column) {
         'minutes': 2,
         'goalsAssists': 3,
         'goals': 4,
-        'assists': 5,
-        'winningMatches': 6,
-        'equalizingMatches': 7
+        'penaltyGoals': 5,
+        'assists': 6,
+        'winningMatches': 7,
+        'equalizingMatches': 8
     };
     
     const headerIndex = columnMap[column];
