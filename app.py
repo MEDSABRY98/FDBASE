@@ -577,7 +577,7 @@ def create_excel_file(data_type, data):
 def get_headers_for_type(data_type):
     """Get appropriate headers for each data type"""
     headers = {
-        'ahly_match': ['MATCH_ID', 'CHAMPION SYSTEM', 'DATE', 'CHAMPION', 'SEASON', 'AHLY MANAGER', 'OPPONENT MANAGER', 'REFREE', 'ROUND', 'H-A-N', 'STAD', 'AHLY TEAM', 'GF', 'GA', 'ET', 'PEN', 'OPPONENT TEAM', 'W-D-L', 'CLEAN SHEET', 'NOTE'],
+        'ahly_match': ['MATCH_ID', 'CHAMPION SYSTEM', 'DATE', 'CHAMPION', 'SEASON', 'SY', 'AHLY MANAGER', 'OPPONENT MANAGER', 'REFREE', 'ROUND', 'H-A-N', 'STAD', 'AHLY TEAM', 'GF', 'GA', 'ET', 'PEN', 'OPPONENT TEAM', 'W-D-L', 'CLEAN SHEET', 'NOTE'],
         'ahly_lineup': ['MATCH_ID', 'DATE', 'MINMAT', 'PLAYER', 'STATU', 'PLAYEROUT', 'MINOUT', 'MINTOTAL'],
         'ahly_goals_assists': ['MATCH_ID', 'PLAYER NAME', 'TEAM', 'GA', 'TYPE', 'MINUTE'],
         'ahly_gks': ['MATCH_ID', 'PLAYER NAME', '11/BAKEUP', 'SUBMIN', 'TEAM', 'GOALS CONCEDED', 'GOAL MINUTE'],
@@ -597,6 +597,7 @@ def prepare_data_row(data_type, data):
             data.get('date', ''),               # DATE
             data.get('champion', ''),           # CHAMPION
             data.get('season', ''),             # SEASON
+            data.get('sy', ''),                 # SY
             data.get('ahly_manager', ''),       # AHLY MANAGER
             data.get('opponent_manager', ''),   # OPPONENT MANAGER
             data.get('referee', ''),            # REFREE
@@ -1013,6 +1014,7 @@ def export_form_data(data_type):
                 'date': 'DATE',
                 'champion': 'CHAMPION',
                 'season': 'SEASON',
+                'sy': 'SY',
                 'ahly_manager': 'AHLY MANAGER',
                 'opponent_manager': 'OPPONENT MANAGER',
                 'referee': 'REFREE',
@@ -1146,7 +1148,7 @@ def create_ahly_match_excel_with_sheets(match_data, form_data):
         match_ws = wb.create_sheet("Match")
         
         # Add headers for Match sheet
-        match_headers = ['MATCH_ID', 'CHAMPION SYSTEM', 'DATE', 'CHAMPION', 'SEASON', 'AHLY MANAGER', 'OPPONENT MANAGER', 'REFREE', 'ROUND', 'H-A-N', 'STAD', 'AHLY TEAM', 'GF', 'GA', 'ET', 'PEN', 'OPPONENT TEAM', 'W-D-L', 'CLEAN SHEET', 'NOTE']
+        match_headers = ['MATCH_ID', 'CHAMPION SYSTEM', 'DATE', 'CHAMPION', 'SEASON', 'SY', 'AHLY MANAGER', 'OPPONENT MANAGER', 'REFREE', 'ROUND', 'H-A-N', 'STAD', 'AHLY TEAM', 'GF', 'GA', 'ET', 'PEN', 'OPPONENT TEAM', 'W-D-L', 'CLEAN SHEET', 'NOTE']
         match_ws.append(match_headers)
         
         # Add match data

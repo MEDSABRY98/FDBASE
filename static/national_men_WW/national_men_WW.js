@@ -5,6 +5,74 @@ window.nationalMenWW = (function () {
     let appsScriptUrl = '';
     let filtersApplied = false;
     
+    // Teams by continent mapping
+    const teamsByContinent = {
+        'africa': [
+            'Algeria', 'Angola', 'Benin', 'Botswana', 'Burkina Faso', 'Burundi', 'Cameroon', 'Cape Verde', 
+            'Central African Republic', 'Chad', 'Comoros', 'Congo', 'DR Congo', 'Djibouti', 'Egypt', 
+            'Equatorial Guinea', 'Eritrea', 'Eswatini', 'Ethiopia', 'Gabon', 'Gambia', 'Ghana', 'Guinea', 
+            'Guinea-Bissau', 'Ivory Coast', 'Kenya', 'Lesotho', 'Liberia', 'Libya', 'Madagascar', 'Malawi', 
+            'Mali', 'Mauritania', 'Mauritius', 'Morocco', 'Mozambique', 'Namibia', 'Niger', 'Nigeria', 
+            'Rwanda', 'São Tomé and Príncipe', 'Senegal', 'Seychelles', 'Sierra Leone', 'Somalia', 
+            'South Africa', 'South Sudan', 'Sudan', 'Tanzania', 'Togo', 'Tunisia', 'Uganda', 'Zambia', 'Zimbabwe'
+        ],
+        'asia': [
+            'Afghanistan', 'Australia', 'Bahrain', 'Bangladesh', 'Bhutan', 'Brunei', 'Cambodia', 'China', 
+            'Chinese Taipei', 'East Timor', 'Hong Kong', 'India', 'Indonesia', 'Iran', 'Iraq', 'Japan', 
+            'Jordan', 'Kazakhstan', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Lebanon', 'Macau', 'Malaysia', 
+            'Maldives', 'Mongolia', 'Myanmar', 'Nepal', 'North Korea', 'Oman', 'Pakistan', 'Palestine', 
+            'Philippines', 'Qatar', 'Saudi Arabia', 'Singapore', 'South Korea', 'Sri Lanka', 'Syria', 
+            'Tajikistan', 'Thailand', 'Turkmenistan', 'United Arab Emirates', 'Uzbekistan', 'Vietnam', 'Yemen'
+        ],
+        'europe': [
+            'Albania', 'Andorra', 'Armenia', 'Austria', 'Azerbaijan', 'Belarus', 'Belgium', 'Bosnia and Herzegovina', 
+            'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'England', 'Estonia', 'Faroe Islands', 
+            'Finland', 'France', 'Georgia', 'Germany', 'Greece', 'Hungary', 'Iceland', 'Ireland', 'Israel', 
+            'Italy', 'Kosovo', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Malta', 'Moldova', 
+            'Monaco', 'Montenegro', 'Netherlands', 'North Macedonia', 'Northern Ireland', 'Norway', 'Poland', 
+            'Portugal', 'Romania', 'Russia', 'San Marino', 'Scotland', 'Serbia', 'Slovakia', 'Slovenia', 
+            'Spain', 'Sweden', 'Switzerland', 'Turkey', 'Ukraine', 'Wales'
+        ],
+        'south-america': [
+            'Argentina', 'Bolivia', 'Brazil', 'Chile', 'Colombia', 'Ecuador', 'Paraguay', 'Peru', 'Uruguay', 'Venezuela'
+        ],
+        'north-america': [
+            'Antigua and Barbuda', 'Aruba', 'Bahamas', 'Barbados', 'Belize', 'Bermuda', 'Canada', 'Costa Rica', 
+            'Cuba', 'Curaçao', 'Dominica', 'Dominican Republic', 'El Salvador', 'Grenada', 'Guatemala', 'Haiti', 
+            'Honduras', 'Jamaica', 'Mexico', 'Nicaragua', 'Panama', 'Puerto Rico', 'Saint Kitts and Nevis', 
+            'Saint Lucia', 'Saint Vincent and the Grenadines', 'Suriname', 'Trinidad and Tobago', 'United States'
+        ],
+        'oceania': [
+            'American Samoa', 'Cook Islands', 'Fiji', 'Guam', 'Kiribati', 'Micronesia', 'New Caledonia', 
+            'New Zealand', 'Palau', 'Papua New Guinea', 'Samoa', 'Solomon Islands', 'Tahiti', 'Tonga', 
+            'Tuvalu', 'Vanuatu'
+        ]
+    };
+    
+    // Arab countries list
+    const arabCountries = [
+        'Algeria', 'Bahrain', 'Comoros', 'Djibouti', 'Egypt', 'Iraq', 'Jordan', 'Kuwait', 
+        'Lebanon', 'Libya', 'Mauritania', 'Morocco', 'Oman', 'Palestine', 'Qatar', 
+        'Saudi Arabia', 'Somalia', 'Sudan', 'Syria', 'Tunisia', 'United Arab Emirates', 'Yemen'
+    ];
+    
+    // Helper function to get continent for a team
+    function getTeamContinent(teamName) {
+        const normalizedTeam = String(teamName || '').trim();
+        for (const [continent, teams] of Object.entries(teamsByContinent)) {
+            if (teams.some(t => t.toLowerCase() === normalizedTeam.toLowerCase())) {
+                return continent;
+            }
+        }
+        return null; // Unknown continent
+    }
+    
+    // Helper function to check if team is Arab country
+    function isArabCountry(teamName) {
+        const normalizedTeam = String(teamName || '').trim();
+        return arabCountries.some(country => country.toLowerCase() === normalizedTeam.toLowerCase());
+    }
+    
     // Virtual Scrolling state
     let virtualScrollState = {
         allData: [],
@@ -69,6 +137,568 @@ window.nationalMenWW = (function () {
         });
     }
 
+    function updateTeamsTotalRow() {
+        const tableBody = document.getElementById('nmww-teams-stats-tbody');
+        if (!tableBody) return;
+        
+        const rows = tableBody.getElementsByTagName('tr');
+        let totalParticipations = 0;
+        let totalMatches = 0;
+        let totalWin = 0;
+        let totalDraw = 0;
+        let totalLoss = 0;
+        let totalGF = 0;
+        let totalGA = 0;
+        
+        // Calculate totals from visible rows only (excluding total row)
+        for (const row of rows) {
+            if (row.id === 'nmww-teams-total-row') continue; // Skip total row
+            if (row.style.display === 'none') continue; // Skip hidden rows
+            
+            const cells = row.getElementsByTagName('td');
+            if (cells.length >= 8) {
+                totalParticipations += parseInt(cells[1].textContent.trim()) || 0;
+                totalMatches += parseInt(cells[2].textContent.trim()) || 0;
+                totalWin += parseInt(cells[3].textContent.trim()) || 0;
+                totalDraw += parseInt(cells[4].textContent.trim()) || 0;
+                totalLoss += parseInt(cells[5].textContent.trim()) || 0;
+                totalGF += parseInt(cells[6].textContent.trim()) || 0;
+                totalGA += parseInt(cells[7].textContent.trim()) || 0;
+            }
+        }
+        
+        // Update total row
+        const totalParticipationsEl = document.getElementById('total-participations');
+        const totalMatchesEl = document.getElementById('total-matches');
+        const totalWinEl = document.getElementById('total-win');
+        const totalDrawEl = document.getElementById('total-draw');
+        const totalLossEl = document.getElementById('total-loss');
+        const totalGFEl = document.getElementById('total-gf');
+        const totalGAEl = document.getElementById('total-ga');
+        
+        if (totalParticipationsEl) totalParticipationsEl.textContent = totalParticipations;
+        if (totalMatchesEl) totalMatchesEl.textContent = totalMatches;
+        if (totalWinEl) totalWinEl.textContent = totalWin;
+        if (totalDrawEl) totalDrawEl.textContent = totalDraw;
+        if (totalLossEl) totalLossEl.textContent = totalLoss;
+        if (totalGFEl) totalGFEl.textContent = totalGF;
+        if (totalGAEl) totalGAEl.textContent = totalGA;
+    }
+
+    function setupContinentFilter() {
+        const input = document.getElementById('nmww-continent-filter-input');
+        const dropdown = document.getElementById('nmww-continent-dropdown');
+        if (!input || !dropdown) {
+            console.warn('Continent filter elements not found');
+            return;
+        }
+        
+        // Remove existing event listeners by cloning elements
+        const newInput = input.cloneNode(true);
+        const newDropdown = dropdown.cloneNode(true);
+        input.parentNode.replaceChild(newInput, input);
+        dropdown.parentNode.replaceChild(newDropdown, dropdown);
+        
+        // Track selected continents
+        const selectedContinents = new Set();
+        
+        // Update input placeholder based on selections
+        function updateInputPlaceholder() {
+            if (selectedContinents.size === 0) {
+                newInput.value = '';
+                newInput.placeholder = 'Select Continents...';
+            } else {
+                const labels = {
+                    'africa': 'Africa',
+                    'asia': 'Asia',
+                    'europe': 'Europe',
+                    'south-america': 'South America',
+                    'north-america': 'North America',
+                    'oceania': 'Oceania',
+                    'arab-countries': 'Arab Countries'
+                };
+                const selected = Array.from(selectedContinents).map(c => labels[c] || c);
+                newInput.value = selected.join(', ');
+            }
+        }
+        
+        // Handle checkbox changes
+        const checkboxes = newDropdown.querySelectorAll('.continent-cb');
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const value = e.target.value;
+                if (e.target.checked) {
+                    selectedContinents.add(value);
+                } else {
+                    selectedContinents.delete(value);
+                }
+                updateInputPlaceholder();
+                
+                // Get current filtered records
+                const filtered = applyCurrentFilters();
+                // Re-render teams stats with continent filter
+                renderTeamStats(filtered);
+                // Clear search input when filter changes
+                const searchInput = document.getElementById('nmww-teams-search-input');
+                if (searchInput) searchInput.value = '';
+            });
+        });
+        
+        // Toggle dropdown on input click
+        newInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVisible = newDropdown.style.display === 'block';
+            newDropdown.style.display = isVisible ? 'none' : 'block';
+        });
+        
+        // Close dropdown when clicking outside
+        const closeDropdown = (e) => {
+            if (!newInput.contains(e.target) && !newDropdown.contains(e.target)) {
+                newDropdown.style.display = 'none';
+            }
+        };
+        document.addEventListener('click', closeDropdown);
+        
+        // Prevent dropdown from closing when clicking inside
+        newDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        
+        // Add hover effect to labels
+        newDropdown.querySelectorAll('label').forEach(label => {
+            label.addEventListener('mouseenter', () => {
+                label.style.background = '#f8f9fa';
+            });
+            label.addEventListener('mouseleave', () => {
+                label.style.background = 'transparent';
+            });
+        });
+    }
+
+    function setupMatchesContinentFilter() {
+        const input = document.getElementById('nmww-matches-continent-filter-input');
+        const dropdown = document.getElementById('nmww-matches-continent-dropdown');
+        if (!input || !dropdown) {
+            console.warn('Matches continent filter elements not found');
+            return;
+        }
+        
+        // Remove existing event listeners by cloning elements
+        const newInput = input.cloneNode(true);
+        const newDropdown = dropdown.cloneNode(true);
+        input.parentNode.replaceChild(newInput, input);
+        dropdown.parentNode.replaceChild(newDropdown, dropdown);
+        
+        // Track selected continents
+        const selectedContinents = new Set();
+        
+        // Update input placeholder based on selections
+        function updateInputPlaceholder() {
+            if (selectedContinents.size === 0) {
+                newInput.value = '';
+                newInput.placeholder = 'Select Continents...';
+            } else {
+                const labels = {
+                    'africa': 'Africa',
+                    'asia': 'Asia',
+                    'europe': 'Europe',
+                    'south-america': 'South America',
+                    'north-america': 'North America',
+                    'oceania': 'Oceania',
+                    'arab-countries': 'Arab Countries'
+                };
+                const selected = Array.from(selectedContinents).map(c => labels[c] || c);
+                newInput.value = selected.join(', ');
+            }
+        }
+        
+        // Handle checkbox changes
+        const checkboxes = newDropdown.querySelectorAll('.matches-continent-cb');
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const value = e.target.value;
+                if (e.target.checked) {
+                    selectedContinents.add(value);
+                } else {
+                    selectedContinents.delete(value);
+                }
+                updateInputPlaceholder();
+                
+                // Re-apply all filters including continent filter
+                // Get current filtered records from main filters
+                const filtered = applyCurrentFilters();
+                // Re-render matches table with continent filter applied
+                renderTable(filtered);
+                // Clear search input when filter changes
+                const searchInput = document.getElementById('matches-search-input');
+                if (searchInput) searchInput.value = '';
+            });
+        });
+        
+        // Toggle dropdown on input click
+        newInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVisible = newDropdown.style.display === 'block';
+            newDropdown.style.display = isVisible ? 'none' : 'block';
+        });
+        
+        // Close dropdown when clicking outside
+        const closeDropdown = (e) => {
+            if (!newInput.contains(e.target) && !newDropdown.contains(e.target)) {
+                newDropdown.style.display = 'none';
+            }
+        };
+        document.addEventListener('click', closeDropdown);
+        
+        // Prevent dropdown from closing when clicking inside
+        newDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        
+        // Add hover effect to labels
+        newDropdown.querySelectorAll('label').forEach(label => {
+            label.addEventListener('mouseenter', () => {
+                label.style.background = '#f8f9fa';
+            });
+            label.addEventListener('mouseleave', () => {
+                label.style.background = 'transparent';
+            });
+        });
+    }
+
+    function updateTeamStatsSummary(records) {
+        const selectedTeam = getSelectedTeamFilter();
+        const summaryDiv = document.getElementById('nmww-team-stats-summary');
+        
+        if (!selectedTeam || !summaryDiv) {
+            if (summaryDiv) summaryDiv.style.display = 'none';
+            return;
+        }
+        
+        // Calculate statistics for the selected team
+        const selectedTeamLower = selectedTeam.toLowerCase();
+        let matches = 0;
+        let win = 0;
+        let draw = 0;
+        let loss = 0;
+        let gf = 0;
+        let ga = 0;
+        
+        records.forEach(r => {
+            const teamA = String(r['TeamA'] || '').trim();
+            const teamB = String(r['TeamB'] || '').trim();
+            const teamALower = teamA.toLowerCase();
+            const teamBLower = teamB.toLowerCase();
+            
+            const scoreA = parseInt(r['TeamAScore'], 10);
+            const scoreB = parseInt(r['TeamBScore'], 10);
+            
+            if (isNaN(scoreA) || isNaN(scoreB)) return;
+            
+            if (teamALower === selectedTeamLower) {
+                matches++;
+                gf += scoreA;
+                ga += scoreB;
+                if (scoreA > scoreB) win++;
+                else if (scoreA < scoreB) loss++;
+                else draw++;
+            } else if (teamBLower === selectedTeamLower) {
+                matches++;
+                gf += scoreB;
+                ga += scoreA;
+                if (scoreB > scoreA) win++;
+                else if (scoreB < scoreA) loss++;
+                else draw++;
+            }
+        });
+        
+        // Update summary display
+        document.getElementById('team-stats-matches').textContent = matches;
+        document.getElementById('team-stats-win').textContent = win;
+        document.getElementById('team-stats-draw').textContent = draw;
+        document.getElementById('team-stats-loss').textContent = loss;
+        document.getElementById('team-stats-gf').textContent = gf;
+        document.getElementById('team-stats-ga').textContent = ga;
+        
+        summaryDiv.style.display = 'block';
+    }
+
+    function setupH2HContinentFilters() {
+        // Setup Continent 1 filter
+        const input1 = document.getElementById('nmww-h2h-continent1-input');
+        const dropdown1 = document.getElementById('nmww-h2h-continent1-dropdown');
+        if (input1 && dropdown1) {
+            setupH2HContinentDropdown(input1, dropdown1, 'h2h-continent1-cb', 1);
+        }
+        
+        // Setup Continent 2 filter
+        const input2 = document.getElementById('nmww-h2h-continent2-input');
+        const dropdown2 = document.getElementById('nmww-h2h-continent2-dropdown');
+        if (input2 && dropdown2) {
+            setupH2HContinentDropdown(input2, dropdown2, 'h2h-continent2-cb', 2);
+        }
+    }
+    
+    function setupH2HContinentDropdown(input, dropdown, checkboxClass, continentNumber) {
+        // Remove existing event listeners by cloning elements
+        const newInput = input.cloneNode(true);
+        const newDropdown = dropdown.cloneNode(true);
+        input.parentNode.replaceChild(newInput, input);
+        dropdown.parentNode.replaceChild(newDropdown, dropdown);
+        
+        // Track selected continent (only one can be selected)
+        let selectedContinent = '';
+        
+        // Update input placeholder based on selection
+        function updateInputPlaceholder() {
+            if (!selectedContinent) {
+                newInput.value = '';
+                newInput.placeholder = 'Select Continent...';
+            } else {
+                const labels = {
+                    'africa': 'Africa',
+                    'asia': 'Asia',
+                    'europe': 'Europe',
+                    'south-america': 'South America',
+                    'north-america': 'North America',
+                    'oceania': 'Oceania',
+                    'arab-countries': 'Arab Countries'
+                };
+                newInput.value = labels[selectedContinent] || selectedContinent;
+            }
+        }
+        
+        // Handle checkbox changes (only one can be selected)
+        const checkboxes = newDropdown.querySelectorAll('.' + checkboxClass);
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const value = e.target.value;
+                if (e.target.checked) {
+                    // Uncheck all other checkboxes
+                    checkboxes.forEach(otherCb => {
+                        if (otherCb !== e.target) {
+                            otherCb.checked = false;
+                        }
+                    });
+                    selectedContinent = value;
+                } else {
+                    selectedContinent = '';
+                }
+                updateInputPlaceholder();
+                
+                // Update H2H table
+                updateH2HTable();
+            });
+        });
+        
+        // Toggle dropdown on input click
+        newInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVisible = newDropdown.style.display === 'block';
+            newDropdown.style.display = isVisible ? 'none' : 'block';
+        });
+        
+        // Close dropdown when clicking outside
+        const closeDropdown = (e) => {
+            if (!newInput.contains(e.target) && !newDropdown.contains(e.target)) {
+                newDropdown.style.display = 'none';
+            }
+        };
+        document.addEventListener('click', closeDropdown);
+        
+        // Prevent dropdown from closing when clicking inside
+        newDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        
+        // Add hover effect to labels
+        newDropdown.querySelectorAll('label').forEach(label => {
+            label.addEventListener('mouseenter', () => {
+                label.style.background = '#f8f9fa';
+            });
+            label.addEventListener('mouseleave', () => {
+                label.style.background = 'transparent';
+            });
+        });
+    }
+    
+    function updateH2HTable() {
+        const tbody = document.getElementById('nmww-h2h-tbody');
+        const header1 = document.getElementById('nmww-h2h-continent1-header');
+        const header2 = document.getElementById('nmww-h2h-continent2-header');
+        if (!tbody) return;
+        
+        // Get selected continents
+        const checkboxes1 = document.querySelectorAll('.h2h-continent1-cb');
+        const checkboxes2 = document.querySelectorAll('.h2h-continent2-cb');
+        
+        let continent1 = '';
+        let continent2 = '';
+        
+        checkboxes1.forEach(cb => {
+            if (cb.checked) continent1 = cb.value;
+        });
+        checkboxes2.forEach(cb => {
+            if (cb.checked) continent2 = cb.value;
+        });
+        
+        if (!continent1 || !continent2) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:2rem; color:#666;">Please select two continents to view H2H statistics</td></tr>';
+            if (header1) header1.textContent = 'Continent 1';
+            if (header2) header2.textContent = 'Continent 2';
+            return;
+        }
+        
+        // Get filtered records (apply main filters if any)
+        const filtered = applyCurrentFilters();
+        
+        // Calculate H2H statistics
+        const stats = calculateH2HStats(filtered, continent1, continent2);
+        
+        // Render table
+        const labels = {
+            'africa': 'Africa',
+            'asia': 'Asia',
+            'europe': 'Europe',
+            'south-america': 'South America',
+            'north-america': 'North America',
+            'oceania': 'Oceania',
+            'arab-countries': 'Arab Countries'
+        };
+        
+        const continent1Label = labels[continent1] || continent1;
+        const continent2Label = labels[continent2] || continent2;
+        
+        // Update headers
+        if (header1) header1.textContent = continent1Label;
+        if (header2) header2.textContent = continent2Label;
+        
+        // Render statistics - continents on left and right, labels in center column
+        tbody.innerHTML = `
+            <tr style="margin-bottom:0.75rem;">
+                <td style="text-align:center; padding:1.5rem 0.75rem; vertical-align:middle;">
+                    <div style="font-size:2.2rem; font-weight:700; margin-bottom:1.5rem; color:#333;">${escapeHtml(continent1Label)}</div>
+                    <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                        <div style="font-size:2rem; font-weight:600; padding:0.5rem 0;">${stats.continent1.matches}</div>
+                        <div style="font-size:2rem; font-weight:600; color:#28a745; padding:0.5rem 0;">${stats.continent1.win}</div>
+                        <div style="font-size:2rem; font-weight:600; color:#ff9f43; padding:0.5rem 0;">${stats.continent1.draw}</div>
+                        <div style="font-size:2rem; font-weight:600; color:#dc3545; padding:0.5rem 0;">${stats.continent1.loss}</div>
+                        <div style="font-size:2rem; font-weight:600; padding:0.5rem 0;">${stats.continent1.gf}</div>
+                        <div style="font-size:2rem; font-weight:600; padding:0.5rem 0;">${stats.continent1.ga}</div>
+                    </div>
+                </td>
+                <td style="text-align:center; padding:1.5rem 0.75rem; vertical-align:middle;">
+                    <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:2.5rem;">
+                        <div style="font-size:2rem; font-weight:600; padding:0.5rem 0;">Matches</div>
+                        <div style="font-size:2rem; font-weight:600; color:#28a745; padding:0.5rem 0;">Win</div>
+                        <div style="font-size:2rem; font-weight:600; color:#ff9f43; padding:0.5rem 0;">Draw</div>
+                        <div style="font-size:2rem; font-weight:600; color:#dc3545; padding:0.5rem 0;">Loss</div>
+                        <div style="font-size:2rem; font-weight:600; padding:0.5rem 0;">Goals For</div>
+                        <div style="font-size:2rem; font-weight:600; padding:0.5rem 0;">Goals Against</div>
+                    </div>
+                </td>
+                <td style="text-align:center; padding:1.5rem 0.75rem; vertical-align:middle;">
+                    <div style="font-size:2.2rem; font-weight:700; margin-bottom:1.5rem; color:#333;">${escapeHtml(continent2Label)}</div>
+                    <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                        <div style="font-size:2rem; font-weight:600; padding:0.5rem 0;">${stats.continent2.matches}</div>
+                        <div style="font-size:2rem; font-weight:600; color:#28a745; padding:0.5rem 0;">${stats.continent2.win}</div>
+                        <div style="font-size:2rem; font-weight:600; color:#ff9f43; padding:0.5rem 0;">${stats.continent2.draw}</div>
+                        <div style="font-size:2rem; font-weight:600; color:#dc3545; padding:0.5rem 0;">${stats.continent2.loss}</div>
+                        <div style="font-size:2rem; font-weight:600; padding:0.5rem 0;">${stats.continent2.gf}</div>
+                        <div style="font-size:2rem; font-weight:600; padding:0.5rem 0;">${stats.continent2.ga}</div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+    
+    function calculateH2HStats(records, continent1, continent2) {
+        const stats = {
+            continent1: { matches: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0 },
+            continent2: { matches: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0 }
+        };
+        
+        records.forEach(r => {
+            const teamA = String(r['TeamA'] || '').trim();
+            const teamB = String(r['TeamB'] || '').trim();
+            const scoreA = parseInt(r['TeamAScore'], 10);
+            const scoreB = parseInt(r['TeamBScore'], 10);
+            
+            if (isNaN(scoreA) || isNaN(scoreB)) return;
+            
+            // Get continents for both teams
+            let teamAContinent = '';
+            let teamBContinent = '';
+            
+            if (continent1 === 'arab-countries' || continent2 === 'arab-countries') {
+                if (isArabCountry(teamA)) {
+                    teamAContinent = 'arab-countries';
+                } else {
+                    teamAContinent = getTeamContinent(teamA);
+                }
+                if (isArabCountry(teamB)) {
+                    teamBContinent = 'arab-countries';
+                } else {
+                    teamBContinent = getTeamContinent(teamB);
+                }
+            } else {
+                teamAContinent = getTeamContinent(teamA);
+                teamBContinent = getTeamContinent(teamB);
+            }
+            
+            // Check if this match is between the two selected continents
+            const isContinent1A = teamAContinent === continent1;
+            const isContinent1B = teamBContinent === continent1;
+            const isContinent2A = teamAContinent === continent2;
+            const isContinent2B = teamBContinent === continent2;
+            
+            if ((isContinent1A && isContinent2B) || (isContinent1B && isContinent2A)) {
+                // This is a match between the two continents
+                if (isContinent1A && isContinent2B) {
+                    // TeamA is continent1, TeamB is continent2
+                    stats.continent1.matches++;
+                    stats.continent2.matches++;
+                    stats.continent1.gf += scoreA;
+                    stats.continent1.ga += scoreB;
+                    stats.continent2.gf += scoreB;
+                    stats.continent2.ga += scoreA;
+                    
+                    if (scoreA > scoreB) {
+                        stats.continent1.win++;
+                        stats.continent2.loss++;
+                    } else if (scoreA < scoreB) {
+                        stats.continent1.loss++;
+                        stats.continent2.win++;
+                    } else {
+                        stats.continent1.draw++;
+                        stats.continent2.draw++;
+                    }
+                } else {
+                    // TeamA is continent2, TeamB is continent1
+                    stats.continent1.matches++;
+                    stats.continent2.matches++;
+                    stats.continent1.gf += scoreB;
+                    stats.continent1.ga += scoreA;
+                    stats.continent2.gf += scoreA;
+                    stats.continent2.ga += scoreB;
+                    
+                    if (scoreB > scoreA) {
+                        stats.continent1.win++;
+                        stats.continent2.loss++;
+                    } else if (scoreB < scoreA) {
+                        stats.continent1.loss++;
+                        stats.continent2.win++;
+                    } else {
+                        stats.continent1.draw++;
+                        stats.continent2.draw++;
+                    }
+                }
+            }
+        });
+        
+        return stats;
+    }
+
     function setupDynamicTeamsSearch() {
         const searchInput = document.getElementById('nmww-teams-search-input');
         if (!searchInput) return;
@@ -79,9 +709,16 @@ window.nationalMenWW = (function () {
             const searchTerm = searchInput.value.toLowerCase().trim();
             const rows = tableBody.getElementsByTagName('tr');
             for (const row of rows) {
+                // Always show total row
+                if (row.id === 'nmww-teams-total-row') {
+                    row.style.display = '';
+                    continue;
+                }
                 const rowText = row.textContent.toLowerCase();
                 row.style.display = rowText.includes(searchTerm) ? '' : 'none';
             }
+            // Update total row based on visible rows
+            updateTeamsTotalRow();
         });
     }
 
@@ -152,11 +789,11 @@ window.nationalMenWW = (function () {
                 }
             }
             
-            // Apply team filter
+            // Apply team filter (exact match)
             if (teamFilter) {
                 const ta = String(r['TeamA'] || '').trim().toLowerCase();
                 const tb = String(r['TeamB'] || '').trim().toLowerCase();
-                if ((!ta || !ta.includes(teamFilter)) && (!tb || !tb.includes(teamFilter))) {
+                if (ta !== teamFilter && tb !== teamFilter) {
                     return false;
                 }
             }
@@ -242,9 +879,80 @@ window.nationalMenWW = (function () {
         const tbody = document.getElementById('national-men-WW-tbody');
         if (!tbody) return;
         
+        // Get selected team from Teams filter
+        const selectedTeam = getSelectedTeamFilter();
+        const selectedTeamLower = selectedTeam ? selectedTeam.toLowerCase() : '';
+        
+        // Apply continent filter if any selected (always check current state)
+        const checkboxes = document.querySelectorAll('.matches-continent-cb');
+        const selectedContinents = new Set();
+        checkboxes.forEach(cb => {
+            if (cb && cb.checked) {
+                selectedContinents.add(cb.value);
+            }
+        });
+        
+        let filteredRecords = records;
+        if (selectedContinents.size > 0) {
+            filteredRecords = records.filter(r => {
+                const teamA = String(r['TeamA'] || '').trim();
+                const teamB = String(r['TeamB'] || '').trim();
+                const teamALower = teamA.toLowerCase();
+                const teamBLower = teamB.toLowerCase();
+                
+                // If a specific team is selected, check if the OTHER team matches the continent
+                if (selectedTeamLower) {
+                    const isTeamA = teamALower === selectedTeamLower;
+                    const isTeamB = teamBLower === selectedTeamLower;
+                    
+                    if (isTeamA) {
+                        // Selected team is TeamA, check if TeamB matches continent
+                        for (const continent of selectedContinents) {
+                            if (continent === 'arab-countries') {
+                                if (isArabCountry(teamB)) return true;
+                            } else {
+                                const teamBContinent = getTeamContinent(teamB);
+                                if (teamBContinent === continent) return true;
+                            }
+                        }
+                        return false;
+                    } else if (isTeamB) {
+                        // Selected team is TeamB, check if TeamA matches continent
+                        for (const continent of selectedContinents) {
+                            if (continent === 'arab-countries') {
+                                if (isArabCountry(teamA)) return true;
+                            } else {
+                                const teamAContinent = getTeamContinent(teamA);
+                                if (teamAContinent === continent) return true;
+                            }
+                        }
+                        return false;
+                    } else {
+                        // Selected team is not in this match, exclude it
+                        return false;
+                    }
+                } else {
+                    // No specific team selected, check if either team matches continent
+                    for (const continent of selectedContinents) {
+                        if (continent === 'arab-countries') {
+                            if (isArabCountry(teamA) || isArabCountry(teamB)) return true;
+                        } else {
+                            const teamAContinent = getTeamContinent(teamA);
+                            const teamBContinent = getTeamContinent(teamB);
+                            if (teamAContinent === continent || teamBContinent === continent) return true;
+                        }
+                    }
+                    return false;
+                }
+            });
+        }
+        
         // Always update virtualScrollState to track current data for search functionality
-        virtualScrollState.allData = records;
-        virtualScrollState.currentViewData = records;
+        virtualScrollState.allData = filteredRecords;
+        virtualScrollState.currentViewData = filteredRecords;
+        
+        // Update team statistics summary if team filter is active
+        updateTeamStatsSummary(filteredRecords);
         
         // Remove old scroll handlers first to prevent conflicts
         if (virtualScrollState.scrollHandler) {
@@ -262,9 +970,9 @@ window.nationalMenWW = (function () {
         }
         
         // For small datasets (< 1000 rows), render everything at once for better compatibility
-        if (records.length <= 1000) {
+        if (filteredRecords.length <= 1000) {
             const cols = ['GAME','AGE','Season','Round','TeamA','TeamAScore','TeamBScore','TeamB'];
-            const rowsHtml = records.map((rec) => {
+            const rowsHtml = filteredRecords.map((rec) => {
                 const n = normalizeRecord(rec);
                 const tds = cols.map((c) => `<td>${escapeHtml(String(n[c] ?? ''))}</td>`).join('');
                 const wl = getResultSymbol(n);
@@ -274,14 +982,14 @@ window.nationalMenWW = (function () {
             tbody.innerHTML = rowsHtml;
             // Reset scroll indices for consistency
             virtualScrollState.startIndex = 0;
-            virtualScrollState.endIndex = records.length;
+            virtualScrollState.endIndex = filteredRecords.length;
             return;
         }
         
         // For large datasets, use virtual scrolling
         // Reset scroll state
         virtualScrollState.startIndex = 0;
-        virtualScrollState.endIndex = Math.min(25, records.length);
+        virtualScrollState.endIndex = Math.min(25, filteredRecords.length);
         
         // Initial render
         renderVisibleRows();
@@ -372,9 +1080,36 @@ window.nationalMenWW = (function () {
         const tbody = document.getElementById('nmww-teams-stats-tbody');
         if (!tbody) return;
         const stats = computeTeamStats(records);
+        
+        // Get selected continents from checkboxes
+        const checkboxes = document.querySelectorAll('.continent-cb');
+        const selectedContinents = new Set();
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                selectedContinents.add(cb.value);
+            }
+        });
+        
+        // Apply continent filter if any selected
+        let filteredStats = stats;
+        if (selectedContinents.size > 0) {
+            filteredStats = stats.filter(s => {
+                // Check if team matches any selected continent
+                for (const continent of selectedContinents) {
+                    if (continent === 'arab-countries') {
+                        if (isArabCountry(s.team)) return true;
+                    } else {
+                        const teamContinent = getTeamContinent(s.team);
+                        if (teamContinent === continent) return true;
+                    }
+                }
+                return false;
+            });
+        }
+        
         // Store filtered records for details view
         window.__nmww_filtered_records = records;
-        const rows = stats.map((s) => {
+        const rows = filteredStats.map((s) => {
             return `
             <tr>
                 <td style="cursor:pointer; color:#007bff; text-decoration:underline;" onclick="window.nationalMenWW.showTeamDetails('${escapeHtml(s.team).replace(/'/g, "\\'")}')">${escapeHtml(s.team)}</td>
@@ -388,7 +1123,44 @@ window.nationalMenWW = (function () {
             </tr>
         `;
         }).join('');
-        tbody.innerHTML = rows;
+        
+        // Calculate totals
+        let totalParticipations = 0;
+        let totalMatches = 0;
+        let totalWin = 0;
+        let totalDraw = 0;
+        let totalLoss = 0;
+        let totalGF = 0;
+        let totalGA = 0;
+        
+        filteredStats.forEach(s => {
+            totalParticipations += s.participations || 0;
+            totalMatches += s.matches || 0;
+            totalWin += s.win || 0;
+            totalDraw += s.draw || 0;
+            totalLoss += s.loss || 0;
+            totalGF += s.gf || 0;
+            totalGA += s.ga || 0;
+        });
+        
+        // Add total row with id for easy access
+        const totalRow = `
+            <tr id="nmww-teams-total-row" style="background-color:#f8f9fa; font-weight:700;">
+                <td><strong>Total</strong></td>
+                <td><strong id="total-participations">${totalParticipations}</strong></td>
+                <td><strong id="total-matches">${totalMatches}</strong></td>
+                <td><strong id="total-win">${totalWin}</strong></td>
+                <td><strong id="total-draw">${totalDraw}</strong></td>
+                <td><strong id="total-loss">${totalLoss}</strong></td>
+                <td><strong id="total-gf">${totalGF}</strong></td>
+                <td><strong id="total-ga">${totalGA}</strong></td>
+            </tr>
+        `;
+        
+        tbody.innerHTML = rows + totalRow;
+        
+        // Store stats globally for search recalculation
+        window.__nmww_teams_stats_data = filteredStats;
     }
 
     function computeTeamStatsByGame(teamName, records) {
@@ -749,23 +1521,25 @@ window.nationalMenWW = (function () {
 
     function hookTabs() {
         const btnMatches = document.getElementById('nmww-tab-matches-btn');
+        const btnH2H = document.getElementById('nmww-tab-h2h-btn');
         const btnTeams = document.getElementById('nmww-tab-teams-btn');
         const btnRanking = document.getElementById('nmww-tab-ranking-btn');
         const tabMatches = document.getElementById('nmww-matches-tab');
+        const tabH2H = document.getElementById('nmww-h2h-tab');
         const tabTeams = document.getElementById('nmww-teams-tab');
         const tabRanking = document.getElementById('nmww-ranking-tab');
-        if (!btnMatches || !btnTeams || !btnRanking || !tabMatches || !tabTeams || !tabRanking) return;
+        if (!btnMatches || !btnH2H || !btnTeams || !btnRanking || !tabMatches || !tabH2H || !tabTeams || !tabRanking) return;
         const activate = (name) => {
             // Close modal when switching tabs
             closeTeamDetailsModal();
             // Reset all buttons
-            [btnMatches, btnTeams, btnRanking].forEach(btn => {
+            [btnMatches, btnH2H, btnTeams, btnRanking].forEach(btn => {
                 btn.classList.remove('active');
                 btn.style.background = '#f1f3f5';
                 btn.style.color = '#495057';
             });
             // Hide all tabs
-            [tabMatches, tabTeams, tabRanking].forEach(tab => {
+            [tabMatches, tabH2H, tabTeams, tabRanking].forEach(tab => {
                 tab.style.display = 'none';
             });
             
@@ -774,11 +1548,22 @@ window.nationalMenWW = (function () {
                 btnMatches.style.background = '#007bff';
                 btnMatches.style.color = '#fff';
                 tabMatches.style.display = 'block';
+                // Setup continent filter when matches tab is activated
+                setTimeout(() => setupMatchesContinentFilter(), 100);
+            } else if (name === 'h2h') {
+                btnH2H.classList.add('active');
+                btnH2H.style.background = '#007bff';
+                btnH2H.style.color = '#fff';
+                tabH2H.style.display = 'block';
+                // Setup H2H continent filters when H2H tab is activated
+                setTimeout(() => setupH2HContinentFilters(), 100);
             } else if (name === 'teams') {
                 btnTeams.classList.add('active');
                 btnTeams.style.background = '#007bff';
                 btnTeams.style.color = '#fff';
                 tabTeams.style.display = 'block';
+                // Setup continent filter when teams tab is activated
+                setTimeout(() => setupContinentFilter(), 100);
             } else if (name === 'ranking') {
                 btnRanking.classList.add('active');
                 btnRanking.style.background = '#007bff';
@@ -787,6 +1572,7 @@ window.nationalMenWW = (function () {
             }
         };
         btnMatches.addEventListener('click', () => activate('matches'));
+        btnH2H.addEventListener('click', () => activate('h2h'));
         btnTeams.addEventListener('click', () => activate('teams'));
         btnRanking.addEventListener('click', () => activate('ranking'));
         // default active is matches
@@ -823,6 +1609,9 @@ window.nationalMenWW = (function () {
             renderTeamStats(filtered);
             hookTabs();
             setupDynamicTeamsSearch();
+            setupContinentFilter();
+            setupMatchesContinentFilter();
+            setupH2HContinentFilters();
             setupRankingTeamSearch();
             setupRankingSubTabs();
             showLoading(false);
@@ -840,12 +1629,14 @@ window.nationalMenWW = (function () {
         const filtered = applyCurrentFilters();
         renderTable(filtered);
         renderTeamStats(filtered);
+        updateH2HTable(); // Update H2H table when filters change
         // Close modal when filters change
         closeTeamDetailsModal();
         const searchInput = document.getElementById('matches-search-input');
         if (searchInput) searchInput.value = '';
         const teamSearchInput = document.getElementById('nmww-teams-search-input');
         if (teamSearchInput) teamSearchInput.value = '';
+        // Note: Continent filter is preserved when applying other filters
         
         // Recalculate rankings if a team is selected
         if (window.__nmww_selected_team) {
@@ -873,6 +1664,44 @@ window.nationalMenWW = (function () {
         if (df) df.value = '';
         if (dt) dt.value = '';
         
+        // Clear continent filter checkboxes (Teams tab)
+        const continentCheckboxes = document.querySelectorAll('.continent-cb');
+        continentCheckboxes.forEach(cb => {
+            cb.checked = false;
+        });
+        const continentInput = document.getElementById('nmww-continent-filter-input');
+        if (continentInput) {
+            continentInput.value = '';
+            continentInput.placeholder = 'Select Continents...';
+        }
+        
+        // Clear continent filter checkboxes (Matches tab)
+        const matchesContinentCheckboxes = document.querySelectorAll('.matches-continent-cb');
+        matchesContinentCheckboxes.forEach(cb => {
+            cb.checked = false;
+        });
+        const matchesContinentInput = document.getElementById('nmww-matches-continent-filter-input');
+        if (matchesContinentInput) {
+            matchesContinentInput.value = '';
+            matchesContinentInput.placeholder = 'Select Continents...';
+        }
+        
+        // Clear H2H continent filter checkboxes
+        const h2hContinent1Checkboxes = document.querySelectorAll('.h2h-continent1-cb');
+        const h2hContinent2Checkboxes = document.querySelectorAll('.h2h-continent2-cb');
+        h2hContinent1Checkboxes.forEach(cb => { cb.checked = false; });
+        h2hContinent2Checkboxes.forEach(cb => { cb.checked = false; });
+        const h2hContinent1Input = document.getElementById('nmww-h2h-continent1-input');
+        const h2hContinent2Input = document.getElementById('nmww-h2h-continent2-input');
+        if (h2hContinent1Input) {
+            h2hContinent1Input.value = '';
+            h2hContinent1Input.placeholder = 'Select Continent...';
+        }
+        if (h2hContinent2Input) {
+            h2hContinent2Input.value = '';
+            h2hContinent2Input.placeholder = 'Select Continent...';
+        }
+        
         const searchInput = document.getElementById('matches-search-input');
         if (searchInput) searchInput.value = '';
 
@@ -886,13 +1715,13 @@ window.nationalMenWW = (function () {
         
         // Show loading state
         refreshBtn.disabled = true;
-        refreshBtn.innerHTML = '<svg style="animation: spin 1s linear infinite; width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refreshing...';
+        refreshBtn.innerHTML = '<svg style="animation: spin 1s linear infinite; width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
         
         try {
             await loadData(true);
             
             // Show success message
-            refreshBtn.innerHTML = '<svg style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Refreshed!';
+            refreshBtn.innerHTML = '<svg style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Synced!';
             
             setTimeout(() => {
                 refreshBtn.innerHTML = originalText;
@@ -912,6 +1741,7 @@ window.nationalMenWW = (function () {
         loadData(false);
         setupDynamicTableSearch();
         setupDynamicTeamsSearch();
+        setupContinentFilter();
     };
 
     if (document.readyState === 'loading') {

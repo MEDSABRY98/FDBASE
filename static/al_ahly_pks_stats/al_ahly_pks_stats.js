@@ -856,16 +856,28 @@ function showLoadingState(show) {
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
                 </svg>
-                Loading...
+                Syncing...
             `;
         } else {
             refreshBtn.disabled = false;
             refreshBtn.innerHTML = `
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                    <path d="M20 6L9 17l-5-5"/>
                 </svg>
-                Sync Data
+                Synced!
             `;
+            
+            // Return to original text after 2 seconds
+            setTimeout(() => {
+                if (refreshBtn) {
+                    refreshBtn.innerHTML = `
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                        </svg>
+                        Sync Data
+                    `;
+                }
+            }, 2000);
         }
     }
 }

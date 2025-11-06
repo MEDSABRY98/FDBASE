@@ -1358,6 +1358,21 @@ async function manualSyncNow() {
             // Reload the page display
             await loadAlAhlyStatsData();
             
+            // Show success message on button
+            if (syncBtn && syncBtnText) {
+                syncBtn.disabled = false;
+                syncIcon.classList.remove('spinning');
+                syncBtnText.textContent = 'Synced!';
+                
+                // Return to original text after 2 seconds
+                setTimeout(() => {
+                    if (syncBtnText) {
+                        syncBtnText.textContent = 'Sync Data';
+                    }
+                }, 2000);
+            }
+            
+            showLoadingState(false);
             return true;
         } else {
             throw new Error('Sync failed');
@@ -1366,9 +1381,8 @@ async function manualSyncNow() {
     } catch (error) {
         console.error('❌ Manual sync failed:', error);
         alert('❌ Failed to sync data: ' + error.message);
-        return false;
-    } finally {
-        // Hide loading indicator on button
+        
+        // Reset button on error
         if (syncBtn) {
             syncBtn.disabled = false;
             syncIcon.classList.remove('spinning');
@@ -1376,6 +1390,7 @@ async function manualSyncNow() {
         }
         
         showLoadingState(false);
+        return false;
     }
 }
 
@@ -2444,7 +2459,7 @@ function showLoadingState(show) {
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
                 </svg>
-                <span>Loading...</span>
+                <span>Syncing...</span>
             `;
         } else {
             refreshBtn.disabled = false;
@@ -3293,7 +3308,6 @@ function initializeCompareMetricsFilter() {
     const panelWrap = document.getElementById('compare-metrics-panel');
     const list = document.getElementById('compare-metrics-list');
     const applyBtn = document.getElementById('compare-metrics-apply');
-    const closeBtn = document.getElementById('compare-metrics-close');
     const selectAllBtn = document.getElementById('compare-metrics-selectall');
     const clearBtn = document.getElementById('compare-metrics-clear');
     if (!openBtn || !panelWrap || !list) return;
@@ -3303,15 +3317,14 @@ function initializeCompareMetricsFilter() {
         const selected = new Set(window.comparePrefs.metrics && window.comparePrefs.metrics.length ? window.comparePrefs.metrics : def.map(d => d.key));
         list.innerHTML = def.map(d => {
             const checked = selected.has(d.key) ? 'checked' : '';
-            return `<label style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; color:#374151;">
+            return `<label style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #e5e7eb; padding:6px 8px; border-radius:0; width:100%; box-sizing:border-box;">
                 <input type="checkbox" class="cmp-metric-cb" value="${d.key}" ${checked}>
-                <span>${d.label}</span>
+                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${d.label}</span>
             </label>`;
         }).join('');
     }
 
     openBtn.addEventListener('click', () => { buildList(); panelWrap.style.display = panelWrap.style.display === 'none' ? 'block' : 'none'; });
-    closeBtn && closeBtn.addEventListener('click', () => { panelWrap.style.display = 'none'; });
     selectAllBtn && selectAllBtn.addEventListener('click', () => {
         list.querySelectorAll('input.cmp-metric-cb').forEach(cb => { cb.checked = true; });
     });
@@ -3826,12 +3839,29 @@ function makeSelectSearchable(select) {
     function renderOptions(filterText = '') {
         dropdown.innerHTML = '';
         const text = filterText.toLowerCase();
+        
+        // Add "All" option at the beginning (always visible)
+        const allOption = document.createElement('div');
+        allOption.className = 'dropdown-option';
+        allOption.textContent = select.options[0]?.text || 'All';
+        allOption.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            select.value = '';
+            input.value = '';
+            dropdown.style.display = 'none';
+            // Auto-filtering disabled - change event not triggered
+            // Filters only apply when "Apply Filters" button is clicked
+        });
+        dropdown.appendChild(allOption);
+        
+        // Add other options
         Array.from(select.options).forEach((opt, idx) => {
-            if (idx === 0) return; // skip placeholder
+            if (idx === 0) return; // skip placeholder (already added as "All")
             const label = String(opt.text || '').trim();
             const value = String(opt.value || '').trim();
             if (!text || label.toLowerCase().includes(text) || value.toLowerCase().includes(text)) {
                 const div = document.createElement('div');
+                div.className = 'dropdown-option';
                 div.textContent = label;
                 div.dataset.value = value;
                 div.addEventListener('mousedown', function(e) {
@@ -4120,6 +4150,17 @@ function getCurrentFilteredRecords() {
             const filterValue = filters[key];
             if (!filterValue) return true;
             
+            // Special handling for date filters (before recordKeyMap check)
+            if (key === 'dateFrom') {
+                const recordDate = new Date(record['DATE'] || '');
+                const filterDate = new Date(filterValue);
+                return !isNaN(recordDate.getTime()) && !isNaN(filterDate.getTime()) && recordDate >= filterDate;
+            } else if (key === 'dateTo') {
+                const recordDate = new Date(record['DATE'] || '');
+                const filterDate = new Date(filterValue);
+                return !isNaN(recordDate.getTime()) && !isNaN(filterDate.getTime()) && recordDate <= filterDate;
+            }
+            
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
                 'championSystem': 'CHAMPION SYSTEM',
@@ -4145,11 +4186,7 @@ function getCurrentFilteredRecords() {
             
             const recordValue = record[recordKey] || '';
             
-            if (key === 'dateFrom') {
-                return new Date(record['DATE'] || '') >= new Date(filterValue);
-            } else if (key === 'dateTo') {
-                return new Date(record['DATE'] || '') <= new Date(filterValue);
-            } else if (key === 'result') {
+            if (key === 'result') {
                 if (filterValue === 'D WITH G') {
                     return recordValue === 'D WITH G';
                 } else if (filterValue === 'D.') {
@@ -4230,6 +4267,21 @@ function applyFiltersWithData(filters, preservedFilters = null) {
             const filterValue = filters[key];
             if (!filterValue) return true; // Skip empty filters
             
+            // Special handling for date and numeric filters (before recordKeyMap check)
+            if (key === 'dateFrom') {
+                const recordDate = new Date(record['DATE'] || '');
+                const filterDate = new Date(filterValue);
+                return !isNaN(recordDate.getTime()) && !isNaN(filterDate.getTime()) && recordDate >= filterDate;
+            } else if (key === 'dateTo') {
+                const recordDate = new Date(record['DATE'] || '');
+                const filterDate = new Date(filterValue);
+                return !isNaN(recordDate.getTime()) && !isNaN(filterDate.getTime()) && recordDate <= filterDate;
+            } else if (key === 'goalsFor') {
+                return parseInt(record['GF'] || 0) >= parseInt(filterValue);
+            } else if (key === 'goalsAgainst') {
+                return parseInt(record['GA'] || 0) <= parseInt(filterValue);
+            }
+            
             // Map filter keys to record keys
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
@@ -4257,15 +4309,7 @@ function applyFiltersWithData(filters, preservedFilters = null) {
             const recordValue = record[recordKey] || '';
             
             // Special handling for different filter types
-            if (key === 'goalsFor') {
-                return parseInt(record['GF'] || 0) >= parseInt(filterValue);
-            } else if (key === 'goalsAgainst') {
-                return parseInt(record['GA'] || 0) <= parseInt(filterValue);
-            } else if (key === 'dateFrom') {
-                return new Date(record['DATE'] || '') >= new Date(filterValue);
-            } else if (key === 'dateTo') {
-                return new Date(record['DATE'] || '') <= new Date(filterValue);
-            } else if (key === 'cleanSheet') {
+            if (key === 'cleanSheet') {
                 // Use actual CLEAN SHEET column from Excel
                 const cleanSheetValue = normalizeStr(record['CLEAN SHEET'] || '').toUpperCase();
                 const filterNormalized = normalizeStr(filterValue).toUpperCase();
@@ -4755,7 +4799,7 @@ function refreshStats() {
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 6v6l4 2"/>
         </svg>
-        Refreshing...
+        Syncing...
     `;
     
     // Add spinning animation

@@ -449,10 +449,30 @@ async function refreshZamalekStats() {
         populateH2HPlayersList();
         
         console.log('✅ Data refreshed successfully');
+        
+        // Show success message on button
+        const refreshBtn = document.querySelector('.zamalek-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.innerHTML = `
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                    <path d="M20 6L9 17l-5-5"/>
+                </svg>
+                Synced!
+            `;
+            refreshBtn.disabled = false;
+            
+            // Return to original text after 2 seconds
+            setTimeout(() => {
+                refreshBtn.innerHTML = `
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                        <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                    </svg>
+                    Sync Data
+                `;
+            }, 2000);
+        }
     } catch (error) {
         console.error('❌ Error refreshing data:', error);
-    } finally {
-        // Hide loading state
         showLoadingState(false);
     }
 }
@@ -467,7 +487,7 @@ function showLoadingState(show) {
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; animation: spin 1s linear infinite;">
                     <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
                 </svg>
-                Loading...
+                Syncing...
             `;
         } else {
             refreshBtn.disabled = false;

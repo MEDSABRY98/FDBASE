@@ -4059,22 +4059,16 @@
                 <div class="stats-section">
                     <h2 class="section-title">Compare Players (Overview)</h2>
                     <!-- Metrics filter control -->
-                    <div id="compare-metrics-controls" style="display:flex; justify-content:flex-end; margin-bottom:0.75rem; gap:0.5rem;">
-                        <button id="open-compare-metrics" style="padding:0.4rem 0.8rem; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb; cursor:pointer;">Select Metrics</button>
-                        <div id="compare-metrics-panel" style="display:none; position:relative;">
-                            <div style="position:absolute; right:0; z-index:5; background:white; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.08); padding:0.75rem; width:260px; max-height:320px; overflow:auto;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                                    <strong style="font-size:0.95rem; color:#374151;">Metrics</strong>
-                                    <div style="display:flex; gap:0.25rem;">
-                                        <button id="compare-metrics-selectall" style="padding:0.25rem 0.5rem; font-size:0.8rem; border:1px solid #e5e7eb; border-radius:6px; background:#f3f4f6; cursor:pointer;">All</button>
-                                        <button id="compare-metrics-clear" style="padding:0.25rem 0.5rem; font-size:0.8rem; border:1px solid #e5e7eb; border-radius:6px; background:#f3f4f6; cursor:pointer;">Clear</button>
-                                    </div>
-                                </div>
-                                <div id="compare-metrics-list" style="display:grid; gap:0.25rem;"></div>
-                                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
-                                    <button id="compare-metrics-apply" style="padding:0.35rem 0.7rem; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;">Apply</button>
-                                    <button id="compare-metrics-close" style="padding:0.35rem 0.7rem; border:1px solid #e5e7eb; border-radius:8px; background:white; cursor:pointer;">Close</button>
-                                </div>
+                    <div id="compare-metrics-controls" style="display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap; margin-bottom:10px;">
+                        <div style="display:flex; gap:8px; justify-content:center; width:100%;">
+                            <button id="open-compare-metrics" class="btn" type="button" style="width:120px; display:flex; align-items:center; justify-content:center;">Select Metrics</button>
+                        </div>
+                        <div id="compare-metrics-panel" style="display:none; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; box-shadow:0 4px 16px rgba(0,0,0,0.08); max-width:860px; width:100%;">
+                            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:0; justify-items:stretch;" id="compare-metrics-list"></div>
+                            <div style="display:flex; gap:8px; justify-content:center; margin-top:10px;">
+                                <button id="compare-metrics-selectall" class="btn" type="button" style="width:120px; display:flex; align-items:center; justify-content:center;">Select All</button>
+                                <button id="compare-metrics-clear" class="btn" type="button" style="width:120px; display:flex; align-items:center; justify-content:center;">Clear</button>
+                                <button id="compare-metrics-apply" class="btn primary" type="button" style="width:120px; display:flex; align-items:center; justify-content:center;">Apply</button>
                             </div>
                         </div>
                     </div>

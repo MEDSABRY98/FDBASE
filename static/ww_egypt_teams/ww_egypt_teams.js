@@ -711,20 +711,32 @@ function setRefreshButtonLoading(isLoading) {
         refreshBtn.style.opacity = '1';
         refreshBtn.style.cursor = 'pointer';
         
-        // Restore original icon
-        const icon = refreshBtn.querySelector('svg');
-        if (icon) {
-            icon.style.animation = '';
-        }
-        
-        // Restore original text
+        // Get original text
         const originalText = refreshBtn.getAttribute('data-original-text') || 'Sync Data';
+        
+        // Show success message first
         refreshBtn.innerHTML = `
             <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                <path d="M20 6L9 17l-5-5"/>
             </svg>
-            ${originalText}
+            Synced!
         `;
+        
+        // Return to original text after 2 seconds
+        setTimeout(() => {
+            if (refreshBtn) {
+                const icon = refreshBtn.querySelector('svg');
+                if (icon) {
+                    icon.style.animation = '';
+                }
+                refreshBtn.innerHTML = `
+                    <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    ${originalText}
+                `;
+            }
+        }, 2000);
     }
 }
 
