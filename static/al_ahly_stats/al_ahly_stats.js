@@ -10774,24 +10774,24 @@ function loadAllPlayersData(filteredRecords = null) {
         // Check for penalty goals in TYPE or GA field
         const typeVal = normalizeStr(record.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
         const gaNorm = normalizeStr(record.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
-        
-        // Count penalty goals (PENGOAL in TYPE or GA)
-        if (typeVal === 'PENGOAL' || gaNorm === 'PENGOAL') {
-            playersStats[playerName].penaltyGoals++;
-        }
-        
-        // Count goals - exact match with 'GOAL' (but not penalty goals)
-        if (ga === 'GOAL' && typeVal !== 'PENGOAL' && gaNorm !== 'PENGOAL') {
+        const isPenaltyGoal = typeVal === 'PENGOAL' || gaNorm === 'PENGOAL';
+        const isGoal = ga === 'GOAL';
+        const countedAsGoal = isGoal || isPenaltyGoal;
+
+        if (countedAsGoal) {
             playersStats[playerName].goals++;
-            
-            // Check if goal is in 90+ minute
-            const minute = parseMinuteFor90Plus(record.MINUTE || record.minute || '');
-            if (minute >= 90) {
-                playersStats[playerName].goals90Plus++;
+
+            if (isPenaltyGoal) {
+                playersStats[playerName].penaltyGoals++;
+            } else if (isGoal) {
+                // Check if goal is in 90+ minute (only for non-penalty goals)
+                const minute = parseMinuteFor90Plus(record.MINUTE || record.minute || '');
+                if (minute >= 90) {
+                    playersStats[playerName].goals90Plus++;
+                }
             }
-        }
-        // Count assists - exact match with 'ASSIST'
-        else if (ga === 'ASSIST') {
+        } else if (ga === 'ASSIST') {
+            // Count assists - exact match with 'ASSIST'
             playersStats[playerName].assists++;
         }
     });
@@ -11247,18 +11247,18 @@ function loadTrophyScorersData(filteredRecords = null) {
         // Check for penalty goals in TYPE or GA field
         const typeVal = normalizeStr(record.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
         const gaNorm = normalizeStr(record.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
-        
-        // Count penalty goals (PENGOAL in TYPE or GA)
-        if (typeVal === 'PENGOAL' || gaNorm === 'PENGOAL') {
-            playersStats[playerName].penaltyGoals++;
-        }
-        
-        // Count goals - exact match with 'GOAL' (but not penalty goals)
-        if (ga === 'GOAL' && typeVal !== 'PENGOAL' && gaNorm !== 'PENGOAL') {
+        const isPenaltyGoal = typeVal === 'PENGOAL' || gaNorm === 'PENGOAL';
+        const isGoal = ga === 'GOAL';
+        const countedAsGoal = isGoal || isPenaltyGoal;
+
+        if (countedAsGoal) {
             playersStats[playerName].goals++;
-        }
-        // Count assists - exact match with 'ASSIST'
-        else if (ga === 'ASSIST') {
+
+            if (isPenaltyGoal) {
+                playersStats[playerName].penaltyGoals++;
+            }
+        } else if (ga === 'ASSIST') {
+            // Count assists - exact match with 'ASSIST'
             playersStats[playerName].assists++;
         }
     });
