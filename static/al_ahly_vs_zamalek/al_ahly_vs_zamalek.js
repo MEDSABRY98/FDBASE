@@ -19,6 +19,7 @@ let currentRefereeZamalekSearch = '';
   let currentH2HFilter = 'all';
   let currentH2HWithSearch = '';
   let currentH2HAgainstSearch = '';
+  let currentH2HFileFilter = null;
   let currentH2HSort = { column: 'matches', direction: 'desc' };
   let currentByPlayer = '';
   let currentByPlayerFilter = 'all';
@@ -2357,11 +2358,12 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter) {
     allLineups.forEach(lineup => {
         const playerName = lineup['PLAYER NAME'];
         const matchId = lineup['MATCH_ID'];
+        const matchIdStr = String(matchId);
         const minutes = parseInt(lineup['MINTOTAL']) || 0;
         const team = lineup['TEAM'] || '';
         
         // If we have H2H filtered match IDs (WITH/AGAINST), only process those matches
-        if (relevantMatchIds.size > 0 && !relevantMatchIds.has(matchId)) {
+        if (relevantMatchIds.size > 0 && !relevantMatchIds.has(matchIdStr)) {
             return;
         }
         
@@ -2386,6 +2388,9 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter) {
                     wins: 0,
                     draws: 0,
                     losses: 0,
+                    goals: 0,
+                    assists: 0,
+                    gaTotal: 0,
                     teamAhly: false,
                     teamZamalek: false,
                     matchIds: []
@@ -2395,7 +2400,7 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter) {
             const stats = playersMap.get(playerName);
             stats.matches++;
             stats.minutes += minutes;
-            stats.matchIds.push(matchId);
+            stats.matchIds.push(matchIdStr);
             
             // Track which team the player played for
             if (isAhly) {
@@ -2405,7 +2410,7 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter) {
             }
             
             // Find match result from FILTERED matches
-            const match = filteredMatches.find(m => m.MATCH_ID === matchId);
+            const match = filteredMatches.find(m => String(m.MATCH_ID) === matchIdStr);
             if (match) {
                 const result = match['W-D-L'];
                 
@@ -2425,6 +2430,49 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter) {
         }
     });
     
+    // Aggregate goals and assists from filtered player details
+    const filteredPlayerDetails = getFilteredPlayerDetails();
+    if (filteredPlayerDetails && filteredPlayerDetails.length > 0) {
+        filteredPlayerDetails.forEach(detail => {
+            const playerName = detail['PLAYER NAME'];
+            if (!playerName || !playersMap.has(playerName)) {
+                return;
+            }
+
+            const matchIdStr = String(detail['MATCH_ID']);
+            if (relevantMatchIds.size > 0 && !relevantMatchIds.has(matchIdStr)) {
+                return;
+            }
+
+            const team = detail['TEAM'] || '';
+            const ga = detail['GA'];
+            const isAhly = team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
+            const isZamalek = team.toUpperCase().includes('ZAMALEK');
+
+            if (teamFilter === 'ahly' && !isAhly) {
+                return;
+            }
+            if (teamFilter === 'zamalek' && !isZamalek) {
+                return;
+            }
+
+            const stats = playersMap.get(playerName);
+            if (!stats) {
+                return;
+            }
+
+            if (ga === 'GOAL') {
+                stats.goals++;
+            } else if (ga === 'ASSIST') {
+                stats.assists++;
+            }
+        });
+    }
+
+    playersMap.forEach(stats => {
+        stats.gaTotal = stats.goals + stats.assists;
+    });
+    
     return Array.from(playersMap.values());
 }
 
@@ -2441,6 +2489,7 @@ function clearH2HFilters() {
     currentH2HFilter = 'all';
     currentH2HWithSearch = '';
     currentH2HAgainstSearch = '';
+    clearH2HFileFilter(true);
     
     // Reset dropdown filter
     const filterSelect = document.getElementById('h2h-filter');
@@ -2498,6 +2547,69 @@ function searchH2HAgainst() {
     }
     
     populateH2HTable();
+}
+
+// Trigger file input for H2H player list upload
+function triggerH2HFileUpload() {
+    const fileInput = document.getElementById('h2h-file-input');
+    if (fileInput) {
+        fileInput.click();
+    }
+}
+
+// Update H2H file status text
+function updateH2HFileStatus(message) {
+    const statusElement = document.getElementById('h2h-file-status');
+    if (statusElement) {
+        statusElement.textContent = message;
+    }
+}
+
+// Handle uploaded player list for H2H filtering
+async function handleH2HFileUpload(event) {
+    const file = event.target.files ? event.target.files[0] : null;
+    if (!file) {
+        return;
+    }
+    
+    try {
+        const text = await file.text();
+        const playerNames = text
+            .split(/\r?\n/)
+            .map(name => name.trim())
+            .filter(name => name.length > 0);
+        
+        if (playerNames.length === 0) {
+            currentH2HFileFilter = null;
+            updateH2HFileStatus('No valid player names found in file');
+            populateH2HTable();
+            return;
+        }
+        
+        currentH2HFileFilter = new Set(playerNames.map(name => name.toLowerCase()));
+        updateH2HFileStatus(`Loaded ${currentH2HFileFilter.size} players from ${file.name}`);
+        populateH2HTable();
+    } catch (error) {
+        console.error('❌ Error processing H2H player list file:', error);
+        updateH2HFileStatus('Error loading player list');
+    } finally {
+        // Allow re-uploading the same file
+        event.target.value = '';
+    }
+}
+
+// Clear file-based H2H filter
+function clearH2HFileFilter(suppressRefresh = false) {
+    currentH2HFileFilter = null;
+    const fileInput = document.getElementById('h2h-file-input');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    updateH2HFileStatus('No list loaded');
+    
+    if (!suppressRefresh) {
+        populateH2HTable();
+    }
 }
 
 // Sort H2H table
@@ -2611,7 +2723,7 @@ function populateH2HTable() {
         allLineups.forEach(lineup => {
             const playerName = lineup['PLAYER NAME'];
             if (playerName === currentH2HWithSearch) {
-                relevantMatchIds.add(lineup['MATCH_ID']);
+                relevantMatchIds.add(String(lineup['MATCH_ID']));
             }
         });
     }
@@ -2623,7 +2735,7 @@ function populateH2HTable() {
         allLineups.forEach(lineup => {
             const playerName = lineup['PLAYER NAME'];
             if (playerName === currentH2HAgainstSearch) {
-                againstMatchIds.add(lineup['MATCH_ID']);
+                againstMatchIds.add(String(lineup['MATCH_ID']));
             }
         });
         
@@ -2639,7 +2751,7 @@ function populateH2HTable() {
     let h2hStats = calculateH2HStatsFiltered(relevantMatchIds, currentH2HFilter);
     
     if (h2hStats.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsH2H([], true);
         return;
     }
@@ -2654,6 +2766,11 @@ function populateH2HTable() {
     if (currentH2HAgainstSearch && currentH2HAgainstSearch.trim() !== '') {
         const opponents = getOpponents(currentH2HAgainstSearch);
         h2hStats = h2hStats.filter(stat => opponents.has(stat.playerName));
+    }
+    
+    // Apply uploaded file filter (exact match, case-insensitive)
+    if (currentH2HFileFilter && currentH2HFileFilter.size > 0) {
+        h2hStats = h2hStats.filter(stat => currentH2HFileFilter.has((stat.playerName || '').toLowerCase()));
     }
     
     // Filter out players with no stats (after all filtering)
@@ -2692,7 +2809,10 @@ function populateH2HTable() {
         'minutes': 2,
         'wins': 3,
         'draws': 4,
-        'losses': 5
+        'losses': 5,
+        'gaTotal': 6,
+        'goals': 7,
+        'assists': 8
     };
     
     const columnIndex = columnMap[currentH2HSort.column];
@@ -2713,6 +2833,9 @@ function populateH2HTable() {
             <td>${stat.wins}</td>
             <td>${stat.draws}</td>
             <td>${stat.losses}</td>
+            <td>${stat.gaTotal}</td>
+            <td>${stat.goals}</td>
+            <td>${stat.assists}</td>
         `;
         
         tbody.appendChild(row);
@@ -2729,6 +2852,9 @@ function updateTotalsH2H(stats, isEmpty) {
         document.getElementById('total-h2h-wins').textContent = '0';
         document.getElementById('total-h2h-draws').textContent = '0';
         document.getElementById('total-h2h-losses').textContent = '0';
+        document.getElementById('total-h2h-ga').textContent = '0';
+        document.getElementById('total-h2h-goals').textContent = '0';
+        document.getElementById('total-h2h-assists').textContent = '0';
         return;
     }
     
@@ -2738,14 +2864,20 @@ function updateTotalsH2H(stats, isEmpty) {
         acc.wins += stat.wins;
         acc.draws += stat.draws;
         acc.losses += stat.losses;
+        acc.ga += stat.gaTotal;
+        acc.goals += stat.goals;
+        acc.assists += stat.assists;
         return acc;
-    }, { matches: 0, minutes: 0, wins: 0, draws: 0, losses: 0 });
+    }, { matches: 0, minutes: 0, wins: 0, draws: 0, losses: 0, ga: 0, goals: 0, assists: 0 });
     
     document.getElementById('total-h2h-matches').textContent = totals.matches;
     document.getElementById('total-h2h-minutes').textContent = totals.minutes;
     document.getElementById('total-h2h-wins').textContent = totals.wins;
     document.getElementById('total-h2h-draws').textContent = totals.draws;
     document.getElementById('total-h2h-losses').textContent = totals.losses;
+    document.getElementById('total-h2h-ga').textContent = totals.ga;
+    document.getElementById('total-h2h-goals').textContent = totals.goals;
+    document.getElementById('total-h2h-assists').textContent = totals.assists;
 }
 
 // Populate H2H players lists for searchable dropdowns

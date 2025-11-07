@@ -1782,12 +1782,22 @@
                         <select id="h2h-with-search" class="zamalek-managers-search" onchange="searchH2HWith()">
                             <option value="">Search players WITH...</option>
                         </select>
-                        <button onclick="clearH2HFilters()" class="zamalek-clear-btn" style="padding: 0.6rem 1.2rem; white-space: nowrap;">
+                        <button onclick="clearH2HFilters()" class="zamalek-clear-btn" style="padding: 0.6rem 1.2rem; white-space: nowrap; min-width: 180px;">
                             Clear Filters
                         </button>
                         <select id="h2h-against-search" class="zamalek-managers-search" onchange="searchH2HAgainst()">
                             <option value="">Search players AGAINST...</option>
                         </select>
+                        <button onclick="triggerH2HFileUpload()" class="zamalek-filter-btn" style="padding: 0.6rem 1.2rem; white-space: nowrap;">
+                            Upload Player List
+                        </button>
+                        <button onclick="clearH2HFileFilter()" class="zamalek-clear-btn" style="padding: 0.6rem 1.2rem; white-space: nowrap; min-width: 180px;">
+                            Clear List
+                        </button>
+                        <input type="file" id="h2h-file-input" accept=".txt" style="display: none;" onchange="handleH2HFileUpload(event)">
+                    </div>
+                    <div style="text-align: center; margin-bottom: 1rem; color: #6c757d; font-size: 0.9rem;">
+                        <span id="h2h-file-status">No list loaded</span>
                     </div>
                     
                     <div class="zamalek-table-container">
@@ -1801,6 +1811,9 @@
                                         <th class="sortable" onclick="sortH2HTable('wins')">W <span class="sort-icon"></span></th>
                                         <th class="sortable" onclick="sortH2HTable('draws')">D <span class="sort-icon"></span></th>
                                         <th class="sortable" onclick="sortH2HTable('losses')">L <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTable('gaTotal')">G + A <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTable('goals')">Goals <span class="sort-icon"></span></th>
+                                        <th class="sortable" onclick="sortH2HTable('assists')">Assists <span class="sort-icon"></span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1814,6 +1827,9 @@
                                         <td id="total-h2h-wins">0</td>
                                         <td id="total-h2h-draws">0</td>
                                         <td id="total-h2h-losses">0</td>
+                                        <td id="total-h2h-ga">0</td>
+                                        <td id="total-h2h-goals">0</td>
+                                        <td id="total-h2h-assists">0</td>
                                     </tr>
                                 </tfoot>
                             </table>
