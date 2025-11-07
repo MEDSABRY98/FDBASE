@@ -32,7 +32,9 @@ let egyptTeamsData = {
     selectedPlayer: null,
     currentGKSortColumn: 'matches',
     currentGKSortDirection: 'desc',
-    goalkeepersData: []
+    goalkeepersData: [],
+    goalkeepersSearchTerm: '',
+    goalkeepersTeamFilter: 'all'
 };
 
 // Virtual Scrolling state
@@ -3225,6 +3227,7 @@ function loadGoalkeepersStats() {
             const matchId = record.MATCH_ID || record['MATCH ID'] || '';
             const team = (record.TEAM || '').trim().toLowerCase();
             const key = `${matchId}_${team}`;
+            const isEgyptTeam = team === 'egypt';
             const gkGoalMinutes = (record['GOAL MINUTE'] || '').toString().trim();
             
             if (!gkName) return;
@@ -3236,8 +3239,13 @@ function loadGoalkeepersStats() {
                     totalGoalsConceded: 0,
                     cleanSheets: 0,
                     penaltiesConceded: 0,
-                    penaltiesSaved: penaltySavesByGK.get(gkName) || 0
+                    penaltiesSaved: penaltySavesByGK.get(gkName) || 0,
+                    teamType: isEgyptTeam ? 'egypt' : 'opponent'
                 };
+            }
+            
+            if (isEgyptTeam) {
+                gkStats[gkName].teamType = 'egypt';
             }
             
             gkStats[gkName].matches += 1;
@@ -3283,6 +3291,8 @@ function loadGoalkeepersStats() {
         
         // Sort and display
         sortAndDisplayGoalkeepers();
+        setupGoalkeepersTeamFilter();
+        setupGoalkeepersSearch();
         
         loadingDiv.style.display = 'none';
         tableContainer.style.display = 'block';
@@ -3383,9 +3393,46 @@ function sortAndDisplayGoalkeepers() {
         }
     }
     
+    const teamFilter = egyptTeamsData.goalkeepersTeamFilter || 'all';
+    let filteredArray = gkArray.filter(gk => {
+        if (teamFilter === 'egypt') {
+            return gk.teamType === 'egypt';
+        }
+        if (teamFilter === 'opponent') {
+            return gk.teamType !== 'egypt';
+        }
+        return true;
+    });
+
+    const searchTerm = (egyptTeamsData.goalkeepersSearchTerm || '').toLowerCase().trim();
+    if (searchTerm) {
+        filteredArray = filteredArray.filter(gk => {
+            const rowText = [
+                gk.name,
+                gk.matches,
+                gk.totalGoalsConceded,
+                gk.cleanSheets,
+                gk.penaltiesConceded,
+                gk.penaltiesSaved
+            ].join(' ').toLowerCase();
+            return rowText.includes(searchTerm);
+        });
+    }
+
+    if (filteredArray.length === 0) {
+        let message = 'No goalkeeper data available';
+        if (teamFilter !== 'all' && !searchTerm) {
+            message = 'No goalkeepers for selected team';
+        } else if (searchTerm) {
+            message = 'No goalkeepers match your search';
+        }
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #999;">${message}</td></tr>`;
+        return;
+    }
+
     // Display goalkeepers
     tbody.innerHTML = '';
-    gkArray.forEach((gk, index) => {
+    filteredArray.forEach((gk, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${index + 1}</td>
@@ -3397,6 +3444,38 @@ function sortAndDisplayGoalkeepers() {
             <td>${gk.penaltiesSaved || 0}</td>
         `;
         tbody.appendChild(row);
+    });
+}
+
+function setupGoalkeepersTeamFilter() {
+    const filterSelect = document.getElementById('goalkeepers-team-filter');
+    if (!filterSelect) return;
+
+    const newFilterSelect = filterSelect.cloneNode(true);
+    filterSelect.parentNode.replaceChild(newFilterSelect, filterSelect);
+
+    const currentValue = egyptTeamsData.goalkeepersTeamFilter || 'all';
+    newFilterSelect.value = currentValue;
+
+    newFilterSelect.addEventListener('change', () => {
+        egyptTeamsData.goalkeepersTeamFilter = newFilterSelect.value;
+        sortAndDisplayGoalkeepers();
+    });
+}
+
+function setupGoalkeepersSearch() {
+    const searchInput = document.getElementById('goalkeepers-search-input');
+    if (!searchInput) return;
+
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+
+    const currentValue = egyptTeamsData.goalkeepersSearchTerm || '';
+    newSearchInput.value = currentValue;
+
+    newSearchInput.addEventListener('input', () => {
+        egyptTeamsData.goalkeepersSearchTerm = newSearchInput.value;
+        sortAndDisplayGoalkeepers();
     });
 }
 
@@ -4388,10 +4467,150 @@ function calculateGoalkeeperIndividualStats(goalkeeperName) {
     });
     
     // Load goalkeeper sub-tabs
+    loadGoalkeeperOverview(goalkeeperName, goalkeeperMatches);
     loadGoalkeeperMatches(goalkeeperName, goalkeeperMatches);
     loadGoalkeeperChampionships(goalkeeperName, goalkeeperMatches);
     loadGoalkeeperSeasons(goalkeeperName, goalkeeperMatches);
     loadGoalkeeperVsTeams(goalkeeperName, goalkeeperMatches);
+}
+
+function loadGoalkeeperOverview(goalkeeperName, goalkeeperMatchIds) {
+    const container = document.getElementById('goalkeeper-overview-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (goalkeeperMatchIds.size === 0) {
+        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #999;">No matches found</div>';
+        return;
+    }
+    
+    const gkDetails = egyptTeamsData.gkDetails || [];
+    const playerDetails = egyptTeamsData.playerDetails || [];
+    const howPenMissed = egyptTeamsData.howPenMissed || [];
+    
+    // Get match details for goalkeeper matches
+    const goalkeeperMatchesList = egyptTeamsData.filteredRecords.filter(match => 
+        goalkeeperMatchIds.has(match['MATCH_ID'])
+    );
+    
+    // Get all GKs by match for penalty and clean sheet calculation
+    const allGKsByMatch = new Map();
+    gkDetails.forEach(record => {
+        const matchId = record.MATCH_ID || record['MATCH ID'] || '';
+        const team = (record['TEAM'] || '').trim().toLowerCase();
+        if (team === 'egypt' && goalkeeperMatchIds.has(matchId)) {
+            const key = `${matchId}_${team}`;
+            if (!allGKsByMatch.has(key)) {
+                allGKsByMatch.set(key, []);
+            }
+            allGKsByMatch.get(key).push(record);
+        }
+    });
+    
+    // Calculate statistics
+    let totalMatches = goalkeeperMatchIds.size;
+    let totalGoalsConceded = 0;
+    let cleanSheets = 0;
+    let totalPenaltiesConceded = 0;
+    let totalPenaltiesSaved = 0;
+    
+    goalkeeperMatchesList.forEach(match => {
+        const matchId = match['MATCH_ID'];
+        
+        // Get goalkeeper details for goals conceded
+        const gkRecord = gkDetails.find(gk => 
+            (gk['PLAYER NAME'] || '').trim() === goalkeeperName && 
+            (gk['MATCH_ID'] || gk['MATCH ID'] || '').trim() === matchId &&
+            (gk['TEAM'] || '').trim().toLowerCase() === 'egypt'
+        );
+        
+        const goalsConceded = gkRecord ? (parseInt(gkRecord['GOALS CONCEDED'] || 0)) : 0;
+        totalGoalsConceded += goalsConceded;
+        
+        // Check for clean sheet (only if goalkeeper was THE ONLY ONE from his team in this match)
+        const team = 'egypt';
+        const key = `${matchId}_${team}`;
+        const allGKsInMatch = allGKsByMatch.get(key) || [];
+        const onlyOneGK = allGKsInMatch.length === 1;
+        
+        if (goalsConceded === 0 && onlyOneGK) {
+            cleanSheets += 1;
+        }
+
+        const penalties = calculateGoalkeeperPenaltiesForMatch(
+            goalkeeperName,
+            matchId,
+            allGKsByMatch,
+            playerDetails,
+            howPenMissed
+        );
+
+        totalPenaltiesConceded += penalties.penaltiesConceded;
+        totalPenaltiesSaved += penalties.penaltiesSaved;
+    });
+    
+    // Create cards
+    const cards = [
+        {
+            title: 'Matches',
+            value: totalMatches,
+            icon: '⚽',
+            color: '#3b82f6'
+        },
+        {
+            title: 'Goals Conceded',
+            value: totalGoalsConceded,
+            icon: '🥅',
+            color: '#ef4444'
+        },
+        {
+            title: 'Clean Sheets',
+            value: cleanSheets,
+            icon: '🛡️',
+            color: '#10b981'
+        },
+        {
+            title: 'Penalties Conceded',
+            value: totalPenaltiesConceded,
+            icon: '🚫',
+            color: '#f97316'
+        },
+        {
+            title: 'Penalties Saved',
+            value: totalPenaltiesSaved,
+            icon: '🧤',
+            color: '#6366f1'
+        }
+    ];
+    
+    cards.forEach(card => {
+        const cardElement = document.createElement('div');
+        cardElement.style.cssText = `
+            background: linear-gradient(135deg, ${card.color}15 0%, ${card.color}05 100%);
+            border: 2px solid ${card.color}30;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        `;
+        cardElement.onmouseenter = function() {
+            this.style.transform = 'translateY(-4px)';
+            this.style.boxShadow = `0 8px 16px ${card.color}20`;
+        };
+        cardElement.onmouseleave = function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        };
+        
+        cardElement.innerHTML = `
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">${card.icon}</div>
+            <div style="font-size: 2rem; font-weight: bold; color: ${card.color}; margin-bottom: 0.5rem;">${card.value}</div>
+            <div style="font-size: 0.9rem; color: #666; font-weight: 600;">${card.title}</div>
+        `;
+        
+        container.appendChild(cardElement);
+    });
 }
 
 function loadGoalkeeperMatches(goalkeeperName, goalkeeperMatchIds) {
@@ -4601,7 +4820,7 @@ function loadGoalkeeperChampionships(goalkeeperName, goalkeeperMatchIds) {
     tbody.innerHTML = '';
     
     if (goalkeeperMatchIds.size === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">No championships found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No championships found</td></tr>';
         return;
     }
     
@@ -4642,6 +4861,7 @@ function loadGoalkeeperChampionships(goalkeeperName, goalkeeperMatchIds) {
             championshipStats.set(championship, {
                 matches: 0,
                 goalsConceded: 0,
+                cleanSheets: 0,
                 penaltiesConceded: 0,
                 penaltiesSaved: 0
             });
@@ -4650,7 +4870,15 @@ function loadGoalkeeperChampionships(goalkeeperName, goalkeeperMatchIds) {
         const stats = championshipStats.get(championship);
         stats.matches++;
         if (gkRecord) {
-            stats.goalsConceded += parseInt(gkRecord['GOALS CONCEDED'] || 0);
+            const goalsConceded = parseInt(gkRecord['GOALS CONCEDED'] || 0);
+            stats.goalsConceded += goalsConceded;
+            
+            const key = `${matchId}_egypt`;
+            const allGKsInMatch = allGKsByMatch.get(key) || [];
+            const onlyOneGK = allGKsInMatch.length === 1;
+            if (goalsConceded === 0 && onlyOneGK) {
+                stats.cleanSheets += 1;
+            }
             
             // Calculate penalties for this match
             const penalties = calculateGoalkeeperPenaltiesForMatch(goalkeeperName, matchId, allGKsByMatch, playerDetails, howPenMissed);
@@ -4679,6 +4907,7 @@ function loadGoalkeeperChampionships(goalkeeperName, goalkeeperMatchIds) {
             <td style="font-weight: 600;">${stats.championship}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.matches}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.goalsConceded === 0 ? '-' : stats.goalsConceded}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.cleanSheets === 0 ? '-' : stats.cleanSheets}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesConceded === 0 ? '-' : stats.penaltiesConceded}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesSaved === 0 ? '-' : stats.penaltiesSaved}</td>
         `;
@@ -4692,7 +4921,7 @@ function loadGoalkeeperSeasons(goalkeeperName, goalkeeperMatchIds) {
     tbody.innerHTML = '';
     
     if (goalkeeperMatchIds.size === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">No seasons found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No seasons found</td></tr>';
         return;
     }
     
@@ -4733,6 +4962,7 @@ function loadGoalkeeperSeasons(goalkeeperName, goalkeeperMatchIds) {
             seasonStats.set(season, {
                 matches: 0,
                 goalsConceded: 0,
+                cleanSheets: 0,
                 penaltiesConceded: 0,
                 penaltiesSaved: 0
             });
@@ -4741,7 +4971,15 @@ function loadGoalkeeperSeasons(goalkeeperName, goalkeeperMatchIds) {
         const stats = seasonStats.get(season);
         stats.matches++;
         if (gkRecord) {
-            stats.goalsConceded += parseInt(gkRecord['GOALS CONCEDED'] || 0);
+            const goalsConceded = parseInt(gkRecord['GOALS CONCEDED'] || 0);
+            stats.goalsConceded += goalsConceded;
+
+            const key = `${matchId}_egypt`;
+            const allGKsInMatch = allGKsByMatch.get(key) || [];
+            const onlyOneGK = allGKsInMatch.length === 1;
+            if (goalsConceded === 0 && onlyOneGK) {
+                stats.cleanSheets += 1;
+            }
             
             // Calculate penalties for this match
             const penalties = calculateGoalkeeperPenaltiesForMatch(goalkeeperName, matchId, allGKsByMatch, playerDetails, howPenMissed);
@@ -4763,6 +5001,7 @@ function loadGoalkeeperSeasons(goalkeeperName, goalkeeperMatchIds) {
             <td style="font-weight: 600;">${stats.season}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.matches}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.goalsConceded === 0 ? '-' : stats.goalsConceded}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.cleanSheets === 0 ? '-' : stats.cleanSheets}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesConceded === 0 ? '-' : stats.penaltiesConceded}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesSaved === 0 ? '-' : stats.penaltiesSaved}</td>
         `;
@@ -4776,7 +5015,7 @@ function loadGoalkeeperVsTeams(goalkeeperName, goalkeeperMatchIds) {
     tbody.innerHTML = '';
     
     if (goalkeeperMatchIds.size === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">No teams found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No teams found</td></tr>';
         return;
     }
     
@@ -4817,6 +5056,7 @@ function loadGoalkeeperVsTeams(goalkeeperName, goalkeeperMatchIds) {
             teamStats.set(opponentTeam, {
                 matches: 0,
                 goalsConceded: 0,
+                cleanSheets: 0,
                 penaltiesConceded: 0,
                 penaltiesSaved: 0
             });
@@ -4825,7 +5065,15 @@ function loadGoalkeeperVsTeams(goalkeeperName, goalkeeperMatchIds) {
         const stats = teamStats.get(opponentTeam);
         stats.matches++;
         if (gkRecord) {
-            stats.goalsConceded += parseInt(gkRecord['GOALS CONCEDED'] || 0);
+            const goalsConceded = parseInt(gkRecord['GOALS CONCEDED'] || 0);
+            stats.goalsConceded += goalsConceded;
+
+            const key = `${matchId}_egypt`;
+            const allGKsInMatch = allGKsByMatch.get(key) || [];
+            const onlyOneGK = allGKsInMatch.length === 1;
+            if (goalsConceded === 0 && onlyOneGK) {
+                stats.cleanSheets += 1;
+            }
             
             // Calculate penalties for this match
             const penalties = calculateGoalkeeperPenaltiesForMatch(goalkeeperName, matchId, allGKsByMatch, playerDetails, howPenMissed);
@@ -4854,6 +5102,7 @@ function loadGoalkeeperVsTeams(goalkeeperName, goalkeeperMatchIds) {
             <td style="font-weight: 600;">${stats.team}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.matches}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.goalsConceded === 0 ? '-' : stats.goalsConceded}</td>
+            <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.cleanSheets === 0 ? '-' : stats.cleanSheets}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesConceded === 0 ? '-' : stats.penaltiesConceded}</td>
             <td style="text-align: center; font-size: 1.4rem; font-weight: bold;">${stats.penaltiesSaved === 0 ? '-' : stats.penaltiesSaved}</td>
         `;
@@ -4866,23 +5115,26 @@ function switchGoalkeeperTab(tabName) {
     goalkeeperTabButtons.forEach(button => button.classList.remove('active'));
     
     // Hide all goalkeeper tab contents
-    document.querySelectorAll('#goalkeeper-matches-tab, #goalkeeper-championships-tab, #goalkeeper-seasons-tab, #goalkeeper-vsteams-tab').forEach(content => {
+    document.querySelectorAll('#goalkeeper-overview-tab, #goalkeeper-matches-tab, #goalkeeper-championships-tab, #goalkeeper-seasons-tab, #goalkeeper-vsteams-tab').forEach(content => {
         content.classList.remove('active');
     });
     
     // Show selected tab
-    if (tabName === 'goalkeeper-matches') {
-        document.getElementById('goalkeeper-matches-tab').classList.add('active');
+    if (tabName === 'goalkeeper-overview') {
+        document.getElementById('goalkeeper-overview-tab').classList.add('active');
         goalkeeperTabButtons[0].classList.add('active');
+    } else if (tabName === 'goalkeeper-matches') {
+        document.getElementById('goalkeeper-matches-tab').classList.add('active');
+        goalkeeperTabButtons[1].classList.add('active');
     } else if (tabName === 'goalkeeper-championships') {
         document.getElementById('goalkeeper-championships-tab').classList.add('active');
-        goalkeeperTabButtons[1].classList.add('active');
+        goalkeeperTabButtons[2].classList.add('active');
     } else if (tabName === 'goalkeeper-seasons') {
         document.getElementById('goalkeeper-seasons-tab').classList.add('active');
-        goalkeeperTabButtons[2].classList.add('active');
+        goalkeeperTabButtons[3].classList.add('active');
     } else if (tabName === 'goalkeeper-vsteams') {
         document.getElementById('goalkeeper-vsteams-tab').classList.add('active');
-        goalkeeperTabButtons[3].classList.add('active');
+        goalkeeperTabButtons[4].classList.add('active');
     }
 }
 
