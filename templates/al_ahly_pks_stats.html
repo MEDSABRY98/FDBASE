@@ -719,6 +719,139 @@
                 min-width: 100px;
             }
         }
+
+        /* Players tab styling aligned with Egypt PKS page */
+        .players-sub-tabs {
+            margin-bottom: 2rem;
+        }
+
+        .players-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .players-table-wrapper {
+            overflow-x: auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+
+        .matches-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        .matches-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .matches-table th {
+            padding: 1rem;
+            text-align: center;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85rem;
+        }
+
+        .matches-table td {
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 1px solid #f1f3f4;
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .matches-table tbody tr:hover {
+            background: #f8f9ff;
+            transition: background 0.3s ease;
+        }
+
+        .badge-win {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-loss {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-scored {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-missed {
+            background: #fce7f3;
+            color: #9f1239;
+        }
+
+        .matches-table .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.7rem;
+        }
+
+        .matches-grid {
+            display: grid;
+            gap: 2rem;
+        }
+
+        .matches-table-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+
+        .matches-subtitle {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        /* Keep larger numbers in players tab */
+        #players-tab .matches-table td {
+            font-size: 1.1rem;
+        }
+
+        #players-tab .matches-table .badge {
+            font-size: 1rem;
+            padding: 0.35rem 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .players-table-wrapper {
+                border-radius: 12px;
+            }
+
+            .matches-table th,
+            .matches-table td {
+                padding: 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            .matches-grid {
+                gap: 1.5rem;
+            }
+
+            .matches-table .badge {
+                font-size: 0.75rem;
+            }
+
+            #players-tab .matches-table td {
+                font-size: 1rem;
+            }
+
+            #players-tab .matches-table .badge {
+                font-size: 0.95rem;
+            }
+        }
     </style>
 </head>
 <body class="pks-stats-container">
@@ -1044,26 +1177,58 @@
             <!-- Matches Tab -->
             <div id="matches-tab" class="tab-content">
                 <div class="pks-stats-section">
-                    <h2 class="pks-section-title">All PKS Matches</h2>
-                    <div class="pks-table-container">
-                        <div class="table-responsive">
-                            <table class="pks-table" id="recent-pks-table">
-                                <thead>
-                                    <tr>
-                                        <th>Match ID</th>
-                                        <th>Season</th>
-                                        <th>Champion</th>
-                                        <th>Opponent Team</th>
-                                        <th>Round</th>
-                                        <th>PKS Result</th>
-                                        <th>PKS W-L</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Data will be populated by JavaScript -->
-                                </tbody>
-                            </table>
+                    <h2 class="pks-section-title">Penalty Shootout Attempts</h2>
+
+                    <div class="sub-tabs-nav">
+                        <button class="sub-tab-btn active" onclick="switchSubTab('matches-ahly')">Al Ahly</button>
+                        <button class="sub-tab-btn" onclick="switchSubTab('matches-opponents')">Opponents</button>
+                    </div>
+
+                    <div id="matches-ahly" class="sub-tab-content active">
+                        <div class="matches-table-card">
+                            <h3 class="matches-subtitle">Al Ahly Penalties</h3>
+                            <div class="players-table-wrapper">
+                                <table class="matches-table" id="ahly-matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Season</th>
+                                            <th>Opponent Team</th>
+                                            <th>Al Ahly Player</th>
+                                            <th>Status</th>
+                                            <th>How Miss (Ahly)</th>
+                                            <th>Opponent GK</th>
+                                            <th>Result</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ahly-matches-tbody">
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="matches-opponents" class="sub-tab-content">
+                        <div class="matches-table-card">
+                            <h3 class="matches-subtitle">Opponent Penalties</h3>
+                            <div class="players-table-wrapper">
+                                <table class="matches-table" id="opponent-matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Season</th>
+                                            <th>Opponent Team</th>
+                                            <th>Opponent Player</th>
+                                            <th>Status</th>
+                                            <th>How Miss (Opponent)</th>
+                                            <th>Al Ahly GK</th>
+                                            <th>Result</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opponent-matches-tbody">
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1104,57 +1269,53 @@
             <!-- Players Tab -->
             <div id="players-tab" class="tab-content">
                 <!-- Sub Tabs for Players -->
-                <div class="sub-tabs-nav">
+                <div class="sub-tabs-nav players-sub-tabs">
                     <button class="sub-tab-btn active" onclick="switchSubTab('players-ahly')">Al Ahly</button>
                     <button class="sub-tab-btn" onclick="switchSubTab('players-opponents')">Opponents</button>
                 </div>
 
                 <!-- Al Ahly Players Sub Tab -->
                 <div id="players-ahly" class="sub-tab-content active">
-                    <div class="pks-stats-section">
-                        <h2 class="pks-section-title">Top Al Ahly Penalty Takers</h2>
-                        <div class="pks-table-container">
-                            <div class="table-responsive">
-                                <table class="pks-table" id="top-penalty-takers-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Player Name</th>
-                                            <th>Penalties Taken</th>
-                                            <th>Goals Scored</th>
-                                            <th>Success Rate</th>
-                                            <th>Missed Penalties</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Data will be populated by JavaScript -->
-                                    </tbody>
-                                </table>
-                            </div>
+                    <div class="players-section">
+                        <h2 class="pks-section-title">Al Ahly Penalty Takers</h2>
+                        <div class="players-table-wrapper">
+                            <table class="matches-table">
+                                <thead>
+                                    <tr>
+                                        <th>Player Name</th>
+                                        <th>Total Penalties</th>
+                                        <th>Goals</th>
+                                        <th>Success Rate</th>
+                                        <th>Misses</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ahly-players-tbody">
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
 
                 <!-- Opponents Players Sub Tab -->
                 <div id="players-opponents" class="sub-tab-content">
-                    <div class="pks-stats-section">
-                        <h2 class="pks-section-title">Top Opponent Penalty Takers</h2>
-                        <div class="pks-table-container">
-                            <div class="table-responsive">
-                                <table class="pks-table" id="top-opponent-takers-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Player Name</th>
-                                            <th>Penalties Taken</th>
-                                            <th>Goals Scored</th>
-                                            <th>Success Rate</th>
-                                            <th>Missed Penalties</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Data will be populated by JavaScript -->
-                                    </tbody>
-                                </table>
-                            </div>
+                    <div class="players-section">
+                        <h2 class="pks-section-title">Opponent Penalty Takers</h2>
+                        <div class="players-table-wrapper">
+                            <table class="matches-table">
+                                <thead>
+                                    <tr>
+                                        <th>Player Name</th>
+                                        <th>Total Penalties</th>
+                                        <th>Goals</th>
+                                        <th>Success Rate</th>
+                                        <th>Misses</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="opponent-players-tbody">
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

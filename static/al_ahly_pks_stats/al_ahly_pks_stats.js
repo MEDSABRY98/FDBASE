@@ -517,252 +517,250 @@ function updateDetailedTables(records) {
  * Update all PKS matches table
  */
 function updateRecentPKSTable(records) {
-    const tbody = document.querySelector('#recent-pks-table tbody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    // Group by MATCH_ID to show unique matches
-    const matchesMap = new Map();
-    records.forEach(record => {
-        const matchId = record['MATCH_ID'];
-        if (matchId && !matchesMap.has(matchId)) {
-            matchesMap.set(matchId, record);
-        }
-    });
-    
-    // Convert to array and sort by SEASON (show all matches)
-    const allMatches = Array.from(matchesMap.values()).sort((a, b) => {
-        // Sort by SEASON in descending order (newest first)
-        const seasonA = a['SEASON'] || '';
-        const seasonB = b['SEASON'] || '';
-        
-        // Helper function to extract the starting year from season
-        const getSeasonStartYear = (season) => {
-            if (!season) return 0;
-            
-            // Handle format like "1994/95" - extract the first year
-            if (season.includes('/')) {
-                const yearPart = season.split('/')[0];
-                return parseInt(yearPart) || 0;
-            }
-            
-            // Handle format like "1995" - use the year directly
-            return parseInt(season) || 0;
+    const ahlyTbody = document.getElementById('ahly-matches-tbody');
+    const opponentTbody = document.getElementById('opponent-matches-tbody');
+    if (!ahlyTbody || !opponentTbody) return;
+
+    ahlyTbody.innerHTML = '';
+    opponentTbody.innerHTML = '';
+
+    if (!records || records.length === 0) {
+        const renderEmpty = (tbody, colSpan) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td colspan="${colSpan}" style="text-align: center; padding: 2rem; color: #666;">No records found</td>
+            `;
+            tbody.appendChild(row);
         };
-        
-        const yearA = getSeasonStartYear(seasonA);
-        const yearB = getSeasonStartYear(seasonB);
-        
-        // Sort in descending order (newest first)
-        return yearB - yearA;
-    });
-    
-    // Show all matches, not just recent 10
-    allMatches.forEach(match => {
-        const row = document.createElement('tr');
-        const statusBadge = match['PKS W-L'] === 'W' ? 
-            '<span class="badge badge-success">Win</span>' : 
-            '<span class="badge badge-danger">Loss</span>';
-        
-        row.innerHTML = `
-            <td>${match['MATCH_ID'] || '-'}</td>
-            <td>${match['SEASON'] || '-'}</td>
-            <td>${match['CHAMPION'] || '-'}</td>
-            <td>${match['OPPONENT TEAM'] || '-'}</td>
-            <td>${match['ROUND'] || '-'}</td>
-            <td>${match['PKS RESULT'] || '-'}</td>
-            <td>${match['PKS W-L'] || '-'}</td>
-            <td>${statusBadge}</td>
-        `;
-        tbody.appendChild(row);
-    });
-    
-    // Show message if no matches found
-    if (allMatches.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="8" class="empty-state">
-                <div style="padding: 2rem; text-align: center; color: #6c757d;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem; opacity: 0.5;">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <h3>No PKS Matches Found</h3>
-                    <p>Try adjusting your filters or check if data is available.</p>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
+        renderEmpty(ahlyTbody, 7);
+        renderEmpty(opponentTbody, 7);
+        return;
     }
+
+    const ahlyFragment = document.createDocumentFragment();
+    const opponentFragment = document.createDocumentFragment();
+
+    records.forEach(record => {
+        const ahlyStatus = record['AHLY STATUS'] || '';
+        const opponentStatus = record['OPPONENT STATUS'] || '';
+        const pksResult = record['PKS W-L'] || '';
+
+        const normalize = (value) => value ? value.toString().toUpperCase() : '';
+
+        const buildStatusBadge = (status, isAhly = true) => {
+            if (!status) return '';
+            const normalized = normalize(status);
+
+            if (normalized.includes('GOAL') || normalized.includes('✓') || normalized === 'G') {
+                return `<span class="badge badge-scored">${status}</span>`;
+            }
+
+            if (normalized.includes('MISS') || normalized.includes('X') || normalized.includes('OFF')) {
+                return `<span class="badge badge-missed">${status}</span>`;
+            }
+
+            return `<span class="badge badge-info">${status}</span>`;
+        };
+
+        const buildResultBadge = (result) => {
+            if (!result) return '';
+            const normalized = normalize(result);
+            if (normalized === 'W') {
+                return `<span class="badge badge-win">WIN</span>`;
+            }
+            if (normalized === 'L') {
+                return `<span class="badge badge-loss">LOSS</span>`;
+            }
+            return `<span class="badge badge-info">${result}</span>`;
+        };
+
+        const ahlyRow = document.createElement('tr');
+        ahlyRow.innerHTML = `
+            <td>${record['SEASON'] || ''}</td>
+            <td>${record['OPPONENT TEAM'] || ''}</td>
+            <td>${record['AHLY PLAYER'] || ''}</td>
+            <td>${buildStatusBadge(ahlyStatus)}</td>
+            <td>${record['HOWMISS AHLY'] || ''}</td>
+            <td>${record['OPPONENT GK'] || ''}</td>
+            <td>${buildResultBadge(pksResult)}</td>
+        `;
+        ahlyFragment.appendChild(ahlyRow);
+
+        const opponentRow = document.createElement('tr');
+        opponentRow.innerHTML = `
+            <td>${record['SEASON'] || ''}</td>
+            <td>${record['OPPONENT TEAM'] || ''}</td>
+            <td>${record['OPPONENT PLAYER'] || ''}</td>
+            <td>${buildStatusBadge(opponentStatus, false)}</td>
+            <td>${record['HOWMISS OPPONENT'] || ''}</td>
+            <td>${record['AHLY GK'] || ''}</td>
+            <td>${buildResultBadge(pksResult)}</td>
+        `;
+        opponentFragment.appendChild(opponentRow);
+    });
+
+    ahlyTbody.appendChild(ahlyFragment);
+    opponentTbody.appendChild(opponentFragment);
 }
 
 /**
  * Update all penalty takers table (Al Ahly)
  */
 function updateTopPenaltyTakersTable(records) {
-    const tbody = document.querySelector('#top-penalty-takers-table tbody');
+    const tbody = document.getElementById('ahly-players-tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
-    // Group by player and calculate stats
+
     const playerStats = {};
-    
+
     records.forEach(record => {
         const player = record['AHLY PLAYER'];
-        if (player && player.trim() !== '') {
-            if (!playerStats[player]) {
-                playerStats[player] = {
-                    name: player,
-                    taken: 0,
-                    scored: 0,
-                    missed: 0
-                };
-            }
-            
-            playerStats[player].taken++;
-            
-            // Check if goal was scored
-            const status = record['AHLY STATUS'];
-            if (status && (status.includes('GOAL') || status.includes('✓') || status === 'G' || status === 'GOAL')) {
-                playerStats[player].scored++;
-            } else {
-                // If not scored, it's missed
-                playerStats[player].missed++;
-            }
+        if (!player || player.trim() === '') {
+            return;
+        }
+
+        if (!playerStats[player]) {
+            playerStats[player] = {
+                totalPenalties: 0,
+                goals: 0,
+                misses: 0
+            };
+        }
+
+        const status = record['AHLY STATUS'] || '';
+        const normalizedStatus = status.toUpperCase();
+
+        playerStats[player].totalPenalties++;
+
+        const isGoal = normalizedStatus.includes('GOAL') || normalizedStatus.includes('✓') || normalizedStatus === 'G';
+
+        if (isGoal) {
+            playerStats[player].goals++;
+        } else {
+            playerStats[player].misses++;
         }
     });
-    
-    // Convert to array and sort by goals scored (descending)
-    const players = Object.values(playerStats)
-        .map(p => ({
-            ...p,
-            successRate: p.taken > 0 ? ((p.scored / p.taken) * 100).toFixed(1) : 0
-        }))
-        .sort((a, b) => b.scored - a.scored); // Sort by goals scored, not success rate
-    
-    // Show ALL players, not just top 10
+
+    const players = Object.keys(playerStats).map(name => {
+        const stats = playerStats[name];
+        const successRate = stats.totalPenalties > 0
+            ? Math.round((stats.goals / stats.totalPenalties) * 100)
+            : 0;
+
+        return {
+            name,
+            totalPenalties: stats.totalPenalties,
+            goals: stats.goals,
+            misses: stats.misses,
+            successRate
+        };
+    }).sort((a, b) => b.totalPenalties - a.totalPenalties);
+
+    if (players.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td colspan="5" style="text-align: center; padding: 2rem; color: #666;">No records found</td>
+        `;
+        tbody.appendChild(emptyRow);
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+
     players.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${player.name}</td>
-            <td>${player.taken}</td>
-            <td>${player.scored}</td>
-            <td>${player.successRate}%</td>
-            <td>${player.missed}</td>
+            <td style="font-weight: 600;">${player.name}</td>
+            <td>${player.totalPenalties}</td>
+            <td><span class="badge badge-scored">${player.goals}</span></td>
+            <td><span class="badge badge-win">${player.successRate}%</span></td>
+            <td><span class="badge badge-missed">${player.misses}</span></td>
         `;
-        tbody.appendChild(row);
+        fragment.appendChild(row);
     });
-    
-    // Show message if no players found
-    if (players.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="5" class="empty-state">
-                <div style="padding: 2rem; text-align: center; color: #6c757d;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem; opacity: 0.5;">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <h3>No Al Ahly Players Found</h3>
-                    <p>Try adjusting your filters or check if data is available.</p>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
-    }
+
+    tbody.appendChild(fragment);
 }
 
 /**
  * Update all opponent penalty takers table
  */
 function updateOpponentPenaltyTakersTable(records) {
-    const tbody = document.querySelector('#top-opponent-takers-table tbody');
+    const tbody = document.getElementById('opponent-players-tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
-    // Debug: Check opponent data
-    console.log('=== OPPONENT TABLE DEBUG ===');
-    console.log('Total records:', records.length);
-    let opponentCount = 0;
-    records.forEach(record => {
-        if (record['OPPONENT PLAYER'] && record['OPPONENT PLAYER'].trim() !== '') {
-            opponentCount++;
-        }
-    });
-    console.log('Records with OPPONENT PLAYER:', opponentCount);
-    
-    // Group by player and calculate stats
+
     const playerStats = {};
-    
+
     records.forEach(record => {
         const player = record['OPPONENT PLAYER'];
-        if (player && player.trim() !== '') {
-            if (!playerStats[player]) {
-                playerStats[player] = {
-                    name: player,
-                    taken: 0,
-                    scored: 0,
-                    missed: 0
-                };
-            }
-            
-            playerStats[player].taken++;
-            
-            // Check if goal was scored
-            const status = record['OPPONENT STATUS'];
-            if (status && (status.includes('GOAL') || status.includes('✓') || status === 'G' || status === 'GOAL')) {
-                playerStats[player].scored++;
-            } else {
-                // If not scored, it's missed
-                playerStats[player].missed++;
-            }
+        if (!player || player.trim() === '') {
+            return;
+        }
+
+        if (!playerStats[player]) {
+            playerStats[player] = {
+                totalPenalties: 0,
+                goals: 0,
+                misses: 0
+            };
+        }
+
+        const status = record['OPPONENT STATUS'] || '';
+        const normalizedStatus = status.toUpperCase();
+
+        playerStats[player].totalPenalties++;
+
+        const isGoal = normalizedStatus.includes('GOAL') || normalizedStatus.includes('✓') || normalizedStatus === 'G';
+
+        if (isGoal) {
+            playerStats[player].goals++;
+        } else {
+            playerStats[player].misses++;
         }
     });
-    
-    // Convert to array and sort by goals scored (descending)
-    const players = Object.values(playerStats)
-        .map(p => ({
-            ...p,
-            successRate: p.taken > 0 ? ((p.scored / p.taken) * 100).toFixed(1) : 0
-        }))
-        .sort((a, b) => b.scored - a.scored); // Sort by goals scored, not success rate
-    
-    // Show ALL players, not just top 10
+
+    const players = Object.keys(playerStats).map(name => {
+        const stats = playerStats[name];
+        const successRate = stats.totalPenalties > 0
+            ? Math.round((stats.goals / stats.totalPenalties) * 100)
+            : 0;
+
+        return {
+            name,
+            totalPenalties: stats.totalPenalties,
+            goals: stats.goals,
+            misses: stats.misses,
+            successRate
+        };
+    }).sort((a, b) => b.totalPenalties - a.totalPenalties);
+
+    if (players.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td colspan="5" style="text-align: center; padding: 2rem; color: #666;">No records found</td>
+        `;
+        tbody.appendChild(emptyRow);
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+
     players.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${player.name}</td>
-            <td>${player.taken}</td>
-            <td>${player.scored}</td>
-            <td>${player.successRate}%</td>
-            <td>${player.missed}</td>
+            <td style="font-weight: 600;">${player.name}</td>
+            <td>${player.totalPenalties}</td>
+            <td><span class="badge badge-scored">${player.goals}</span></td>
+            <td><span class="badge badge-win">${player.successRate}%</span></td>
+            <td><span class="badge badge-missed">${player.misses}</span></td>
         `;
-        tbody.appendChild(row);
+        fragment.appendChild(row);
     });
-    
-    // Show message if no players found
-    if (players.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="5" class="empty-state">
-                <div style="padding: 2rem; text-align: center; color: #6c757d;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem; opacity: 0.5;">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <h3>No Opponent Players Found</h3>
-                    <p>Try adjusting your filters or check if data is available.</p>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
-    }
+
+    tbody.appendChild(fragment);
 }
 
 /**

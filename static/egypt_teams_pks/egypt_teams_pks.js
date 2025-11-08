@@ -205,6 +205,7 @@ function switchPKSTab(tabName) {
         displayH2HTeams();
     } else if (tabName === 'matches') {
         document.getElementById('matches-tab').classList.add('active');
+        switchPKSMatchesSubTab('egypt-matches');
     } else if (tabName === 'goalkeepers') {
         document.getElementById('goalkeepers-tab').classList.add('active');
         displayEgyptGoalkeepers();
@@ -216,12 +217,12 @@ function switchPKSTab(tabName) {
 // Switch between players sub tabs
 function switchPlayersSubTab(tabName) {
     // Update sub tab buttons
-    const subTabButtons = document.querySelectorAll('.sub-tab-btn');
+    const subTabButtons = document.querySelectorAll('#players-tab .sub-tab-btn');
     subTabButtons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
     
     // Update sub tab content
-    document.querySelectorAll('.sub-tab-content').forEach(content => {
+    document.querySelectorAll('#players-tab .sub-tab-content').forEach(content => {
         content.classList.remove('active');
     });
     
@@ -237,12 +238,12 @@ function switchPlayersSubTab(tabName) {
 // Switch between goalkeepers sub tabs
 function switchGKSubTab(tabName) {
     // Update sub tab buttons
-    const subTabButtons = document.querySelectorAll('.sub-tab-btn');
+    const subTabButtons = document.querySelectorAll('#goalkeepers-tab .sub-tab-btn');
     subTabButtons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
     
     // Update sub tab content
-    document.querySelectorAll('.sub-tab-content').forEach(content => {
+    document.querySelectorAll('#goalkeepers-tab .sub-tab-content').forEach(content => {
         content.classList.remove('active');
     });
     
@@ -252,6 +253,32 @@ function switchGKSubTab(tabName) {
     } else if (tabName === 'opponent') {
         document.getElementById('opponent-gk-subtab').classList.add('active');
         displayOpponentGoalkeepers();
+    }
+}
+
+// Switch matches sub tabs
+function switchPKSMatchesSubTab(tabName, button) {
+    const matchesTab = document.getElementById('matches-tab');
+    if (!matchesTab) return;
+
+    const subTabButtons = matchesTab.querySelectorAll('.sub-tab-btn');
+    subTabButtons.forEach(btn => btn.classList.remove('active'));
+
+    if (button instanceof HTMLElement) {
+        button.classList.add('active');
+    } else {
+        const fallbackBtn = matchesTab.querySelector(`.sub-tab-btn[data-tab="${tabName}"]`);
+        if (fallbackBtn) {
+            fallbackBtn.classList.add('active');
+        }
+    }
+
+    const subTabContents = matchesTab.querySelectorAll('.sub-tab-content');
+    subTabContents.forEach(content => content.classList.remove('active'));
+
+    const targetContent = document.getElementById(tabName);
+    if (targetContent) {
+        targetContent.classList.add('active');
     }
 }
 
@@ -387,65 +414,72 @@ function displayOverviewCards(stats) {
 
 // Display PKS data in table
 function displayPKSData() {
-    const tbody = document.getElementById('pks-tbody');
-    tbody.innerHTML = '';
-    
-    if (pksEgyptData.filteredRecords.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 2rem; color: #666;">No records found</td></tr>';
+    const egyptTbody = document.getElementById('egypt-matches-tbody');
+    const opponentTbody = document.getElementById('opponent-matches-tbody');
+    if (!egyptTbody || !opponentTbody) return;
+
+    egyptTbody.innerHTML = '';
+    opponentTbody.innerHTML = '';
+
+    const records = pksEgyptData.filteredRecords || [];
+
+    const renderEmptyRow = (tbody, colSpan) => {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `<td colspan="${colSpan}" style="text-align: center; padding: 2rem; color: #666;">No records found</td>`;
+        tbody.appendChild(emptyRow);
+    };
+
+    if (records.length === 0) {
+        renderEmptyRow(egyptTbody, 7);
+        renderEmptyRow(opponentTbody, 7);
         return;
     }
-    
-    pksEgyptData.filteredRecords.forEach(record => {
-        const row = document.createElement('tr');
-        
-        // Egypt Status badge
-        let egyptStatusBadge = '';
-        if (record['Egypt STATUS'] === 'GOAL') {
-            egyptStatusBadge = '<span class="badge badge-scored">GOAL</span>';
-        } else if (record['Egypt STATUS'] === 'MISS') {
-            egyptStatusBadge = '<span class="badge badge-missed">MISS</span>';
-        } else {
-            egyptStatusBadge = record['Egypt STATUS'] || '';
-        }
-        
-        // Opponent Status badge
-        let opponentStatusBadge = '';
-        if (record['OPPONENT STATUS'] === 'GOAL') {
-            opponentStatusBadge = '<span class="badge badge-scored">GOAL</span>';
-        } else if (record['OPPONENT STATUS'] === 'MISS') {
-            opponentStatusBadge = '<span class="badge badge-missed">MISS</span>';
-        } else {
-            opponentStatusBadge = record['OPPONENT STATUS'] || '';
-        }
-        
-        // Result badge
-        let resultBadge = '';
-        const result = record['W-D-L PKS'];
-        if (result && result.includes('W')) {
-            resultBadge = '<span class="badge badge-win">WIN</span>';
-        } else if (result && result.includes('L')) {
-            resultBadge = '<span class="badge badge-loss">LOSS</span>';
-        } else {
-            resultBadge = result || '';
-        }
-        
-        row.innerHTML = `
+
+    const buildStatusBadge = (status) => {
+        if (!status) return '';
+        if (status === 'GOAL') return '<span class="badge badge-scored">GOAL</span>';
+        if (status === 'MISS') return '<span class="badge badge-missed">MISS</span>';
+        return status;
+    };
+
+    const buildResultBadge = (result) => {
+        if (!result) return '';
+        if (result.includes('W')) return '<span class="badge badge-win">WIN</span>';
+        if (result.includes('L')) return '<span class="badge badge-loss">LOSS</span>';
+        return result;
+    };
+
+    const egyptFragment = document.createDocumentFragment();
+    const opponentFragment = document.createDocumentFragment();
+
+    records.forEach(record => {
+        const egyptRow = document.createElement('tr');
+        egyptRow.innerHTML = `
             <td>${record['MATCH_ID'] || ''}</td>
-            <td>${record['Egypt TEAM'] || ''}</td>
+            <td>${record['OPPONENT TEAM'] || ''}</td>
             <td>${record['Egypt PLAYER'] || ''}</td>
-            <td>${egyptStatusBadge}</td>
+            <td>${buildStatusBadge(record['Egypt STATUS'])}</td>
             <td>${record['EGYPT HOW MISS'] || ''}</td>
+            <td>${record['OPPONENT GK'] || ''}</td>
+            <td>${buildResultBadge(record['W-D-L PKS'])}</td>
+        `;
+        egyptFragment.appendChild(egyptRow);
+
+        const opponentRow = document.createElement('tr');
+        opponentRow.innerHTML = `
+            <td>${record['MATCH_ID'] || ''}</td>
             <td>${record['OPPONENT TEAM'] || ''}</td>
             <td>${record['OPPONENT PLAYER'] || ''}</td>
-            <td>${opponentStatusBadge}</td>
+            <td>${buildStatusBadge(record['OPPONENT STATUS'])}</td>
             <td>${record['OPPONENT HOW MISS'] || ''}</td>
             <td>${record['EGYPT GK'] || ''}</td>
-            <td>${record['OPPONENT GK'] || ''}</td>
-            <td>${resultBadge}</td>
+            <td>${buildResultBadge(record['W-D-L PKS'])}</td>
         `;
-        
-        tbody.appendChild(row);
+        opponentFragment.appendChild(opponentRow);
     });
+
+    egyptTbody.appendChild(egyptFragment);
+    opponentTbody.appendChild(opponentFragment);
 }
 
 // Clear all filters
