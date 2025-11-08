@@ -7994,7 +7994,6 @@ function renderGKMatchesTable(matches) {
         row.innerHTML = `
             <td>${match.date}</td>
             <td>${match.season}</td>
-            <td>${match.sy || ''}</td>
             <td>${match.opponentTeam}</td>
             <td>${match.goalsConceded}</td>
             <td>${match.penaltyGoals}</td>
@@ -9979,6 +9978,10 @@ function showStatsTab(arg1, arg2) {
         loadCoachesData(currentFilteredRecords);
     }
     
+    if (tabName === 'by-coach') {
+        initializeCoachTab();
+    }
+    
     // Load Main Stats data when Main Stats tab is selected
     if (tabName === 'main-stats') {
         loadChampionshipsStats();
@@ -10041,6 +10044,47 @@ function showPlayerSubTab(arg1, arg2) {
         // Get current selected teams from checkboxes
         const selectedTeams = getSelectedPlayerTeams();
         loadPlayerSubTabData(subTabName, selectedTeams);
+    }
+}
+
+// Coach sub-tab switching
+function showCoachSubTab(arg1, arg2) {
+    const isEvent = arg1 && typeof arg1 === 'object' && typeof arg1.preventDefault === 'function';
+    const evt = isEvent ? arg1 : null;
+    const subTabName = typeof arg1 === 'string' ? arg1 : (typeof arg2 === 'string' ? arg2 : 'overview');
+    const coachTab = document.getElementById('by-coach-tab');
+    if (!coachTab) return;
+
+    coachTab.querySelectorAll('.player-sub-tab-content').forEach(content => content.classList.remove('active'));
+    coachTab.querySelectorAll('.stats-sub-tab').forEach(tab => tab.classList.remove('active'));
+
+    const targetContent = document.getElementById(`coach-${subTabName}-sub`);
+    if (targetContent) {
+        targetContent.classList.add('active');
+    }
+
+    const clickedBtn = evt && evt.target && evt.target.closest ? evt.target.closest('button.stats-sub-tab') : null;
+    if (clickedBtn) {
+        clickedBtn.classList.add('active');
+    } else {
+        const fallbackBtn = coachTab.querySelector(`.stats-sub-tab[onclick*="'${subTabName}'"]`) || coachTab.querySelector(`.stats-sub-tab[onclick*="'overview'"]`);
+        if (fallbackBtn) fallbackBtn.classList.add('active');
+    }
+
+    if (typeof loadCoachSubTabData === 'function') {
+        loadCoachSubTabData(subTabName);
+    }
+}
+
+function initializeCoachTab() {
+    const coachTab = document.getElementById('by-coach-tab');
+    if (!coachTab) return;
+
+    setupByCoachSearch();
+
+    const hasActiveContent = coachTab.querySelector('.player-sub-tab-content.active');
+    if (!hasActiveContent) {
+        showCoachSubTab('overview');
     }
 }
 
@@ -13609,6 +13653,17 @@ function showH2HTDetailsSubTab(event, subTabName) {
 // COACHES FUNCTIONS
 // ============================================================================
 
+let byCoachSearchData = {
+    coaches: [],
+    coachStatsMap: new Map(),
+    selectedCoach: null
+};
+
+let coachTeamFilterState = {
+    teams: [],
+    selected: new Set()
+};
+
 // Load and display Coaches data
 function loadCoachesData(filteredRecords = null) {
     console.log('Loading Coaches data...');
@@ -13650,9 +13705,15 @@ function loadCoachesData(filteredRecords = null) {
                     goalsFor: 0,
                     goalsAgainst: 0,
                     cleanSheetsFor: 0,
-                    cleanSheetsAgainst: 0
+                    cleanSheetsAgainst: 0,
+                    roles: { ahly: false, opponent: false }
                 };
             }
+            
+            if (!coachesStats[ahlyManager].roles) {
+                coachesStats[ahlyManager].roles = { ahly: false, opponent: false };
+            }
+            coachesStats[ahlyManager].roles.ahly = true;
             
             coachesStats[ahlyManager].matches++;
             coachesStats[ahlyManager].goalsFor += goalsFor;
@@ -13689,9 +13750,15 @@ function loadCoachesData(filteredRecords = null) {
                     goalsFor: 0,
                     goalsAgainst: 0,
                     cleanSheetsFor: 0,
-                    cleanSheetsAgainst: 0
+                    cleanSheetsAgainst: 0,
+                    roles: { ahly: false, opponent: false }
                 };
             }
+            
+            if (!coachesStats[opponentManager].roles) {
+                coachesStats[opponentManager].roles = { ahly: false, opponent: false };
+            }
+            coachesStats[opponentManager].roles.opponent = true;
             
             coachesStats[opponentManager].matches++;
             // For opponent: goals are reversed
@@ -13718,13 +13785,23 @@ function loadCoachesData(filteredRecords = null) {
     });
     
     // Convert to array and sort by matches descending
-    const coachesArray = Object.values(coachesStats).sort((a, b) => b.matches - a.matches);
+    const coachesArray = Object.values(coachesStats)
+        .map(entry => ({
+            ...entry,
+            primaryRole: entry.roles && entry.roles.ahly && !entry.roles.opponent
+                ? 'AHLY'
+                : (!entry.roles?.ahly && entry.roles?.opponent
+                    ? 'OPPONENT'
+                    : 'BOTH')
+        }))
+        .sort((a, b) => b.matches - a.matches);
     
     // Render table
     renderCoachesTable(coachesArray);
     
     // Setup search functionality
     setupCoachesSearch(coachesArray);
+    updateByCoachSearchData(coachesArray);
     
     console.log(`Loaded ${coachesArray.length} coaches`);
 }
@@ -13842,6 +13919,1101 @@ function setupCoachesSearch(coachesData) {
     });
     
     console.log('Coaches search functionality initialized');
+}
+
+function updateByCoachSearchData(coachesData) {
+    if (!Array.isArray(coachesData)) coachesData = [];
+    
+    const uniqueNames = new Set();
+    const statsMap = new Map();
+    
+    coachesData.forEach(coach => {
+        if (!coach || !coach.name) return;
+        const name = coach.name.trim();
+        if (!name) return;
+        uniqueNames.add(name);
+        statsMap.set(name, coach);
+    });
+    
+    byCoachSearchData.coaches = Array.from(uniqueNames).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    byCoachSearchData.coachStatsMap = statsMap;
+    
+    // Reset selected coach if no longer exists
+    if (byCoachSearchData.selectedCoach && !statsMap.has(byCoachSearchData.selectedCoach)) {
+        byCoachSearchData.selectedCoach = null;
+        renderCoachOverviewStats(null, null);
+    } else if (byCoachSearchData.selectedCoach) {
+        renderCoachOverviewStats(byCoachSearchData.selectedCoach, statsMap.get(byCoachSearchData.selectedCoach));
+    }
+    
+    setupByCoachSearch();
+    
+    if (byCoachSearchData.selectedCoach && byCoachSearchData.coachStatsMap.has(byCoachSearchData.selectedCoach)) {
+        let currentSubTab = 'overview';
+        const coachTab = document.getElementById('by-coach-tab');
+        if (coachTab) {
+            const activeBtn = coachTab.querySelector('.stats-sub-tab.active');
+            if (activeBtn) {
+                const onclickValue = activeBtn.getAttribute('onclick') || '';
+                const match = onclickValue.match(/'([^']+)'/);
+                if (match && match[1]) {
+                    currentSubTab = match[1];
+                }
+            }
+        }
+        loadCoachSubTabData(currentSubTab);
+    }
+}
+
+function setupByCoachSearch() {
+    const existingInput = document.getElementById('by-coach-search');
+    const optionsContainer = document.getElementById('by-coach-search-options');
+    if (!existingInput || !optionsContainer) return;
+    
+    const previousValue = existingInput.value || '';
+    const newInput = existingInput.cloneNode(true);
+    newInput.value = previousValue;
+    existingInput.parentNode.replaceChild(newInput, existingInput);
+    
+    optionsContainer.innerHTML = '';
+    optionsContainer.style.display = 'none';
+    
+    const hideOptions = () => {
+        optionsContainer.style.display = 'none';
+        optionsContainer.innerHTML = '';
+    };
+    
+    const renderOptions = term => {
+        const searchTerm = (term || '').toLowerCase().trim();
+        const names = byCoachSearchData.coaches || [];
+        
+        optionsContainer.innerHTML = '';
+        
+        if (!searchTerm) {
+            hideOptions();
+            return;
+        }
+        
+        const filtered = names.filter(name => name.toLowerCase().includes(searchTerm));
+        
+        if (filtered.length === 0) {
+            const emptyItem = document.createElement('div');
+            emptyItem.className = 'option-item no-results';
+            emptyItem.textContent = 'No coaches found';
+            optionsContainer.appendChild(emptyItem);
+        } else {
+            filtered.forEach(name => {
+                const option = document.createElement('div');
+                option.className = 'option-item';
+                option.dataset.value = name;
+                option.textContent = name;
+                optionsContainer.appendChild(option);
+            });
+        }
+        
+        optionsContainer.style.display = 'block';
+    };
+    
+    newInput.addEventListener('input', function() {
+        renderOptions(this.value);
+    });
+    
+    newInput.addEventListener('focus', function() {
+        if (this.value && this.value.trim() !== '') {
+            renderOptions(this.value);
+        }
+    });
+    
+    newInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            hideOptions();
+            this.blur();
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            const value = this.value.trim();
+            if (!value) return;
+            const lowerValue = value.toLowerCase();
+            const exactMatch = (byCoachSearchData.coaches || []).find(name => name.toLowerCase() === lowerValue);
+            const selectedName = exactMatch || (byCoachSearchData.coaches || []).find(name => name.toLowerCase().includes(lowerValue));
+            if (selectedName) {
+                this.value = selectedName;
+                hideOptions();
+                handleCoachSelection(selectedName);
+            }
+        }
+    });
+    
+    optionsContainer.onclick = function(event) {
+        const option = event.target.closest('.option-item');
+        if (!option || option.classList.contains('no-results')) return;
+        const coachName = option.dataset.value || option.textContent.trim();
+        newInput.value = coachName;
+        hideOptions();
+        handleCoachSelection(coachName);
+    };
+    
+    if (!optionsContainer._outsideClickHandlerAttached) {
+        document.addEventListener('click', function(event) {
+            if (!newInput.contains(event.target) && !optionsContainer.contains(event.target)) {
+                hideOptions();
+            }
+        });
+        optionsContainer._outsideClickHandlerAttached = true;
+    }
+}
+
+function handleCoachSelection(coachName) {
+    if (!coachName) return;
+    
+    byCoachSearchData.selectedCoach = coachName;
+    const coachStats = byCoachSearchData.coachStatsMap.get(coachName) || null;
+    
+    coachTeamFilterState.selected.clear();
+    coachTeamFilterState.teams = [];
+    
+    renderCoachOverviewStats(coachName, coachStats);
+    
+    let currentSubTab = 'overview';
+    const coachTab = document.getElementById('by-coach-tab');
+    if (coachTab) {
+        const activeBtn = coachTab.querySelector('.stats-sub-tab.active');
+        if (activeBtn) {
+            const onclickValue = activeBtn.getAttribute('onclick') || '';
+            const match = onclickValue.match(/'([^']+)'/);
+            if (match && match[1]) {
+                currentSubTab = match[1];
+            }
+        }
+    }
+    
+    showCoachSubTab(currentSubTab);
+}
+
+function renderCoachOverviewStats(coachName, coachStats) {
+    const elements = {
+        matches: document.getElementById('coach-overview-matches'),
+        wins: document.getElementById('coach-overview-wins'),
+        winRate: document.getElementById('coach-overview-win-rate'),
+        draws: document.getElementById('coach-overview-draws'),
+        losses: document.getElementById('coach-overview-losses'),
+        lossRate: document.getElementById('coach-overview-loss-rate'),
+        goalsFor: document.getElementById('coach-overview-goals-for'),
+        goalsAgainst: document.getElementById('coach-overview-goals-against'),
+        avgGoalsFor: document.getElementById('coach-overview-avg-goals-for'),
+        avgGoalsAgainst: document.getElementById('coach-overview-avg-goals-against'),
+        goalDiff: document.getElementById('coach-overview-goal-diff'),
+        cleanFor: document.getElementById('coach-overview-clean-sheets-for'),
+        cleanAgainst: document.getElementById('coach-overview-clean-sheets-against')
+    };
+    const placeholderEl = document.querySelector('#coach-overview-sub .empty-state-card');
+    
+    if (!elements.matches || !elements.winRate || !elements.goalDiff) return;
+
+    const setValues = (values) => {
+        Object.entries(values).forEach(([key, value]) => {
+            if (elements[key]) {
+                elements[key].textContent = value;
+            }
+        });
+    };
+    
+    const defaultValues = {
+        matches: '0',
+        wins: '0',
+        winRate: '0%',
+        draws: '0',
+        losses: '0',
+        lossRate: '0%',
+        goalsFor: '0',
+        goalsAgainst: '0',
+        avgGoalsFor: '0.00',
+        avgGoalsAgainst: '0.00',
+        goalDiff: '0',
+        cleanFor: '0',
+        cleanAgainst: '0'
+    };
+    
+    if (!coachStats) {
+        setValues(defaultValues);
+        if (placeholderEl) {
+            placeholderEl.style.display = '';
+        }
+        return;
+    }
+    
+    const matches = coachStats.matches || 0;
+    const wins = coachStats.wins || 0;
+    const draws = coachStats.draws || 0;
+    const losses = coachStats.losses || 0;
+    const goalsFor = coachStats.goalsFor || 0;
+    const goalsAgainst = coachStats.goalsAgainst || 0;
+    const cleanSheets = coachStats.cleanSheetsFor || 0;
+    const cleanSheetsAgainst = coachStats.cleanSheetsAgainst || 0;
+    
+    const values = {
+        matches: matches.toString(),
+        wins: wins.toString(),
+        winRate: matches > 0 ? `${((wins / matches) * 100).toFixed(1)}%` : '0%',
+        draws: draws.toString(),
+        losses: losses.toString(),
+        lossRate: matches > 0 ? `${((losses / matches) * 100).toFixed(1)}%` : '0%',
+        goalsFor: goalsFor.toString(),
+        goalsAgainst: goalsAgainst.toString(),
+        avgGoalsFor: matches > 0 ? (goalsFor / matches).toFixed(2) : '0.00',
+        avgGoalsAgainst: matches > 0 ? (goalsAgainst / matches).toFixed(2) : '0.00',
+        goalDiff: (goalsFor - goalsAgainst).toString(),
+        cleanFor: cleanSheets.toString(),
+        cleanAgainst: cleanSheetsAgainst.toString()
+    };
+    
+    setValues(values);
+    
+    if (placeholderEl) {
+        placeholderEl.style.display = 'none';
+    }
+    
+    console.log(`Selected coach: ${coachName}`, coachStats);
+}
+
+function getCoachMatchesRecords(coachName) {
+    const normalizedName = normalizeStr(coachName).toLowerCase();
+    if (!normalizedName) return [];
+    
+    const records = getCurrentFilteredRecords() || alAhlyStatsData.allRecords || [];
+    if (!Array.isArray(records) || records.length === 0) return [];
+    
+    const matches = [];
+    
+    records.forEach(match => {
+        const ahlyManager = normalizeStr(match['AHLY MANAGER']).toLowerCase();
+        const opponentManager = normalizeStr(match['OPPONENT MANAGER']).toLowerCase();
+        
+        const isAhlyCoach = ahlyManager === normalizedName;
+        const isOpponentCoach = opponentManager === normalizedName;
+        
+        if (!isAhlyCoach && !isOpponentCoach) return;
+        
+        const coachTeam = isAhlyCoach ? normalizeStr(match['AHLY TEAM']) : normalizeStr(match['OPPONENT TEAM']);
+        const opponentTeam = isAhlyCoach ? normalizeStr(match['OPPONENT TEAM']) : normalizeStr(match['AHLY TEAM']);
+        
+        const goalsFor = safeInt(isAhlyCoach ? match.GF : match.GA, 0);
+        const goalsAgainst = safeInt(isAhlyCoach ? match.GA : match.GF, 0);
+        const baseResult = normalizeStr(match['W-D-L'] || '');
+        const coachResult = getCoachPerspectiveResult(baseResult, isAhlyCoach);
+        const resultType = getCoachResultType(coachResult);
+        
+        const matchId = normalizeStr(match.MATCH_ID || match['MATCH ID'] || '');
+        const timestamp = parseExcelDate(match.DATE || match['DATE']).getTime();
+        
+        matches.push({
+            matchId,
+            date: formatExcelDate(match.DATE || match['DATE']),
+            timestamp,
+            season: normalizeStr(match.SEASON || ''),
+            competition: normalizeStr(match.CHAMPION || match['CHAMPION SYSTEM'] || ''),
+            championSystem: normalizeStr(match['CHAMPION SYSTEM'] || ''),
+            team: coachTeam,
+            opponent: opponentTeam || 'Unknown',
+            goalsFor,
+            goalsAgainst,
+            result: coachResult || '-',
+            resultType,
+            rawResult: baseResult,
+            isAhlyCoach,
+            raw: match
+        });
+    });
+    
+    return matches.sort((a, b) => b.timestamp - a.timestamp);
+}
+
+function getCoachPerspectiveResult(result, isAhlyCoach) {
+    const r = normalizeStr(result).toUpperCase();
+    if (isAhlyCoach) return r || '-';
+    if (r === 'W') return 'L';
+    if (r === 'L') return 'W';
+    return r || '-';
+}
+
+function getCoachResultType(result) {
+    const r = normalizeStr(result).toUpperCase();
+    if (r === 'W') return 'W';
+    if (r === 'L') return 'L';
+    if (r.startsWith('D')) return 'D';
+    return '';
+}
+
+function renderCoachTablePlaceholder(tableSelector, message) {
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    const columns = table.querySelectorAll('thead th').length || 1;
+    tbody.innerHTML = `<tr><td colspan="${columns}" style="text-align: center; padding: 2rem; color: #666;">${message}</td></tr>`;
+}
+
+function computeCoachAggregatedStats(matches = []) {
+    const stats = {
+        matches: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        cleanSheetsFor: 0,
+        cleanSheetsAgainst: 0
+    };
+    
+    matches.forEach(match => {
+        stats.matches += 1;
+        stats.goalsFor += match.goalsFor || 0;
+        stats.goalsAgainst += match.goalsAgainst || 0;
+        
+        if (match.resultType === 'W') stats.wins += 1;
+        else if (match.resultType === 'L') stats.losses += 1;
+        else stats.draws += 1;
+        
+        if ((match.goalsAgainst || 0) === 0) stats.cleanSheetsFor += 1;
+        if ((match.goalsFor || 0) === 0) stats.cleanSheetsAgainst += 1;
+    });
+    
+    return stats;
+}
+
+function renderCoachTeamFilter(matches) {
+    const container = document.getElementById('coach-team-filter');
+    if (!container) return;
+    
+    const teams = Array.from(new Set((matches || []).map(match => normalizeStr(match.team || '')).filter(team => team))).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    
+    coachTeamFilterState.teams = teams;
+    
+    // Sync selected set with available teams
+    const preservedSelection = new Set(Array.from(coachTeamFilterState.selected).filter(team => teams.includes(team)));
+    if (preservedSelection.size === 0 && teams.length > 0) {
+        teams.forEach(team => preservedSelection.add(team));
+    }
+    coachTeamFilterState.selected = preservedSelection;
+    
+    container.innerHTML = '';
+    
+    if (teams.length === 0) {
+        container.innerHTML = '<div class="empty-team-filter" style="color:#888;font-size:0.85rem;">No teams available</div>';
+        return;
+    }
+    
+    teams.forEach((team, index) => {
+        const checkboxId = `coach-team-checkbox-${index}`;
+        const wrapper = document.createElement('label');
+        wrapper.className = 'team-checkbox';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = checkboxId;
+        checkbox.value = team;
+        checkbox.checked = coachTeamFilterState.selected.has(team);
+        
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+                coachTeamFilterState.selected.add(team);
+            } else {
+                coachTeamFilterState.selected.delete(team);
+                if (coachTeamFilterState.selected.size === 0) {
+                    teams.forEach(t => coachTeamFilterState.selected.add(t));
+                    container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+                    return;
+                }
+            }
+            const currentSubTab = getCurrentCoachSubTab();
+            if (currentSubTab) {
+                loadCoachSubTabData(currentSubTab);
+            }
+        });
+        
+        const span = document.createElement('span');
+        span.textContent = team;
+        
+        wrapper.appendChild(checkbox);
+        wrapper.appendChild(span);
+        container.appendChild(wrapper);
+    });
+}
+
+function getSelectedCoachTeams() {
+    return Array.from(coachTeamFilterState.selected);
+}
+
+function getCurrentCoachSubTab() {
+    const active = document.querySelector('#by-coach-tab .player-sub-tab-content.active');
+    if (active) {
+        return active.id.replace('coach-', '').replace('-sub', '');
+    }
+    return 'overview';
+}
+
+function renderCoachMatchesTable(matches) {
+    const tableSelector = '#coach-matches-table';
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    if (!Array.isArray(matches) || matches.length === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No matches found for the selected coach.');
+        return;
+    }
+    
+    const totals = {
+        matches: matches.length,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0
+    };
+    
+    const rowsHtml = matches.map(match => {
+        if (match.resultType === 'W') totals.wins++;
+        else if (match.resultType === 'L') totals.losses++;
+        else if (match.resultType === 'D') totals.draws++;
+        
+        totals.goalsFor += match.goalsFor;
+        totals.goalsAgainst += match.goalsAgainst;
+        
+        const resultBadgeClass = match.resultType === 'W'
+            ? 'color: #10b981; font-weight: 600;'
+            : match.resultType === 'L'
+                ? 'color: #ef4444; font-weight: 600;'
+                : 'color: #f59e0b; font-weight: 600;';
+        
+        return `
+            <tr>
+                <td style="text-align:center;">${match.date || '-'}</td>
+                <td style="text-align:center;">${match.season || '-'}</td>
+                <td style="text-align:center;">${match.team || '-'}</td>
+                <td style="text-align:center;">${match.goalsFor}</td>
+                <td style="text-align:center;">${match.goalsAgainst}</td>
+                <td style="text-align:center;">${match.opponent || '-'}</td>
+                <td style="text-align:center; ${resultBadgeClass}">${match.result || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    tbody.innerHTML = rowsHtml;
+}
+
+function renderCoachChampionshipsTable(matches) {
+    const tableSelector = '#coach-championships-table';
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    if (!Array.isArray(matches) || matches.length === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No championship data available for this coach.');
+        return;
+    }
+    
+    const champStats = new Map();
+    
+    matches.forEach(match => {
+        const key = match.competition || match.championSystem || 'Unknown';
+        if (!champStats.has(key)) {
+            champStats.set(key, {
+                name: key,
+                matches: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                goalsFor: 0,
+                goalsAgainst: 0
+            });
+        }
+        const stat = champStats.get(key);
+        stat.matches++;
+        stat.goalsFor += match.goalsFor;
+        stat.goalsAgainst += match.goalsAgainst;
+        if (match.resultType === 'W') stat.wins++;
+        else if (match.resultType === 'D') stat.draws++;
+        else if (match.resultType === 'L') stat.losses++;
+    });
+    
+    const statsArray = Array.from(champStats.values()).sort((a, b) => b.matches - a.matches || a.name.localeCompare(b.name));
+    
+    if (statsArray.length === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No championship data available for this coach.');
+        return;
+    }
+    
+    const totals = {
+        matches: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0
+    };
+    
+    const rowsHtml = statsArray.map(stat => {
+        totals.matches += stat.matches;
+        totals.wins += stat.wins;
+        totals.draws += stat.draws;
+        totals.losses += stat.losses;
+        totals.goalsFor += stat.goalsFor;
+        totals.goalsAgainst += stat.goalsAgainst;
+        
+        return `
+            <tr>
+                <td style="font-weight: 500;">${stat.name}</td>
+                <td>${stat.matches}</td>
+                <td style="color: #10b981; font-weight: 600;">${stat.wins}</td>
+                <td style="color: #f59e0b; font-weight: 600;">${stat.draws}</td>
+                <td style="color: #ef4444; font-weight: 600;">${stat.losses}</td>
+                <td>${stat.goalsFor}</td>
+                <td>${stat.goalsAgainst}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    const totalRow = `
+        <tr style="font-weight: 600; background: #f8f9fa;">
+            <td style="text-align: center;">TOTAL</td>
+            <td>${totals.matches}</td>
+            <td style="color: #10b981;">${totals.wins}</td>
+            <td style="color: #f59e0b;">${totals.draws}</td>
+            <td style="color: #ef4444;">${totals.losses}</td>
+            <td>${totals.goalsFor}</td>
+            <td>${totals.goalsAgainst}</td>
+        </tr>
+    `;
+    
+    tbody.innerHTML = rowsHtml + totalRow;
+}
+
+function renderCoachSeasonsTable(matches) {
+    const tableSelector = '#coach-seasons-table';
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    if (!Array.isArray(matches) || matches.length === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No season statistics available for this coach.');
+        return;
+    }
+    
+    const seasonStats = new Map();
+    
+    matches.forEach(match => {
+        const key = match.season || 'Unknown';
+        if (!seasonStats.has(key)) {
+            seasonStats.set(key, {
+                season: key,
+                matches: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                goalsFor: 0,
+                goalsAgainst: 0
+            });
+        }
+        const stat = seasonStats.get(key);
+        stat.matches++;
+        stat.goalsFor += match.goalsFor;
+        stat.goalsAgainst += match.goalsAgainst;
+        if (match.resultType === 'W') stat.wins++;
+        else if (match.resultType === 'D') stat.draws++;
+        else if (match.resultType === 'L') stat.losses++;
+    });
+    
+    const statsArray = Array.from(seasonStats.values()).sort((a, b) => b.season.localeCompare(a.season));
+    
+    const totals = {
+        matches: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0
+    };
+    
+    const rowsHtml = statsArray.map(stat => {
+        totals.matches += stat.matches;
+        totals.wins += stat.wins;
+        totals.draws += stat.draws;
+        totals.losses += stat.losses;
+        totals.goalsFor += stat.goalsFor;
+        totals.goalsAgainst += stat.goalsAgainst;
+        
+        const points = stat.wins * 3 + stat.draws;
+        const goalDiff = stat.goalsFor - stat.goalsAgainst;
+        
+        return `
+            <tr>
+                <td style="font-weight: 500;">${stat.season}</td>
+                <td>${stat.matches}</td>
+                <td style="color: #10b981; font-weight: 600;">${stat.wins}</td>
+                <td style="color: #f59e0b; font-weight: 600;">${stat.draws}</td>
+                <td style="color: #ef4444; font-weight: 600;">${stat.losses}</td>
+                <td>${stat.goalsFor}</td>
+                <td>${stat.goalsAgainst}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    const totalRow = `
+        <tr style="font-weight: 600; background: #f8f9fa;">
+            <td style="text-align: center;">TOTAL</td>
+            <td>${totals.matches}</td>
+            <td style="color: #10b981;">${totals.wins}</td>
+            <td style="color: #f59e0b;">${totals.draws}</td>
+            <td style="color: #ef4444;">${totals.losses}</td>
+            <td>${totals.goalsFor}</td>
+            <td>${totals.goalsAgainst}</td>
+        </tr>
+    `;
+    
+    tbody.innerHTML = rowsHtml + totalRow;
+}
+
+function renderCoachVsTeamsTable(matches) {
+    const tableSelector = '#coach-vs-teams-table';
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    if (!Array.isArray(matches) || matches.length === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No opponent statistics available for this coach.');
+        return;
+    }
+    
+    const teamStats = new Map();
+    
+    matches.forEach(match => {
+        const key = match.opponent || 'Unknown';
+        if (!teamStats.has(key)) {
+            teamStats.set(key, {
+                team: key,
+                matches: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                goalsFor: 0,
+                goalsAgainst: 0
+            });
+        }
+        const stat = teamStats.get(key);
+        stat.matches++;
+        stat.goalsFor += match.goalsFor;
+        stat.goalsAgainst += match.goalsAgainst;
+        if (match.resultType === 'W') stat.wins++;
+        else if (match.resultType === 'D') stat.draws++;
+        else if (match.resultType === 'L') stat.losses++;
+    });
+    
+    const statsArray = Array.from(teamStats.values()).sort((a, b) => b.matches - a.matches || a.team.localeCompare(b.team));
+    
+    const totals = {
+        matches: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0
+    };
+    
+    const rowsHtml = statsArray.map(stat => {
+        totals.matches += stat.matches;
+        totals.wins += stat.wins;
+        totals.draws += stat.draws;
+        totals.losses += stat.losses;
+        totals.goalsFor += stat.goalsFor;
+        totals.goalsAgainst += stat.goalsAgainst;
+        
+        return `
+            <tr>
+                <td style="font-weight: 500;">${stat.team}</td>
+                <td>${stat.matches}</td>
+                <td style="color: #10b981; font-weight: 600;">${stat.wins}</td>
+                <td style="color: #f59e0b; font-weight: 600;">${stat.draws}</td>
+                <td style="color: #ef4444; font-weight: 600;">${stat.losses}</td>
+                <td>${stat.goalsFor}</td>
+                <td>${stat.goalsAgainst}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    const totalRow = `
+        <tr style="font-weight: 600; background: #f8f9fa;">
+            <td style="text-align: center;">TOTAL</td>
+            <td>${totals.matches}</td>
+            <td style="color: #10b981;">${totals.wins}</td>
+            <td style="color: #f59e0b;">${totals.draws}</td>
+            <td style="color: #ef4444;">${totals.losses}</td>
+            <td>${totals.goalsFor}</td>
+            <td>${totals.goalsAgainst}</td>
+        </tr>
+    `;
+    
+    tbody.innerHTML = rowsHtml + totalRow;
+}
+
+function renderCoachUsePlayersTable(coachName, matches) {
+    const tableSelector = '#coach-use-players-table';
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    if (!coachName) {
+        renderCoachTablePlaceholder(tableSelector, 'Select a coach to view player usage.');
+        return;
+    }
+    
+    if (!Array.isArray(matches) || matches.length === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No matches found for this coach with the current filters.');
+        return;
+    }
+    
+    const matchInfo = new Map();
+    matches.forEach(match => {
+        const matchId = normalizeStr(match.matchId);
+        if (!matchId) return;
+        matchInfo.set(matchId, {
+            teamKey: normalizeTeamKey(match.team),
+            teamName: normalizeStr(match.team || ''),
+            isAhlyCoach: !!match.isAhlyCoach
+        });
+    });
+    
+    if (matchInfo.size === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No match data available for this coach.');
+        return;
+    }
+
+    const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
+    const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
+    
+    const playerStats = new Map();
+    const selectedCoachTeams = getSelectedCoachTeams();
+    const selectedTeamKeys = new Set((selectedCoachTeams || [])
+        .map(teamName => normalizeTeamKey(teamName))
+        .filter(key => key && key.length));
+    const selectedTeamNames = new Set((selectedCoachTeams || [])
+        .map(teamName => normalizeStr(teamName))
+        .filter(name => name && name.length));
+    
+    const ensurePlayerStats = (playerName, teamInfo) => {
+        const key = `${playerName}__${teamInfo.teamKey}`;
+        if (!playerStats.has(key)) {
+            playerStats.set(key, {
+                key,
+                player: playerName,
+                teamKey: teamInfo.teamKey,
+                teamName: teamInfo.teamName,
+                matchesSet: new Set(),
+                minutes: 0,
+                goals: 0,
+                assists: 0,
+                starts: 0,
+                subOn: 0,
+                hasLineupData: false
+            });
+        }
+        return playerStats.get(key);
+    };
+    
+    // Accumulate matches and minutes from lineup details (available for Al Ahly coaches)
+    if (Array.isArray(lineupDetails)) {
+        lineupDetails.forEach(row => {
+            const matchId = normalizeStr(row.MATCH_ID || row['MATCH ID'] || '');
+            if (!matchInfo.has(matchId)) return;
+            const info = matchInfo.get(matchId);
+            if (info.teamKey !== 'ahly') return;
+            const normalizedTeamName = normalizeStr(info.teamName || '');
+            if (selectedTeamNames.size > 0 && !selectedTeamNames.has(normalizedTeamName)) return;
+            if (selectedTeamKeys.size > 0 && !selectedTeamKeys.has(info.teamKey)) return;
+            
+            const playerName = normalizeStr(row['PLAYER NAME'] || row.PLAYER || '');
+            if (!playerName) return;
+            
+            const stats = ensurePlayerStats(playerName, info);
+            stats.hasLineupData = true;
+            stats.matchesSet.add(matchId);
+            stats.minutes += safeInt(row.MINTOTAL || row.MINUTES || 0, 0);
+            
+            const status = normalizeStr(row.STATUS || row['STATU'] || row['STATUS?'] || '').toLowerCase();
+            const starterFlag = normalizeStr(row['11/BAKEUP'] || row['11/Backup'] || row['11/BAKEUP?'] || '').toUpperCase();
+            if (starterFlag === '11' || status === 'اساسي' || status === 'اساسى' || status === 'اساسي ') {
+                stats.starts++;
+            }
+            
+            const subOnValue = normalizeStr(row['SUB/ON'] || row['SUB ON'] || row['SUBON'] || '');
+            if ((subOnValue && subOnValue !== '0' && subOnValue !== '-') || status === 'احتياطي' || status === 'احتياطى' || status === 'احتياطي ') {
+                stats.subOn++;
+            }
+        });
+    }
+    
+    // Accumulate goals and assists from player details
+    if (Array.isArray(playerDetails)) {
+        playerDetails.forEach(record => {
+            const matchId = normalizeStr(record.MATCH_ID || record['MATCH ID'] || '');
+            if (!matchInfo.has(matchId)) return;
+            const info = matchInfo.get(matchId);
+            
+            const playerName = normalizeStr(record['PLAYER NAME'] || record.PLAYER || '');
+            if (!playerName) return;
+            
+            const teamValue = record.TEAM || record['AHLY TEAM'] || record['OPPONENT TEAM'] || '';
+            const teamKey = normalizeTeamKey(teamValue);
+            const normalizedTeamName = normalizeStr(teamValue);
+            if (teamKey !== info.teamKey) return;
+            if (selectedTeamKeys.size > 0 && !selectedTeamKeys.has(teamKey)) return;
+            if (selectedTeamNames.size > 0 && !selectedTeamNames.has(normalizedTeamName)) return;
+            if (info.isAhlyCoach && teamKey !== 'ahly') return;
+            if (!info.isAhlyCoach) {
+                const coachTeamNameNormalized = normalizeStr(info.teamName || '');
+                if (coachTeamNameNormalized && normalizedTeamName && coachTeamNameNormalized !== normalizedTeamName) return;
+            }
+            
+            const stats = ensurePlayerStats(playerName, info);
+            const ga = normalizeStr(record.GA || '').toUpperCase();
+            if (ga === 'GOAL') stats.goals++;
+            if (ga === 'ASSIST') stats.assists++;
+        });
+    }
+    
+    const playersStatsArray = Array.from(playerStats.values()).filter(stats => {
+        return stats.matchesSet.size > 0 || stats.goals > 0 || stats.assists > 0;
+    });
+    
+    if (playersStatsArray.length === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No player usage data found for this coach.');
+        return;
+    }
+    
+    const playersArray = playersStatsArray.map(stats => {
+        const matchesCount = stats.matchesSet.size;
+        return {
+            player: stats.player,
+            teamKey: stats.teamKey,
+            matches: matchesCount,
+            minutes: stats.hasLineupData ? stats.minutes : null,
+            goals: stats.goals,
+            assists: stats.assists,
+            starts: stats.hasLineupData ? stats.starts : null,
+            subOn: stats.hasLineupData ? stats.subOn : null,
+            hasLineupData: stats.hasLineupData
+        };
+    }).sort((a, b) => {
+        if (b.matches !== a.matches) return b.matches - a.matches;
+        if ((b.minutes || 0) !== (a.minutes || 0)) return (b.minutes || 0) - (a.minutes || 0);
+        return a.player.localeCompare(b.player);
+    });
+    
+    const totals = playersArray.reduce((acc, player) => {
+        acc.matches += player.matches;
+        acc.minutes += player.minutes != null ? player.minutes : 0;
+        acc.goals += player.goals;
+        acc.assists += player.assists;
+        acc.starts += player.starts != null ? player.starts : 0;
+        acc.subOn += player.subOn != null ? player.subOn : 0;
+        return acc;
+    }, { matches: 0, minutes: 0, goals: 0, assists: 0, starts: 0, subOn: 0, hasLineupData: playersArray.some(p => p.hasLineupData) });
+    
+    const rowsHtml = playersArray.map(player => `
+        <tr>
+            <td style="font-weight: 500;">${player.player}</td>
+            <td>${player.matches}</td>
+            <td>${player.starts != null ? player.starts : '-'}</td>
+            <td>${player.subOn != null ? player.subOn : '-'}</td>
+            <td>${player.minutes != null ? player.minutes : '-'}</td>
+            <td>${player.goals}</td>
+            <td>${player.assists}</td>
+        </tr>
+    `).join('');
+    
+    const totalRow = `
+        <tr style="font-weight: 600; background: #f8f9fa;">
+            <td style="text-align: center;">TOTAL</td>
+            <td>${totals.matches}</td>
+            <td>${totals.hasLineupData ? totals.starts : '-'}</td>
+            <td>${totals.hasLineupData ? totals.subOn : '-'}</td>
+            <td>${totals.hasLineupData ? totals.minutes : '-'}</td>
+            <td>${totals.goals}</td>
+            <td>${totals.assists}</td>
+        </tr>
+    `;
+    
+    tbody.innerHTML = rowsHtml + totalRow;
+}
+
+function loadCoachSubTabData(subTabName) {
+    const coachName = byCoachSearchData.selectedCoach;
+    const coachStats = coachName ? byCoachSearchData.coachStatsMap.get(coachName) : null;
+    
+    if (!coachName) {
+        if (subTabName === 'overview') {
+            renderCoachOverviewStats(null, null);
+        } else {
+            switch (subTabName) {
+                case 'matches':
+                    renderCoachTablePlaceholder('#coach-matches-table', 'Select a coach to load matches.');
+                    break;
+                case 'championships':
+                    renderCoachTablePlaceholder('#coach-championships-table', 'Select a coach to load championship statistics.');
+                    break;
+                case 'seasons':
+                    renderCoachTablePlaceholder('#coach-seasons-table', 'Select a coach to load season statistics.');
+                    break;
+                case 'vs-teams':
+                    renderCoachTablePlaceholder('#coach-vs-teams-table', 'Select a coach to load opponent statistics.');
+                    break;
+                case 'with-teams':
+                    renderCoachTablePlaceholder('#coach-with-teams-table', 'Select a coach to load team statistics.');
+                    break;
+                case 'use-players':
+                    renderCoachTablePlaceholder('#coach-use-players-table', 'Select a coach to view player usage.');
+                    break;
+            }
+        }
+        return;
+    }
+    
+    const matches = getCoachMatchesRecords(coachName);
+    const teamFilterValue = document.getElementById('coaches-team-filter')?.value || '';
+    const mainFilteredMatches = matches.filter(match => {
+        if (teamFilterValue === 'WITH_AHLY') {
+            return match.isAhlyCoach;
+        }
+        if (teamFilterValue === 'AGAINST_AHLY') {
+            return !match.isAhlyCoach;
+        }
+        return true;
+    });
+    
+    renderCoachTeamFilter(mainFilteredMatches);
+    
+    const selectedCoachTeams = getSelectedCoachTeams();
+    const filteredMatches = mainFilteredMatches.filter(match => {
+        if (!selectedCoachTeams.length) return true;
+        return selectedCoachTeams.includes(match.team || '');
+    });
+    
+    switch (subTabName) {
+        case 'overview': {
+            const aggregateStats = filteredMatches.length > 0
+                ? computeCoachAggregatedStats(filteredMatches)
+                : (coachStats || computeCoachAggregatedStats([]));
+            renderCoachOverviewStats(coachName, aggregateStats);
+            break;
+        }
+        case 'matches':
+            renderCoachMatchesTable(filteredMatches);
+            break;
+        case 'championships':
+            renderCoachChampionshipsTable(filteredMatches);
+            break;
+        case 'seasons':
+            renderCoachSeasonsTable(filteredMatches);
+            break;
+        case 'vs-teams':
+            renderCoachVsTeamsTable(filteredMatches);
+            break;
+        case 'with-teams':
+            renderCoachWithTeamsTable(filteredMatches);
+            break;
+        case 'use-players':
+            renderCoachUsePlayersTable(coachName, filteredMatches);
+            break;
+        default:
+            break;
+    }
+}
+
+function renderCoachWithTeamsTable(matches) {
+    const tableSelector = '#coach-with-teams-table';
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    if (!Array.isArray(matches) || matches.length === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No team statistics available for this coach.');
+        return;
+    }
+    
+    const teamStats = new Map();
+    
+    matches.forEach(match => {
+        const key = match.team || 'Unknown';
+        if (!teamStats.has(key)) {
+            teamStats.set(key, {
+                team: key,
+                matches: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                goalsFor: 0,
+                goalsAgainst: 0
+            });
+        }
+        const stat = teamStats.get(key);
+        stat.matches++;
+        stat.goalsFor += match.goalsFor;
+        stat.goalsAgainst += match.goalsAgainst;
+        if (match.resultType === 'W') stat.wins++;
+        else if (match.resultType === 'D') stat.draws++;
+        else if (match.resultType === 'L') stat.losses++;
+    });
+    
+    const statsArray = Array.from(teamStats.values()).sort((a, b) => b.matches - a.matches || a.team.localeCompare(b.team));
+    
+    const totals = {
+        matches: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0
+    };
+    
+    const rowsHtml = statsArray.map(stat => {
+        totals.matches += stat.matches;
+        totals.wins += stat.wins;
+        totals.draws += stat.draws;
+        totals.losses += stat.losses;
+        totals.goalsFor += stat.goalsFor;
+        totals.goalsAgainst += stat.goalsAgainst;
+        
+        return `
+            <tr>
+                <td style="font-weight: 500;">${stat.team}</td>
+                <td>${stat.matches}</td>
+                <td style="color: #10b981; font-weight: 600;">${stat.wins}</td>
+                <td style="color: #f59e0b; font-weight: 600;">${stat.draws}</td>
+                <td style="color: #ef4444; font-weight: 600;">${stat.losses}</td>
+                <td>${stat.goalsFor}</td>
+                <td>${stat.goalsAgainst}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    const totalRow = `
+        <tr style="font-weight: 600; background: #f8f9fa;">
+            <td style="text-align: center;">TOTAL</td>
+            <td>${totals.matches}</td>
+            <td style="color: #10b981;">${totals.wins}</td>
+            <td style="color: #f59e0b;">${totals.draws}</td>
+            <td style="color: #ef4444;">${totals.losses}</td>
+            <td>${totals.goalsFor}</td>
+            <td>${totals.goalsAgainst}</td>
+        </tr>
+    `;
+    
+    tbody.innerHTML = rowsHtml + totalRow;
 }
 
 // ============================================================================
