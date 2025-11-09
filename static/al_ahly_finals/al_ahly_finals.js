@@ -519,6 +519,7 @@ function calculateOverviewStats(records) {
     // Count unique finals (by MATCH_ID)
     const uniqueMatchIds = new Set();
     const finalsWonSet = new Set();
+    const finalsWonBothSet = new Set();
     const finalsLostSet = new Set();
     
     records.forEach(record => {
@@ -527,8 +528,11 @@ function calculateOverviewStats(records) {
             uniqueMatchIds.add(matchId);
             
             const wlFinal = (record['W-L FINAL'] || '').toUpperCase().trim();
-            if (wlFinal === 'W') {
+            if (wlFinal === 'W' || wlFinal === 'WE') {
                 finalsWonSet.add(matchId);
+                if (wlFinal === 'WE') {
+                    finalsWonBothSet.add(matchId);
+                }
             } else if (wlFinal === 'L') {
                 finalsLostSet.add(matchId);
             }
@@ -585,6 +589,7 @@ function calculateOverviewStats(records) {
         totalMatches,
         finalsWon,
         finalsLost,
+        finalsWonBoth: finalsWonBothSet.size,
         matchWins,
         matchLosses,
         matchDraws,
@@ -599,13 +604,16 @@ function calculateOverviewStats(records) {
  * Update overview stat cards
  */
 function updateOverviewCards(stats) {
+    const totalMatchOutcomes = stats.matchWins + stats.matchDraws + stats.matchLosses;
     document.getElementById('total-finals-matches').textContent = stats.totalMatches;
     document.getElementById('finals-won').textContent = stats.finalsWon;
     document.getElementById('finals-lost').textContent = stats.finalsLost;
+    document.getElementById('total-match-outcomes').textContent = totalMatchOutcomes;
     document.getElementById('match-wins').textContent = stats.matchWins;
     document.getElementById('match-losses').textContent = stats.matchLosses;
     document.getElementById('match-draws').textContent = stats.matchDraws;
     document.getElementById('final-win-rate').textContent = stats.finalWinRate + '%';
+    document.getElementById('finals-won-both').textContent = stats.finalsWonBoth;
     document.getElementById('total-goals-for').textContent = stats.totalGoalsFor;
     document.getElementById('total-goals-against').textContent = stats.totalGoalsAgainst;
     document.getElementById('clean-sheets').textContent = stats.cleanSheets;
