@@ -715,12 +715,12 @@ function calculateOpponentStats(records) {
         
         if (matchId && wlFinal) {
             const wlFinalUpper = wlFinal.toUpperCase().trim();
-            if (wlFinalUpper === 'L' || wlFinalUpper === 'LE') {
+            if (wlFinalUpper === 'WE') {
+                finalsWonSet.add(matchId);
+                finalsWonBothSet.add(matchId);
+            } else if (wlFinalUpper === 'L' || wlFinalUpper === 'LE') {
                 finalsWonSet.add(matchId); // Opponents win when Ahly loses
-                if (wlFinalUpper === 'LE') {
-                    finalsWonBothSet.add(matchId);
-                }
-            } else if (wlFinalUpper === 'W' || wlFinalUpper === 'WE') {
+            } else if (wlFinalUpper === 'W') {
                 finalsLostSet.add(matchId); // Opponents lose when Ahly wins
             }
         }
