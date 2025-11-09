@@ -706,6 +706,7 @@ function updateFinalsMatchesTable(records) {
 function calculateOpponentStats(records) {
     // Count unique finals won/lost from opponent perspective (inverse of Al Ahly)
     const finalsWonSet = new Set();
+    const finalsWonBothSet = new Set();
     const finalsLostSet = new Set();
     
     records.forEach(record => {
@@ -713,9 +714,13 @@ function calculateOpponentStats(records) {
         const wlFinal = record['W-L FINAL'];
         
         if (matchId && wlFinal) {
-            if (wlFinal.toUpperCase() === 'L') {
+            const wlFinalUpper = wlFinal.toUpperCase().trim();
+            if (wlFinalUpper === 'L' || wlFinalUpper === 'LE') {
                 finalsWonSet.add(matchId); // Opponents win when Ahly loses
-            } else if (wlFinal.toUpperCase() === 'W') {
+                if (wlFinalUpper === 'LE') {
+                    finalsWonBothSet.add(matchId);
+                }
+            } else if (wlFinalUpper === 'W' || wlFinalUpper === 'WE') {
                 finalsLostSet.add(matchId); // Opponents lose when Ahly wins
             }
         }
@@ -775,6 +780,7 @@ function calculateOpponentStats(records) {
         matchLosses,
         matchDraws,
         winRate,
+        finalsWonBoth: finalsWonBothSet.size,
         totalGoalsFor,
         totalGoalsAgainst,
         cleanSheets
@@ -785,13 +791,16 @@ function calculateOpponentStats(records) {
  * Update opponent overview cards
  */
 function updateOpponentOverviewCards(stats) {
+    const totalMatchOutcomes = stats.matchWins + stats.matchDraws + stats.matchLosses;
     document.getElementById('opponent-total-finals').textContent = stats.totalMatches;
     document.getElementById('opponent-finals-won').textContent = stats.finalsWon;
+    document.getElementById('opponent-finals-won-both').textContent = stats.finalsWonBoth;
     document.getElementById('opponent-finals-lost').textContent = stats.finalsLost;
     document.getElementById('opponent-match-wins').textContent = stats.matchWins;
     document.getElementById('opponent-match-losses').textContent = stats.matchLosses;
     document.getElementById('opponent-match-draws').textContent = stats.matchDraws;
     document.getElementById('opponent-win-rate').textContent = stats.winRate + '%';
+    document.getElementById('opponent-total-match-outcomes').textContent = totalMatchOutcomes;
     document.getElementById('opponent-goals-for').textContent = stats.totalGoalsFor;
     document.getElementById('opponent-goals-against').textContent = stats.totalGoalsAgainst;
     document.getElementById('opponent-clean-sheets').textContent = stats.cleanSheets;
