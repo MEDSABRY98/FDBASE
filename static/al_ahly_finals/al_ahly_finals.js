@@ -1459,6 +1459,204 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
     }
 }
 
+/**
+ * Update player vs teams table
+ */
+function updatePlayerVsTeamsTable(playerName, teamFilter) {
+    console.log('🔄 Updating player vs teams table:', { playerName, teamFilter });
+    
+    const tbody = document.querySelector('#player-vs-teams-table tbody');
+    if (!tbody) {
+        console.log('❌ Player vs teams table tbody not found');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    if (!playerName) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td colspan="8" class="empty-state">
+                <div style="padding: 2rem; text-align: center; color: #6c757d;">
+                    <h3>No Player Selected</h3>
+                    <p>Please select a player to view their record against opponents.</p>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+        return;
+    }
+    
+    const matchRecords = alAhlyFinalsStatsData.filteredRecords;
+    const playersData = alAhlyFinalsStatsData.playersData;
+    const lineupData = alAhlyFinalsStatsData.lineupData;
+    
+    if (!matchRecords || matchRecords.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td colspan="8" class="empty-state">
+                <div style="padding: 2rem; text-align: center; color: #6c757d;">
+                    <h3>No Matches Available</h3>
+                    <p>No finals data found for the current filters.</p>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+        return;
+    }
+    
+    // Build lookup of match records by MATCH_ID
+    const matchRecordsById = {};
+    matchRecords.forEach(record => {
+        const matchId = record['MATCH_ID'];
+        if (matchId && !matchRecordsById[matchId]) {
+            matchRecordsById[matchId] = record;
+        }
+    });
+    
+    // Helper to ensure stats object exists
+    const statsByOpponent = {};
+    const ensureOpponentStats = (opponentTeam) => {
+        const key = opponentTeam || 'Unknown';
+        if (!statsByOpponent[key]) {
+            statsByOpponent[key] = {
+                opponentTeam: key,
+                matchIds: new Set(),
+                finalsWonIds: new Set(),
+                finalsLostIds: new Set(),
+                goals: 0,
+                assists: 0
+            };
+        }
+        return statsByOpponent[key];
+    };
+    
+    // Filter player contributions and lineup data by team (if provided)
+    const playerContributions = playersData.filter(p => {
+        if (!matchRecordsById[p['MATCH_ID']]) return false;
+        if (p['PLAYER NAME'] !== playerName) return false;
+        
+        if (teamFilter) {
+            const team = (p['TEAM'] || '').trim();
+            return team === teamFilter;
+        }
+        
+        return true;
+    });
+    
+    const playerLineup = lineupData.filter(l => {
+        if (!matchRecordsById[l['MATCH_ID']]) return false;
+        if (l['PLAYER NAME'] !== playerName) return false;
+        
+        if (teamFilter) {
+            const team = (l['TEAM'] || '').trim();
+            return team === teamFilter;
+        }
+        
+        return true;
+    });
+    
+    // Register match participation helper
+    const registerMatchParticipation = (matchId) => {
+        const matchRecord = matchRecordsById[matchId];
+        if (!matchRecord) return;
+        
+        const opponentTeam = matchRecord['OPPONENT TEAM'] || 'Unknown';
+        const stats = ensureOpponentStats(opponentTeam);
+        stats.matchIds.add(matchId);
+        
+        const wlFinal = (matchRecord['W-L FINAL'] || '').toUpperCase().trim();
+        if (wlFinal === 'W') {
+            stats.finalsWonIds.add(matchId);
+        } else if (wlFinal === 'L') {
+            stats.finalsLostIds.add(matchId);
+        }
+    };
+    
+    // Process player contributions for goals and assists
+    playerContributions.forEach(contribution => {
+        const matchId = contribution['MATCH_ID'];
+        if (!matchId) return;
+        
+        registerMatchParticipation(matchId);
+        
+        const matchRecord = matchRecordsById[matchId];
+        if (!matchRecord) return;
+        
+        const opponentTeam = matchRecord['OPPONENT TEAM'] || 'Unknown';
+        const stats = ensureOpponentStats(opponentTeam);
+        
+        const gaTotal = parseInt(contribution['GATOTAL']) || 0;
+        const gaType = (contribution['GA'] || '').toUpperCase().trim();
+        
+        if (gaType === 'G' || gaType === 'GOAL') {
+            stats.goals += gaTotal;
+        } else if (gaType === 'A' || gaType === 'ASSIST') {
+            stats.assists += gaTotal;
+        }
+    });
+    
+    // Ensure matches from lineup are counted (even without contributions)
+    playerLineup.forEach(lineup => {
+        const matchId = lineup['MATCH_ID'];
+        if (!matchId) return;
+        registerMatchParticipation(matchId);
+    });
+    
+    const opponentStatsArray = Object.values(statsByOpponent).map(stats => {
+        const finalsWon = stats.finalsWonIds.size;
+        const finalsLost = stats.finalsLostIds.size;
+        const finals = finalsWon + finalsLost;
+        const matchesCount = stats.matchIds.size;
+        const goals = stats.goals;
+        const assists = stats.assists;
+        const gaTotal = goals + assists;
+        
+        return {
+            opponentTeam: stats.opponentTeam,
+            matches: matchesCount,
+            finals,
+            finalsWon,
+            finalsLost,
+            goalsAndAssists: gaTotal,
+            goals,
+            assists
+        };
+    }).filter(stats => stats.matches > 0);
+    
+    if (opponentStatsArray.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td colspan="8" class="empty-state">
+                <div style="padding: 2rem; text-align: center; color: #6c757d;">
+                    <h3>No Data Available</h3>
+                    <p>No matches found for this player with the selected team filter.</p>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+        return;
+    }
+    
+    // Sort by total matches descending
+    opponentStatsArray.sort((a, b) => b.matches - a.matches);
+    
+    opponentStatsArray.forEach(stats => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${stats.opponentTeam}</td>
+            <td>${stats.matches}</td>
+            <td>${stats.finals}</td>
+            <td>${stats.finalsWon}</td>
+            <td>${stats.finalsLost}</td>
+            <td>${stats.goalsAndAssists}</td>
+            <td>${stats.goals}</td>
+            <td>${stats.assists}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
 // ============================================================================
 // UNIFIED PLAYER SEARCH (By Players Tab)
 // ============================================================================
@@ -1516,6 +1714,8 @@ function initializeUnifiedPlayerSearch() {
             displayUnifiedPlayerOverview(selectedPlayer, selectedTeam);
             // Update player matches table
             updatePlayerMatchesTable(selectedPlayer, selectedTeam);
+            // Update player vs teams table
+            updatePlayerVsTeamsTable(selectedPlayer, selectedTeam);
         }
     });
     
@@ -1525,26 +1725,57 @@ function initializeUnifiedPlayerSearch() {
 /**
  * Populate team filter dropdown with unique teams
  */
-function populateTeamFilter() {
+function populateTeamFilter(playerName = null) {
     const teamFilter = document.getElementById('player-team-filter');
     if (!teamFilter) return;
     
-    const playerDatabase = alAhlyFinalsStatsData.playerDatabase;
+    const previousValue = teamFilter.value;
+    const allTeams = new Set();
+    const playerSpecificTeams = new Set();
     
-    // Get unique teams
-    const teams = new Set();
+    const { playerDatabase, playersData, lineupData } = alAhlyFinalsStatsData;
+    
+    // Always collect all teams in case we need a full list (no player selected)
     playerDatabase.forEach(player => {
-        const team = player['TEAM'];
-        if (team && team.trim() !== '') {
-            teams.add(team.trim());
+        const team = (player['TEAM'] || '').trim();
+        if (team) {
+            allTeams.add(team);
+        }
+        
+        if (playerName && player['PLAYER NAME'] === playerName && team) {
+            playerSpecificTeams.add(team);
         }
     });
+    
+    if (playerName) {
+        // Include teams from PLAYERDETAILS dataset
+        playersData.forEach(record => {
+            if (record['PLAYER NAME'] === playerName) {
+                const team = (record['TEAM'] || '').trim();
+                if (team) {
+                    playerSpecificTeams.add(team);
+                }
+            }
+        });
+        
+        // Include teams from LINEUP dataset
+        lineupData.forEach(record => {
+            if (record['PLAYER NAME'] === playerName) {
+                const team = (record['TEAM'] || '').trim();
+                if (team) {
+                    playerSpecificTeams.add(team);
+                }
+            }
+        });
+    }
+    
+    const teamsToRender = playerName ? playerSpecificTeams : allTeams;
     
     // Clear and repopulate dropdown
     teamFilter.innerHTML = '<option value="">All Teams</option>';
     
     // Sort teams alphabetically
-    const sortedTeams = Array.from(teams).sort();
+    const sortedTeams = Array.from(teamsToRender).sort();
     
     sortedTeams.forEach(team => {
         const option = document.createElement('option');
@@ -1552,6 +1783,16 @@ function populateTeamFilter() {
         option.textContent = team;
         teamFilter.appendChild(option);
     });
+    
+    if (playerName) {
+        // Reset to "All Teams" when a specific player is selected
+        teamFilter.value = '';
+    } else if (previousValue && (previousValue === '' || sortedTeams.includes(previousValue))) {
+        // Preserve previous selection if still available when showing all teams
+        teamFilter.value = previousValue;
+    } else {
+        teamFilter.value = '';
+    }
 }
 
 /**
@@ -1632,12 +1873,18 @@ function selectUnifiedPlayer(playerName) {
     // Store selected player
     alAhlyFinalsStatsData.selectedUnifiedPlayer = playerName;
     
+    // Refresh team filter with teams specific to this player
+    populateTeamFilter(playerName);
+    
     // Display player overview
     const selectedTeam = teamFilter ? teamFilter.value : '';
     displayUnifiedPlayerOverview(playerName, selectedTeam);
     
     // Update player matches table
     updatePlayerMatchesTable(playerName, selectedTeam);
+    
+    // Update player vs teams table
+    updatePlayerVsTeamsTable(playerName, selectedTeam);
 }
 
 /**

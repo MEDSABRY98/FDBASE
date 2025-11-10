@@ -1513,6 +1513,7 @@
                 <div class="sub-tabs-nav">
                     <button class="sub-tab-btn active" onclick="switchSubTab('player-overview')">Player Overview</button>
                     <button class="sub-tab-btn" onclick="switchSubTab('player-matches')">Matches</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('player-vs-teams')">VS Teams</button>
                 </div>
 
                 <!-- Player Overview Sub Tab -->
@@ -1547,6 +1548,34 @@
                                     </thead>
                                     <tbody>
                                         <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Player VS Teams Sub Tab -->
+                <div id="player-vs-teams" class="sub-tab-content">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Player vs Teams</h2>
+                        <div class="finals-table-container">
+                            <div class="table-responsive">
+                                <table class="finals-table" id="player-vs-teams-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Opponent Team</th>
+                                            <th>Matches</th>
+                                            <th>Finals</th>
+                                            <th>Finals Won</th>
+                                            <th>Finals Lost</th>
+                                            <th>G + A</th>
+                                            <th>Goals</th>
+                                            <th>Assists</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data populated via JavaScript -->
                                     </tbody>
                                 </table>
                             </div>
