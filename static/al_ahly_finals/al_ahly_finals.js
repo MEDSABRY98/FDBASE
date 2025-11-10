@@ -1412,7 +1412,8 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
             const matchId = record['MATCH_ID'];
             const contributions = contributionsByMatch[matchId] || { goals: 0, assists: 0 };
             const finalInfo = finalMatchInfoById[matchId];
-            const wlFinal = finalInfo?.wlFinal || record['W-L FINAL'] || '-';
+            const isDecisiveRow = finalInfo?.record === record;
+            const wlFinal = isDecisiveRow ? (finalInfo?.wlFinal || record['W-L FINAL'] || '-') : '';
             
             return {
                 matchId,
@@ -1421,6 +1422,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
                 han: record['H/A/N'] || '-',
                 opponent: record['OPPONENT TEAM'] || '-',
                 wlFinal,
+                showFinalResult: isDecisiveRow && !!(finalInfo?.wlFinal || record['W-L FINAL']),
                 goals: contributions.goals,
                 assists: contributions.assists,
                 sortKey: parseDateToTimestamp(record['DATE']),
@@ -1465,7 +1467,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
             : match.assists;
         
         // Final W/L badge
-        let finalWlHTML = match.wlFinal || '-';
+        let finalWlHTML = match.wlFinal || '';
         if (match.wlFinal && match.wlFinal !== '-') {
             const finalWl = match.wlFinal.toUpperCase().trim();
             if (finalWl === 'W') {
@@ -1473,6 +1475,8 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
             } else if (finalWl === 'L') {
                 finalWlHTML = '<span class="badge badge-danger">L</span>';
             }
+        } else if (match.showFinalResult && match.wlFinal === '-') {
+            finalWlHTML = '-';
         }
         
         row.innerHTML = `
