@@ -16809,15 +16809,35 @@ function loadChampionshipsStats() {
     try {
         console.log('📊 Loading Championships Statistics...');
         
-        // Get filter values - only use applied filters, not current DOM values
-        const selectedTeam = appliedFilters?.ahlyTeam || '';
-        const selectedSeason = appliedFilters?.season || '';
-        const selectedSY = appliedFilters?.sy || '';
-        const selectedChampion = appliedFilters?.champion || '';
+        // Get filter values from the last applied filter set
+        const filters = appliedFilters || {};
+        const selectedTeam = filters.ahlyTeam || '';
+        const selectedSeason = filters.season || '';
+        const selectedSY = filters.sy || '';
+        const selectedChampion = filters.champion || '';
+        const dateFrom = filters.dateFrom || '';
+        const dateTo = filters.dateTo || '';
         
-        console.log('🔍 Championships Filters (from applied filters):', { selectedTeam, selectedSeason, selectedSY, selectedChampion });
+        console.log('🔍 Championships Filters (from applied filters):', { selectedTeam, selectedSeason, selectedSY, selectedChampion, dateFrom, dateTo });
         
-        const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
+        // Determine the best available dataset to work with
+        const currentFilteredRecords = getCurrentFilteredRecords();
+        const hasActiveFilters = Object.values(filters).some(value => value !== '');
+        let matches = [];
+
+        if (Array.isArray(currentFilteredRecords)) {
+            matches = currentFilteredRecords;
+            console.log(`📊 Using ${matches.length} records from current filtered dataset`);
+        } else if (hasActiveFilters && Array.isArray(alAhlyStatsData.filteredRecords)) {
+            matches = alAhlyStatsData.filteredRecords;
+            console.log(`📊 Using ${matches.length} records from stored filtered dataset`);
+        } else if (Array.isArray(alAhlyStatsData.allRecords) && alAhlyStatsData.allRecords.length > 0) {
+            matches = alAhlyStatsData.allRecords;
+            console.log(`📊 Using ${matches.length} records from allRecords cache`);
+        } else {
+            matches = getSheetRowsByCandidates(['MATCHDETAILS']);
+            console.log(`📊 Using ${matches.length} records directly from MATCHDETAILS sheet`);
+        }
         
         if (!matches || matches.length === 0) {
             document.getElementById('main-stats-championships-table').querySelector('tbody').innerHTML = 
@@ -16826,11 +16846,20 @@ function loadChampionshipsStats() {
         }
         
         // Apply filters
+        const normalizedTeamFilter = normalizeStr(selectedTeam).toLowerCase();
+        const normalizedSeasonFilter = normalizeStr(selectedSeason);
+        const normalizedSYFilter = normalizeStr(selectedSY);
+        const normalizedChampionFilter = normalizeStr(selectedChampion);
+
         let filteredMatches = matches.filter(match => {
-            const teamMatch = !selectedTeam || normalizeStr(match.TEAM || '').includes(normalizeStr(selectedTeam));
-            const seasonMatch = !selectedSeason || normalizeStr(match.SEASON || '') === normalizeStr(selectedSeason);
-            const syMatch = !selectedSY || normalizeStr(match.SY || '') === normalizeStr(selectedSY);
-            const championMatch = !selectedChampion || normalizeStr(match.CHAMPION || '') === normalizeStr(selectedChampion);
+            if (hasActiveFilters && !applyMainFiltersToMatch(match, filters)) {
+                return false;
+            }
+
+            const teamMatch = !selectedTeam || normalizeStr(match.TEAM || '').toLowerCase().includes(normalizedTeamFilter);
+            const seasonMatch = !selectedSeason || normalizeStr(match.SEASON || '') === normalizedSeasonFilter;
+            const syMatch = !selectedSY || normalizeStr(match.SY || '') === normalizedSYFilter;
+            const championMatch = !selectedChampion || normalizeStr(match.CHAMPION || '') === normalizedChampionFilter;
             
             return teamMatch && seasonMatch && syMatch && championMatch;
         });
@@ -16909,14 +16938,34 @@ function loadSeasonsStats() {
         console.log('📅 Loading Seasons Statistics...');
         
         // Get filter values - only use applied filters, not current DOM values
-        const selectedTeam = appliedFilters?.ahlyTeam || '';
-        const selectedSeason = appliedFilters?.season || '';
-        const selectedSY = appliedFilters?.sy || '';
-        const selectedChampion = appliedFilters?.champion || '';
+        const filters = appliedFilters || {};
+        const selectedTeam = filters.ahlyTeam || '';
+        const selectedSeason = filters.season || '';
+        const selectedSY = filters.sy || '';
+        const selectedChampion = filters.champion || '';
+        const dateFrom = filters.dateFrom || '';
+        const dateTo = filters.dateTo || '';
         
-        console.log('🔍 Seasons Filters (from applied filters):', { selectedTeam, selectedSeason, selectedSY, selectedChampion });
+        console.log('🔍 Seasons Filters (from applied filters):', { selectedTeam, selectedSeason, selectedSY, selectedChampion, dateFrom, dateTo });
         
-        const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
+        // Determine the best available dataset to work with
+        const currentFilteredRecords = getCurrentFilteredRecords();
+        const hasActiveFilters = Object.values(filters).some(value => value !== '');
+        let matches = [];
+
+        if (Array.isArray(currentFilteredRecords)) {
+            matches = currentFilteredRecords;
+            console.log(`📅 Using ${matches.length} records from current filtered dataset`);
+        } else if (hasActiveFilters && Array.isArray(alAhlyStatsData.filteredRecords)) {
+            matches = alAhlyStatsData.filteredRecords;
+            console.log(`📅 Using ${matches.length} records from stored filtered dataset`);
+        } else if (Array.isArray(alAhlyStatsData.allRecords) && alAhlyStatsData.allRecords.length > 0) {
+            matches = alAhlyStatsData.allRecords;
+            console.log(`📅 Using ${matches.length} records from allRecords cache`);
+        } else {
+            matches = getSheetRowsByCandidates(['MATCHDETAILS']);
+            console.log(`📅 Using ${matches.length} records directly from MATCHDETAILS sheet`);
+        }
         
         if (!matches || matches.length === 0) {
             document.getElementById('main-stats-seasons-table').querySelector('tbody').innerHTML = 
@@ -16925,11 +16974,20 @@ function loadSeasonsStats() {
         }
         
         // Apply filters
+        const normalizedTeamFilter = normalizeStr(selectedTeam).toLowerCase();
+        const normalizedSeasonFilter = normalizeStr(selectedSeason);
+        const normalizedSYFilter = normalizeStr(selectedSY);
+        const normalizedChampionFilter = normalizeStr(selectedChampion);
+
         let filteredMatches = matches.filter(match => {
-            const teamMatch = !selectedTeam || normalizeStr(match.TEAM || '').includes(normalizeStr(selectedTeam));
-            const seasonMatch = !selectedSeason || normalizeStr(match.SEASON || '') === normalizeStr(selectedSeason);
-            const syMatch = !selectedSY || normalizeStr(match.SY || '') === normalizeStr(selectedSY);
-            const championMatch = !selectedChampion || normalizeStr(match.CHAMPION || '') === normalizeStr(selectedChampion);
+            if (hasActiveFilters && !applyMainFiltersToMatch(match, filters)) {
+                return false;
+            }
+
+            const teamMatch = !selectedTeam || normalizeStr(match.TEAM || '').toLowerCase().includes(normalizedTeamFilter);
+            const seasonMatch = !selectedSeason || normalizeStr(match.SEASON || '') === normalizedSeasonFilter;
+            const syMatch = !selectedSY || normalizeStr(match.SY || '') === normalizedSYFilter;
+            const championMatch = !selectedChampion || normalizeStr(match.CHAMPION || '') === normalizedChampionFilter;
             
             return teamMatch && seasonMatch && syMatch && championMatch;
         });
