@@ -1313,6 +1313,30 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
     
     // Get match IDs from filtered matches
     const matchIds = new Set(matchRecords.map(r => r['MATCH_ID']));
+    const normalizeDateString = (dateStr) => {
+        if (!dateStr) return '';
+        const parts = dateStr.toString().split(/[\/\-\.]/);
+        if (parts.length === 3) {
+            const [day, month, year] = parts;
+            if (day && month && year) {
+                return `${year.padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+        }
+        const parsed = new Date(dateStr);
+        if (!Number.isNaN(parsed.getTime())) {
+            return parsed.toISOString().slice(0, 10);
+        }
+        return '';
+    };
+    
+    const matchRecordsByIdAndDate = {};
+    matchRecords.forEach(record => {
+        const matchId = record['MATCH_ID'];
+        if (!matchId) return;
+        const dateKey = normalizeDateString(record['DATE']);
+        const key = `${matchId}||${dateKey}`;
+        matchRecordsByIdAndDate[key] = record;
+    });
     
     // Get player matches from both PLAYERDETAILS (primary) and LINEUP11 (secondary)
     const playerMatches = new Set();
@@ -1368,18 +1392,30 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         const matchId = contribution['MATCH_ID'];
         const gaTotal = parseInt(contribution['GATOTAL']) || 0;
         const gaType = (contribution['GA'] || '').toUpperCase().trim();
+        let dateKey = normalizeDateString(contribution['DATE']);
+        if (!dateKey) {
+            const fallbackRecord = matchRecords.find(r => r['MATCH_ID'] === matchId);
+            dateKey = normalizeDateString(fallbackRecord?.['DATE']);
+        }
+        if (!dateKey) {
+            dateKey = '__ALL__';
+        }
         
         if (!contributionsByMatch[matchId]) {
-            contributionsByMatch[matchId] = { goals: 0, assists: 0 };
+            contributionsByMatch[matchId] = {};
         }
+        if (!contributionsByMatch[matchId][dateKey]) {
+            contributionsByMatch[matchId][dateKey] = { goals: 0, assists: 0 };
+        }
+        const contributionBucket = contributionsByMatch[matchId][dateKey];
         
         // Count goals and assists
         if (gaType === 'G' || gaType === 'GOAL') {
-            contributionsByMatch[matchId].goals += gaTotal;
+            contributionBucket.goals += gaTotal;
         }
         
         if (gaType === 'A' || gaType === 'ASSIST') {
-            contributionsByMatch[matchId].assists += gaTotal;
+            contributionBucket.assists += gaTotal;
         }
     });
     
@@ -1410,7 +1446,9 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         })
         .map(({ record, index }) => {
             const matchId = record['MATCH_ID'];
-            const contributions = contributionsByMatch[matchId] || { goals: 0, assists: 0 };
+            const dateKey = normalizeDateString(record['DATE']);
+            const contributionMap = contributionsByMatch[matchId] || {};
+            const contributions = contributionMap[dateKey] || contributionMap['__ALL__'] || { goals: 0, assists: 0 };
             const finalInfo = finalMatchInfoById[matchId];
             const isDecisiveRow = finalInfo?.record === record;
             const wlFinal = isDecisiveRow ? (finalInfo?.wlFinal || record['W-L FINAL'] || '-') : '';
