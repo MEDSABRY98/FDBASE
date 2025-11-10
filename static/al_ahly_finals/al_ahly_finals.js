@@ -1460,6 +1460,51 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
 }
 
 /**
+ * Build final match info lookup ensuring the decisive record is used per MATCH_ID
+ */
+function buildFinalMatchInfo(records) {
+    const entriesByMatchId = {};
+    
+    records.forEach((record, index) => {
+        const matchId = record['MATCH_ID'];
+        if (!matchId) return;
+        
+        if (!entriesByMatchId[matchId]) {
+            entriesByMatchId[matchId] = [];
+        }
+        entriesByMatchId[matchId].push({ record, index });
+    });
+    
+    const finalInfoByMatchId = {};
+    
+    Object.entries(entriesByMatchId).forEach(([matchId, entries]) => {
+        entries.sort((a, b) => a.index - b.index);
+        
+        let finalEntry = null;
+        for (let i = entries.length - 1; i >= 0; i--) {
+            const wlFinal = (entries[i].record['W-L FINAL'] || '').toUpperCase().trim();
+            if (wlFinal === 'W' || wlFinal === 'L') {
+                finalEntry = entries[i];
+                break;
+            }
+        }
+        
+        if (!finalEntry) {
+            finalEntry = entries[entries.length - 1];
+        }
+        
+        const record = finalEntry.record;
+        finalInfoByMatchId[matchId] = {
+            opponentTeam: record['OPPONENT TEAM'] || 'Unknown',
+            wlFinal: (record['W-L FINAL'] || '').toUpperCase().trim(),
+            record
+        };
+    });
+    
+    return finalInfoByMatchId;
+}
+
+/**
  * Update player vs teams table
  */
 function updatePlayerVsTeamsTable(playerName, teamFilter) {
@@ -1488,6 +1533,7 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
     }
     
     const matchRecords = alAhlyFinalsStatsData.filteredRecords;
+    const finalMatchInfoById = buildFinalMatchInfo(matchRecords);
     const playersData = alAhlyFinalsStatsData.playersData;
     const lineupData = alAhlyFinalsStatsData.lineupData;
     
@@ -1506,14 +1552,6 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
     }
     
     // Build lookup of match records by MATCH_ID
-    const matchRecordsById = {};
-    matchRecords.forEach(record => {
-        const matchId = record['MATCH_ID'];
-        if (matchId && !matchRecordsById[matchId]) {
-            matchRecordsById[matchId] = record;
-        }
-    });
-    
     // Helper to ensure stats object exists
     const statsByOpponent = {};
     const ensureOpponentStats = (opponentTeam) => {
@@ -1533,7 +1571,7 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
     
     // Filter player contributions and lineup data by team (if provided)
     const playerContributions = playersData.filter(p => {
-        if (!matchRecordsById[p['MATCH_ID']]) return false;
+        if (!finalMatchInfoById[p['MATCH_ID']]) return false;
         if (p['PLAYER NAME'] !== playerName) return false;
         
         if (teamFilter) {
@@ -1545,7 +1583,7 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
     });
     
     const playerLineup = lineupData.filter(l => {
-        if (!matchRecordsById[l['MATCH_ID']]) return false;
+        if (!finalMatchInfoById[l['MATCH_ID']]) return false;
         if (l['PLAYER NAME'] !== playerName) return false;
         
         if (teamFilter) {
@@ -1558,14 +1596,14 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
     
     // Register match participation helper
     const registerMatchParticipation = (matchId) => {
-        const matchRecord = matchRecordsById[matchId];
-        if (!matchRecord) return;
+        const finalInfo = finalMatchInfoById[matchId];
+        if (!finalInfo) return;
         
-        const opponentTeam = matchRecord['OPPONENT TEAM'] || 'Unknown';
+        const opponentTeam = finalInfo.opponentTeam;
         const stats = ensureOpponentStats(opponentTeam);
         stats.matchIds.add(matchId);
         
-        const wlFinal = (matchRecord['W-L FINAL'] || '').toUpperCase().trim();
+        const wlFinal = finalInfo.wlFinal;
         if (wlFinal === 'W') {
             stats.finalsWonIds.add(matchId);
         } else if (wlFinal === 'L') {
@@ -1580,10 +1618,10 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
         
         registerMatchParticipation(matchId);
         
-        const matchRecord = matchRecordsById[matchId];
-        if (!matchRecord) return;
+        const finalInfo = finalMatchInfoById[matchId];
+        if (!finalInfo) return;
         
-        const opponentTeam = matchRecord['OPPONENT TEAM'] || 'Unknown';
+        const opponentTeam = finalInfo.opponentTeam;
         const stats = ensureOpponentStats(opponentTeam);
         
         const gaTotal = parseInt(contribution['GATOTAL']) || 0;
@@ -2080,11 +2118,13 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
     // Count unique finals won and lost (by MATCH_ID)
     const finalsWonSet = new Set();
     const finalsLostSet = new Set();
-    matchRecords.forEach(match => {
-        const matchId = match['MATCH_ID'];
-        if (!matchId || !playerMatches.has(matchId)) return;
+    const finalMatchInfoById = buildFinalMatchInfo(matchRecords);
+    Object.entries(finalMatchInfoById).forEach(([matchId, finalInfo]) => {
+        if (!playerMatches.has(matchId)) return;
         
-        const wlFinal = match['W-L FINAL'];
+        const wlFinal = finalInfo.wlFinal;
+        if (!wlFinal) return;
+        
         if (isAhlyPlayer) {
             if (wlFinal === 'W') finalsWonSet.add(matchId);
             if (wlFinal === 'L') finalsLostSet.add(matchId);
