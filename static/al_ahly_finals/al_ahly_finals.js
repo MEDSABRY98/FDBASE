@@ -1438,6 +1438,20 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
     
     console.log('📋 Player match rows:', playerMatchRows.length, 'rows');
     
+    if (playerMatchRows.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td colspan="7" class="empty-state">
+                <div style="padding: 2rem; text-align: center; color: #6c757d;">
+                    <h3>No Matches Found</h3>
+                    <p>No matches found for this player with the selected team filter.</p>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+        return;
+    }
+    
     // Populate table
     playerMatchRows.forEach(match => {
         const row = document.createElement('tr');
@@ -1472,20 +1486,6 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         `;
         tbody.appendChild(row);
     });
-    
-    // Show message if no matches found
-    if (playerMatchList.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="7" class="empty-state">
-                <div style="padding: 2rem; text-align: center; color: #6c757d;">
-                    <h3>No Matches Found</h3>
-                    <p>No matches found for this player with the selected team filter.</p>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
-    }
 }
 
 /**
