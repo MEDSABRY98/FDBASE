@@ -1383,34 +1383,63 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         }
     });
     
-    // Create table rows for each match
-    const playerMatchList = Array.from(playerMatches).map(matchId => {
-        const match = matchRecords.find(r => r['MATCH_ID'] === matchId);
-        const contributions = contributionsByMatch[matchId] || { goals: 0, assists: 0 };
-        
-        return {
-            matchId,
-            date: match['DATE'] || '-',
-            season: match['SEASON'] || '-',
-            han: match['H/A/N'] || '-',
-            opponent: match['OPPONENT TEAM'] || '-',
-            finalWl: match['W-L FINAL'] || '-',
-            goals: contributions.goals,
-            assists: contributions.assists
-        };
+    const finalMatchInfoById = buildFinalMatchInfo(matchRecords);
+    
+    const parseDateToTimestamp = (dateStr) => {
+        if (!dateStr) return new Date('1900-01-01').getTime();
+        const parts = dateStr.toString().split(/[\/\-\.]/);
+        if (parts.length === 3) {
+            const [day, month, year] = parts;
+            if (day && month && year) {
+                const iso = `${year.padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                const ts = new Date(iso).getTime();
+                if (!Number.isNaN(ts)) {
+                    return ts;
+                }
+            }
+        }
+        const fallback = new Date(dateStr).getTime();
+        return Number.isNaN(fallback) ? new Date('1900-01-01').getTime() : fallback;
+    };
+    
+    const playerMatchRows = matchRecords
+        .map((record, index) => ({ record, index }))
+        .filter(({ record }) => {
+            const matchId = record['MATCH_ID'];
+            return matchId && playerMatches.has(matchId);
+        })
+        .map(({ record, index }) => {
+            const matchId = record['MATCH_ID'];
+            const contributions = contributionsByMatch[matchId] || { goals: 0, assists: 0 };
+            const finalInfo = finalMatchInfoById[matchId];
+            const wlFinal = finalInfo?.wlFinal || record['W-L FINAL'] || '-';
+            
+            return {
+                matchId,
+                date: record['DATE'] || '-',
+                season: record['SEASON'] || '-',
+                han: record['H/A/N'] || '-',
+                opponent: record['OPPONENT TEAM'] || '-',
+                wlFinal,
+                goals: contributions.goals,
+                assists: contributions.assists,
+                sortKey: parseDateToTimestamp(record['DATE']),
+                originalIndex: index
+            };
+        });
+    
+    // Sort by date (newest first) and fallback to original order
+    playerMatchRows.sort((a, b) => {
+        if (b.sortKey !== a.sortKey) {
+            return b.sortKey - a.sortKey;
+        }
+        return b.originalIndex - a.originalIndex;
     });
     
-    // Sort by date (newest first)
-    playerMatchList.sort((a, b) => {
-        const dateA = new Date(a.date || '1900-01-01');
-        const dateB = new Date(b.date || '1900-01-01');
-        return dateB - dateA;
-    });
-    
-    console.log('📋 Player match list:', playerMatchList.length, 'matches');
+    console.log('📋 Player match rows:', playerMatchRows.length, 'rows');
     
     // Populate table
-    playerMatchList.forEach(match => {
+    playerMatchRows.forEach(match => {
         const row = document.createElement('tr');
         
         // Highlight goals and assists if > 0 (wrap number in span)
@@ -1422,9 +1451,9 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
             : match.assists;
         
         // Final W/L badge
-        let finalWlHTML = match.finalWl;
-        if (match.finalWl && match.finalWl !== '-') {
-            const finalWl = match.finalWl.toUpperCase().trim();
+        let finalWlHTML = match.wlFinal || '-';
+        if (match.wlFinal && match.wlFinal !== '-') {
+            const finalWl = match.wlFinal.toUpperCase().trim();
             if (finalWl === 'W') {
                 finalWlHTML = '<span class="badge badge-success">W</span>';
             } else if (finalWl === 'L') {
