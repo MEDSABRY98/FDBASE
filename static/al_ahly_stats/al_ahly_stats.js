@@ -16080,6 +16080,17 @@ function loadPlayerAssistDetails() {
     try {
         const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
         const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+        const appliedFilters = typeof getCurrentFilters === 'function' ? getCurrentFilters() : {};
+        const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']) || [];
+        const matchDetailsMap = new Map();
+        matchDetails.forEach(match => {
+            const mid = normalizeStr(match.MATCH_ID || match['MATCH ID'] || match.match_id || '');
+            if (mid) {
+                matchDetailsMap.set(mid, match);
+            }
+        });
+        const hasActiveFilters = appliedFilters && Object.keys(appliedFilters).length > 0;
+        const shouldApplyMatchFilters = hasActiveFilters && matchDetailsMap.size > 0;
         
         if (!selectedPlayer) {
             console.log('⚠️ No player selected for Assist Details');
@@ -16087,6 +16098,12 @@ function loadPlayerAssistDetails() {
         }
         
         console.log(`🎯 Loading Assist Details for player: ${selectedPlayer}, team filter: ${teamFilter}`);
+        if (hasActiveFilters) {
+            console.log('🔍 Applying main filters for Assist Details:', appliedFilters);
+            if (!shouldApplyMatchFilters) {
+                console.warn('⚠️ Match details not available - main filters cannot be applied to Assist Details records');
+            }
+        }
         
         // Get PLAYERDETAILS sheet
         const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
@@ -16103,12 +16120,32 @@ function loadPlayerAssistDetails() {
         
         // Get all player records for filtering
         const filteredDetails = playerDetails.filter(r => {
+            const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
+            if (!matchId) {
+                return false;
+            }
+            
             if (teamLower) {
                 const teamVal = r.TEAM || r['AHLY TEAM'] || '';
-                return teamMatchesFilter(teamVal, teamFilter);
+                if (!teamMatchesFilter(teamVal, teamFilter)) {
+                    return false;
+                }
             }
+            
+            if (shouldApplyMatchFilters) {
+                const matchDetail = matchDetailsMap.get(matchId);
+                if (!matchDetail) {
+                    return false;
+                }
+                if (!applyMainFiltersToMatch(matchDetail, appliedFilters)) {
+                    return false;
+                }
+            }
+            
             return true;
         });
+        
+        console.log(`📊 Assist details records after filtering: ${filteredDetails.length}/${playerDetails.length}`);
         
         // Maps to store assist relationships
         const makeAssistMap = {}; // Player made assists TO which players
