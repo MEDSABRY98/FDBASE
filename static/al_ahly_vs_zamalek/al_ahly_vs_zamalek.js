@@ -3217,7 +3217,7 @@ function populateByPlayerMatches() {
     tbody.innerHTML = '';
     
     if (!currentByPlayer) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">Please select a player</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #6c757d;">Please select a player</td></tr>';
         return;
     }
     
@@ -3293,11 +3293,19 @@ function populateByPlayerMatches() {
             else if (result === 'L') result = 'W';
         }
         
+        let myTeam = '-';
+        if (isAhly) {
+            myTeam = 'Al Ahly';
+        } else if (isZamalek) {
+            myTeam = 'Zamalek';
+        } else if (team) {
+            myTeam = team;
+        }
+        
         playerMatches.push({
             date: match['DATE'],
             season: match['SEASON'],
-            ahlyManager: match['AHLY MANAGER'] || '-',
-            zamalekManager: match['ZAMALEK MANAGER'] || '-',
+            myTeam: myTeam,
             result: result,
             minutes: minutes,
             goals: goals,
@@ -3316,7 +3324,7 @@ function populateByPlayerMatches() {
     
     // Populate table
     if (playerMatches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found for this player</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found for this player</td></tr>';
         console.log('❌ No matches to display');
         return;
     }
@@ -3324,15 +3332,17 @@ function populateByPlayerMatches() {
     playerMatches.forEach(match => {
         const row = document.createElement('tr');
         
+        const goalClass = match.goals > 0 ? ' by-player-goal' : '';
+        const assistClass = match.assists > 0 ? ' by-player-assist' : '';
+        
         row.innerHTML = `
             <td>${match.date}</td>
             <td>${match.season}</td>
-            <td>${match.ahlyManager}</td>
-            <td>${match.zamalekManager}</td>
+            <td>${match.myTeam}</td>
             <td>${match.result}</td>
-            <td>${match.goals}</td>
-            <td>${match.assists}</td>
-            <td>${match.minutes}</td>
+            <td><span class="by-player-number by-player-minutes">${match.minutes}</span></td>
+            <td><span class="by-player-number${goalClass}">${match.goals}</span></td>
+            <td><span class="by-player-number${assistClass}">${match.assists}</span></td>
         `;
         
         tbody.appendChild(row);

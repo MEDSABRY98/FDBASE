@@ -982,9 +982,15 @@
                     <div id="players-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <!-- Players Search -->
-                            <div style="margin-bottom: 2rem; text-align: center;">
+                            <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
                                 <input type="text" id="all-players-search" placeholder="🔍 Search in players table..." 
                                     style="padding: 0.75rem 1rem; width: 400px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;" autocomplete="off">
+                                <select id="all-players-team-filter" 
+                                    style="padding: 0.75rem 1rem; min-width: 220px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; background: #ffffff; color: #374151;">
+                                    <option value="all">All Players (Egypt + Opponent)</option>
+                                    <option value="egypt">Egypt Players Only</option>
+                                    <option value="opponent">Opponent Players Only</option>
+                                </select>
                             </div>
                             
                             <!-- Players Loading -->
@@ -1194,9 +1200,15 @@
             }
             
             // If players tab is clicked and players not loaded, load them
-            if (tabName === 'players' && !wwEgyptTeamsData.playersLoaded) {
-                loadWWEgyptTeamsPlayers();
+            if (tabName === 'players') {
                 setupPlayersSearch();
+                setupPlayersTeamFilter();
+                
+                if (!wwEgyptTeamsData.playersLoaded) {
+                    loadWWEgyptTeamsPlayers();
+                } else {
+                    displayPlayers();
+                }
             }
             
             // If elnady tab is clicked

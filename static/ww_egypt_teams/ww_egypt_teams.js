@@ -22,8 +22,15 @@ let wwEgyptTeamsData = {
     allPlayers: [],
     playersLoaded: false,
     currentSortColumn: 'totalGA',
-    currentSortDirection: 'desc'
+    currentSortDirection: 'desc',
+    currentPlayersTeamFilter: 'all'
 };
+
+function isEgyptTeamName(teamName) {
+    if (!teamName) return false;
+    const normalized = teamName.toLowerCase();
+    return normalized.includes('egypt') || normalized.includes('مصر') || normalized.includes('egy');
+}
 
 // Virtual Scrolling state
 let virtualScrollState = {
@@ -924,9 +931,26 @@ function displayPlayers() {
     // Determine which players to display
     let playersToDisplay = wwEgyptTeamsData.players;
     
+    // Apply team filter
+    const teamFilter = wwEgyptTeamsData.currentPlayersTeamFilter || 'all';
+    if (teamFilter !== 'all') {
+        playersToDisplay = playersToDisplay.filter(player => {
+            const teamName = (player.team || '').toLowerCase();
+            const isEgypt = isEgyptTeamName(teamName);
+            
+            if (teamFilter === 'egypt') {
+                return isEgypt;
+            }
+            if (teamFilter === 'opponent') {
+                return teamName ? !isEgypt : false;
+            }
+            return true;
+        });
+    }
+    
     // If there's a search term, filter the players
     if (searchTerm) {
-        playersToDisplay = wwEgyptTeamsData.players.filter((player) => {
+        playersToDisplay = playersToDisplay.filter((player) => {
             const playerName = String(player.playerName || '').toLowerCase();
             const goals = String(player.goals || '').toLowerCase();
             const assists = String(player.assists || '').toLowerCase();
@@ -941,6 +965,12 @@ function displayPlayers() {
     if (playersToDisplay.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No players found</td></tr>';
         return;
+    }
+    
+    // Keep filter select in sync with state
+    const teamFilterSelect = document.getElementById('all-players-team-filter');
+    if (teamFilterSelect && teamFilterSelect.value !== teamFilter) {
+        teamFilterSelect.value = teamFilter;
     }
     
     // Sort players based on current sort column and direction
@@ -1020,7 +1050,28 @@ function setupPlayersSearch() {
     const searchInput = document.getElementById('all-players-search');
     if (!searchInput) return;
     
+    if (searchInput.dataset.searchSetup === 'true') return;
+    searchInput.dataset.searchSetup = 'true';
+    
     searchInput.addEventListener('input', () => {
+        displayPlayers();
+    });
+}
+
+function setupPlayersTeamFilter() {
+    const filterSelect = document.getElementById('all-players-team-filter');
+    if (!filterSelect) return;
+    
+    if (filterSelect.dataset.teamFilterSetup === 'true') {
+        filterSelect.value = wwEgyptTeamsData.currentPlayersTeamFilter || 'all';
+        return;
+    }
+    
+    filterSelect.dataset.teamFilterSetup = 'true';
+    filterSelect.value = wwEgyptTeamsData.currentPlayersTeamFilter || 'all';
+    
+    filterSelect.addEventListener('change', () => {
+        wwEgyptTeamsData.currentPlayersTeamFilter = filterSelect.value || 'all';
         displayPlayers();
     });
 }
