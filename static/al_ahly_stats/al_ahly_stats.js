@@ -10004,6 +10004,11 @@ function showStatsTab(arg1, arg2) {
         const currentFilteredRecords = getCurrentFilteredRecords();
         loadAllPlayersData(currentFilteredRecords);
     }
+    
+    // Load Trophy Players data when Trophy Players tab is selected
+    if (tabName === 'trophy-players') {
+        loadTrophyPlayersData();
+    }
 }
 
 // Player sub-tabs switching (compatible with showPlayerSubTab(event, 'name') and showPlayerSubTab('name'))
@@ -11171,19 +11176,20 @@ let trophyScorersSortState = {
     direction: 'desc'
 };
 
-// Get trophy-winning seasons from TROPHY sheet
+// Get trophy-winning seasons from TROPHY sheet (Champions column)
 function getTrophySeasons() {
     const trophyData = getSheetRowsByCandidates(['TROPHY']);
     const seasons = new Set();
     
     trophyData.forEach(record => {
-        const season = record.SEASON || record.season;
-        if (season) {
-            seasons.add(season);
+        // Read from Champions column only
+        const season = record['Champions'];
+        if (season && String(season).trim() !== '') {
+            seasons.add(String(season).trim());
         }
     });
     
-    console.log(`Found ${seasons.size} trophy-winning seasons:`, Array.from(seasons));
+    console.log(`Found ${seasons.size} trophy-winning seasons (Champions):`, Array.from(seasons));
     return seasons;
 }
 
@@ -16163,6 +16169,443 @@ function toggleTrophySeasons(index) {
 
 // Expose to window for onclick handler
 window.toggleTrophySeasons = toggleTrophySeasons;
+
+// ============================================================================
+// TROPHY PLAYERS STATISTICS
+// ============================================================================
+
+// Trophy name mapping
+const TROPHY_NAMES = {
+    'دوري أبطال أفريقيا': 'african-champions',
+    'الدوري الأفريقي': 'african-league',
+    'الكونفدرالية الأفريقية': 'confederation',
+    'السوبر الأفريقي': 'african-super',
+    'كأس الكؤوس الأفريقية': 'african-cup-winners',
+    'كأس الأفرو أسيوي': 'afro-asian',
+    'الدوري المصري': 'egyptian-league',
+    'كأس مصر': 'egyptian-cup',
+    'السوبر المصري': 'egyptian-super',
+    'كأس الرابطة': 'league-cup',
+    'كأس العالم للأندية': 'club-world-cup',
+    'كأس الانتر كونتينينتال': 'intercontinental',
+    'دوري أبطال العرب': 'arab-champions',
+    'كأس الكؤوس العربية': 'arab-cup-winners',
+    'السوبر العربي': 'arab-super'
+};
+
+// Trophy column order
+const TROPHY_COLUMNS = [
+    'african-champions',
+    'african-league',
+    'confederation',
+    'african-super',
+    'african-cup-winners',
+    'afro-asian',
+    'egyptian-league',
+    'egyptian-cup',
+    'egyptian-super',
+    'league-cup',
+    'club-world-cup',
+    'intercontinental',
+    'arab-champions',
+    'arab-cup-winners',
+    'arab-super'
+];
+
+// Global variables for Trophy Players
+let trophyPlayersCurrentData = [];
+let trophyPlayersSortState = {
+    column: 'total',
+    direction: 'desc'
+};
+
+/**
+ * Load and display Trophy Players data
+ */
+function loadTrophyPlayersData() {
+    try {
+        console.log('🏆 Loading Trophy Players data...');
+        
+        // Get trophy data from TROPHY sheet
+        const trophySheet = getSheetRowsByCandidates(['TROPHY']);
+        if (!trophySheet || trophySheet.length === 0) {
+            console.log('No trophy data available');
+            renderTrophyPlayersTable([]);
+            return;
+        }
+        
+        // Get all sheets that contain player data
+        const lineupSheet = getSheetRowsByCandidates(['LINEUPDETAILS']) || [];
+        const playerDetailsSheet = getSheetRowsByCandidates(['PLAYERDETAILS']) || [];
+        const gkDetailsSheet = getSheetRowsByCandidates(['GKDETAILS']) || [];
+        
+        // Get main sheet to get MATCH_ID for filtering
+        const mainSheet = getSheetRowsByCandidates(['MATCHDETAILS']) || [];
+        
+        // Calculate trophies for all players
+        const playersTrophies = calculateAllPlayersTrophies(
+            trophySheet,
+            lineupSheet,
+            playerDetailsSheet,
+            gkDetailsSheet,
+            mainSheet
+        );
+        
+        // Render trophy players table
+        renderTrophyPlayersTable(playersTrophies);
+    } catch (error) {
+        console.error('❌ Error in loadTrophyPlayersData:', error);
+        renderTrophyPlayersTable([]);
+    }
+}
+
+/**
+ * Calculate trophies for all players
+ */
+function calculateAllPlayersTrophies(trophySheet, lineupSheet, playerDetailsSheet, gkDetailsSheet, mainSheet) {
+    try {
+        // Map to store player trophies: playerName -> trophyName -> count
+        const playersTrophiesMap = new Map();
+        
+        // Process each trophy row from TROPHY sheet
+        trophySheet.forEach(trophyRow => {
+            // Process Champions (from Champions column)
+            const championsSeason = trophyRow['Champions'];
+            if (championsSeason && String(championsSeason).trim() !== '') {
+                processPlayerTrophyForSeason(
+                    String(championsSeason).trim(),
+                    lineupSheet,
+                    playerDetailsSheet,
+                    gkDetailsSheet,
+                    mainSheet,
+                    playersTrophiesMap
+                );
+            }
+        });
+        
+        // Convert map to array
+        const playersArray = [];
+        playersTrophiesMap.forEach((trophiesMap, playerName) => {
+            const playerTrophies = {
+                name: playerName,
+                'african-champions': 0,
+                'african-league': 0,
+                'confederation': 0,
+                'african-super': 0,
+                'african-cup-winners': 0,
+                'afro-asian': 0,
+                'egyptian-league': 0,
+                'egyptian-cup': 0,
+                'egyptian-super': 0,
+                'league-cup': 0,
+                'club-world-cup': 0,
+                'intercontinental': 0,
+                'arab-champions': 0,
+                'arab-cup-winners': 0,
+                'arab-super': 0,
+                'total': 0
+            };
+            
+            // Count trophies for each trophy type
+            trophiesMap.forEach((count, trophyName) => {
+                const trophyKey = TROPHY_NAMES[trophyName];
+                if (trophyKey && playerTrophies.hasOwnProperty(trophyKey)) {
+                    playerTrophies[trophyKey] = count;
+                    playerTrophies.total += count;
+                }
+            });
+            
+            playersArray.push(playerTrophies);
+        });
+        
+        // Sort by total (descending) then by player name
+        playersArray.sort((a, b) => {
+            if (b.total !== a.total) {
+                return b.total - a.total;
+            }
+            return a.name.localeCompare(b.name);
+        });
+        
+        console.log(`🏆 Total players with trophies: ${playersArray.length}`);
+        
+        return playersArray;
+    } catch (error) {
+        console.error('❌ Error in calculateAllPlayersTrophies:', error);
+        return [];
+    }
+}
+
+/**
+ * Process trophy for a season and update players trophies map
+ */
+function processPlayerTrophyForSeason(season, lineupSheet, playerDetailsSheet, gkDetailsSheet, mainSheet, playersTrophiesMap) {
+    // Get all matches in this season from main sheet
+    const seasonMatches = mainSheet.filter(m => {
+        const matchSeason = m['SEASON'];
+        return matchSeason === season;
+    });
+    
+    if (seasonMatches.length === 0) return;
+    
+    // Get trophy name from CHAMPION column in MATCHDETAILS (first match)
+    const trophyName = seasonMatches[0]['CHAMPION'] || 'Unknown Trophy';
+    
+    const seasonMatchIds = new Set(seasonMatches.map(m => String(m['MATCH_ID'])));
+    
+    // Get all players who appeared in this season
+    const playersInSeason = new Set();
+    
+    // Check in LINEUPDETAILS
+    lineupSheet.forEach(row => {
+        const matchId = String(row['MATCH_ID']);
+        if (seasonMatchIds.has(matchId)) {
+            const playerName = row['PLAYER NAME'];
+            if (playerName) {
+                playersInSeason.add(playerName);
+            }
+        }
+    });
+    
+    // Check in PLAYERDETAILS - only count if player was with Al Ahly
+    playerDetailsSheet.forEach(row => {
+        const matchId = String(row['MATCH_ID']);
+        if (seasonMatchIds.has(matchId)) {
+            const playerName = row['PLAYER NAME'];
+            if (playerName) {
+                const team = normalizeStr(row['TEAM'] || '');
+                if (team === 'الأهلي' || team === 'ahly') {
+                    playersInSeason.add(playerName);
+                }
+            }
+        }
+    });
+    
+    // Check in GKDETAILS - only count if player was with Al Ahly
+    gkDetailsSheet.forEach(row => {
+        const matchId = String(row['MATCH_ID']);
+        if (seasonMatchIds.has(matchId)) {
+            const playerName = row['PLAYER NAME'];
+            if (playerName) {
+                const team = normalizeStr(row['TEAM'] || '');
+                if (team === 'الأهلي' || team === 'ahly') {
+                    playersInSeason.add(playerName);
+                }
+            }
+        }
+    });
+    
+    // Update players trophies map
+    playersInSeason.forEach(playerName => {
+        if (!playersTrophiesMap.has(playerName)) {
+            playersTrophiesMap.set(playerName, new Map());
+        }
+        
+        const playerTrophies = playersTrophiesMap.get(playerName);
+        const currentCount = playerTrophies.get(trophyName) || 0;
+        playerTrophies.set(trophyName, currentCount + 1);
+    });
+}
+
+/**
+ * Render Trophy Players table
+ */
+function renderTrophyPlayersTable(playersData) {
+    const tbody = document.querySelector('#trophy-players-table tbody');
+    if (!tbody) return;
+    
+    // Store current data for sorting
+    trophyPlayersCurrentData = playersData;
+    
+    tbody.innerHTML = '';
+    
+    if (playersData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="17" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
+        return;
+    }
+    
+    // Apply current sort state
+    if (trophyPlayersSortState.column) {
+        const sortedData = [...playersData].sort((a, b) => {
+            let valA = a[trophyPlayersSortState.column];
+            let valB = b[trophyPlayersSortState.column];
+            
+            if (trophyPlayersSortState.column === 'name') {
+                valA = String(valA).toLowerCase();
+                valB = String(valB).toLowerCase();
+                if (trophyPlayersSortState.direction === 'desc') {
+                    return valB.localeCompare(valA);
+                } else {
+                    return valA.localeCompare(valB);
+                }
+            }
+            
+            valA = Number(valA) || 0;
+            valB = Number(valB) || 0;
+            
+            if (trophyPlayersSortState.direction === 'desc') {
+                return valB - valA;
+            } else {
+                return valA - valB;
+            }
+        });
+        
+        // Update active header styling
+        document.querySelectorAll('#trophy-players-table th.sortable').forEach(th => {
+            th.classList.remove('active');
+            const icon = th.querySelector('.sort-icon');
+            if (icon) {
+                icon.textContent = '⇅';
+            }
+        });
+        
+        const headers = document.querySelectorAll('#trophy-players-table th.sortable');
+        const columnMap = {
+            'name': 0,
+            'total': 1,
+            'african-champions': 2,
+            'african-league': 3,
+            'confederation': 4,
+            'african-super': 5,
+            'african-cup-winners': 6,
+            'afro-asian': 7,
+            'egyptian-league': 8,
+            'egyptian-cup': 9,
+            'egyptian-super': 10,
+            'league-cup': 11,
+            'club-world-cup': 12,
+            'intercontinental': 13,
+            'arab-champions': 14,
+            'arab-cup-winners': 15,
+            'arab-super': 16
+        };
+        
+        const headerIndex = columnMap[trophyPlayersSortState.column];
+        if (headerIndex !== undefined && headers[headerIndex]) {
+            headers[headerIndex].classList.add('active');
+            const icon = headers[headerIndex].querySelector('.sort-icon');
+            if (icon) {
+                icon.textContent = trophyPlayersSortState.direction === 'desc' ? '↓' : '↑';
+            }
+        }
+        
+        playersData = sortedData;
+    }
+    
+    // Render rows
+    playersData.forEach(player => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${player.name}</strong></td>
+            <td><strong>${player.total}</strong></td>
+            <td>${player['african-champions']}</td>
+            <td>${player['african-league']}</td>
+            <td>${player['confederation']}</td>
+            <td>${player['african-super']}</td>
+            <td>${player['african-cup-winners']}</td>
+            <td>${player['afro-asian']}</td>
+            <td>${player['egyptian-league']}</td>
+            <td>${player['egyptian-cup']}</td>
+            <td>${player['egyptian-super']}</td>
+            <td>${player['league-cup']}</td>
+            <td>${player['club-world-cup']}</td>
+            <td>${player['intercontinental']}</td>
+            <td>${player['arab-champions']}</td>
+            <td>${player['arab-cup-winners']}</td>
+            <td>${player['arab-super']}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    console.log(`Trophy Players table rendered with ${playersData.length} players`);
+}
+
+/**
+ * Sort Trophy Players table
+ */
+function sortTrophyPlayersTable(column) {
+    console.log('Sorting Trophy Players table by:', column);
+    
+    // Update sort direction
+    if (trophyPlayersSortState.column === column) {
+        trophyPlayersSortState.direction = trophyPlayersSortState.direction === 'desc' ? 'asc' : 'desc';
+    } else {
+        trophyPlayersSortState.column = column;
+        trophyPlayersSortState.direction = 'desc';
+    }
+    
+    // Sort the data
+    const sortedData = [...trophyPlayersCurrentData].sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+        
+        // Handle string comparison for player name
+        if (column === 'name') {
+            valA = String(valA).toLowerCase();
+            valB = String(valB).toLowerCase();
+            if (trophyPlayersSortState.direction === 'desc') {
+                return valB.localeCompare(valA);
+            } else {
+                return valA.localeCompare(valB);
+            }
+        }
+        
+        // Handle numeric comparison
+        valA = Number(valA) || 0;
+        valB = Number(valB) || 0;
+        
+        if (trophyPlayersSortState.direction === 'desc') {
+            return valB - valA;
+        } else {
+            return valA - valB;
+        }
+    });
+    
+    // Update active header styling
+    document.querySelectorAll('#trophy-players-table th.sortable').forEach(th => {
+        th.classList.remove('active');
+        const icon = th.querySelector('.sort-icon');
+        if (icon) {
+            icon.textContent = '⇅';
+        }
+    });
+    
+    // Find and mark active header
+    const headers = document.querySelectorAll('#trophy-players-table th.sortable');
+    const columnMap = {
+        'name': 0,
+        'total': 1,
+        'african-champions': 2,
+        'african-league': 3,
+        'confederation': 4,
+        'african-super': 5,
+        'african-cup-winners': 6,
+        'afro-asian': 7,
+        'egyptian-league': 8,
+        'egyptian-cup': 9,
+        'egyptian-super': 10,
+        'league-cup': 11,
+        'club-world-cup': 12,
+        'intercontinental': 13,
+        'arab-champions': 14,
+        'arab-cup-winners': 15,
+        'arab-super': 16
+    };
+    
+    const headerIndex = columnMap[column];
+    if (headerIndex !== undefined && headers[headerIndex]) {
+        headers[headerIndex].classList.add('active');
+        const icon = headers[headerIndex].querySelector('.sort-icon');
+        if (icon) {
+            icon.textContent = trophyPlayersSortState.direction === 'desc' ? '↓' : '↑';
+        }
+    }
+    
+    renderTrophyPlayersTable(sortedData);
+}
+
+// Expose to window
+window.sortTrophyPlayersTable = sortTrophyPlayersTable;
+window.loadTrophyPlayersData = loadTrophyPlayersData;
 
 /**
  * Load and display player assist details (Make Assist & Take Assist)

@@ -1886,7 +1886,7 @@
 
         <!-- Statistics Tabs -->
         <div class="stats-tabs-container">
-            <!-- First Row of Tabs (6 tabs) -->
+            <!-- First Row of Tabs (7 tabs) -->
             <div class="stats-tabs-row">
                 <div class="stats-tabs">
                     <button class="stats-tab active" onclick="showStatsTab(event, 'search-match')">
@@ -1945,7 +1945,7 @@
                 </div>
             </div>
             
-            <!-- Second Row of Tabs (6 tabs) -->
+            <!-- Second Row of Tabs (7 tabs) -->
             <div class="stats-tabs-row">
                 <div class="stats-tabs">
                     <button class="stats-tab" onclick="showStatsTab(event, 'coaches')">
@@ -1983,6 +1983,17 @@
                         </svg>
                         All Players
                     </button>
+                    <button class="stats-tab" onclick="showStatsTab(event, 'trophy-players')">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                            <path d="M4 22h16"/>
+                            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                        </svg>
+                        Trophy Players
+                    </button>
                     <button class="stats-tab" onclick="showStatsTab(event, 'players')">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -1996,6 +2007,12 @@
                         </svg>
                         Compare Player
                     </button>
+                </div>
+            </div>
+            
+            <!-- Third Row of Tabs (2 tabs) -->
+            <div class="stats-tabs-row">
+                <div class="stats-tabs">
                     <button class="stats-tab" onclick="showStatsTab(event, 'all-goalkeepers')">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 2L2 7l10 5 10-5-10-5z"/>
@@ -3579,6 +3596,89 @@
                                         </th>
                                         <th class="sortable" onclick="sortPenaltyDetailsTable('makeMissed')">
                                             PMM <span class="sort-icon">⇅</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trophy Players Tab -->
+            <div id="trophy-players-tab" class="stats-tab-content">
+                <div class="stats-section" style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
+                    <h2 class="section-title" style="text-align: center;">Trophy Players Statistics</h2>
+                    
+                    <div class="stats-table-container">
+                        <!-- Search Box -->
+                        <div class="table-search-container">
+                            <div class="table-search-box">
+                                <input type="text" class="table-search-input" id="trophy-players-search" placeholder="Search players by name..." oninput="searchTable('trophy-players-table', this.value)">
+                                <svg class="table-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        
+                        <div style="overflow-x: auto;">
+                            <table class="stats-table" id="trophy-players-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('name')">
+                                            Player Name <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('total')">
+                                            Total <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('african-champions')">
+                                            CAF CL <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('african-league')">
+                                            AFL <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('confederation')">
+                                            CAF CC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('african-super')">
+                                            CAF SC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('african-cup-winners')">
+                                            ACWC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('afro-asian')">
+                                            AACC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('egyptian-league')">
+                                            EPL <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('egyptian-cup')">
+                                            EC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('egyptian-super')">
+                                            ESC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('league-cup')">
+                                            ELC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('club-world-cup')">
+                                            CWC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('intercontinental')">
+                                            IC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('arab-champions')">
+                                            AR-ACL <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('arab-cup-winners')">
+                                            AC-WC <span class="sort-icon">⇅</span>
+                                        </th>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('arab-super')">
+                                            AR-ASC <span class="sort-icon">⇅</span>
                                         </th>
                                     </tr>
                                 </thead>
