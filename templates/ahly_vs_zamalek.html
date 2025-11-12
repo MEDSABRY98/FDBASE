@@ -509,6 +509,17 @@
             color: #2c3e50;
         }
         
+        /* Positive and negative classes for table cells */
+        .zamalek-table td.positive {
+            color: #28a745;
+            font-weight: 600;
+        }
+        
+        .zamalek-table td.negative {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        
         /* BY Player matches number emphasis */
         #by-player-matches-tab .by-player-number {
             display: inline-block;
@@ -1577,55 +1588,122 @@
 
             <!-- Managers Tab -->
             <div id="managers-tab" class="tab-content">
-                <div class="zamalek-stats-section">
-                    <h2 class="zamalek-section-title">Managers Statistics</h2>
-                    
-                    <!-- Filter and Search Row -->
-                    <div style="margin-bottom: 2rem; display: flex; justify-content: center; align-items: center; gap: 2rem;">
-                        <select id="managers-filter" class="zamalek-managers-filter" onchange="filterManagers()">
-                            <option value="all">All Stats</option>
-                            <option value="ahly">With Ahly</option>
-                            <option value="zamalek">With Zamalek</option>
-                        </select>
+                <!-- Sub Tabs for Coaches -->
+                <div class="sub-tabs-nav">
+                    <button class="sub-tab-btn active" onclick="switchSubTab('managers-all')">All Coaches</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('managers-countries')">Coaches Countries</button>
+                </div>
+
+                <!-- All Coaches -->
+                <div id="managers-all" class="sub-tab-content active">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Managers Statistics</h2>
                         
-                        <input type="text" id="managers-search" class="zamalek-managers-search" placeholder="Search managers..." oninput="searchManagers()">
+                        <!-- Filter and Search Row -->
+                        <div style="margin-bottom: 2rem; display: flex; justify-content: center; align-items: center; gap: 2rem;">
+                            <select id="managers-filter" class="zamalek-managers-filter" onchange="filterManagers()">
+                                <option value="all">All Stats</option>
+                                <option value="ahly">With Ahly</option>
+                                <option value="zamalek">With Zamalek</option>
+                            </select>
+                            
+                            <input type="text" id="managers-search" class="zamalek-managers-search" placeholder="Search managers..." oninput="searchManagers()">
+                        </div>
+                        
+                        <div class="zamalek-table-container">
+                            <div class="table-responsive">
+                                <table class="zamalek-table" id="zamalek-managers-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Manager</th>
+                                            <th>P</th>
+                                            <th>W</th>
+                                            <th>D</th>
+                                            <th>L</th>
+                                            <th>GF</th>
+                                            <th>GA</th>
+                                            <th>GD</th>
+                                            <th>CSF</th>
+                                            <th>CSA</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td id="total-matches">0</td>
+                                            <td id="total-wins">0</td>
+                                            <td id="total-draws">0</td>
+                                            <td id="total-losses">0</td>
+                                            <td id="total-gf">0</td>
+                                            <td id="total-ga">0</td>
+                                            <td id="total-gd">0</td>
+                                            <td id="total-csf">0</td>
+                                            <td id="total-csa">0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="zamalek-table-container">
-                        <div class="table-responsive">
-                            <table class="zamalek-table" id="zamalek-managers-table">
-                                <thead>
-                                    <tr>
-                                        <th>Manager</th>
-                                        <th>P</th>
-                                        <th>W</th>
-                                        <th>D</th>
-                                        <th>L</th>
-                                        <th>GF</th>
-                                        <th>GA</th>
-                                        <th>GD</th>
-                                        <th>CSF</th>
-                                        <th>CSA</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Data will be populated by JavaScript -->
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td>TOTAL</td>
-                                        <td id="total-matches">0</td>
-                                        <td id="total-wins">0</td>
-                                        <td id="total-draws">0</td>
-                                        <td id="total-losses">0</td>
-                                        <td id="total-gf">0</td>
-                                        <td id="total-ga">0</td>
-                                        <td id="total-gd">0</td>
-                                        <td id="total-csf">0</td>
-                                        <td id="total-csa">0</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                </div>
+
+                <!-- Coaches Countries -->
+                <div id="managers-countries" class="sub-tab-content">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Coaches Countries Statistics</h2>
+                        
+                        <!-- Filter and Search Row -->
+                        <div style="margin-bottom: 2rem; display: flex; justify-content: center; align-items: center; gap: 2rem;">
+                            <select id="managers-countries-filter" class="zamalek-managers-filter" onchange="filterManagersCountries()">
+                                <option value="all">All Stats</option>
+                                <option value="ahly">With Ahly</option>
+                                <option value="zamalek">With Zamalek</option>
+                            </select>
+                            
+                            <input type="text" id="managers-countries-search" class="zamalek-managers-search" placeholder="Search countries..." oninput="searchManagersCountries()">
+                        </div>
+                        
+                        <div class="zamalek-table-container">
+                            <div class="table-responsive">
+                                <table class="zamalek-table" id="zamalek-managers-countries-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Country</th>
+                                            <th>Coaches</th>
+                                            <th>P</th>
+                                            <th>W</th>
+                                            <th>D</th>
+                                            <th>L</th>
+                                            <th>GF</th>
+                                            <th>GA</th>
+                                            <th>GD</th>
+                                            <th>CSF</th>
+                                            <th>CSA</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td>-</td>
+                                            <td id="total-managers-countries-matches">0</td>
+                                            <td id="total-managers-countries-wins">0</td>
+                                            <td id="total-managers-countries-draws">0</td>
+                                            <td id="total-managers-countries-losses">0</td>
+                                            <td id="total-managers-countries-gf">0</td>
+                                            <td id="total-managers-countries-ga">0</td>
+                                            <td id="total-managers-countries-gd" class="">0</td>
+                                            <td id="total-managers-countries-csf">0</td>
+                                            <td id="total-managers-countries-csa">0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1637,6 +1715,8 @@
                 <div class="sub-tabs-nav">
                     <button class="sub-tab-btn active" onclick="switchSubTab('referees-ahly')">Ahly Referees</button>
                     <button class="sub-tab-btn" onclick="switchSubTab('referees-zamalek')">Zamalek Referees</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('referees-ahly-countries')">Ahly Referees Countries</button>
+                    <button class="sub-tab-btn" onclick="switchSubTab('referees-zamalek-countries')">Zamalek Referees Countries</button>
                 </div>
 
                 <!-- Ahly Referees -->
@@ -1719,6 +1799,98 @@
                                             <td id="total-ref-zamalek-losses">0</td>
                                             <td id="total-ref-zamalek-pen-for">0</td>
                                             <td id="total-ref-zamalek-pen-against">0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ahly Referees Countries -->
+                <div id="referees-ahly-countries" class="sub-tab-content">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Referees Countries Statistics - Al Ahly</h2>
+                        
+                        <!-- Search Box -->
+                        <div style="margin-bottom: 2rem; display: flex; justify-content: center;">
+                            <input type="text" id="referees-ahly-countries-search" class="zamalek-managers-search" placeholder="Search countries..." oninput="searchRefereesAhlyCountries()">
+                        </div>
+                        
+                        <div class="zamalek-table-container">
+                            <div class="table-responsive">
+                                <table class="zamalek-table" id="zamalek-referees-ahly-countries-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Country</th>
+                                            <th>Referees</th>
+                                            <th>P</th>
+                                            <th>W</th>
+                                            <th>D</th>
+                                            <th>L</th>
+                                            <th>PEN F</th>
+                                            <th>PEN A</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td>-</td>
+                                            <td id="total-ref-ahly-countries-matches">0</td>
+                                            <td id="total-ref-ahly-countries-wins">0</td>
+                                            <td id="total-ref-ahly-countries-draws">0</td>
+                                            <td id="total-ref-ahly-countries-losses">0</td>
+                                            <td id="total-ref-ahly-countries-pen-for">0</td>
+                                            <td id="total-ref-ahly-countries-pen-against">0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zamalek Referees Countries -->
+                <div id="referees-zamalek-countries" class="sub-tab-content">
+                    <div class="zamalek-stats-section">
+                        <h2 class="zamalek-section-title">Referees Countries Statistics - Zamalek</h2>
+                        
+                        <!-- Search Box -->
+                        <div style="margin-bottom: 2rem; display: flex; justify-content: center;">
+                            <input type="text" id="referees-zamalek-countries-search" class="zamalek-managers-search" placeholder="Search countries..." oninput="searchRefereesZamalekCountries()">
+                        </div>
+                        
+                        <div class="zamalek-table-container">
+                            <div class="table-responsive">
+                                <table class="zamalek-table" id="zamalek-referees-zamalek-countries-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Country</th>
+                                            <th>Referees</th>
+                                            <th>P</th>
+                                            <th>W</th>
+                                            <th>D</th>
+                                            <th>L</th>
+                                            <th>PEN F</th>
+                                            <th>PEN A</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td>-</td>
+                                            <td id="total-ref-zamalek-countries-matches">0</td>
+                                            <td id="total-ref-zamalek-countries-wins">0</td>
+                                            <td id="total-ref-zamalek-countries-draws">0</td>
+                                            <td id="total-ref-zamalek-countries-losses">0</td>
+                                            <td id="total-ref-zamalek-countries-pen-for">0</td>
+                                            <td id="total-ref-zamalek-countries-pen-against">0</td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -2017,6 +2189,7 @@
                                             <tr>
                                                 <th>Date</th>
                                                 <th>Season</th>
+                                                <th>Round</th>
                                                 <th>My Team</th>
                                                 <th>Result</th>
                                                 <th>Minutes</th>

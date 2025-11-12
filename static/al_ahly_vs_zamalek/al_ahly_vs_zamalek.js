@@ -11,8 +11,12 @@ let currentMainTab = 'overview';
 let currentSubTab = 'overview-ahly';
 let currentManagerFilter = 'all';
 let currentManagerSearch = '';
+let currentManagerCountriesFilter = 'all';
+let currentManagerCountriesSearch = '';
 let currentRefereeAhlySearch = '';
 let currentRefereeZamalekSearch = '';
+let currentRefereeAhlyCountriesSearch = '';
+let currentRefereeZamalekCountriesSearch = '';
   let currentPlayerFilter = 'all';
   let currentPlayerSearch = '';
   let currentPlayerSort = { column: 'matches', direction: 'desc' };
@@ -46,8 +50,11 @@ async function initializeZamalekStats() {
             populateChampionshipsTable();
             populateSeasonsTable();
             populateManagersTable();
+            populateManagersCountriesTable();
             populateRefereesAhlyTable();
             populateRefereesZamalekTable();
+            populateRefereesAhlyCountriesTable();
+            populateRefereesZamalekCountriesTable();
             populatePlayersTable();
             populateH2HTable();
             populateH2HPlayersList();
@@ -390,8 +397,11 @@ function applyZamalekFilters() {
     populateChampionshipsTable();
     populateSeasonsTable();
     populateManagersTable();
+    populateManagersCountriesTable();
     populateRefereesAhlyTable();
     populateRefereesZamalekTable();
+    populateRefereesAhlyCountriesTable();
+    populateRefereesZamalekCountriesTable();
     populatePlayersTable();
     populateH2HTable();
     
@@ -443,8 +453,11 @@ async function refreshZamalekStats() {
         populateChampionshipsTable();
         populateSeasonsTable();
         populateManagersTable();
+        populateManagersCountriesTable();
         populateRefereesAhlyTable();
         populateRefereesZamalekTable();
+        populateRefereesAhlyCountriesTable();
+        populateRefereesZamalekCountriesTable();
         populatePlayersTable();
         populateH2HTable();
         populateH2HPlayersList();
@@ -1294,6 +1307,222 @@ function searchManagers() {
     populateManagersTable();
 }
 
+// Extract country from manager name (e.g., "Manuel José - Portugal" -> "Portugal")
+function extractManagerCountry(managerName) {
+    if (!managerName) return 'Unknown';
+    
+    // Split by " - " and get the last part
+    const parts = managerName.split(' - ');
+    if (parts.length > 1) {
+        return parts[parts.length - 1].trim();
+    }
+    
+    // If no " - " found, return Unknown
+    return 'Unknown';
+}
+
+// Calculate managers countries statistics
+function calculateManagersCountriesStats() {
+    const matches = getFilteredMatches();
+    const countriesMap = new Map();
+    
+    matches.forEach(match => {
+        const ahlyManager = match['AHLY MANAGER'];
+        const zamalekManager = match['ZAMALEK MANAGER'];
+        const result = match['W-D-L'];
+        const gf = parseInt(match.GF) || 0;
+        const ga = parseInt(match.GA) || 0;
+        
+        // Process Ahly manager
+        if (ahlyManager && (currentManagerCountriesFilter === 'all' || currentManagerCountriesFilter === 'ahly')) {
+            const country = extractManagerCountry(ahlyManager);
+            
+            if (!countriesMap.has(country)) {
+                countriesMap.set(country, {
+                    country: country,
+                    coaches: new Set(), // Track unique coaches
+                    matches: 0,
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    gf: 0,
+                    ga: 0,
+                    csf: 0,
+                    csa: 0
+                });
+            }
+            
+            const stats = countriesMap.get(country);
+            stats.coaches.add(ahlyManager); // Add coach to set (automatically handles duplicates)
+            stats.matches++;
+            stats.gf += gf;
+            stats.ga += ga;
+            
+            if (result === 'W') stats.wins++;
+            else if (result === 'D' || result === 'D.') stats.draws++;
+            else if (result === 'L') stats.losses++;
+            
+            if (ga === 0) stats.csf++;
+            if (gf === 0) stats.csa++;
+        }
+        
+        // Process Zamalek manager
+        if (zamalekManager && (currentManagerCountriesFilter === 'all' || currentManagerCountriesFilter === 'zamalek')) {
+            const country = extractManagerCountry(zamalekManager);
+            
+            if (!countriesMap.has(country)) {
+                countriesMap.set(country, {
+                    country: country,
+                    coaches: new Set(), // Track unique coaches
+                    matches: 0,
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    gf: 0,
+                    ga: 0,
+                    csf: 0,
+                    csa: 0
+                });
+            }
+            
+            const stats = countriesMap.get(country);
+            stats.coaches.add(zamalekManager); // Add coach to set (automatically handles duplicates)
+            stats.matches++;
+            stats.gf += ga; // Zamalek's goals are Ahly's GA
+            stats.ga += gf; // Zamalek's conceded are Ahly's GF
+            
+            // Inverse result for Zamalek
+            if (result === 'L') stats.wins++;
+            else if (result === 'D' || result === 'D.') stats.draws++;
+            else if (result === 'W') stats.losses++;
+            
+            if (gf === 0) stats.csf++; // Zamalek clean sheet when Ahly scored 0
+            if (ga === 0) stats.csa++; // Zamalek conceded when Ahly kept clean sheet
+        }
+    });
+    
+    // Convert Set to count and return array
+    return Array.from(countriesMap.values()).map(stat => ({
+        ...stat,
+        coachesCount: stat.coaches.size,
+        coaches: undefined // Remove Set from object (not needed in display)
+    }));
+}
+
+// Populate managers countries table
+function populateManagersCountriesTable() {
+    const tbody = document.querySelector('#zamalek-managers-countries-table tbody');
+    
+    if (!tbody) {
+        console.error('❌ Managers countries table tbody not found!');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    let countriesStats = calculateManagersCountriesStats();
+    
+    if (countriesStats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
+        updateTotalsManagersCountries([], true);
+        return;
+    }
+    
+    // Apply search filter
+    if (currentManagerCountriesSearch) {
+        const searchLower = currentManagerCountriesSearch.toLowerCase();
+        countriesStats = countriesStats.filter(stat => 
+            stat.country.toLowerCase().includes(searchLower)
+        );
+    }
+    
+    // Sort by matches played (descending)
+    countriesStats.sort((a, b) => b.matches - a.matches);
+    
+    countriesStats.forEach(stat => {
+        const row = document.createElement('tr');
+        const gd = stat.gf - stat.ga;
+        const gdClass = gd > 0 ? 'positive' : gd < 0 ? 'negative' : '';
+        
+        row.innerHTML = `
+            <td>${stat.country}</td>
+            <td>${stat.coachesCount}</td>
+            <td>${stat.matches}</td>
+            <td>${stat.wins}</td>
+            <td>${stat.draws}</td>
+            <td>${stat.losses}</td>
+            <td>${stat.gf}</td>
+            <td>${stat.ga}</td>
+            <td class="${gdClass}"><strong>${gd > 0 ? '+' : ''}${gd}</strong></td>
+            <td>${stat.csf}</td>
+            <td>${stat.csa}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    // Update totals row
+    updateTotalsManagersCountries(countriesStats, false);
+}
+
+// Update totals row for managers countries
+function updateTotalsManagersCountries(stats, isEmpty) {
+    if (isEmpty) {
+        document.getElementById('total-managers-countries-matches').textContent = '0';
+        document.getElementById('total-managers-countries-wins').textContent = '0';
+        document.getElementById('total-managers-countries-draws').textContent = '0';
+        document.getElementById('total-managers-countries-losses').textContent = '0';
+        document.getElementById('total-managers-countries-gf').textContent = '0';
+        document.getElementById('total-managers-countries-ga').textContent = '0';
+        document.getElementById('total-managers-countries-gd').textContent = '0';
+        document.getElementById('total-managers-countries-csf').textContent = '0';
+        document.getElementById('total-managers-countries-csa').textContent = '0';
+        return;
+    }
+    
+    const totals = stats.reduce((acc, stat) => {
+        acc.matches += stat.matches;
+        acc.wins += stat.wins;
+        acc.draws += stat.draws;
+        acc.losses += stat.losses;
+        acc.gf += stat.gf;
+        acc.ga += stat.ga;
+        acc.csf += stat.csf;
+        acc.csa += stat.csa;
+        return acc;
+    }, { matches: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, csf: 0, csa: 0 });
+    
+    const gd = totals.gf - totals.ga;
+    
+    document.getElementById('total-managers-countries-matches').textContent = totals.matches;
+    document.getElementById('total-managers-countries-wins').textContent = totals.wins;
+    document.getElementById('total-managers-countries-draws').textContent = totals.draws;
+    document.getElementById('total-managers-countries-losses').textContent = totals.losses;
+    document.getElementById('total-managers-countries-gf').textContent = totals.gf;
+    document.getElementById('total-managers-countries-ga').textContent = totals.ga;
+    const gdElement = document.getElementById('total-managers-countries-gd');
+    if (gdElement) {
+        gdElement.textContent = gd > 0 ? '+' + gd : gd;
+        gdElement.className = gd > 0 ? 'positive' : gd < 0 ? 'negative' : '';
+    }
+    document.getElementById('total-managers-countries-csf').textContent = totals.csf;
+    document.getElementById('total-managers-countries-csa').textContent = totals.csa;
+}
+
+// Filter managers countries
+function filterManagersCountries() {
+    const filterSelect = document.getElementById('managers-countries-filter');
+    currentManagerCountriesFilter = filterSelect.value;
+    populateManagersCountriesTable();
+}
+
+// Search managers countries
+function searchManagersCountries() {
+    const searchInput = document.getElementById('managers-countries-search');
+    currentManagerCountriesSearch = searchInput.value;
+    populateManagersCountriesTable();
+}
+
 // Calculate referees statistics for Ahly
 function calculateRefereesAhlyStats() {
     const matches = getFilteredMatches();
@@ -1605,6 +1834,351 @@ function searchRefereesZamalek() {
     populateRefereesZamalekTable();
 }
 
+// Extract country from referee name (e.g., "Ismail Kaseb - Egypt" -> "Egypt")
+function extractRefereeCountry(refereeName) {
+    if (!refereeName) return 'Unknown';
+    
+    // Split by " - " and get the last part
+    const parts = refereeName.split(' - ');
+    if (parts.length > 1) {
+        return parts[parts.length - 1].trim();
+    }
+    
+    // If no " - " found, return Unknown
+    return 'Unknown';
+}
+
+// Calculate referees countries statistics for Ahly
+function calculateRefereesAhlyCountriesStats() {
+    const matches = getFilteredMatches();
+    const countriesMap = new Map();
+    
+    matches.forEach(match => {
+        const referee = match['REFEREE'];
+        const result = match['W-D-L'];
+        const matchId = match.MATCH_ID;
+        
+        if (referee) {
+            const country = extractRefereeCountry(referee);
+            
+            if (!countriesMap.has(country)) {
+                countriesMap.set(country, {
+                    country: country,
+                    referees: new Set(), // Track unique referees
+                    matches: 0,
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    penFor: 0,
+                    penAgainst: 0
+                });
+            }
+            
+            const stats = countriesMap.get(country);
+            stats.referees.add(referee); // Add referee to set (automatically handles duplicates)
+            stats.matches++;
+            
+            if (result === 'W') stats.wins++;
+            else if (result === 'D' || result === 'D.') stats.draws++;
+            else if (result === 'L') stats.losses++;
+            
+            // Calculate penalties for this match
+            if (zamalekPlayerDetails && zamalekPlayerDetails.length > 0) {
+                // Penalties For (Ahly)
+                const ahlyPenGoals = zamalekPlayerDetails.filter(detail => 
+                    detail.MATCH_ID === matchId && 
+                    detail.TYPE === 'PENGOAL' &&
+                    (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
+                ).length;
+                
+                const ahlyPenMisses = zamalekPlayerDetails.filter(detail => 
+                    detail.MATCH_ID === matchId && 
+                    detail.GA === 'PENMISSED' &&
+                    (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
+                ).length;
+                
+                stats.penFor += ahlyPenGoals + ahlyPenMisses;
+                
+                // Penalties Against (Zamalek)
+                const zamalekPenGoals = zamalekPlayerDetails.filter(detail => 
+                    detail.MATCH_ID === matchId && 
+                    detail.TYPE === 'PENGOAL' &&
+                    detail.TEAM?.toUpperCase().includes('ZAMALEK')
+                ).length;
+                
+                const zamalekPenMisses = zamalekPlayerDetails.filter(detail => 
+                    detail.MATCH_ID === matchId && 
+                    detail.GA === 'PENMISSED' &&
+                    detail.TEAM?.toUpperCase().includes('ZAMALEK')
+                ).length;
+                
+                stats.penAgainst += zamalekPenGoals + zamalekPenMisses;
+            }
+        }
+    });
+    
+    // Convert Set to count and return array
+    return Array.from(countriesMap.values()).map(stat => ({
+        ...stat,
+        refereesCount: stat.referees.size,
+        referees: undefined // Remove Set from object (not needed in display)
+    }));
+}
+
+// Calculate referees countries statistics for Zamalek
+function calculateRefereesZamalekCountriesStats() {
+    const matches = getFilteredMatches();
+    const countriesMap = new Map();
+    
+    matches.forEach(match => {
+        const referee = match['REFEREE'];
+        const result = match['W-D-L'];
+        const matchId = match.MATCH_ID;
+        
+        if (referee) {
+            const country = extractRefereeCountry(referee);
+            
+            if (!countriesMap.has(country)) {
+                countriesMap.set(country, {
+                    country: country,
+                    referees: new Set(), // Track unique referees
+                    matches: 0,
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    penFor: 0,
+                    penAgainst: 0
+                });
+            }
+            
+            const stats = countriesMap.get(country);
+            stats.referees.add(referee); // Add referee to set (automatically handles duplicates)
+            stats.matches++;
+            
+            // Inverse result for Zamalek
+            if (result === 'L') stats.wins++;
+            else if (result === 'D' || result === 'D.') stats.draws++;
+            else if (result === 'W') stats.losses++;
+            
+            // Calculate penalties for this match
+            if (zamalekPlayerDetails && zamalekPlayerDetails.length > 0) {
+                // Penalties For (Zamalek)
+                const zamalekPenGoals = zamalekPlayerDetails.filter(detail => 
+                    detail.MATCH_ID === matchId && 
+                    detail.TYPE === 'PENGOAL' &&
+                    detail.TEAM?.toUpperCase().includes('ZAMALEK')
+                ).length;
+                
+                const zamalekPenMisses = zamalekPlayerDetails.filter(detail => 
+                    detail.MATCH_ID === matchId && 
+                    detail.GA === 'PENMISSED' &&
+                    detail.TEAM?.toUpperCase().includes('ZAMALEK')
+                ).length;
+                
+                stats.penFor += zamalekPenGoals + zamalekPenMisses;
+                
+                // Penalties Against (Ahly)
+                const ahlyPenGoals = zamalekPlayerDetails.filter(detail => 
+                    detail.MATCH_ID === matchId && 
+                    detail.TYPE === 'PENGOAL' &&
+                    (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
+                ).length;
+                
+                const ahlyPenMisses = zamalekPlayerDetails.filter(detail => 
+                    detail.MATCH_ID === matchId && 
+                    detail.GA === 'PENMISSED' &&
+                    (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
+                ).length;
+                
+                stats.penAgainst += ahlyPenGoals + ahlyPenMisses;
+            }
+        }
+    });
+    
+    // Convert Set to count and return array
+    return Array.from(countriesMap.values()).map(stat => ({
+        ...stat,
+        refereesCount: stat.referees.size,
+        referees: undefined // Remove Set from object (not needed in display)
+    }));
+}
+
+// Populate referees Ahly countries table
+function populateRefereesAhlyCountriesTable() {
+    const tbody = document.querySelector('#zamalek-referees-ahly-countries-table tbody');
+    
+    if (!tbody) {
+        console.error('❌ Referees Ahly Countries table tbody not found!');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    let countriesStats = calculateRefereesAhlyCountriesStats();
+    
+    if (countriesStats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
+        updateTotalsRefereesAhlyCountries([], true);
+        return;
+    }
+    
+    // Apply search filter
+    if (currentRefereeAhlyCountriesSearch) {
+        const searchLower = currentRefereeAhlyCountriesSearch.toLowerCase();
+        countriesStats = countriesStats.filter(stat => 
+            stat.country.toLowerCase().includes(searchLower)
+        );
+    }
+    
+    // Sort by matches played (descending)
+    countriesStats.sort((a, b) => b.matches - a.matches);
+    
+    countriesStats.forEach(stat => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td>${stat.country}</td>
+            <td>${stat.refereesCount}</td>
+            <td>${stat.matches}</td>
+            <td>${stat.wins}</td>
+            <td>${stat.draws}</td>
+            <td>${stat.losses}</td>
+            <td>${stat.penFor}</td>
+            <td>${stat.penAgainst}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    // Update totals row
+    updateTotalsRefereesAhlyCountries(countriesStats, false);
+}
+
+// Populate referees Zamalek countries table
+function populateRefereesZamalekCountriesTable() {
+    const tbody = document.querySelector('#zamalek-referees-zamalek-countries-table tbody');
+    
+    if (!tbody) {
+        console.error('❌ Referees Zamalek Countries table tbody not found!');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    let countriesStats = calculateRefereesZamalekCountriesStats();
+    
+    if (countriesStats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
+        updateTotalsRefereesZamalekCountries([], true);
+        return;
+    }
+    
+    // Apply search filter
+    if (currentRefereeZamalekCountriesSearch) {
+        const searchLower = currentRefereeZamalekCountriesSearch.toLowerCase();
+        countriesStats = countriesStats.filter(stat => 
+            stat.country.toLowerCase().includes(searchLower)
+        );
+    }
+    
+    // Sort by matches played (descending)
+    countriesStats.sort((a, b) => b.matches - a.matches);
+    
+    countriesStats.forEach(stat => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td>${stat.country}</td>
+            <td>${stat.refereesCount}</td>
+            <td>${stat.matches}</td>
+            <td>${stat.wins}</td>
+            <td>${stat.draws}</td>
+            <td>${stat.losses}</td>
+            <td>${stat.penFor}</td>
+            <td>${stat.penAgainst}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    // Update totals row
+    updateTotalsRefereesZamalekCountries(countriesStats, false);
+}
+
+// Update totals row for Ahly referees countries
+function updateTotalsRefereesAhlyCountries(stats, isEmpty) {
+    if (isEmpty) {
+        document.getElementById('total-ref-ahly-countries-matches').textContent = '0';
+        document.getElementById('total-ref-ahly-countries-wins').textContent = '0';
+        document.getElementById('total-ref-ahly-countries-draws').textContent = '0';
+        document.getElementById('total-ref-ahly-countries-losses').textContent = '0';
+        document.getElementById('total-ref-ahly-countries-pen-for').textContent = '0';
+        document.getElementById('total-ref-ahly-countries-pen-against').textContent = '0';
+        return;
+    }
+    
+    const totals = stats.reduce((acc, stat) => {
+        acc.matches += stat.matches;
+        acc.wins += stat.wins;
+        acc.draws += stat.draws;
+        acc.losses += stat.losses;
+        acc.penFor += stat.penFor;
+        acc.penAgainst += stat.penAgainst;
+        return acc;
+    }, { matches: 0, wins: 0, draws: 0, losses: 0, penFor: 0, penAgainst: 0 });
+    
+    document.getElementById('total-ref-ahly-countries-matches').textContent = totals.matches;
+    document.getElementById('total-ref-ahly-countries-wins').textContent = totals.wins;
+    document.getElementById('total-ref-ahly-countries-draws').textContent = totals.draws;
+    document.getElementById('total-ref-ahly-countries-losses').textContent = totals.losses;
+    document.getElementById('total-ref-ahly-countries-pen-for').textContent = totals.penFor;
+    document.getElementById('total-ref-ahly-countries-pen-against').textContent = totals.penAgainst;
+}
+
+// Update totals row for Zamalek referees countries
+function updateTotalsRefereesZamalekCountries(stats, isEmpty) {
+    if (isEmpty) {
+        document.getElementById('total-ref-zamalek-countries-matches').textContent = '0';
+        document.getElementById('total-ref-zamalek-countries-wins').textContent = '0';
+        document.getElementById('total-ref-zamalek-countries-draws').textContent = '0';
+        document.getElementById('total-ref-zamalek-countries-losses').textContent = '0';
+        document.getElementById('total-ref-zamalek-countries-pen-for').textContent = '0';
+        document.getElementById('total-ref-zamalek-countries-pen-against').textContent = '0';
+        return;
+    }
+    
+    const totals = stats.reduce((acc, stat) => {
+        acc.matches += stat.matches;
+        acc.wins += stat.wins;
+        acc.draws += stat.draws;
+        acc.losses += stat.losses;
+        acc.penFor += stat.penFor;
+        acc.penAgainst += stat.penAgainst;
+        return acc;
+    }, { matches: 0, wins: 0, draws: 0, losses: 0, penFor: 0, penAgainst: 0 });
+    
+    document.getElementById('total-ref-zamalek-countries-matches').textContent = totals.matches;
+    document.getElementById('total-ref-zamalek-countries-wins').textContent = totals.wins;
+    document.getElementById('total-ref-zamalek-countries-draws').textContent = totals.draws;
+    document.getElementById('total-ref-zamalek-countries-losses').textContent = totals.losses;
+    document.getElementById('total-ref-zamalek-countries-pen-for').textContent = totals.penFor;
+    document.getElementById('total-ref-zamalek-countries-pen-against').textContent = totals.penAgainst;
+}
+
+// Search referees countries for Ahly
+function searchRefereesAhlyCountries() {
+    const searchInput = document.getElementById('referees-ahly-countries-search');
+    currentRefereeAhlyCountriesSearch = searchInput.value;
+    populateRefereesAhlyCountriesTable();
+}
+
+// Search referees countries for Zamalek
+function searchRefereesZamalekCountries() {
+    const searchInput = document.getElementById('referees-zamalek-countries-search');
+    currentRefereeZamalekCountriesSearch = searchInput.value;
+    populateRefereesZamalekCountriesTable();
+}
+
 // Switch main tab
 function switchMainTab(tabName) {
     currentMainTab = tabName;
@@ -1852,6 +2426,21 @@ function switchSubTab(tabName) {
     const targetContent = document.getElementById(tabName);
     if (targetContent) {
         targetContent.classList.add('active');
+    }
+    
+    // Load data for specific sub-tabs if needed
+    if (tabName === 'managers-all') {
+        populateManagersTable();
+    } else if (tabName === 'managers-countries') {
+        populateManagersCountriesTable();
+    } else if (tabName === 'referees-ahly') {
+        populateRefereesAhlyTable();
+    } else if (tabName === 'referees-zamalek') {
+        populateRefereesZamalekTable();
+    } else if (tabName === 'referees-ahly-countries') {
+        populateRefereesAhlyCountriesTable();
+    } else if (tabName === 'referees-zamalek-countries') {
+        populateRefereesZamalekCountriesTable();
     }
 }
 
@@ -2346,7 +2935,7 @@ function calculateH2HStats() {
 }
 
 // Calculate H2H player statistics with filtered match IDs
-function calculateH2HStatsFiltered(relevantMatchIds, teamFilter) {
+function calculateH2HStatsFiltered(relevantMatchIds, teamFilter, searchedPlayerName = null, relationshipType = null) {
     const playersMap = new Map();
     
     // Use FILTERED lineups based on main filters
@@ -2354,6 +2943,20 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter) {
     const filteredLineupZamalek = getFilteredLineupZamalek();
     const allLineups = [...filteredLineupAhly, ...filteredLineupZamalek];
     const filteredMatches = getFilteredMatches();
+    
+    // Build a map of searched player's team in each match (for WITH/AGAINST filtering)
+    const searchedPlayerMatchTeams = new Map(); // matchId -> team
+    if (searchedPlayerName && relationshipType && relevantMatchIds.size > 0) {
+        allLineups.forEach(lineup => {
+            const playerName = lineup['PLAYER NAME'];
+            const matchId = lineup['MATCH_ID'];
+            const matchIdStr = String(matchId);
+            if (playerName === searchedPlayerName && relevantMatchIds.has(matchIdStr)) {
+                const team = lineup['TEAM'] || '';
+                searchedPlayerMatchTeams.set(matchIdStr, team);
+            }
+        });
+    }
     
     allLineups.forEach(lineup => {
         const playerName = lineup['PLAYER NAME'];
@@ -2365,6 +2968,26 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter) {
         // If we have H2H filtered match IDs (WITH/AGAINST), only process those matches
         if (relevantMatchIds.size > 0 && !relevantMatchIds.has(matchIdStr)) {
             return;
+        }
+        
+        // Filter by relationship (WITH/AGAINST) if searched player is provided
+        if (searchedPlayerName && relationshipType && searchedPlayerMatchTeams.has(matchIdStr)) {
+            const searchedTeam = searchedPlayerMatchTeams.get(matchIdStr);
+            
+            // Skip the searched player itself
+            if (playerName === searchedPlayerName) {
+                return;
+            }
+            
+            // For WITH: only include players from the same team in the same match
+            if (relationshipType === 'WITH' && team !== searchedTeam) {
+                return;
+            }
+            
+            // For AGAINST: only include players from different team in the same match
+            if (relationshipType === 'AGAINST' && team === searchedTeam) {
+                return;
+            }
         }
         
         // Track which team the player played for
@@ -2442,6 +3065,27 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter) {
             const matchIdStr = String(detail['MATCH_ID']);
             if (relevantMatchIds.size > 0 && !relevantMatchIds.has(matchIdStr)) {
                 return;
+            }
+
+            // Filter by relationship (WITH/AGAINST) for player details too
+            if (searchedPlayerName && relationshipType && searchedPlayerMatchTeams.has(matchIdStr)) {
+                const searchedTeam = searchedPlayerMatchTeams.get(matchIdStr);
+                const detailTeam = detail['TEAM'] || '';
+                
+                // Skip the searched player itself
+                if (playerName === searchedPlayerName) {
+                    return;
+                }
+                
+                // For WITH: only include goals/assists from players from the same team in the same match
+                if (relationshipType === 'WITH' && detailTeam !== searchedTeam) {
+                    return;
+                }
+                
+                // For AGAINST: only include goals/assists from players from different team in the same match
+                if (relationshipType === 'AGAINST' && detailTeam === searchedTeam) {
+                    return;
+                }
             }
 
             const team = detail['TEAM'] || '';
@@ -2716,10 +3360,17 @@ function populateH2HTable() {
     
     // Get match IDs based on filters (empty Set = all matches)
     let relevantMatchIds = new Set();
+    let searchedPlayerName = null;
+    let relationshipType = null;
     
     // If WITH search is active, get only matches where searched player played
     if (currentH2HWithSearch && currentH2HWithSearch.trim() !== '') {
-        const allLineups = [...zamalekLineupAhly, ...zamalekLineupZamalek];
+        searchedPlayerName = currentH2HWithSearch;
+        relationshipType = 'WITH';
+        // Use filtered lineups to respect main filters
+        const filteredLineupAhly = getFilteredLineupAhly();
+        const filteredLineupZamalek = getFilteredLineupZamalek();
+        const allLineups = [...filteredLineupAhly, ...filteredLineupZamalek];
         allLineups.forEach(lineup => {
             const playerName = lineup['PLAYER NAME'];
             if (playerName === currentH2HWithSearch) {
@@ -2730,42 +3381,28 @@ function populateH2HTable() {
     
     // If AGAINST search is active, get only matches where searched player played
     if (currentH2HAgainstSearch && currentH2HAgainstSearch.trim() !== '') {
-        const allLineups = [...zamalekLineupAhly, ...zamalekLineupZamalek];
-        const againstMatchIds = new Set();
+        searchedPlayerName = currentH2HAgainstSearch;
+        relationshipType = 'AGAINST';
+        // Use filtered lineups to respect main filters
+        const filteredLineupAhly = getFilteredLineupAhly();
+        const filteredLineupZamalek = getFilteredLineupZamalek();
+        const allLineups = [...filteredLineupAhly, ...filteredLineupZamalek];
         allLineups.forEach(lineup => {
             const playerName = lineup['PLAYER NAME'];
             if (playerName === currentH2HAgainstSearch) {
-                againstMatchIds.add(String(lineup['MATCH_ID']));
+                relevantMatchIds.add(String(lineup['MATCH_ID']));
             }
         });
-        
-        // Intersect with existing filter if WITH search was also active
-        if (currentH2HWithSearch && currentH2HWithSearch.trim() !== '' && relevantMatchIds.size > 0) {
-            relevantMatchIds = new Set([...relevantMatchIds].filter(id => againstMatchIds.has(id)));
-        } else if (!currentH2HWithSearch || currentH2HWithSearch.trim() === '') {
-            relevantMatchIds = againstMatchIds;
-        }
     }
     
-    // Calculate stats with filtered match IDs and team filter
-    let h2hStats = calculateH2HStatsFiltered(relevantMatchIds, currentH2HFilter);
+    // Calculate stats with filtered match IDs, team filter, searched player, and relationship type
+    // This will now only calculate stats for players who played WITH or AGAINST the searched player
+    let h2hStats = calculateH2HStatsFiltered(relevantMatchIds, currentH2HFilter, searchedPlayerName, relationshipType);
     
     if (h2hStats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsH2H([], true);
         return;
-    }
-    
-    // Apply WITH search (teammates) - for filtering player names only
-    if (currentH2HWithSearch && currentH2HWithSearch.trim() !== '') {
-        const teammates = getTeammates(currentH2HWithSearch);
-        h2hStats = h2hStats.filter(stat => teammates.has(stat.playerName));
-    }
-    
-    // Apply AGAINST search (opponents) - for filtering player names only
-    if (currentH2HAgainstSearch && currentH2HAgainstSearch.trim() !== '') {
-        const opponents = getOpponents(currentH2HAgainstSearch);
-        h2hStats = h2hStats.filter(stat => opponents.has(stat.playerName));
     }
     
     // Apply uploaded file filter (exact match, case-insensitive)
@@ -3217,7 +3854,7 @@ function populateByPlayerMatches() {
     tbody.innerHTML = '';
     
     if (!currentByPlayer) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #6c757d;">Please select a player</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">Please select a player</td></tr>';
         return;
     }
     
@@ -3305,6 +3942,7 @@ function populateByPlayerMatches() {
         playerMatches.push({
             date: match['DATE'],
             season: match['SEASON'],
+            round: match['ROUND'] || '',
             myTeam: myTeam,
             result: result,
             minutes: minutes,
@@ -3324,7 +3962,7 @@ function populateByPlayerMatches() {
     
     // Populate table
     if (playerMatches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found for this player</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found for this player</td></tr>';
         console.log('❌ No matches to display');
         return;
     }
@@ -3338,6 +3976,7 @@ function populateByPlayerMatches() {
         row.innerHTML = `
             <td>${match.date}</td>
             <td>${match.season}</td>
+            <td>${match.round}</td>
             <td>${match.myTeam}</td>
             <td>${match.result}</td>
             <td><span class="by-player-number by-player-minutes">${match.minutes}</span></td>

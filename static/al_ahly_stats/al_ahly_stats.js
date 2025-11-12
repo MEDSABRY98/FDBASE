@@ -15920,11 +15920,13 @@ function loadPlayerTrophies(playerName, teamFilter = '') {
  */
 function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupSheet, playerDetailsSheet, gkDetailsSheet, mainSheet) {
     try {
-        const trophyMap = {};
+        // Separate maps for each position: Champions, Runners-Up, Third Place
+        const championsMap = {};
+        const runnersUpMap = {};
+        const thirdPlaceMap = {};
         
-        // Process each trophy season
-        trophySheet.forEach(trophyRow => {
-            const season = trophyRow['SEASON'];
+        // Helper function to process a trophy position
+        const processTrophyPosition = (season, position) => {
             if (!season) return;
             
             // Get all matches in this season from main sheet
@@ -15978,6 +15980,17 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
             }
             
             if (playerFound) {
+                let trophyMap;
+                if (position === 'champions') {
+                    trophyMap = championsMap;
+                } else if (position === 'runners-up') {
+                    trophyMap = runnersUpMap;
+                } else if (position === 'third-place') {
+                    trophyMap = thirdPlaceMap;
+                } else {
+                    return;
+                }
+                
                 if (!trophyMap[trophyName]) {
                     trophyMap[trophyName] = {
                         count: 0,
@@ -15987,29 +16000,65 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
                 trophyMap[trophyName].count++;
                 trophyMap[trophyName].seasons.push(season);
             }
+        };
+        
+        // Process each trophy row from TROPHY sheet
+        trophySheet.forEach(trophyRow => {
+            // Process Champions (from Champions column)
+            const championsSeason = trophyRow['Champions'] || trophyRow['CHAMPIONS'] || trophyRow['champions'] || trophyRow['Champion'];
+            if (championsSeason && String(championsSeason).trim() !== '') {
+                processTrophyPosition(String(championsSeason).trim(), 'champions');
+            }
+            
+            // Process Runners-Up (from Runners-UP column)
+            const runnersUpSeason = trophyRow['Runners-UP'] || trophyRow['RUNNERS-UP'] || trophyRow['Runners-Up'] || trophyRow['runners-up'] || trophyRow['Runners Up'] || trophyRow['RUNNERS UP'];
+            if (runnersUpSeason && String(runnersUpSeason).trim() !== '') {
+                processTrophyPosition(String(runnersUpSeason).trim(), 'runners-up');
+            }
+            
+            // Process Third Place (from Third place column)
+            const thirdPlaceSeason = trophyRow['Third place'] || trophyRow['THIRD PLACE'] || trophyRow['Third Place'] || trophyRow['third place'] || trophyRow['THIRDPLACE'] || trophyRow['ThirdPlace'];
+            if (thirdPlaceSeason && String(thirdPlaceSeason).trim() !== '') {
+                processTrophyPosition(String(thirdPlaceSeason).trim(), 'third-place');
+            }
         });
-    
-        // Convert to array and sort by count (descending)
-        const trophiesArray = Object.entries(trophyMap).map(([name, data]) => ({
-            name,
-            count: data.count,
-            seasons: data.seasons.map(season => {
-                // Extract only numbers/years from season string
-                // Examples: "الكونفدرالية الأفريقية 2014" -> "2014"
-                //           "الدوري المصري 2024-25" -> "2024-25"
-                const yearMatch = season.match(/\d{4}(-\d{2,4}|\/\d{2,4})?/);
-                return yearMatch ? yearMatch[0] : season;
-            }).sort((a, b) => {
-                // Sort seasons from newest to oldest
-                const yearA = parseInt(a.split('-')[0] || a.split('/')[0] || a);
-                const yearB = parseInt(b.split('-')[0] || b.split('/')[0] || b);
-                return yearB - yearA;
-            })
-        })).sort((a, b) => b.count - a.count);
         
-        console.log(`🏆 Total trophies calculated: ${trophiesArray.length}`, trophiesArray);
+        // Helper function to convert map to array
+        const mapToArray = (trophyMap, position) => {
+            return Object.entries(trophyMap).map(([name, data]) => ({
+                name,
+                position: position,
+                count: data.count,
+                seasons: data.seasons.map(season => {
+                    // Extract only numbers/years from season string
+                    // Examples: "الكونفدرالية الأفريقية 2014" -> "2014"
+                    //           "الدوري المصري 2024-25" -> "2024-25"
+                    const yearMatch = season.match(/\d{4}(-\d{2,4}|\/\d{2,4})?/);
+                    return yearMatch ? yearMatch[0] : season;
+                }).sort((a, b) => {
+                    // Sort seasons from newest to oldest
+                    const yearA = parseInt(a.split('-')[0] || a.split('/')[0] || a);
+                    const yearB = parseInt(b.split('-')[0] || b.split('/')[0] || b);
+                    return yearB - yearA;
+                })
+            })).sort((a, b) => b.count - a.count);
+        };
         
-        return trophiesArray;
+        // Convert all maps to arrays
+        const championsArray = mapToArray(championsMap, 'champions');
+        const runnersUpArray = mapToArray(runnersUpMap, 'runners-up');
+        const thirdPlaceArray = mapToArray(thirdPlaceMap, 'third-place');
+        
+        // Combine all trophies
+        const allTrophies = [...championsArray, ...runnersUpArray, ...thirdPlaceArray];
+        
+        console.log(`🏆 Total trophies calculated: ${allTrophies.length}`, {
+            champions: championsArray.length,
+            runnersUp: runnersUpArray.length,
+            thirdPlace: thirdPlaceArray.length
+        });
+        
+        return allTrophies;
     } catch (error) {
         console.error('❌ Error in calculatePlayerTrophies:', error);
         return [];
@@ -16029,23 +16078,65 @@ function renderTrophyCards(trophies) {
         return;
     }
     
-    container.innerHTML = trophies.map((trophy, index) => `
-        <div class="trophy-card" onclick="toggleTrophySeasons(${index})">
-            <span class="trophy-card-icon">🏆</span>
-            <div class="trophy-card-title">${trophy.name}</div>
-            <div class="trophy-card-count">${trophy.count}</div>
-            <div class="trophy-card-label">${trophy.count === 1 ? 'Trophy' : 'Trophies'}</div>
-            <div class="trophy-seasons" id="trophy-seasons-${index}" style="display: none;">
-                <div class="trophy-seasons-title">Seasons:</div>
-                <div class="trophy-seasons-list">
-                    ${trophy.seasons.map(season => `<span class="trophy-season-badge">${season}</span>`).join(' <span class="trophy-season-separator">#</span> ')}
+    // Separate trophies by position
+    const champions = trophies.filter(t => t.position === 'champions');
+    const runnersUp = trophies.filter(t => t.position === 'runners-up');
+    const thirdPlace = trophies.filter(t => t.position === 'third-place');
+    
+    // Helper function to render cards for a position
+    let globalIndex = 0;
+    const renderPositionCards = (positionTrophies, positionName, icon, cardClass) => {
+        if (positionTrophies.length === 0) return '';
+        
+        let cardsHtml = '';
+        positionTrophies.forEach(trophy => {
+            const idx = globalIndex++;
+            cardsHtml += `
+                <div class="trophy-card ${cardClass}" onclick="toggleTrophySeasons(${idx})">
+                    <span class="trophy-card-icon">${icon}</span>
+                    <div class="trophy-card-title">${trophy.name}</div>
+                    <div class="trophy-card-count">${trophy.count}</div>
+                    <div class="trophy-card-label">${trophy.count === 1 ? 'Trophy' : 'Trophies'}</div>
+                    <div class="trophy-seasons" id="trophy-seasons-${idx}" style="display: none;">
+                        <div class="trophy-seasons-title">Seasons:</div>
+                        <div class="trophy-seasons-list">
+                            ${trophy.seasons.map(season => `<span class="trophy-season-badge">${season}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        return `
+            <div class="trophy-position-section">
+                <h3 class="trophy-position-title">${positionName}</h3>
+                <div class="trophy-cards-row">
+                    ${cardsHtml}
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    };
     
-    // Store trophies data for toggle function
-    window.currentTrophiesData = trophies;
+    // Render all positions
+    let html = '';
+    
+    if (champions.length > 0) {
+        html += renderPositionCards(champions, 'Champions', '🏆', 'trophy-card-champions');
+    }
+    
+    if (runnersUp.length > 0) {
+        html += renderPositionCards(runnersUp, 'Runners-Up', '🥈', 'trophy-card-runners-up');
+    }
+    
+    if (thirdPlace.length > 0) {
+        html += renderPositionCards(thirdPlace, 'Third Place', '🥉', 'trophy-card-third-place');
+    }
+    
+    container.innerHTML = html;
+    
+    // Store trophies data for toggle function (flatten all positions)
+    const allTrophiesFlat = [...champions, ...runnersUp, ...thirdPlace];
+    window.currentTrophiesData = allTrophiesFlat;
 }
 
 /**
