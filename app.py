@@ -816,6 +816,11 @@ def egypt_teams():
     """Egypt National Teams Statistics Page"""
     return render_template('egypt_teams.html')
 
+@app.route('/afcon-egypt-teams')
+def afcon_egypt_teams():
+    """Afcon Egypt Teams Statistics Page"""
+    return render_template('afcon_egypt_teams.html')
+
 @app.route('/ww-egypt-teams')
 def ww_egypt_teams():
     """WW Egypt National Teams Statistics Page"""
@@ -4718,6 +4723,170 @@ def api_egypt_teams_matches():
         traceback.print_exc()
         return jsonify({'error': str(e), 'matches': []}), 500
 
+@app.route('/api/afcon-egypt-teams/trophy-seasons')
+def api_afcon_egypt_teams_trophy_seasons():
+    """API endpoint to get trophy-winning seasons from TROPHY sheet"""
+    try:
+        print("🏆 Loading trophy seasons from Google Sheets...")
+        
+        # Check if refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('afcon_egypt_teams_trophy_seasons', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached trophy seasons ({len(cached_data.get('seasons', []))} seasons)")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        # Check environment variable first
+        creds_env = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
+        if creds_env:
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        else:
+            # Fallback to local file
+            creds_file = get_resource_path('credentials/egyptnationalteam.json')
+            print(f"Using credentials file: {creds_file}")
+            if not os.path.exists(creds_file):
+                print(f"❌ Credentials file not found: {creds_file}")
+                return jsonify({'error': 'Credentials file not found', 'seasons': []}), 404
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPE)
+        
+        client = gspread.authorize(creds)
+        
+        # Get Sheet ID from environment or use default
+        sheet_id = os.environ.get('EGYPT_TEAMS_SHEET_ID', '10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8')
+        print(f"Using Sheet ID: {sheet_id}")
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get TROPHY worksheet
+        try:
+            worksheet = spreadsheet.worksheet('TROPHY')
+        except gspread.WorksheetNotFound:
+            print("❌ TROPHY worksheet not found")
+            return jsonify({'error': 'TROPHY worksheet not found', 'seasons': []}), 404
+        
+        # Get all records
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ TROPHY is empty or has no data: {e}")
+            return jsonify({'error': 'No Data Available', 'seasons': []}), 200
+        
+        # Extract seasons from Champions column
+        seasons = set()
+        for record in records:
+            champion = str(record.get('Champions', '')).strip()
+            if champion and champion != '':
+                seasons.add(champion)
+        
+        seasons_list = sorted(list(seasons))
+        print(f"✅ Found {len(seasons_list)} trophy-winning seasons: {seasons_list}")
+        
+        # Cache the data
+        result = {'seasons': seasons_list}
+        cache.set('afcon_egypt_teams_trophy_seasons', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error loading trophy seasons: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'seasons': []}), 500
+
+@app.route('/api/afcon-egypt-teams/matches')
+def api_afcon_egypt_teams_matches():
+    """API endpoint to get Afcon Egypt Teams matches (filtered by African Cup)"""
+    try:
+        print("⚽ Loading Afcon Egypt Teams matches from Google Sheets...")
+        
+        # Check if refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('afcon_egypt_teams_matches', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached Afcon Egypt Teams matches ({len(cached_data.get('matches', []))} matches)")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        # Check environment variable first
+        creds_env = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
+        if creds_env:
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        else:
+            # Fallback to local file
+            creds_file = get_resource_path('credentials/egyptnationalteam.json')
+            print(f"Using credentials file: {creds_file}")
+            if not os.path.exists(creds_file):
+                print(f"❌ Credentials file not found: {creds_file}")
+                return jsonify({'error': 'Credentials file not found', 'matches': []}), 404
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPE)
+        
+        client = gspread.authorize(creds)
+        
+        # Get Sheet ID from environment or use default
+        sheet_id = os.environ.get('EGYPT_TEAMS_SHEET_ID', '10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8')
+        print(f"Using Sheet ID: {sheet_id}")
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get MATCHDETAILS worksheet
+        try:
+            worksheet = spreadsheet.worksheet('MATCHDETAILS')
+        except gspread.WorksheetNotFound:
+            print("❌ MATCHDETAILS worksheet not found")
+            return jsonify({'error': 'No Data Available', 'matches': []}), 404
+        
+        # Get all records as list of dictionaries
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ MATCHDETAILS is empty or has no data: {e}")
+            return jsonify({'error': 'No Data Available', 'matches': []}), 200
+        
+        # Filter out empty rows and filter by African Cup championship
+        matches = []
+        for record in records:
+            # Check if row has any data
+            has_data = any(str(v).strip() != '' for v in record.values())
+            if has_data:
+                champion = str(record.get('CHAMPION', '')).strip()
+                # Filter for African Cup only (exact match)
+                if champion and champion == 'African Cup':
+                    cleaned_record = {}
+                    for key, value in record.items():
+                        cleaned_record[key] = str(value).strip() if value else ''
+                    matches.append(cleaned_record)
+        
+        print(f"✅ Loaded {len(matches)} Afcon Egypt Teams matches")
+        
+        # Cache the data
+        result = {'matches': matches}
+        cache.set('afcon_egypt_teams_matches', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error loading Afcon Egypt Teams matches: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'matches': []}), 500
+
 @app.route('/api/ww-egypt-teams/matches')
 def api_ww_egypt_teams_matches():
     """API endpoint to get WW Egypt National Teams matches from Google Sheets"""
@@ -5339,6 +5508,380 @@ def api_egypt_teams_player_details():
     except Exception as e:
         import traceback
         print(f"❌ Error loading player details: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'playerDetails': [], 'playerDatabase': []}), 500
+
+@app.route('/api/afcon-egypt-teams/players')
+def api_afcon_egypt_teams_players():
+    """API endpoint to get Afcon Egypt Teams players (filtered by African Cup matches)"""
+    try:
+        print("👥 Loading Afcon Egypt Teams players from Google Sheets...")
+        
+        # Check environment variable first
+        creds_env = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
+        if creds_env:
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        else:
+            # Fallback to local file
+            creds_file = get_resource_path('credentials/egyptnationalteam.json')
+            print(f"Using credentials file: {creds_file}")
+            if not os.path.exists(creds_file):
+                print(f"❌ Credentials file not found: {creds_file}")
+                return jsonify({'error': 'Credentials file not found', 'players': []}), 404
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPE)
+        
+        client = gspread.authorize(creds)
+        
+        # Get Sheet ID from environment or use default
+        sheet_id = os.environ.get('EGYPT_TEAMS_SHEET_ID', '10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8')
+        print(f"Using Sheet ID: {sheet_id}")
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get PLAYERDATABASE worksheet
+        try:
+            player_db_worksheet = spreadsheet.worksheet('PLAYERDATABASE')
+        except gspread.WorksheetNotFound:
+            print("❌ PLAYERDATABASE worksheet not found")
+            return jsonify({'error': 'No Data Available', 'players': []}), 404
+        
+        # Get PLAYERDETAILS worksheet
+        try:
+            player_details_worksheet = spreadsheet.worksheet('PLAYERDETAILS')
+        except gspread.WorksheetNotFound:
+            print("❌ PLAYERDETAILS worksheet not found")
+            return jsonify({'error': 'No Data Available', 'players': []}), 404
+        
+        # Get MATCHDETAILS worksheet
+        try:
+            match_details_worksheet = spreadsheet.worksheet('MATCHDETAILS')
+        except gspread.WorksheetNotFound:
+            print("❌ MATCHDETAILS worksheet not found")
+            return jsonify({'error': 'No Data Available', 'players': []}), 404
+        
+        # Get all records
+        try:
+            player_db_records = player_db_worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ PLAYERDATABASE is empty: {e}")
+            return jsonify({'error': 'No Data Available', 'players': []}), 200
+            
+        try:
+            player_details_records = player_details_worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ PLAYERDETAILS is empty: {e}")
+            player_details_records = []
+            
+        try:
+            match_details_records = match_details_worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ MATCHDETAILS is empty: {e}")
+            match_details_records = []
+        
+        # Filter matches by African Cup championship (exact match)
+        afcon_match_ids = set()
+        for match in match_details_records:
+            champion = str(match.get('CHAMPION', '')).strip()
+            match_id = str(match.get('MATCH_ID', '')).strip()
+            if match_id and champion and champion == 'African Cup':
+                afcon_match_ids.add(match_id)
+        
+        print(f"Found {len(afcon_match_ids)} African Cup matches")
+        
+        # Calculate goals and assists for each player (only from African Cup matches)
+        players_goals = {}
+        players_assists = {}
+        
+        for detail in player_details_records:
+            player_name = str(detail.get('PLAYER NAME', '')).strip()
+            if not player_name:
+                continue
+            
+            ga_value = str(detail.get('GA', '')).strip()
+            match_id = str(detail.get('MATCH_ID', '')).strip()
+            
+            # Only count if match is in African Cup
+            if match_id not in afcon_match_ids:
+                continue
+            
+            gatotal = detail.get('GATOTAL', 0)
+            try:
+                gatotal = int(gatotal) if gatotal else 0
+            except (ValueError, TypeError):
+                gatotal = 0
+            
+            # Check if GA contains "GOAL" (exact match)
+            if ga_value == 'GOAL':
+                if player_name in players_goals:
+                    players_goals[player_name] += gatotal
+                else:
+                    players_goals[player_name] = gatotal
+            
+            # Check if GA contains "ASSIST" (exact match)
+            elif ga_value == 'ASSIST':
+                if player_name in players_assists:
+                    players_assists[player_name] += gatotal
+                else:
+                    players_assists[player_name] = gatotal
+        
+        # Get unique player names and their teams from PLAYERDATABASE
+        player_teams = {}
+        for player in player_db_records:
+            name = str(player.get('PLAYER NAME', '')).strip()
+            team = str(player.get('TEAM', '')).strip()
+            if name:
+                player_teams[name] = team
+        
+        # Build final players list (only players who played in African Cup matches)
+        players = []
+        all_player_names = set(players_goals.keys()) | set(players_assists.keys())
+        
+        for player_name in all_player_names:
+            goals = players_goals.get(player_name, 0)
+            assists = players_assists.get(player_name, 0)
+            team = player_teams.get(player_name, '')
+            
+            # Calculate total G+A
+            total_ga = goals + assists
+            
+            players.append({
+                'playerName': player_name,
+                'team': team,
+                'totalGA': total_ga,
+                'goals': goals,
+                'assists': assists
+            })
+        
+        print(f"✅ Loaded {len(players)} Afcon Egypt Teams players")
+        return jsonify({'players': players})
+        
+    except Exception as e:
+        print(f"❌ Error loading Afcon Egypt Teams players: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'players': []}), 500
+
+@app.route('/api/afcon-egypt-teams/player-details')
+def api_afcon_egypt_teams_player_details():
+    """API endpoint to get raw player details for Afcon Egypt Teams (filtered by African Cup)"""
+    try:
+        print("👥 Loading Afcon Egypt Teams player details...")
+        
+        # Check if refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('afcon_egypt_teams_player_details', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached Afcon Egypt Teams player details")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        # Check environment variable first
+        creds_env = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
+        if creds_env:
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        else:
+            # Fallback to local file
+            creds_file = get_resource_path('credentials/egyptnationalteam.json')
+            if not os.path.exists(creds_file):
+                return jsonify({'error': 'Credentials file not found', 'playerDetails': [], 'playerDatabase': []}), 404
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPE)
+        
+        client = gspread.authorize(creds)
+        
+        # Get Sheet ID
+        sheet_id = os.environ.get('EGYPT_TEAMS_SHEET_ID', '10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8')
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get MATCHDETAILS to filter by African Cup
+        try:
+            match_details_worksheet = spreadsheet.worksheet('MATCHDETAILS')
+            match_details_records = match_details_worksheet.get_all_records()
+        except:
+            match_details_records = []
+        
+        # Filter matches by African Cup championship (exact match)
+        afcon_match_ids = set()
+        for match in match_details_records:
+            champion = str(match.get('CHAMPION', '')).strip()
+            match_id = str(match.get('MATCH_ID', '')).strip()
+            if match_id and champion and champion == 'African Cup':
+                afcon_match_ids.add(match_id)
+        
+        # Get PLAYERDATABASE worksheet
+        try:
+            player_db_worksheet = spreadsheet.worksheet('PLAYERDATABASE')
+        except:
+            print("❌ PLAYERDATABASE worksheet not found")
+            return jsonify({'error': 'No Data Available', 'playerDetails': [], 'playerDatabase': []}), 404
+        
+        # Get PLAYERDETAILS worksheet
+        try:
+            player_details_worksheet = spreadsheet.worksheet('PLAYERDETAILS')
+        except:
+            print("❌ PLAYERDETAILS worksheet not found")
+            return jsonify({'error': 'No Data Available', 'playerDetails': [], 'playerDatabase': []}), 404
+        
+        # Get LINEUPEGYPT worksheet
+        try:
+            lineup_egypt_worksheet = spreadsheet.worksheet('LINEUPEGYPT')
+        except:
+            lineup_egypt_worksheet = None
+        
+        # Get LINEUPOPPONENT worksheet
+        try:
+            lineup_opponent_worksheet = spreadsheet.worksheet('LINEUPOPPONENT')
+        except:
+            lineup_opponent_worksheet = None
+        
+        # Get GKDETAILS worksheet
+        try:
+            gk_details_worksheet = spreadsheet.worksheet('GKDETAILS')
+        except:
+            gk_details_worksheet = None
+        
+        # Get HOWPENMISSED worksheet
+        try:
+            howpen_worksheet = spreadsheet.worksheet('HOWPENMISSED')
+        except:
+            howpen_worksheet = None
+        
+        # Get all records
+        try:
+            player_db_records = player_db_worksheet.get_all_records()
+        except:
+            player_db_records = []
+        
+        try:
+            player_details_records = player_details_worksheet.get_all_records()
+        except:
+            player_details_records = []
+        
+        # Filter player details by African Cup matches
+        filtered_player_details = []
+        for record in player_details_records:
+            match_id = str(record.get('MATCH_ID', '')).strip()
+            if match_id in afcon_match_ids:
+                filtered_player_details.append(record)
+        
+        lineup_egypt_records = []
+        if lineup_egypt_worksheet:
+            try:
+                all_lineup_egypt = lineup_egypt_worksheet.get_all_records()
+                # Filter by African Cup matches
+                for record in all_lineup_egypt:
+                    match_id = str(record.get('MATCH_ID', '')).strip()
+                    if match_id in afcon_match_ids:
+                        lineup_egypt_records.append(record)
+            except:
+                lineup_egypt_records = []
+        
+        lineup_opponent_records = []
+        if lineup_opponent_worksheet:
+            try:
+                all_lineup_opponent = lineup_opponent_worksheet.get_all_records()
+                # Filter by African Cup matches
+                for record in all_lineup_opponent:
+                    match_id = str(record.get('MATCH_ID', '')).strip()
+                    if match_id in afcon_match_ids:
+                        lineup_opponent_records.append(record)
+            except:
+                lineup_opponent_records = []
+        
+        # Add source team identifier to each record
+        for record in lineup_egypt_records:
+            record['SOURCE_TEAM'] = 'EGYPT'
+        
+        for record in lineup_opponent_records:
+            record['SOURCE_TEAM'] = 'OPPONENT'
+        
+        # Combine both lineup records
+        lineup_details_records = lineup_egypt_records + lineup_opponent_records
+        
+        gk_details_records = []
+        if gk_details_worksheet:
+            try:
+                all_gk_details = gk_details_worksheet.get_all_records()
+                # Filter by African Cup matches
+                for record in all_gk_details:
+                    match_id = str(record.get('MATCH_ID', '')).strip()
+                    if match_id in afcon_match_ids:
+                        gk_details_records.append(record)
+            except:
+                gk_details_records = []
+        
+        howpen_records = []
+        if howpen_worksheet:
+            try:
+                all_howpen = howpen_worksheet.get_all_records()
+                # Filter by African Cup matches
+                for record in all_howpen:
+                    match_id = str(record.get('MATCH_ID', '')).strip()
+                    if match_id in afcon_match_ids:
+                        howpen_records.append(record)
+            except:
+                howpen_records = []
+        
+        # Clean data
+        cleaned_player_db = []
+        for record in player_db_records:
+            cleaned_record = {}
+            for key, value in record.items():
+                cleaned_record[key] = str(value).strip() if value else ''
+            cleaned_player_db.append(cleaned_record)
+        
+        cleaned_player_details = []
+        for record in filtered_player_details:
+            cleaned_record = {}
+            for key, value in record.items():
+                cleaned_record[key] = str(value).strip() if value else ''
+            cleaned_player_details.append(cleaned_record)
+        
+        cleaned_lineup_details = []
+        for record in lineup_details_records:
+            cleaned_record = {}
+            for key, value in record.items():
+                cleaned_record[key] = str(value).strip() if value else ''
+            cleaned_lineup_details.append(cleaned_record)
+        
+        cleaned_gk_details = []
+        for record in gk_details_records:
+            cleaned_record = {}
+            for key, value in record.items():
+                cleaned_record[key] = str(value).strip() if value else ''
+            cleaned_gk_details.append(cleaned_record)
+        
+        cleaned_howpen = []
+        for record in howpen_records:
+            cleaned_record = {}
+            for key, value in record.items():
+                cleaned_record[key] = str(value).strip() if value else ''
+            cleaned_howpen.append(cleaned_record)
+        
+        
+        # Cache the data
+        result = {
+            'playerDatabase': cleaned_player_db,
+            'playerDetails': cleaned_player_details,
+            'lineupDetails': cleaned_lineup_details,
+            'gkDetails': cleaned_gk_details,
+            'howPenMissed': cleaned_howpen
+        }
+        cache.set('afcon_egypt_teams_player_details', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error loading Afcon Egypt Teams player details: {e}")
+        import traceback
         traceback.print_exc()
         return jsonify({'error': str(e), 'playerDetails': [], 'playerDatabase': []}), 500
 
