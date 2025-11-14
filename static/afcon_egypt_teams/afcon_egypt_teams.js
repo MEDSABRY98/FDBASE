@@ -35,7 +35,11 @@ let afconEgyptTeamsData = {
     goalkeepersData: [],
     goalkeepersSearchTerm: '',
     goalkeepersTeamFilter: 'all',
-    trophySeasons: [] // Store trophy-winning seasons
+    trophySeasons: [], // Store trophy-winning seasons
+    playersByRoundData: [],
+    playersByRoundFiltered: [],
+    playersByRoundTeamFilter: 'all',
+    playersByRoundSearchTerm: ''
 };
 
 // Virtual Scrolling state
@@ -76,7 +80,7 @@ async function loadAfconEgyptTeamsData(forceRefresh = false) {
         afconEgyptTeamsData.filteredRecords = [...afconEgyptTeamsData.allRecords];
         
         // Load trophy seasons
-        await loadTrophySeasons();
+        await loadTrophySeasons(forceRefresh);
         
         // Populate filter options
         populateFilterOptions();
@@ -523,9 +527,13 @@ function populateFilterOptions() {
 }
 
 // Load trophy seasons from API
-async function loadTrophySeasons() {
+async function loadTrophySeasons(forceRefresh = false) {
+    if (afconEgyptTeamsData.trophySeasons.length > 0 && !forceRefresh) {
+        return;
+    }
     try {
-        const response = await fetch('/api/afcon-egypt-teams/trophy-seasons');
+        const url = forceRefresh ? '/api/afcon-egypt-teams/trophy-seasons?refresh=true' : '/api/afcon-egypt-teams/trophy-seasons';
+        const response = await fetch(url);
         if (!response.ok) {
             console.warn('⚠️ Could not load trophy seasons');
             afconEgyptTeamsData.trophySeasons = [];
@@ -695,6 +703,16 @@ function applyFilters() {
     }
     
     console.log(`Filtered ${afconEgyptTeamsData.filteredRecords.length} of ${afconEgyptTeamsData.allRecords.length} matches`);
+    
+    // Update All Players By Round data
+    if (afconEgyptTeamsData.playersLoaded) {
+        calculatePlayersByRoundStats();
+    }
+    
+    const playersByRoundTab = document.getElementById('players-by-round-tab');
+    if (playersByRoundTab && playersByRoundTab.classList.contains('active')) {
+        loadPlayersByRound();
+    }
 }
 
 function clearFilters() {
@@ -784,6 +802,15 @@ function clearFilters() {
     }
     
     console.log('Filters cleared');
+    
+    if (afconEgyptTeamsData.playersLoaded) {
+        calculatePlayersByRoundStats();
+    }
+
+    const playersByRoundTab = document.getElementById('players-by-round-tab');
+    if (playersByRoundTab && playersByRoundTab.classList.contains('active')) {
+        loadPlayersByRound();
+    }
 }
 
 // ============================================================================
@@ -856,6 +883,9 @@ async function loadPlayersData(forceRefresh = false) {
         calculatePlayerStatistics();
         
         displayPlayers();
+        
+        calculatePlayersByRoundStats();
+        
         hidePlayersLoading();
         
     } catch (error) {
@@ -1042,6 +1072,240 @@ function filterPlayersByTeam() {
     console.log(`Filtered players: ${afconEgyptTeamsData.players.length} of ${afconEgyptTeamsData.allPlayers.length}`);
 }
 
+async function loadPlayersByRound() {
+    try {
+        if (!afconEgyptTeamsData.playersLoaded) {
+            await loadPlayersData();
+        }
+        calculatePlayersByRoundStats();
+        setupPlayersByRoundSearch();
+    } catch (error) {
+        console.error('Error loading players by round:', error);
+        const tbody = document.getElementById('players-by-round-tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem; color: #999;">Unable to load data</td></tr>';
+        }
+    }
+}
+
+function setupPlayersByRoundSearch() {
+    const searchInput = document.getElementById('players-by-round-search');
+    if (!searchInput) return;
+    
+    // Remove existing event listeners by cloning the element
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+    
+    newSearchInput.addEventListener('input', function() {
+        const searchTerm = this.value.trim();
+        afconEgyptTeamsData.playersByRoundSearchTerm = searchTerm;
+        filterAndDisplayPlayersByRound();
+    });
+}
+
+function calculatePlayersByRoundStats() {
+    if (!afconEgyptTeamsData.playersLoaded) return;
+    
+    const filteredMatchIds = new Set(afconEgyptTeamsData.filteredRecords.map(match => match['MATCH_ID']));
+    if (filteredMatchIds.size === 0) {
+        displayPlayersByRoundTable([], []);
+        return;
+    }
+    
+    const matchIdToRound = new Map();
+    afconEgyptTeamsData.filteredRecords.forEach(match => {
+        const matchId = match['MATCH_ID'] || '';
+        const round = (match['ROUND'] || '').trim() || 'Unknown';
+        if (matchId) {
+            matchIdToRound.set(matchId, round);
+        }
+    });
+    
+    const playerStats = new Map();
+    const roundsFound = new Set();
+    const playerTeams = new Map(); // Map to store player teams
+    
+    afconEgyptTeamsData.playerDetails.forEach(detail => {
+        const playerName = (detail['PLAYER NAME'] || '').trim();
+        if (!playerName) return;
+        
+        const gaValue = (detail['GA'] || '').trim();
+        if (gaValue !== 'GOAL') return;
+        
+        const matchId = (detail['MATCH_ID'] || '').trim();
+        if (!filteredMatchIds.has(matchId)) return;
+        
+        const gatotal = parseInt(detail['GATOTAL']) || 0;
+        if (!gatotal) return;
+        
+        const round = matchIdToRound.get(matchId) || 'Unknown';
+        roundsFound.add(round);
+        
+        // Store player team
+        const team = (detail['TEAM'] || '').trim();
+        if (team && !playerTeams.has(playerName)) {
+            playerTeams.set(playerName, team);
+        }
+        
+        if (!playerStats.has(playerName)) {
+            playerStats.set(playerName, {
+                playerName,
+                totalGoals: 0,
+                roundGoals: {},
+                team: team || ''
+            });
+        }
+        
+        const stats = playerStats.get(playerName);
+        stats.totalGoals += gatotal;
+        stats.roundGoals[round] = (stats.roundGoals[round] || 0) + gatotal;
+        // Update team if not set
+        if (!stats.team && team) {
+            stats.team = team;
+        }
+    });
+    
+    const finalRoundOrder = getRoundDisplayOrder(roundsFound);
+    
+    const playersArray = Array.from(playerStats.values())
+        .filter(player => player.totalGoals > 0)
+        .sort((a, b) => {
+            if (b.totalGoals !== a.totalGoals) {
+                return b.totalGoals - a.totalGoals;
+            }
+            return a.playerName.localeCompare(b.playerName);
+        });
+    
+    afconEgyptTeamsData.playersByRoundData = playersArray;
+    afconEgyptTeamsData.playersByRoundOrder = finalRoundOrder;
+    afconEgyptTeamsData.playersByRoundFiltered = [...playersArray];
+    filterAndDisplayPlayersByRound();
+}
+
+function getRoundDisplayOrder(roundsFoundSet) {
+    // Fixed order for rounds
+    const fixedOrder = ['G.S', '16', '8', '4', 'Bronze Medal', 'Final', 'Playoff.GS'];
+    
+    const roundsFound = Array.from(roundsFoundSet || []);
+    
+    // Create a map for quick lookup of order index
+    const orderMap = new Map();
+    fixedOrder.forEach((round, index) => {
+        orderMap.set(round, index);
+    });
+    
+    // Separate rounds into: those in fixed order and those not
+    const orderedRounds = [];
+    const unorderedRounds = [];
+    
+    roundsFound.forEach(round => {
+        if (orderMap.has(round)) {
+            orderedRounds.push({ round, order: orderMap.get(round) });
+        } else {
+            unorderedRounds.push(round);
+        }
+    });
+    
+    // Sort ordered rounds by their order index
+    orderedRounds.sort((a, b) => a.order - b.order);
+    
+    // Sort unordered rounds alphabetically
+    unorderedRounds.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }));
+    
+    // Combine: ordered rounds first (in fixed order), then unordered rounds
+    const finalOrder = [
+        ...orderedRounds.map(item => item.round),
+        ...unorderedRounds
+    ];
+    
+    return finalOrder;
+}
+
+function filterPlayersByRoundByTeam() {
+    const filterSelect = document.getElementById('players-by-round-team-filter');
+    if (!filterSelect) {
+        afconEgyptTeamsData.playersByRoundFiltered = [...afconEgyptTeamsData.playersByRoundData];
+        filterAndDisplayPlayersByRound();
+        return;
+    }
+    
+    const filterValue = filterSelect.value;
+    afconEgyptTeamsData.playersByRoundTeamFilter = filterValue;
+    
+    filterAndDisplayPlayersByRound();
+}
+
+function filterAndDisplayPlayersByRound() {
+    let playersToDisplay = [...afconEgyptTeamsData.playersByRoundData];
+    
+    // Apply team filter
+    const teamFilter = afconEgyptTeamsData.playersByRoundTeamFilter || 'all';
+    if (teamFilter === 'egypt') {
+        playersToDisplay = playersToDisplay.filter(player => {
+            const team = (player.team || '').toLowerCase();
+            return team.includes('egypt') || team.includes('مصر');
+        });
+    } else if (teamFilter === 'opponent') {
+        playersToDisplay = playersToDisplay.filter(player => {
+            const team = (player.team || '').toLowerCase();
+            return !team.includes('egypt') && !team.includes('مصر');
+        });
+    }
+    
+    // Apply search filter
+    const searchTerm = afconEgyptTeamsData.playersByRoundSearchTerm || '';
+    if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        playersToDisplay = playersToDisplay.filter(player => {
+            const playerName = String(player.playerName || '').toLowerCase();
+            const totalGoals = String(player.totalGoals || '').toLowerCase();
+            return playerName.includes(lowerSearchTerm) || totalGoals.includes(lowerSearchTerm);
+        });
+    }
+    
+    // Display filtered players
+    const roundOrder = afconEgyptTeamsData.playersByRoundOrder || [];
+    displayPlayersByRoundTable(playersToDisplay, roundOrder);
+}
+
+function displayPlayersByRoundTable(playersArray, roundOrder = []) {
+    const thead = document.getElementById('players-by-round-thead');
+    const tbody = document.getElementById('players-by-round-tbody');
+    if (!thead || !tbody) return;
+    
+    const headerCells = ['#', 'Player Name', 'Total Goals', ...roundOrder];
+    thead.innerHTML = `
+        <tr>
+            ${headerCells.map(title => `<th>${escapeHtml(title)}</th>`).join('')}
+        </tr>
+    `;
+    
+    if (!playersArray || playersArray.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${headerCells.length}" style="text-align: center; padding: 2rem; color: #999;">No goal data available</td></tr>`;
+        return;
+    }
+    
+    let rank = 1;
+    const rowsHtml = playersArray.map(player => {
+        const roundCells = roundOrder.map(round => {
+            const value = player.roundGoals[round] || 0;
+            const displayValue = value > 0 ? value : '-';
+            return `<td style="text-align: center; font-weight: ${value > 0 ? '600' : 'normal'}; font-size: ${value > 0 ? '1.1rem' : '1rem'};">${displayValue}</td>`;
+        }).join('');
+        
+        return `
+            <tr>
+                <td style="text-align: center;">${rank++}</td>
+                <td style="font-weight: 600;">${escapeHtml(player.playerName)}</td>
+                <td style="text-align: center; font-weight: 700; color: #1d4ed8; font-size: 1.1rem;">${player.totalGoals}</td>
+                ${roundCells}
+            </tr>
+        `;
+    }).join('');
+    
+    tbody.innerHTML = rowsHtml;
+}
+
 function sortPlayersBy(column) {
     // Toggle sort direction if clicking the same column
     if (afconEgyptTeamsData.currentSortColumn === column) {
@@ -1087,17 +1351,15 @@ function displayPlayers() {
             const minutes = String(player.minutes || '').toLowerCase();
             const totalGA = String(player.totalGA || '').toLowerCase();
             const officialGoals = String(player.officialGoals || '').toLowerCase();
-            const friendlyGoals = String(player.friendlyGoals || '').toLowerCase();
             const officialAssists = String(player.officialAssists || '').toLowerCase();
-            const friendlyAssists = String(player.friendlyAssists || '').toLowerCase();
             
-            const rowText = `${playerName} ${matches} ${minutes} ${totalGA} ${officialGoals} ${friendlyGoals} ${officialAssists} ${friendlyAssists}`;
+            const rowText = `${playerName} ${matches} ${minutes} ${totalGA} ${officialGoals} ${officialAssists}`;
             return rowText.includes(searchTerm);
         });
     }
     
     if (playersToDisplay.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;">No players found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">No players found</td></tr>';
         return;
     }
     
@@ -1141,9 +1403,7 @@ function displayPlayers() {
             <td style="text-align: center;"><span style="font-weight: 600;">${player.minutes}</span></td>
             <td style="text-align: center; background-color: #f0f3ff;"><span style="color: #667eea; font-weight: bold; font-size: 1.2rem;">${player.totalGA}</span></td>
             <td style="text-align: center;"><span style="color: #667eea; font-weight: bold; font-size: 1.1rem;">${player.officialGoals}</span></td>
-            <td style="text-align: center;"><span style="color: #28a745; font-weight: bold; font-size: 1.1rem;">${player.friendlyGoals}</span></td>
             <td style="text-align: center;"><span style="color: #ff6b35; font-weight: bold; font-size: 1.1rem;">${player.officialAssists}</span></td>
-            <td style="text-align: center;"><span style="color: #ffc107; font-weight: bold; font-size: 1.1rem;">${player.friendlyAssists}</span></td>
         `;
         
         tbody.appendChild(row);
@@ -1466,15 +1726,19 @@ function loadPlayerMatches(playerName, playerMatchIds) {
         });
         
         const row = document.createElement('tr');
+        const goalsDisplay = goals > 0 ? goals : '-';
+        const penaltyGoalsDisplay = penaltyGoals > 0 ? penaltyGoals : '-';
+        const assistsDisplay = assists > 0 ? assists : '-';
+        
         row.innerHTML = `
             <td>${match['DATE'] || ''}</td>
             <td>${match['SEASON'] || ''}</td>
             <td>${match['MANAGER EGY'] || ''}</td>
             <td>${match['OPPONENT TEAM'] || ''}</td>
-            <td style="text-align: center;">${minutes}'</td>
-            <td style="text-align: center;"><strong style="color: #667eea;">${goals}</strong></td>
-            <td style="text-align: center;"><strong style="color: #10b981;">${penaltyGoals}</strong></td>
-            <td style="text-align: center;"><strong style="color: #ff6b35;">${assists}</strong></td>
+            <td style="text-align: center;"><strong style="font-size: 1.1rem;">${minutes}'</strong></td>
+            <td style="text-align: center;"><strong style="color: #667eea; font-size: 2.2rem;">${goalsDisplay}</strong></td>
+            <td style="text-align: center;"><strong style="color: #10b981; font-size: 2.2rem;">${penaltyGoalsDisplay}</strong></td>
+            <td style="text-align: center;"><strong style="color: #ff6b35; font-size: 2.2rem;">${assistsDisplay}</strong></td>
         `;
         tbody.appendChild(row);
     });
@@ -2032,6 +2296,8 @@ function showStatsTab(arg1, arg2) {
         if (!afconEgyptTeamsData.playersLoaded) {
             loadPlayersData();
         }
+    } else if (tabName === 'players-by-round') {
+        loadPlayersByRound();
     } else if (tabName === 'byplayer') {
         // Setup player search if not already setup
         setupPlayerSearch();

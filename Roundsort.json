@@ -1,0 +1,32 @@
+﻿{
+  "rounds": [
+    {
+      "name": "G.S",
+      "order": 1
+    },
+    {
+      "name": "16",
+      "order": 2
+    },
+    {
+      "name": "8",
+      "order": 3
+    },
+    {
+      "name": "Playoff.GS",
+      "order": 4
+    },
+    {
+      "name": "4",
+      "order": 5
+    },
+    {
+      "name": "Bronze Medal",
+      "order": 6
+    },
+    {
+      "name": "Final",
+      "order": 7
+    }
+  ]
+}

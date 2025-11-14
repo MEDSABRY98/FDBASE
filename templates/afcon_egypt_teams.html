@@ -1103,6 +1103,14 @@
                                     </svg>
                                     All Players
                                 </button>
+                                <button class="stats-tab" onclick="showStatsTab(event, 'players-by-round')">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 3h2l.4 2M7 13h10l4-8H5.4m-2.4 0L3 6m4 7l-1.35 2.7a2 2 0 0 0 1.79 2.9H19"/>
+                                        <circle cx="9" cy="21" r="1"/>
+                                        <circle cx="19" cy="21" r="1"/>
+                                    </svg>
+                                    All Players By Round
+                                </button>
                                 <button class="stats-tab" onclick="showStatsTab(event, 'byplayer')">
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -1474,13 +1482,51 @@
                                             <th class="sortable-header" onclick="sortPlayersBy('minutes')">Minutes</th>
                                             <th class="sortable-header sorted-desc" onclick="sortPlayersBy('totalGA')">G+A</th>
                                             <th class="sortable-header" onclick="sortPlayersBy('officialGoals')">Official Goals</th>
-                                            <th class="sortable-header" onclick="sortPlayersBy('friendlyGoals')">Friendly Goals</th>
                                             <th class="sortable-header" onclick="sortPlayersBy('officialAssists')">Official Assists</th>
-                                            <th class="sortable-header" onclick="sortPlayersBy('friendlyAssists')">Friendly Assists</th>
                                         </tr>
                                     </thead>
                                     <tbody id="players-tbody">
                                         <!-- Players will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- All Players By Round Tab -->
+                    <div id="players-by-round-tab" class="stats-tab-content">
+                        <div class="matches-section">
+                            <h2 class="section-title">All Players By Round</h2>
+                            
+                            <!-- Players By Round Filter -->
+                            <div style="margin-bottom: 2rem; text-align: center;">
+                                <label for="players-by-round-team-filter" style="font-weight: 600; color: #333; margin-right: 1rem;">Filter by Team:</label>
+                                <select id="players-by-round-team-filter" class="filter-control" style="max-width: 300px; display: inline-block;" onchange="filterPlayersByRoundByTeam()">
+                                    <option value="all">All Players</option>
+                                    <option value="egypt">With Egypt (Egyptian Players)</option>
+                                    <option value="opponent">Against Egypt (Opponent Players)</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Players By Round Search -->
+                            <div style="margin-bottom: 2rem; text-align: center;">
+                                <input type="text" id="players-by-round-search" placeholder="🔍 Search in players by round table..." 
+                                    style="padding: 0.75rem 1rem; width: 400px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;" autocomplete="off">
+                            </div>
+                            
+                            <div style="overflow-x: auto;">
+                                <table class="matches-table">
+                                    <thead id="players-by-round-thead">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Player Name</th>
+                                            <th>Total Goals</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="players-by-round-tbody">
+                                        <tr>
+                                            <td colspan="3" style="text-align: center; padding: 2rem; color: #999;">No data available</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
