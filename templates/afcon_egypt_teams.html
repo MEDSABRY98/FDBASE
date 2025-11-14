@@ -852,7 +852,7 @@
             <h2 class="filters-title">🔍 Filters</h2>
             
             <div class="filter-grid">
-                <!-- Row 1 -->
+                <!-- Row 0 - Trophy Filter (Special for Afcon) -->
                 <div class="filter-row">
                     <div class="filter-item">
                         <label>Trophy</label>
@@ -861,14 +861,28 @@
                             <option value="only-trophy">Only Trophy</option>
                         </select>
                     </div>
+                </div>
+
+                <!-- Row 1 -->
+                <div class="filter-row">
                     <div class="filter-item">
                         <label>Match ID</label>
-                        <input type="text" id="filter-match-id" class="filter-control" placeholder="Search Match ID...">
+                        <div class="searchable-select-container">
+                            <input type="text" id="filter-match-id" class="filter-control" placeholder="All" autocomplete="off">
+                            <div class="dropdown-options" style="display: none;"></div>
+                        </div>
                     </div>
                     <div class="filter-item">
-                        <label>Champion</label>
+                        <label>System Kind</label>
                         <div class="searchable-select-container">
-                            <input type="text" id="filter-champion" class="filter-control" placeholder="All" autocomplete="off">
+                            <input type="text" id="filter-system-kind" class="filter-control" placeholder="All" autocomplete="off">
+                            <div class="dropdown-options" style="display: none;"></div>
+                        </div>
+                    </div>
+                    <div class="filter-item">
+                        <label>Age</label>
+                        <div class="searchable-select-container">
+                            <input type="text" id="filter-age" class="filter-control" placeholder="All" autocomplete="off">
                             <div class="dropdown-options" style="display: none;"></div>
                         </div>
                     </div>
@@ -884,11 +898,15 @@
                 <!-- Row 2 -->
                 <div class="filter-row">
                     <div class="filter-item">
-                        <label>Date</label>
+                        <label>Date From</label>
                         <input type="date" id="filter-date-from" class="filter-control">
                     </div>
                     <div class="filter-item">
-                        <label>Manager Egypt</label>
+                        <label>Date To</label>
+                        <input type="date" id="filter-date-to" class="filter-control">
+                    </div>
+                    <div class="filter-item">
+                        <label>Manager EGY</label>
                         <div class="searchable-select-container">
                             <input type="text" id="filter-manager-egy" class="filter-control" placeholder="All" autocomplete="off">
                             <div class="dropdown-options" style="display: none;"></div>
@@ -901,6 +919,10 @@
                             <div class="dropdown-options" style="display: none;"></div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Row 3 -->
+                <div class="filter-row">
                     <div class="filter-item">
                         <label>Referee</label>
                         <div class="searchable-select-container">
@@ -908,10 +930,13 @@
                             <div class="dropdown-options" style="display: none;"></div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Row 3 -->
-                <div class="filter-row">
+                    <div class="filter-item">
+                        <label>Champion</label>
+                        <div class="searchable-select-container">
+                            <input type="text" id="filter-champion" class="filter-control" placeholder="All" autocomplete="off">
+                            <div class="dropdown-options" style="display: none;"></div>
+                        </div>
+                    </div>
                     <div class="filter-item">
                         <label>Season</label>
                         <div class="searchable-select-container">
@@ -926,6 +951,10 @@
                             <div class="dropdown-options" style="display: none;"></div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Row 4 -->
+                <div class="filter-row">
                     <div class="filter-item">
                         <label>Place</label>
                         <div class="searchable-select-container">
@@ -940,10 +969,6 @@
                             <div class="dropdown-options" style="display: none;"></div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Row 4 -->
-                <div class="filter-row">
                     <div class="filter-item">
                         <label>Egypt Team</label>
                         <div class="searchable-select-container">
@@ -952,11 +977,15 @@
                         </div>
                     </div>
                     <div class="filter-item">
-                        <label>GF</label>
+                        <label>Goals For</label>
                         <input type="number" id="filter-gf" class="filter-control" placeholder="Goals For" min="0">
                     </div>
+                </div>
+
+                <!-- Row 5 -->
+                <div class="filter-row">
                     <div class="filter-item">
-                        <label>GA</label>
+                        <label>Goals Against</label>
                         <input type="number" id="filter-ga" class="filter-control" placeholder="Goals Against" min="0">
                     </div>
                     <div class="filter-item">
@@ -966,10 +995,6 @@
                             <div class="dropdown-options" style="display: none;"></div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Row 5 -->
-                <div class="filter-row">
                     <div class="filter-item">
                         <label>PEN</label>
                         <div class="searchable-select-container">
@@ -984,8 +1009,12 @@
                             <div class="dropdown-options" style="display: none;"></div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Row 6 -->
+                <div class="filter-row">
                     <div class="filter-item">
-                        <label>W-D-L</label>
+                        <label>Result (W-D-L)</label>
                         <div class="searchable-select-container">
                             <input type="text" id="filter-result" class="filter-control" placeholder="All" autocomplete="off">
                             <div class="dropdown-options" style="display: none;"></div>
@@ -997,6 +1026,17 @@
                             <input type="text" id="filter-cs" class="filter-control" placeholder="All" autocomplete="off">
                             <div class="dropdown-options" style="display: none;"></div>
                         </div>
+                    </div>
+                    <div class="filter-item">
+                        <label>W-L Q & F</label>
+                        <div class="searchable-select-container">
+                            <input type="text" id="filter-wl-qf" class="filter-control" placeholder="All" autocomplete="off">
+                            <div class="dropdown-options" style="display: none;"></div>
+                        </div>
+                    </div>
+                    <div class="filter-item">
+                        <label>NOTE</label>
+                        <input type="text" id="filter-note" class="filter-control" placeholder="Search Note...">
                     </div>
                 </div>
             </div>
@@ -2034,6 +2074,11 @@
 
                         <!-- All Clubs By Season Tab -->
                         <div id="elnady-all-clubs-by-season-tab" class="tab-content">
+                            <!-- Search Box -->
+                            <div style="margin-bottom: 1.5rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+                                <input type="text" id="all-clubs-by-season-search" class="filter-control" placeholder="🔍 Search for a club or season..." style="width: 100%; text-align: center;">
+                            </div>
+                            
                             <div style="overflow-x: auto;">
                                 <table class="matches-table">
                                     <thead>

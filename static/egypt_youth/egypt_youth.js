@@ -34,7 +34,8 @@ let youthEgyptData = {
     selectedPlayer: null,
     currentGKSortColumn: 'matches',
     currentGKSortDirection: 'desc',
-    goalkeepersData: []
+    goalkeepersData: [],
+    trophySeasons: [] // Store trophy-winning seasons
 };
 
 // ============================================================================
@@ -60,6 +61,9 @@ async function loadYouthEgyptData(forceRefresh = false) {
             
             console.log('✅ Youth Egypt data loaded successfully');
             console.log('📊 Total records:', youthEgyptData.allRecords.length);
+            
+            // Load trophy seasons
+            await loadTrophySeasons(forceRefresh);
             
             // Generate filter options
             generateFilterOptions();
@@ -125,11 +129,40 @@ async function loadYouthPlayersData() {
 // FILTER FUNCTIONS
 // ============================================================================
 
+// Load trophy seasons from API
+async function loadTrophySeasons(forceRefresh = false) {
+    if (youthEgyptData.trophySeasons.length > 0 && !forceRefresh) {
+        return;
+    }
+    try {
+        const url = forceRefresh ? '/api/youth-egypt/trophy-seasons?refresh=true' : '/api/youth-egypt/trophy-seasons';
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.warn('⚠️ Could not load trophy seasons');
+            youthEgyptData.trophySeasons = [];
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.error) {
+            console.warn('⚠️ Error loading trophy seasons:', data.error);
+            youthEgyptData.trophySeasons = [];
+            return;
+        }
+        
+        youthEgyptData.trophySeasons = data.seasons || [];
+        console.log(`✅ Loaded ${youthEgyptData.trophySeasons.length} trophy-winning seasons`);
+    } catch (error) {
+        console.error('Error loading trophy seasons:', error);
+        youthEgyptData.trophySeasons = [];
+    }
+}
+
 function generateFilterOptions() {
     const columns = [
-        'CHAMPION SYSTEM', 'SYSTEM KIND', 'AGE', 'MATCH_ID', 'MANAGER EGY', 'CHAMPION', 
-        'SEASON', 'ROUND', 'PLACE', 'H-A-N', 'Egypt TEAM', 'W-D-L', 
-        'CLEAN SHEET', 'W-L Q & F', 'OPPONENT TEAM'
+        'CHAMPION SYSTEM', 'SYSTEM KIND', 'AGE', 'MATCH_ID', 'MANAGER EGY', 'MANAGER OPPONENT', 
+        'REFREE', 'CHAMPION', 'SEASON', 'ROUND', 'PLACE', 'H-A-N', 'Egypt TEAM', 'W-D-L', 
+        'CLEAN SHEET', 'W-L Q & F', 'ET', 'PEN', 'OPPONENT TEAM'
     ];
     
     columns.forEach(column => {
@@ -147,6 +180,8 @@ function populateFilters() {
         'filter-age': 'AGE',
         'filter-match-id': 'MATCH_ID',
         'filter-manager-egy': 'MANAGER EGY',
+        'filter-manager-opponent': 'MANAGER OPPONENT',
+        'filter-refree': 'REFREE',
         'filter-champion': 'CHAMPION',
         'filter-season': 'SEASON',
         'filter-round': 'ROUND',
@@ -156,13 +191,18 @@ function populateFilters() {
         'filter-result': 'W-D-L',
         'filter-cs': 'CLEAN SHEET',
         'filter-wl-qf': 'W-L Q & F',
+        'filter-et': 'ET',
+        'filter-pen': 'PEN',
         'filter-opponent-team': 'OPPONENT TEAM'
     };
     
     Object.entries(filterMappings).forEach(([filterId, column]) => {
-        const container = document.querySelector(`#${filterId}`).parentElement;
+        const inputElement = document.getElementById(filterId);
+        if (!inputElement) return;
+        
+        const container = inputElement.parentElement;
         const dropdown = container.querySelector('.dropdown-options');
-        const input = document.getElementById(filterId);
+        const input = inputElement;
         
         if (dropdown && youthEgyptData.filterOptions[column]) {
             dropdown.innerHTML = '';
@@ -220,6 +260,7 @@ function addFilterListeners() {
 
 function applyFilters() {
     const filters = {
+        trophy: document.getElementById('filter-trophy').value,
         championSystem: document.getElementById('filter-champion-system').value,
         systemKind: document.getElementById('filter-system-kind').value,
         age: document.getElementById('filter-age').value,
@@ -227,6 +268,8 @@ function applyFilters() {
         dateFrom: document.getElementById('filter-date-from').value,
         dateTo: document.getElementById('filter-date-to').value,
         managerEgy: document.getElementById('filter-manager-egy').value,
+        managerOpponent: document.getElementById('filter-manager-opponent').value,
+        refree: document.getElementById('filter-refree').value,
         champion: document.getElementById('filter-champion').value,
         season: document.getElementById('filter-season').value,
         round: document.getElementById('filter-round').value,
@@ -238,10 +281,21 @@ function applyFilters() {
         result: document.getElementById('filter-result').value,
         cs: document.getElementById('filter-cs').value,
         wlQf: document.getElementById('filter-wl-qf').value,
-        opponentTeam: document.getElementById('filter-opponent-team').value
+        et: document.getElementById('filter-et').value,
+        pen: document.getElementById('filter-pen').value,
+        opponentTeam: document.getElementById('filter-opponent-team').value,
+        note: document.getElementById('filter-note').value.trim()
     };
     
     youthEgyptData.filteredRecords = youthEgyptData.allRecords.filter(record => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (filters.trophy === 'only-trophy') {
+            const season = record['SEASON'] || '';
+            if (!youthEgyptData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return (
             (!filters.championSystem || record['CHAMPION SYSTEM'] === filters.championSystem) &&
             (!filters.systemKind || record['SYSTEM KIND'] === filters.systemKind) &&
@@ -250,6 +304,8 @@ function applyFilters() {
             (!filters.dateFrom || new Date(record['DATE']) >= new Date(filters.dateFrom)) &&
             (!filters.dateTo || new Date(record['DATE']) <= new Date(filters.dateTo)) &&
             (!filters.managerEgy || record['MANAGER EGY'] === filters.managerEgy) &&
+            (!filters.managerOpponent || record['MANAGER OPPONENT'] === filters.managerOpponent) &&
+            (!filters.refree || record['REFREE'] === filters.refree) &&
             (!filters.champion || record['CHAMPION'] === filters.champion) &&
             (!filters.season || record['SEASON'] === filters.season) &&
             (!filters.round || record['ROUND'] === filters.round) &&
@@ -261,7 +317,10 @@ function applyFilters() {
             (!filters.result || record['W-D-L'] === filters.result) &&
             (!filters.cs || record['CLEAN SHEET'] === filters.cs) &&
             (!filters.wlQf || record['W-L Q & F'] === filters.wlQf) &&
-            (!filters.opponentTeam || record['OPPONENT TEAM'] === filters.opponentTeam)
+            (!filters.et || record['ET'] === filters.et) &&
+            (!filters.pen || record['PEN'] === filters.pen) &&
+            (!filters.opponentTeam || record['OPPONENT TEAM'] === filters.opponentTeam) &&
+            (!filters.note || (record['NOTE'] && record['NOTE'].toLowerCase().includes(filters.note.toLowerCase())))
         );
     });
     

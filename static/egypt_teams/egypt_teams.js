@@ -34,7 +34,8 @@ let egyptTeamsData = {
     currentGKSortDirection: 'desc',
     goalkeepersData: [],
     goalkeepersSearchTerm: '',
-    goalkeepersTeamFilter: 'all'
+    goalkeepersTeamFilter: 'all',
+    trophySeasons: [] // Store trophy-winning seasons
 };
 
 // Virtual Scrolling state
@@ -73,6 +74,9 @@ async function loadEgyptTeamsData(forceRefresh = false) {
         // Store data
         egyptTeamsData.allRecords = data.matches || [];
         egyptTeamsData.filteredRecords = [...egyptTeamsData.allRecords];
+        
+        // Load trophy seasons
+        await loadTrophySeasons(forceRefresh);
         
         // Populate filter options
         populateFilterOptions();
@@ -487,11 +491,43 @@ function showDropdownOptions(input, options) {
     dropdown.style.display = 'block';
 }
 
+// Load trophy seasons from API
+async function loadTrophySeasons(forceRefresh = false) {
+    if (egyptTeamsData.trophySeasons.length > 0 && !forceRefresh) {
+        return;
+    }
+    try {
+        const url = forceRefresh ? '/api/egypt-teams/trophy-seasons?refresh=true' : '/api/egypt-teams/trophy-seasons';
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.warn('⚠️ Could not load trophy seasons');
+            egyptTeamsData.trophySeasons = [];
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.error) {
+            console.warn('⚠️ Error loading trophy seasons:', data.error);
+            egyptTeamsData.trophySeasons = [];
+            return;
+        }
+        
+        egyptTeamsData.trophySeasons = data.seasons || [];
+        console.log(`✅ Loaded ${egyptTeamsData.trophySeasons.length} trophy-winning seasons`);
+    } catch (error) {
+        console.error('Error loading trophy seasons:', error);
+        egyptTeamsData.trophySeasons = [];
+    }
+}
+
 function populateFilterOptions() {
     const records = egyptTeamsData.allRecords;
     
     // Extract unique values for each filter
     const filterFields = {
+        'filter-match-id': 'MATCH_ID',
+        'filter-system-kind': 'SYSTEM KIND',
+        'filter-age': 'AGE',
         'filter-champion-system': 'CHAMPION SYSTEM',
         'filter-manager-egy': 'MANAGER EGY',
         'filter-manager-opponent': 'MANAGER OPPONENT',
@@ -505,6 +541,7 @@ function populateFilterOptions() {
         'filter-opponent-team': 'OPPONENT TEAM',
         'filter-result': 'W-D-L',
         'filter-cs': 'CLEAN SHEET',
+        'filter-wl-qf': 'W-L Q & F',
         'filter-et': 'ET',
         'filter-pen': 'PEN'
     };
@@ -520,7 +557,10 @@ function populateFilterOptions() {
 
 function applyFilters() {
     const filters = {
+        trophy: document.getElementById('filter-trophy').value,
         matchId: document.getElementById('filter-match-id').value.trim(),
+        systemKind: document.getElementById('filter-system-kind').value,
+        age: document.getElementById('filter-age').value,
         championSystem: document.getElementById('filter-champion-system').value,
         dateFrom: document.getElementById('filter-date-from').value,
         dateTo: document.getElementById('filter-date-to').value,
@@ -536,18 +576,30 @@ function applyFilters() {
         opponentTeam: document.getElementById('filter-opponent-team').value,
         result: document.getElementById('filter-result').value,
         cs: document.getElementById('filter-cs').value,
+        wlQf: document.getElementById('filter-wl-qf').value,
         et: document.getElementById('filter-et').value,
         pen: document.getElementById('filter-pen').value,
+        note: document.getElementById('filter-note').value.trim(),
         gf: document.getElementById('filter-gf').value,
         ga: document.getElementById('filter-ga').value
     };
     
     // Filter records
     egyptTeamsData.filteredRecords = egyptTeamsData.allRecords.filter(record => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (filters.trophy === 'only-trophy') {
+            const season = record['SEASON'] || '';
+            if (!egyptTeamsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         // Match ID filter
         if (filters.matchId && !record['MATCH_ID']?.includes(filters.matchId)) return false;
         
         // Dropdown filters
+        if (filters.systemKind && record['SYSTEM KIND'] !== filters.systemKind) return false;
+        if (filters.age && record['AGE'] !== filters.age) return false;
         if (filters.championSystem && record['CHAMPION SYSTEM'] !== filters.championSystem) return false;
         if (filters.managerEgy && record['MANAGER EGY'] !== filters.managerEgy) return false;
         if (filters.managerOpponent && record['MANAGER OPPONENT'] !== filters.managerOpponent) return false;
@@ -561,8 +613,10 @@ function applyFilters() {
         if (filters.opponentTeam && record['OPPONENT TEAM'] !== filters.opponentTeam) return false;
         if (filters.result && record['W-D-L'] !== filters.result) return false;
         if (filters.cs && record['CLEAN SHEET'] !== filters.cs) return false;
+        if (filters.wlQf && record['W-L Q & F'] !== filters.wlQf) return false;
         if (filters.et && record['ET'] !== filters.et) return false;
         if (filters.pen && record['PEN'] !== filters.pen) return false;
+        if (filters.note && !record['NOTE']?.toLowerCase().includes(filters.note.toLowerCase())) return false;
         
         // Date filters
         if (filters.dateFrom && record['DATE'] && new Date(record['DATE']) < new Date(filters.dateFrom)) return false;
@@ -659,11 +713,13 @@ function applyFilters() {
 }
 
 function clearFilters() {
+    document.getElementById('filter-trophy').value = '';
     document.getElementById('filter-match-id').value = '';
     document.getElementById('filter-date-from').value = '';
     document.getElementById('filter-date-to').value = '';
     document.getElementById('filter-gf').value = '';
     document.getElementById('filter-ga').value = '';
+    document.getElementById('filter-note').value = '';
     
     // Reset all searchable select inputs
     const searchableInputs = document.querySelectorAll('.searchable-select-container input');

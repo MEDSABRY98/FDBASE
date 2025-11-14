@@ -4220,6 +4220,74 @@ def api_refresh_cache():
 # GOOGLE SHEETS AUTO-SYNC API ENDPOINTS
 # ============================================================================
 
+@app.route('/api/ahly-stats/trophy-seasons')
+def api_ahly_stats_trophy_seasons():
+    """API endpoint to get trophy-winning seasons from TROPHY sheet (Al Ahly Stats)"""
+    try:
+        print("🏆 Loading trophy seasons from Google Sheets (Al Ahly Stats)...")
+        
+        # Check if refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('ahly_stats_trophy_seasons', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached trophy seasons ({len(cached_data.get('seasons', []))} seasons)")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        # Use the same credentials as ahly_match
+        client = get_google_sheets_client('ahly_match')
+        if not client:
+            print("❌ Google Sheets client not available")
+            return jsonify({'error': 'Google Sheets client not available', 'seasons': []}), 500
+        
+        # Get the sheet ID for ahly_match (which contains TROPHY)
+        sheet_id = app.config['SHEET_IDS']['ahly_match']
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get TROPHY worksheet
+        try:
+            worksheet = spreadsheet.worksheet('TROPHY')
+        except gspread.WorksheetNotFound:
+            print("❌ TROPHY worksheet not found")
+            return jsonify({'error': 'TROPHY worksheet not found', 'seasons': []}), 404
+        
+        # Get all records
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ TROPHY is empty or has no data: {e}")
+            return jsonify({'error': 'No Data Available', 'seasons': []}), 200
+        
+        # Extract seasons from Champions column
+        seasons = set()
+        for record in records:
+            champion = str(record.get('Champions', '')).strip()
+            if champion and champion != '':
+                seasons.add(champion)
+        
+        seasons_list = sorted(list(seasons))
+        print(f"✅ Found {len(seasons_list)} trophy-winning seasons: {seasons_list}")
+        
+        # Cache the data
+        result = {'seasons': seasons_list}
+        cache.set('ahly_stats_trophy_seasons', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error loading trophy seasons: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'seasons': []}), 500
+
 @app.route('/api/ahly-stats/sheets-data', methods=['GET'])
 def api_ahly_stats_sheets_data():
     """Get Al Ahly Stats data from Google Sheets (cached)"""
@@ -4930,26 +4998,31 @@ def api_ww_egypt_teams_matches():
         print(f"Using Sheet ID: {sheet_id}")
         spreadsheet = client.open_by_key(sheet_id)
         
-        # Get WWMATCHDETAILS worksheet
+        # Get MATCHDETAILS worksheet
         try:
-            worksheet = spreadsheet.worksheet('WWMATCHDETAILS')
+            worksheet = spreadsheet.worksheet('MATCHDETAILS')
         except gspread.WorksheetNotFound:
-            print("❌ WWMATCHDETAILS worksheet not found")
+            print("❌ MATCHDETAILS worksheet not found")
             return jsonify({'error': 'No Data Available', 'matches': []}), 404
         
         # Get all records as list of dictionaries
         try:
             records = worksheet.get_all_records()
         except Exception as e:
-            print(f"⚠️ WWMATCHDETAILS is empty or has no data: {e}")
+            print(f"⚠️ MATCHDETAILS is empty or has no data: {e}")
             return jsonify({'error': 'No Data Available', 'matches': []}), 200
         
-        # Filter out empty rows and clean data
+        # Filter out empty rows, clean data, and filter by SYSTEM KIND = "عالمي" (exact match)
         matches = []
         for record in records:
             # Check if row has any data
             has_data = any(str(v).strip() != '' for v in record.values())
             if has_data:
+                # Filter by SYSTEM KIND = "عالمي" (exact match)
+                system_kind = str(record.get('SYSTEM KIND', '')).strip()
+                if system_kind != 'عالمي':
+                    continue
+                
                 cleaned_record = {}
                 for key, value in record.items():
                     cleaned_record[key] = str(value).strip() if value else ''
@@ -5012,18 +5085,18 @@ def api_ww_egypt_teams_players():
         print(f"Using Sheet ID: {sheet_id}")
         spreadsheet = client.open_by_key(sheet_id)
         
-        # Get WWPLAYERDETAILS worksheet
+        # Get PLAYERDETAILS worksheet
         try:
-            worksheet = spreadsheet.worksheet('WWPLAYERDETAILS')
+            worksheet = spreadsheet.worksheet('PLAYERDETAILS')
         except gspread.WorksheetNotFound:
-            print("❌ WWPLAYERDETAILS worksheet not found")
+            print("❌ PLAYERDETAILS worksheet not found")
             return jsonify({'error': 'No Data Available', 'playerDetails': []}), 404
         
         # Get all records as list of dictionaries
         try:
             records = worksheet.get_all_records()
         except Exception as e:
-            print(f"⚠️ WWPLAYERDETAILS is empty or has no data: {e}")
+            print(f"⚠️ PLAYERDETAILS is empty or has no data: {e}")
             return jsonify({'error': 'No Data Available', 'playerDetails': []}), 200
         
         # Filter out empty rows and clean data
@@ -5078,19 +5151,24 @@ def api_youth_egypt_matches():
         sheet_id = app.config['SHEET_IDS']['youth_egypt']
         spreadsheet = client.open_by_key(sheet_id)
         
-        # Get YouthMATCHDETAILS worksheet
+        # Get MATCHDETAILS worksheet
         try:
-            worksheet = spreadsheet.worksheet('YouthMATCHDETAILS')
+            worksheet = spreadsheet.worksheet('MATCHDETAILS')
         except gspread.WorksheetNotFound:
-            return jsonify({'success': False, 'error': 'YouthMATCHDETAILS worksheet not found'}), 404
+            return jsonify({'success': False, 'error': 'MATCHDETAILS worksheet not found'}), 404
         
         # Get all records
         records = worksheet.get_all_records()
         
         
-        # Clean data
+        # Clean data and filter by AGE != "الأول" (exact match)
         cleaned_records = []
         for record in records:
+            # Filter by AGE != "الأول" (exact match)
+            age = str(record.get('AGE', '')).strip()
+            if age == 'الأول':
+                continue
+            
             cleaned_record = {}
             for key, value in record.items():
                 cleaned_record[key] = str(value).strip() if value else ''
@@ -5136,11 +5214,11 @@ def api_youth_egypt_players():
         sheet_id = app.config['SHEET_IDS']['youth_egypt']
         spreadsheet = client.open_by_key(sheet_id)
         
-        # Get YouthPLAYERDETAILS worksheet
+        # Get PLAYERDETAILS worksheet
         try:
-            worksheet = spreadsheet.worksheet('YouthPLAYERDETAILS')
+            worksheet = spreadsheet.worksheet('PLAYERDETAILS')
         except gspread.WorksheetNotFound:
-            return jsonify({'success': False, 'error': 'YouthPLAYERDETAILS worksheet not found'}), 404
+            return jsonify({'success': False, 'error': 'PLAYERDETAILS worksheet not found'}), 404
         
         # Get all records
         records = worksheet.get_all_records()
@@ -5167,6 +5245,243 @@ def api_youth_egypt_players():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/egypt-teams/trophy-seasons')
+def api_egypt_teams_trophy_seasons():
+    """API endpoint to get trophy-winning seasons from TROPHY sheet"""
+    try:
+        print("🏆 Loading trophy seasons from Google Sheets...")
+        
+        # Check if refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('egypt_teams_trophy_seasons', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached trophy seasons ({len(cached_data.get('seasons', []))} seasons)")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        # Check environment variable first
+        creds_env = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
+        if creds_env:
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        else:
+            # Fallback to local file
+            creds_file = get_resource_path('credentials/egyptnationalteam.json')
+            print(f"Using credentials file: {creds_file}")
+            if not os.path.exists(creds_file):
+                print(f"❌ Credentials file not found: {creds_file}")
+                return jsonify({'error': 'Credentials file not found', 'seasons': []}), 404
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPE)
+        
+        client = gspread.authorize(creds)
+        
+        # Get Sheet ID from environment or use default
+        sheet_id = os.environ.get('EGYPT_TEAMS_SHEET_ID', '10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8')
+        print(f"Using Sheet ID: {sheet_id}")
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get TROPHY worksheet
+        try:
+            worksheet = spreadsheet.worksheet('TROPHY')
+        except gspread.WorksheetNotFound:
+            print("❌ TROPHY worksheet not found")
+            return jsonify({'error': 'TROPHY worksheet not found', 'seasons': []}), 404
+        
+        # Get all records
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ TROPHY is empty or has no data: {e}")
+            return jsonify({'error': 'No Data Available', 'seasons': []}), 200
+        
+        # Extract seasons from Champions column
+        seasons = set()
+        for record in records:
+            champion = str(record.get('Champions', '')).strip()
+            if champion and champion != '':
+                seasons.add(champion)
+        
+        seasons_list = sorted(list(seasons))
+        print(f"✅ Found {len(seasons_list)} trophy-winning seasons: {seasons_list}")
+        
+        # Cache the data
+        result = {'seasons': seasons_list}
+        cache.set('egypt_teams_trophy_seasons', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error loading trophy seasons: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'seasons': []}), 500
+
+@app.route('/api/ww-egypt-teams/trophy-seasons')
+def api_ww_egypt_teams_trophy_seasons():
+    """API endpoint to get trophy-winning seasons from TROPHY sheet"""
+    try:
+        print("🏆 Loading trophy seasons from Google Sheets...")
+        
+        # Check if refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('ww_egypt_teams_trophy_seasons', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached trophy seasons ({len(cached_data.get('seasons', []))} seasons)")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        # Check environment variable first
+        creds_env = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
+        if creds_env:
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        else:
+            # Fallback to local file
+            creds_file = get_resource_path('credentials/egyptnationalteam.json')
+            print(f"Using credentials file: {creds_file}")
+            if not os.path.exists(creds_file):
+                print(f"❌ Credentials file not found: {creds_file}")
+                return jsonify({'error': 'Credentials file not found', 'seasons': []}), 404
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPE)
+        
+        client = gspread.authorize(creds)
+        
+        # Get Sheet ID from environment or use default
+        sheet_id = os.environ.get('EGYPT_TEAMS_SHEET_ID', '10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8')
+        print(f"Using Sheet ID: {sheet_id}")
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get TROPHY worksheet
+        try:
+            worksheet = spreadsheet.worksheet('TROPHY')
+        except gspread.WorksheetNotFound:
+            print("❌ TROPHY worksheet not found")
+            return jsonify({'error': 'TROPHY worksheet not found', 'seasons': []}), 404
+        
+        # Get all records
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ TROPHY is empty or has no data: {e}")
+            return jsonify({'error': 'No Data Available', 'seasons': []}), 200
+        
+        # Extract seasons from Champions column
+        seasons = set()
+        for record in records:
+            champion = str(record.get('Champions', '')).strip()
+            if champion and champion != '':
+                seasons.add(champion)
+        
+        seasons_list = sorted(list(seasons))
+        print(f"✅ Found {len(seasons_list)} trophy-winning seasons: {seasons_list}")
+        
+        # Cache the data
+        result = {'seasons': seasons_list}
+        cache.set('ww_egypt_teams_trophy_seasons', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error loading trophy seasons: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'seasons': []}), 500
+
+@app.route('/api/youth-egypt/trophy-seasons')
+def api_youth_egypt_trophy_seasons():
+    """API endpoint to get trophy-winning seasons from TROPHY sheet"""
+    try:
+        print("🏆 Loading trophy seasons from Google Sheets...")
+        
+        # Check if refresh is requested
+        force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+        
+        # Try cache first (6 hours TTL) unless force refresh
+        if not force_refresh:
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+            cached_data = cache.get('youth_egypt_trophy_seasons', ttl_hours=6)
+            if cached_data:
+                print(f"✅ Returning cached trophy seasons ({len(cached_data.get('seasons', []))} seasons)")
+                return jsonify(cached_data)
+        else:
+            print("🔄 Force refresh requested - bypassing cache")
+            from cache_manager import get_cache_manager
+            cache = get_cache_manager()
+        
+        # Check environment variable first
+        creds_env = os.environ.get('GOOGLE_CREDENTIALS_JSON_EGYPT_TEAMS')
+        if creds_env:
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=SCOPE)
+        else:
+            # Fallback to local file
+            creds_file = get_resource_path('credentials/egyptnationalteam.json')
+            print(f"Using credentials file: {creds_file}")
+            if not os.path.exists(creds_file):
+                print(f"❌ Credentials file not found: {creds_file}")
+                return jsonify({'error': 'Credentials file not found', 'seasons': []}), 404
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPE)
+        
+        client = gspread.authorize(creds)
+        
+        # Get Sheet ID from environment or use default
+        sheet_id = os.environ.get('EGYPT_TEAMS_SHEET_ID', '10PbAfoH9eqr4F82EBtO281RO42DgRzUzRv-dtELRDn8')
+        print(f"Using Sheet ID: {sheet_id}")
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # Get TROPHY worksheet
+        try:
+            worksheet = spreadsheet.worksheet('TROPHY')
+        except gspread.WorksheetNotFound:
+            print("❌ TROPHY worksheet not found")
+            return jsonify({'error': 'TROPHY worksheet not found', 'seasons': []}), 404
+        
+        # Get all records
+        try:
+            records = worksheet.get_all_records()
+        except Exception as e:
+            print(f"⚠️ TROPHY is empty or has no data: {e}")
+            return jsonify({'error': 'No Data Available', 'seasons': []}), 200
+        
+        # Extract seasons from Champions column
+        seasons = set()
+        for record in records:
+            champion = str(record.get('Champions', '')).strip()
+            if champion and champion != '':
+                seasons.add(champion)
+        
+        seasons_list = sorted(list(seasons))
+        print(f"✅ Found {len(seasons_list)} trophy-winning seasons: {seasons_list}")
+        
+        # Cache the data
+        result = {'seasons': seasons_list}
+        cache.set('youth_egypt_trophy_seasons', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error loading trophy seasons: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'seasons': []}), 500
 
 @app.route('/api/egypt-teams/players')
 def api_egypt_teams_players():

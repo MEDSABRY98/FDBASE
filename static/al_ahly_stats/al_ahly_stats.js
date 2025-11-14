@@ -33,7 +33,8 @@ let alAhlyStatsData = {
     seasons: [],
     filterOptions: {},
     allRecords: [],
-    originalRecords: [] // Store original unfiltered data
+    originalRecords: [], // Store original unfiltered data
+    trophySeasons: [] // Store trophy-winning seasons
 };
 
 // Excel-driven mode flag and workbook cache
@@ -203,6 +204,14 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
 
     // Apply main filters to matches first
     const filteredMatches = matches.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
@@ -387,6 +396,14 @@ function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, p
     
     // Apply filters to all matches
     const filteredMatches = allMatches.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
@@ -480,6 +497,14 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
 
     // Apply main filters to matches first, but exclude champion filter for championships tab
     const filteredMatches = matches.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
@@ -585,9 +610,9 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
             if (normalizeTeamKey(teamFilter) !== 'ahly') return;
         }
         const mid = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
-        if (!mid) return;
+        if (!mid || !filteredMatchIds.has(mid)) return; // Only include matches that passed filters
         processedMidChamp.add(mid);
-        const m = matches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
+        const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
         const champ = normalizeStr(m.CHAMPION);
         if (!perChampion.has(champ)) perChampion.set(champ, { matchIds: new Set(), matchMinutes: new Map(), goals: 0, assists: 0 });
         const agg = perChampion.get(champ);
@@ -610,7 +635,9 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
     // Ensure championships with GA-only events (no lineup) are included (matches/minutes remain 0)
     gaPerMatch.forEach((ga, mid) => {
         if (processedMidChamp.has(mid)) return;
-        const m = matches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
+        // Only include matches that passed filters
+        if (!filteredMatchIds.has(mid)) return;
+        const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
         const champ = normalizeStr(m.CHAMPION);
         if (!perChampion.has(champ)) perChampion.set(champ, { matchIds: new Set(), matchMinutes: new Map(), goals: 0, assists: 0 });
         const agg = perChampion.get(champ);
@@ -642,6 +669,14 @@ function getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters = {})
 
     // Apply main filters to matches first (same logic as other functions)
     const filteredMatches = matches.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
@@ -802,6 +837,14 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
 
     // Apply main filters to matches first (same logic as other functions)
     const filteredMatches = matches.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
@@ -958,6 +1001,14 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
 
     // Apply main filters to matches first
     const filteredMatches = matches.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
@@ -1201,6 +1252,7 @@ let currentFilters = {
 // Function to get current filter values
 function getCurrentFilters() {
     const filters = {
+        trophy: document.getElementById('trophy-filter')?.value || '',
         matchId: document.getElementById('match-id-filter')?.value || '',
         championSystem: document.getElementById('champion-system-filter')?.value || '',
         champion: document.getElementById('champion-filter')?.value || '',
@@ -1491,6 +1543,9 @@ async function loadAlAhlyStatsData() {
             await loadPlayerStatsFromSheets();
             await loadGoalkeeperStatsFromSheets();
             
+            // Load trophy seasons
+            await loadTrophySeasons();
+            
             console.log('All Google Sheets data loaded, now updating displays...');
             console.log('Final alAhlyStatsData:', {
                 totalMatches: alAhlyStatsData.totalMatches,
@@ -1562,6 +1617,9 @@ async function loadAlAhlyStatsData() {
         
         // Load goalkeeper statistics
         await loadGoalkeeperStats();
+        
+        // Load trophy seasons
+        await loadTrophySeasons();
         
         // Update all displays
         updateOverviewStats();
@@ -2268,6 +2326,35 @@ function updateGoalkeeperStatsTable() {
 // ============================================================================
 // FILTER FUNCTIONS
 // ============================================================================
+
+// Load trophy seasons from API
+async function loadTrophySeasons(forceRefresh = false) {
+    if (alAhlyStatsData.trophySeasons.length > 0 && !forceRefresh) {
+        return;
+    }
+    try {
+        const url = forceRefresh ? '/api/ahly-stats/trophy-seasons?refresh=true' : '/api/ahly-stats/trophy-seasons';
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.warn('⚠️ Could not load trophy seasons');
+            alAhlyStatsData.trophySeasons = [];
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.error) {
+            console.warn('⚠️ Error loading trophy seasons:', data.error);
+            alAhlyStatsData.trophySeasons = [];
+            return;
+        }
+        
+        alAhlyStatsData.trophySeasons = data.seasons || [];
+        console.log(`✅ Loaded ${alAhlyStatsData.trophySeasons.length} trophy-winning seasons`);
+    } catch (error) {
+        console.error('Error loading trophy seasons:', error);
+        alAhlyStatsData.trophySeasons = [];
+    }
+}
 
 function applyFilters() {
     // Get filter values
@@ -4078,6 +4165,7 @@ function updateFilterOptionsWithPreservedSelections(filteredRecords, preservedFi
 const debouncedApplyFilters = debounce(function() {
     // Get all filter values
     const filters = {
+        trophy: document.getElementById('trophy-filter')?.value || '',
         matchId: document.getElementById('match-id-filter')?.value || '',
         championSystem: document.getElementById('champion-system-filter')?.value || '',
         dateFrom: document.getElementById('date-from-filter')?.value || '',
@@ -4146,6 +4234,14 @@ function getCurrentFilteredRecords() {
     
     // Filter records based on current filter values
     const filteredRecords = alAhlyStatsData.allRecords.filter(record => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (filters.trophy === 'only-trophy') {
+            const season = record['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(filters).every(key => {
             const filterValue = filters[key];
             if (!filterValue) return true;
@@ -4234,6 +4330,7 @@ function applyFilters() {
 function applyFiltersWithPreservedSelections(preservedFilters) {
     // Get all filter values
     const filters = {
+        trophy: document.getElementById('trophy-filter')?.value || '',
         matchId: document.getElementById('match-id-filter')?.value || '',
         championSystem: document.getElementById('champion-system-filter')?.value || '',
         dateFrom: document.getElementById('date-from-filter')?.value || '',
@@ -4263,6 +4360,14 @@ function applyFiltersWithPreservedSelections(preservedFilters) {
 function applyFiltersWithData(filters, preservedFilters = null) {
     // Filter records based on applied filters
     const filteredRecords = alAhlyStatsData.allRecords.filter(record => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (filters.trophy === 'only-trophy') {
+            const season = record['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(filters).every(key => {
             const filterValue = filters[key];
             if (!filterValue) return true; // Skip empty filters
@@ -4564,7 +4669,7 @@ function clearFilters() {
     
     // Also clear specific filter elements by ID
     const specificFilters = [
-        'match-id-filter', 'champion-system-filter', 'champion-filter', 'season-filter', 'sy-filter',
+        'trophy-filter', 'match-id-filter', 'champion-system-filter', 'champion-filter', 'season-filter', 'sy-filter',
         'ahly-manager-filter', 'opponent-manager-filter', 'referee-filter', 'round-filter',
         'h-a-n-filter', 'stadium-filter', 'ahly-team-filter', 'opponent-team-filter',
         'goals-for-filter', 'goals-against-filter', 'result-filter', 'clean-sheet-filter',
@@ -5811,8 +5916,10 @@ function loadPlayerSeasons() {
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
     const query = teamFilter ? `?team=${encodeURIComponent(teamFilter)}` : '';
+    // Get applied filters from the main filter section
+    const appliedFilters = typeof getCurrentFilters === 'function' ? getCurrentFilters() : (appliedFilters || {});
 
-    const items = getPlayerSeasonsFromSheets(playerName, teamFilter);
+    const items = getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters);
     renderPlayerSeasonsTable(items);
 }
 
@@ -7090,6 +7197,14 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
     
     // Apply main filters to matches first
     const filteredMatches = matches.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
@@ -7766,6 +7881,14 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
     
     // Apply main filters to matches first
     const filteredMatches = matchDetails.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
@@ -8089,6 +8212,14 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
     
     // Apply main filters to matches first (but exclude champion filter for championships tab)
     const filteredMatches = matchDetails.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
@@ -8388,6 +8519,14 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
     
     // Apply main filters to matches first (but exclude season filter for seasons tab)
     const filteredMatches = matchDetails.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
@@ -8652,6 +8791,14 @@ function getGKVsTeamsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
 
     // Apply main filters to matches (but exclude opponent team filter for vs teams tab)
     const filteredMatches = matchDetails.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
@@ -8860,6 +9007,14 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
 
     // Apply main filters to matches
     const filteredMatches = matches.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
@@ -9356,6 +9511,14 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
     
     // Apply main filters to matches
     const filteredMatches = matchDetails.filter(match => {
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
@@ -16869,6 +17032,14 @@ function sortAssistDetailsTable(column) {
 // Helper function to apply main filters to match data
 function applyMainFiltersToMatch(matchDetail, filters) {
     if (!matchDetail) return false;
+    
+    // Trophy filter - only show matches from trophy-winning seasons
+    if (filters.trophy === 'only-trophy') {
+        const season = matchDetail['SEASON'] || '';
+        if (!alAhlyStatsData.trophySeasons.includes(season)) {
+            return false;
+        }
+    }
     
     // Match ID filter
     if (filters.matchId && !normalizeStr(matchDetail.MATCH_ID || matchDetail['MATCH ID'] || '').toLowerCase().includes(filters.matchId.toLowerCase())) {

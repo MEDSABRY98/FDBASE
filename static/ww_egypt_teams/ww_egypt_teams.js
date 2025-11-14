@@ -23,7 +23,8 @@ let wwEgyptTeamsData = {
     playersLoaded: false,
     currentSortColumn: 'totalGA',
     currentSortDirection: 'desc',
-    currentPlayersTeamFilter: 'all'
+    currentPlayersTeamFilter: 'all',
+    trophySeasons: [] // Store trophy-winning seasons
 };
 
 function isEgyptTeamName(teamName) {
@@ -73,6 +74,9 @@ async function loadWWEgyptTeamsData(forceRefresh = false) {
         // Store data
         wwEgyptTeamsData.allRecords = data.matches || [];
         wwEgyptTeamsData.filteredRecords = [...wwEgyptTeamsData.allRecords];
+        
+        // Load trophy seasons
+        await loadTrophySeasons(forceRefresh);
         
         // Populate filter options
         populateFilterOptions();
@@ -438,11 +442,41 @@ function showDropdownOptions(input, options) {
     dropdown.style.display = 'block';
 }
 
+// Load trophy seasons from API
+async function loadTrophySeasons(forceRefresh = false) {
+    if (wwEgyptTeamsData.trophySeasons.length > 0 && !forceRefresh) {
+        return;
+    }
+    try {
+        const url = forceRefresh ? '/api/ww-egypt-teams/trophy-seasons?refresh=true' : '/api/ww-egypt-teams/trophy-seasons';
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.warn('⚠️ Could not load trophy seasons');
+            wwEgyptTeamsData.trophySeasons = [];
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.error) {
+            console.warn('⚠️ Error loading trophy seasons:', data.error);
+            wwEgyptTeamsData.trophySeasons = [];
+            return;
+        }
+        
+        wwEgyptTeamsData.trophySeasons = data.seasons || [];
+        console.log(`✅ Loaded ${wwEgyptTeamsData.trophySeasons.length} trophy-winning seasons`);
+    } catch (error) {
+        console.error('Error loading trophy seasons:', error);
+        wwEgyptTeamsData.trophySeasons = [];
+    }
+}
+
 function populateFilterOptions() {
     const filterFields = {
-        'filter-champion-system': 'CHAMPION SYSTEM',
+        'filter-match-id': 'MATCH_ID',
         'filter-system-kind': 'SYSTEM KIND',
         'filter-age': 'AGE',
+        'filter-champion-system': 'CHAMPION SYSTEM',
         'filter-manager-egy': 'MANAGER EGY',
         'filter-manager-opponent': 'MANAGER OPPONENT',
         'filter-refree': 'REFREE',
@@ -455,8 +489,9 @@ function populateFilterOptions() {
         'filter-opponent-team': 'OPPONENT TEAM',
         'filter-result': 'W-D-L',
         'filter-cs': 'CLEAN SHEET',
-        'filter-pen': 'PEN',
-        'filter-wlqf': 'W-L Q & F'
+        'filter-wlqf': 'W-L Q & F',
+        'filter-et': 'ET',
+        'filter-pen': 'PEN'
     };
     
     Object.entries(filterFields).forEach(([filterId, fieldName]) => {
@@ -468,6 +503,7 @@ function populateFilterOptions() {
 
 function applyFilters() {
     const filters = {
+        trophy: document.getElementById('filter-trophy').value,
         matchId: document.getElementById('filter-match-id').value.trim(),
         championSystem: document.getElementById('filter-champion-system').value,
         systemKind: document.getElementById('filter-system-kind').value,
@@ -488,12 +524,22 @@ function applyFilters() {
         cs: document.getElementById('filter-cs').value,
         pen: document.getElementById('filter-pen').value,
         wlqf: document.getElementById('filter-wlqf').value,
+        et: document.getElementById('filter-et').value,
+        note: document.getElementById('filter-note').value.trim(),
         gf: document.getElementById('filter-gf').value,
         ga: document.getElementById('filter-ga').value
     };
     
     wwEgyptTeamsData.filteredRecords = wwEgyptTeamsData.allRecords.filter(record => {
-        if (filters.matchId && !record['MATCH_ID']?.includes(filters.matchId)) return false;
+        // Trophy filter - only show matches from trophy-winning seasons
+        if (filters.trophy === 'only-trophy') {
+            const season = record['SEASON'] || '';
+            if (!wwEgyptTeamsData.trophySeasons.includes(season)) {
+                return false;
+            }
+        }
+        
+        if (filters.matchId && record['MATCH_ID'] !== filters.matchId) return false;
         if (filters.championSystem && record['CHAMPION SYSTEM'] !== filters.championSystem) return false;
         if (filters.systemKind && record['SYSTEM KIND'] !== filters.systemKind) return false;
         if (filters.age && record['AGE'] !== filters.age) return false;
@@ -511,6 +557,8 @@ function applyFilters() {
         if (filters.cs && record['CLEAN SHEET'] !== filters.cs) return false;
         if (filters.pen && record['PEN'] !== filters.pen) return false;
         if (filters.wlqf && record['W-L Q & F'] !== filters.wlqf) return false;
+        if (filters.et && record['ET'] !== filters.et) return false;
+        if (filters.note && !record['NOTE']?.toLowerCase().includes(filters.note.toLowerCase())) return false;
         
         if (filters.dateFrom && record['DATE'] && new Date(record['DATE']) < new Date(filters.dateFrom)) return false;
         if (filters.dateTo && record['DATE'] && new Date(record['DATE']) > new Date(filters.dateTo)) return false;
@@ -560,11 +608,13 @@ function applyFilters() {
 }
 
 function clearFilters() {
+    document.getElementById('filter-trophy').value = '';
     document.getElementById('filter-match-id').value = '';
     document.getElementById('filter-date-from').value = '';
     document.getElementById('filter-date-to').value = '';
     document.getElementById('filter-gf').value = '';
     document.getElementById('filter-ga').value = '';
+    document.getElementById('filter-note').value = '';
     
     const searchableInputs = document.querySelectorAll('.searchable-select-container input');
     searchableInputs.forEach(input => {
