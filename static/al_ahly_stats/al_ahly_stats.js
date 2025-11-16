@@ -165,6 +165,206 @@ function teamMatchesFilter(rowTeamValue, selectedTeamFilter) {
     });
 }
 
+// ===== Matches By G+A (presence in PLAYERDETAILS as GOAL/ASSIST) =====
+function getPlayerMatchesByGAFromSheets(playerName, teamFilter, appliedFilters = {}) {
+    const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
+    const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
+    const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
+    const nameLower = (playerName || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
+
+    // Apply main filters to matches first
+    const filteredMatches = matches.filter(match => {
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) return false;
+        }
+        return Object.keys(appliedFilters).every(key => {
+            const filterValue = appliedFilters[key];
+            if (!filterValue) return true;
+            const recordKeyMap = {
+                'matchId': 'MATCH_ID',
+                'championSystem': 'CHAMPION SYSTEM',
+                'champion': 'CHAMPION',
+                'season': 'SEASON',
+                'sy': 'SY',
+                'ahlyManager': 'AHLY MANAGER',
+                'opponentManager': 'OPPONENT MANAGER',
+                'referee': 'REFREE',
+                'round': 'ROUND',
+                'hAN': 'H-A-N',
+                'stadium': 'STAD',
+                'ahlyTeam': 'AHLY TEAM',
+                'opponentTeam': 'OPPONENT TEAM',
+                'result': 'W-D-L'
+            };
+            const recordKey = recordKeyMap[key];
+            if (!recordKey) return true;
+            const recordValue = match[recordKey] || '';
+            if (key === 'goalsFor') return parseInt(match['GF'] || 0) >= parseInt(filterValue);
+            if (key === 'goalsAgainst') return parseInt(match['GA'] || 0) <= parseInt(filterValue);
+            if (key === 'dateFrom') return new Date(match['DATE'] || '') >= new Date(filterValue);
+            if (key === 'dateTo') return new Date(match['DATE'] || '') <= new Date(filterValue);
+            if (key === 'cleanSheet') {
+                const v = normalizeStr(match['CLEAN SHEET'] || '').toUpperCase();
+                const f = normalizeStr(filterValue).toUpperCase();
+                return v === f || v.includes(f);
+            }
+            if (key === 'extraTime') {
+                const v = normalizeStr(match['ET'] || '').toUpperCase();
+                const f = normalizeStr(filterValue).toUpperCase();
+                return v === f || v.includes(f);
+            }
+            if (key === 'penalties') {
+                const v = normalizeStr(match['PEN'] || '').toUpperCase();
+                const f = normalizeStr(filterValue).toUpperCase();
+                return v === f || v.includes(f);
+            }
+            if (key === 'result') {
+                if (filterValue === 'D WITH G') return recordValue === 'D WITH G';
+                if (filterValue === 'D.') return recordValue === 'D.';
+                return recordValue === filterValue;
+            }
+            return normalizeStr(recordValue).toLowerCase().includes(normalizeStr(filterValue).toLowerCase());
+        });
+    });
+
+    const filteredMatchIds = new Set(filteredMatches.map(m => normalizeStr(m.MATCH_ID || m['MATCH ID'] || m.match_id)));
+
+    // Only matches where player has GOAL or ASSIST in PLAYERDETAILS
+    const playerGARecords = details.filter(r => {
+        const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
+        if (p !== nameLower) return false;
+        if (teamLower) {
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return false;
+        }
+        const raw = normalizeStr(r.GA || r.TYPE || r.ga).toUpperCase();
+        const gaNorm = raw.replace(/[^A-Z]/g, '');
+        const isGoal = (gaNorm.includes('GOAL') && !gaNorm.includes('OWN'));
+        const isAssist = gaNorm.includes('ASSIST');
+        if (!(isGoal || isAssist)) return false;
+        const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
+        if (!filteredMatchIds.has(matchId)) return false;
+        return true;
+    });
+
+    console.log('[MByGA] GA records found:', playerGARecords.length);
+
+    // Aggregate per match
+    const aggByMatch = new Map();
+    playerGARecords.forEach(r => {
+        const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
+        if (!matchId) return;
+        const gaVal = normalizeStr(r.GA || r.TYPE || r.ga).toUpperCase().replace(/[^A-Z]/g, '');
+        const isGoal = (gaVal.includes('GOAL') && !gaVal.includes('OWN'));
+        const isAssist = gaVal.includes('ASSIST');
+        if (!aggByMatch.has(matchId)) aggByMatch.set(matchId, { goals: 0, assists: 0 });
+        const agg = aggByMatch.get(matchId);
+        if (isGoal) agg.goals += 1;
+        if (isAssist) agg.assists += 1;
+    });
+
+    // Join with MATCHDETAILS and minutes from LINEUPDETAILS (minutes optional)
+    const rows = [];
+    aggByMatch.forEach((ga, mid) => {
+        const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
+        const lineupRow = lineup.find(l => normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id) === mid &&
+            normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase() === nameLower);
+        const minutes = lineupRow ? safeInt(lineupRow.MINTOTAL || lineupRow['MIN TOTAL'] || lineupRow.MINUTES) : null;
+        rows.push({
+            date: m.DATE || '',
+            season: m.SEASON || '',
+            manager: m['AHLY MANAGER'] || '',
+            opponent: m['OPPONENT TEAM'] || '',
+            minutes,
+            goals: ga.goals,
+            assists: ga.assists
+        });
+    });
+
+    // Sort by date descending (newest to oldest)
+    function parseDateStr(s) {
+        const str = String(s || '').trim();
+        const d = Date.parse(str);
+        if (!isNaN(d)) return d;
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') return new Date((num - 25569) * 86400 * 1000).getTime();
+        return 0;
+    }
+    rows.sort((a, b) => parseDateStr(b.date) - parseDateStr(a.date));
+    return rows;
+}
+
+function renderPlayerMatchesByGATable(items) {
+    const table = document.getElementById('player-m-by-ga-table');
+    if (!table) {
+        console.warn('[MByGA] Table not found');
+        return;
+    }
+    let tbody = table.querySelector('tbody');
+    if (!tbody) {
+        tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+    }
+    tbody.innerHTML = '';
+    if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;">No matches found</td></tr>';
+        return;
+    }
+    items.forEach(it => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${it.date || ''}</td>
+            <td>${it.season || ''}</td>
+            <td>${it.manager || ''}</td>
+            <td>${it.opponent || ''}</td>
+            <td>${(it.minutes === null || it.minutes === undefined) ? '-' : it.minutes}</td>
+            <td>${it.goals || 0}</td>
+            <td>${it.assists || 0}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function loadPlayerMatchesByGAStats() {
+    const table = document.getElementById('player-m-by-ga-table');
+    if (!table) {
+        console.warn('[MByGA] Table not found when loading stats');
+        return;
+    }
+    let tbody = table.querySelector('tbody');
+    if (!tbody) {
+        tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+    }
+    tbody.innerHTML = '';
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;">No player selected</td></tr>';
+        return;
+    }
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+    const appliedFilters = getCurrentFilters ? getCurrentFilters() : {};
+    const items = getPlayerMatchesByGAFromSheets(playerName, teamFilter, appliedFilters);
+    renderPlayerMatchesByGATable(items);
+}
+
+function loadPlayerMatchesByGAWithFilter(selectedTeams) {
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        const tbody = document.querySelector('#player-m-by-ga-table tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;">No player selected</td></tr>';
+        return;
+    }
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    const appliedFilters = getCurrentFilters ? getCurrentFilters() : {};
+    console.log('[MByGA] Loading data', { playerName, teamFilter, appliedFilters });
+    const items = getPlayerMatchesByGAFromSheets(playerName, teamFilter, appliedFilters);
+    console.log('[MByGA] Rows found:', items.length);
+    renderPlayerMatchesByGATable(items);
+}
+
 // Global prefs for SY selection per player
 window.playerSYPrefs = window.playerSYPrefs || {};
 
@@ -3627,11 +3827,21 @@ function loadPlayerSubTabData(subTabName, selectedTeams = null) {
         case 'matches':
             loadPlayerMatchesWithFilter(selectedTeams);
             break;
+        case 'm-by-ga':
+            if (typeof loadPlayerMatchesByGAWithFilter === 'function') {
+                loadPlayerMatchesByGAWithFilter(selectedTeams);
+            }
+            break;
         case 'championships':
             loadPlayerChampionshipsWithFilter(selectedTeams);
             break;
         case 'seasons':
             loadPlayerSeasonsWithFilter(selectedTeams);
+            break;
+        case 'sy-table':
+            if (typeof loadPlayerSYTableWithFilter === 'function') {
+                loadPlayerSYTableWithFilter(selectedTeams);
+            }
             break;
         case 'vs-teams':
             loadPlayerVsTeamsWithFilter(selectedTeams);
@@ -5993,6 +6203,247 @@ function renderPlayerSeasonsTable(items) {
         <td>${totalAssists}</td>
     `;
     tbody.appendChild(totalsRow);
+}
+
+// ===== SY Table (same structure as Seasons, grouped by SY) =====
+function getPlayerSYFromSheets(playerName, teamFilter, appliedFilters = {}) {
+    console.log('[S&SY] getPlayerSYFromSheets start', { playerName, teamFilter, appliedFilters });
+    const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
+    const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
+    const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
+    console.log('[S&SY] rows count', { details: details.length, matches: matches.length, lineup: lineup.length });
+    const nameLower = (playerName || '').toLowerCase();
+    const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
+
+    // Apply main filters to matches (reuse logic; allow sy filter like other fields)
+    const filteredMatches = matches.filter(match => {
+        // Trophy filter - keep logic consistent with seasons
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) return false;
+        }
+        return Object.keys(appliedFilters).every(key => {
+            const filterValue = appliedFilters[key];
+            if (!filterValue) return true;
+            const recordKeyMap = {
+                'matchId': 'MATCH_ID',
+                'championSystem': 'CHAMPION SYSTEM',
+                'champion': 'CHAMPION',
+                'season': 'SEASON',
+                'sy': 'SY',
+                'ahlyManager': 'AHLY MANAGER',
+                'opponentManager': 'OPPONENT MANAGER',
+                'referee': 'REFREE',
+                'round': 'ROUND',
+                'hAN': 'H-A-N',
+                'stadium': 'STAD',
+                'ahlyTeam': 'AHLY TEAM',
+                'opponentTeam': 'OPPONENT TEAM',
+                'result': 'W-D-L'
+            };
+            const recordKey = recordKeyMap[key];
+            if (!recordKey) return true;
+            const recordValue = match[recordKey] || '';
+            if (key === 'goalsFor') return parseInt(match['GF'] || 0) >= parseInt(filterValue);
+            if (key === 'goalsAgainst') return parseInt(match['GA'] || 0) <= parseInt(filterValue);
+            if (key === 'dateFrom') return new Date(match['DATE'] || '') >= new Date(filterValue);
+            if (key === 'dateTo') return new Date(match['DATE'] || '') <= new Date(filterValue);
+            if (key === 'cleanSheet') {
+                const v = normalizeStr(match['CLEAN SHEET'] || '').toUpperCase();
+                const f = normalizeStr(filterValue).toUpperCase();
+                return v === f || v.includes(f);
+            }
+            if (key === 'extraTime') {
+                const v = normalizeStr(match['ET'] || '').toUpperCase();
+                const f = normalizeStr(filterValue).toUpperCase();
+                return v === f || v.includes(f);
+            }
+            if (key === 'penalties') {
+                const v = normalizeStr(match['PEN'] || '').toUpperCase();
+                const f = normalizeStr(filterValue).toUpperCase();
+                return v === f || v.includes(f);
+            }
+            if (key === 'result') {
+                if (filterValue === 'D WITH G') return recordValue === 'D WITH G';
+                if (filterValue === 'D.') return recordValue === 'D.';
+                return recordValue === filterValue;
+            }
+            return normalizeStr(recordValue).toLowerCase().includes(normalizeStr(filterValue).toLowerCase());
+        });
+    });
+
+    const filteredMatchIds = new Set(filteredMatches.map(m => normalizeStr(m.MATCH_ID || m['MATCH ID'] || m.match_id)));
+    console.log('[S&SY] filtered matches', filteredMatches.length);
+
+    // Goals/assists per match
+    const playerRows = details.filter(r => {
+        const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
+        if (p !== nameLower) return false;
+        if (teamLower) {
+            const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
+            if (!teamMatchesFilter(teamVal, teamFilter)) return false;
+        }
+        const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
+        if (!matchId || !filteredMatchIds.has(matchId)) return false;
+        return true;
+    });
+    const gaPerMatch = new Map();
+    playerRows.forEach(r => {
+        const mid = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
+        if (!mid) return;
+        const gaVal = normalizeStr(r.GA || r.TYPE || r.ga).toUpperCase();
+        if (!gaPerMatch.has(mid)) gaPerMatch.set(mid, { goals: 0, assists: 0 });
+        const agg = gaPerMatch.get(mid);
+        if (gaVal === 'GOAL') agg.goals += 1;
+        if (gaVal === 'ASSIST') agg.assists += 1;
+    });
+    console.log('[S&SY] playerRows', playerRows.length, 'gaPerMatch size', gaPerMatch.size);
+
+    // Matches/minutes grouped by SY, from LINEUPDETAILS
+    const perSY = new Map(); // SY -> { matchIds:Set, matchMinutes:Map<mid,minutes>, goals, assists }
+    lineup.forEach(l => {
+        const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
+        if (p !== nameLower) return;
+        if (teamLower) {
+            if (normalizeTeamKey(teamFilter) !== 'ahly') return;
+        }
+        const mid = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
+        if (!mid || !filteredMatchIds.has(mid)) return;
+        const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
+        // Try common SY variants from sheet, preserve original text for display
+        const rawSY = (m.SY !== undefined ? m.SY : (m.sy !== undefined ? m.sy : (m.Sy !== undefined ? m.Sy : ''))) || '';
+        const sy = String(rawSY).trim() || '—';
+        if (!perSY.has(sy)) perSY.set(sy, { matchIds: new Set(), matchMinutes: new Map(), goals: 0, assists: 0 });
+        const agg = perSY.get(sy);
+        agg.matchIds.add(mid);
+        const mins = safeInt(l.MINTOTAL || l['MIN TOTAL'] || l.MINUTES);
+        const prev = agg.matchMinutes.get(mid) || 0;
+        if (mins > prev) agg.matchMinutes.set(mid, mins);
+    });
+
+    // Add goals/assists using GA per match, but do not add matches/minutes from GA-only rows
+    perSY.forEach((agg, key) => {
+        agg.goals = 0; agg.assists = 0;
+        agg.matchIds.forEach(mid => {
+            const ga = gaPerMatch.get(mid) || { goals: 0, assists: 0 };
+            agg.goals += ga.goals;
+            agg.assists += ga.assists;
+        });
+    });
+
+    // Include SYs where player had GA-only events (no lineup)
+    gaPerMatch.forEach((ga, mid) => {
+        const m = matches.find(x => normalizeStr(x.MATCH_ID || x['MATCH ID'] || x.match_id) === mid) || {};
+        const rawSY = (m.SY !== undefined ? m.SY : (m.sy !== undefined ? m.sy : (m.Sy !== undefined ? m.Sy : ''))) || '';
+        const sy = String(rawSY).trim() || '—';
+        if (!perSY.has(sy)) perSY.set(sy, { matchIds: new Set(), matchMinutes: new Map(), goals: 0, assists: 0 });
+        const agg = perSY.get(sy);
+        if (!agg.matchIds.has(mid)) {
+            agg.goals += ga.goals || 0;
+            agg.assists += ga.assists || 0;
+        }
+    });
+
+    const result = Array.from(perSY.entries()).map(([SY, v]) => {
+        let minutesSum = 0;
+        v.matchMinutes.forEach(min => minutesSum += (min || 0));
+        return {
+            SY,
+            matches: v.matchIds.size,
+            minutes: minutesSum,
+            goals: v.goals,
+            assists: v.assists,
+            ga_sum: v.goals + v.assists
+        };
+    });
+    console.log('[S&SY] perSY groups', result.length);
+    return result;
+}
+
+function renderPlayerSYTable(items) {
+    const tbody = document.querySelector('#player-sy-agg-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No SY data available</td></tr>';
+        return;
+    }
+
+    // Sort SY values alphabetically (do not normalize to preserve presentation)
+    const sorted = [...items].sort((a, b) => String(a.SY || '').localeCompare(String(b.SY || '')));
+
+    let totalMatches = 0;
+    let totalMinutes = 0;
+    let totalGoals = 0;
+    let totalAssists = 0;
+    let totalGA = 0;
+
+    sorted.forEach(it => {
+        const gaSum = it.ga_sum || ((it.goals || 0) + (it.assists || 0));
+        totalMatches += it.matches || 0;
+        totalMinutes += it.minutes || 0;
+        totalGoals += it.goals || 0;
+        totalAssists += it.assists || 0;
+        totalGA += gaSum;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${it.SY || ''}</td>
+            <td>${it.matches || 0}</td>
+            <td>${it.minutes || 0}</td>
+            <td>${gaSum}</td>
+            <td>${it.goals || 0}</td>
+            <td>${it.assists || 0}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    const totalsRow = document.createElement('tr');
+    totalsRow.style.fontWeight = 'bold';
+    totalsRow.style.backgroundColor = '#f8f9fa';
+    totalsRow.style.borderTop = '2px solid #dee2e6';
+    totalsRow.innerHTML = `
+        <td>TOTAL</td>
+        <td>${totalMatches}</td>
+        <td>${totalMinutes}</td>
+        <td>${totalGA}</td>
+        <td>${totalGoals}</td>
+        <td>${totalAssists}</td>
+    `;
+    tbody.appendChild(totalsRow);
+}
+
+function loadPlayerSYTableStats() {
+    console.log('[S&SY] loadPlayerSYTableStats');
+    const tbody = document.querySelector('#player-sy-agg-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        tbody.innerHTML = '<tr><td colspan="6">No player selected</td></tr>';
+        return;
+    }
+
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
+
+    const appliedFilters = typeof getCurrentFilters === 'function' ? getCurrentFilters() : {};
+    const items = getPlayerSYFromSheets(playerName, teamFilter, appliedFilters);
+    renderPlayerSYTable(items);
+}
+
+function loadPlayerSYTableWithFilter(selectedTeams) {
+    console.log('[S&SY] loadPlayerSYTableWithFilter', selectedTeams);
+    if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
+        const tbody = document.querySelector('#player-sy-agg-table tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6">No player selected</td></tr>';
+        return;
+    }
+    const playerName = playersData.selectedPlayer.name;
+    const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
+    const appliedFilters = getCurrentFilters ? getCurrentFilters() : {};
+    const items = getPlayerSYFromSheets(playerName, teamFilter, appliedFilters);
+    renderPlayerSYTable(items);
 }
 
 function loadPlayerVsTeams() {
@@ -8469,6 +8920,177 @@ function renderGKChampionshipsTable(championships) {
     console.log('GK championships table rendered successfully');
 }
 
+// ===== GK SY (aggregate by SY, same columns as GK Seasons with SY as first column) =====
+function loadGKBySY(teamFilter = '') {
+    if (!goalkeepersData.selectedGoalkeeper || !goalkeepersData.selectedGoalkeeper.name) {
+        const tbody = document.querySelector('#gk-sy-agg-table tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;">No goalkeeper selected</td></tr>';
+        return;
+    }
+    const appliedFilters = getCurrentFilters ? getCurrentFilters() : {};
+    const items = getGKBySYFromSheets(goalkeepersData.selectedGoalkeeper.name, teamFilter, appliedFilters);
+    renderGKBySYTable(items);
+}
+
+function getGKBySYFromSheets(goalkeeperName, teamFilter = '', appliedFilters = {}) {
+    const gkDetails = getSheetRowsByCandidates(['GKDETAILS']);
+    const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
+    const howPenMissed = getSheetRowsByCandidates(['HOWPENMISSED']);
+    const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
+    if (!gkDetails.length || !matchDetails.length) return [];
+
+    // Apply filters to matches first (respect SY filter but we group by SY anyway, still restrict others)
+    const filteredMatches = matchDetails.filter(match => {
+        if (appliedFilters.trophy === 'only-trophy') {
+            const season = match['SEASON'] || '';
+            if (!alAhlyStatsData.trophySeasons.includes(season)) return false;
+        }
+        return Object.keys(appliedFilters).every(key => {
+            const filterValue = appliedFilters[key];
+            if (!filterValue) return true;
+            const fieldMapping = {
+                'matchId': 'MATCH_ID', 'championSystem': 'CHAMPION SYSTEM', 'champion': 'CHAMPION',
+                'ahlyManager': 'MANAGER AHLY', 'opponentManager': 'MANAGER OPPONENT', 'referee': 'REFREE',
+                'round': 'ROUND', 'hAN': 'H-A-N', 'stadium': 'STADIUM', 'ahlyTeam': 'AHLY TEAM',
+                'opponentTeam': 'OPPONENT TEAM', 'result': 'W-D-L', 'cleanSheet': 'CLEAN SHEET',
+                'extraTime': 'ET', 'penalties': 'PEN', 'sy': 'SY'
+            };
+            const field = fieldMapping[key];
+            if (!field) return true;
+            if (key === 'dateFrom') return new Date(match.DATE) >= new Date(filterValue);
+            if (key === 'dateTo') return new Date(match.DATE) <= new Date(filterValue);
+            if (key === 'goalsFor') return parseInt(match['GOALS FOR'] || 0) >= parseInt(filterValue);
+            if (key === 'goalsAgainst') return parseInt(match['GOALS AGAINST'] || 0) <= parseInt(filterValue);
+            return normalizeStr(match[field] || '') === normalizeStr(filterValue);
+        });
+    });
+
+    const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID));
+
+    // GK records for this goalkeeper (and team filter if any)
+    let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
+    if (teamFilter) {
+        const teamFilters = teamFilter.split(',').map(t => normalizeStr(t.trim())).filter(Boolean);
+        if (teamFilters.length) {
+            gkRecords = gkRecords.filter(r => teamFilters.includes(normalizeStr(r.TEAM || r['AHLY TEAM'] || r.team)));
+        }
+    }
+    gkRecords = gkRecords.filter(r => filteredMatchIds.has(r.MATCH_ID));
+    if (!gkRecords.length) return [];
+
+    const matchesById = new Map(filteredMatches.map(m => [m.MATCH_ID, m]));
+
+    // Group all GKs in a match by team to ensure clean sheet rule
+    const allGKsByMatch = new Map();
+    gkDetails.forEach(record => {
+        const matchId = record.MATCH_ID;
+        const gkTeam = normalizeStr(record.TEAM || '');
+        const key = `${matchId}_${gkTeam}`;
+        if (!allGKsByMatch.has(key)) allGKsByMatch.set(key, []);
+        allGKsByMatch.get(key).push(record);
+    });
+
+    const syStats = new Map(); // SY -> stats
+
+    gkRecords.forEach(gkRecord => {
+        const match = matchesById.get(gkRecord.MATCH_ID);
+        if (!match) return;
+        const rawSY = (match.SY !== undefined ? match.SY : (match.sy !== undefined ? match.sy : (match.Sy !== undefined ? match.Sy : ''))) || '';
+        const sy = String(rawSY).trim() || '—';
+        if (!syStats.has(sy)) {
+            syStats.set(sy, {
+                sy, matches: 0, goalsConceded: 0, cleanSheets: 0, penaltyGoals: 0, penaltySaves: 0, matchIds: new Set()
+            });
+        }
+        const stats = syStats.get(sy);
+        stats.matches++;
+        stats.matchIds.add(match.MATCH_ID);
+
+        const goalsConceded = parseInt(gkRecord['GOALS CONCEDED'] || 0);
+        stats.goalsConceded += goalsConceded;
+
+        const matchKey = `${gkRecord.MATCH_ID}_${normalizeStr(gkRecord.TEAM || '')}`;
+        const onlyOneGK = (allGKsByMatch.get(matchKey) || []).length === 1;
+        if (goalsConceded === 0 && onlyOneGK) {
+            stats.cleanSheets++;
+        }
+
+        // Penalty goals against GK team
+        playerDetails.forEach(playerRecord => {
+            if (normalizeStr(playerRecord.MATCH_ID) !== normalizeStr(match.MATCH_ID)) return;
+            const typeNorm = normalizeStr(playerRecord.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
+            const gaNorm = normalizeStr(playerRecord.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
+            if (typeNorm === 'PENGOAL' || gaNorm === 'PENGOAL') {
+                const gkTeam = normalizeStr(gkRecord.TEAM || '');
+                const playerTeam = normalizeStr(playerRecord.TEAM || '');
+                if (gkTeam !== playerTeam) stats.penaltyGoals++;
+            }
+        });
+    });
+
+    // Penalty saves per SY (map HOWPENMISSED entries into relevant SY via match id)
+    const goalkeeperNameNorm = normalizeStr(goalkeeperName);
+    howPenMissed.forEach(record => {
+        const playerName = normalizeStr(record['PLAYER NAME'] || '');
+        if (playerName !== goalkeeperNameNorm) return;
+        const matchId = record.MATCH_ID;
+        if (!matchId) {
+            // If no match id, distribute (rare); increment all
+            syStats.forEach(s => s.penaltySaves++);
+            return;
+        }
+        const match = matchesById.get(matchId);
+        if (!match) return;
+        const rawSY = (match.SY !== undefined ? match.SY : (match.sy !== undefined ? match.sy : (match.Sy !== undefined ? match.Sy : ''))) || '';
+        const sy = String(rawSY).trim() || '—';
+        if (syStats.has(sy)) syStats.get(sy).penaltySaves++;
+    });
+
+    // Convert to array and sort by SY label
+    return Array.from(syStats.values()).sort((a, b) => String(a.sy).localeCompare(String(b.sy)));
+}
+
+function renderGKBySYTable(items) {
+    const tbody = document.querySelector('#gk-sy-agg-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!items || !items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;">No SY data found</td></tr>';
+        return;
+    }
+    let totals = { matches: 0, goalsConceded: 0, cleanSheets: 0, penaltyGoals: 0, penaltySaves: 0 };
+    items.forEach(it => {
+        totals.matches += it.matches || 0;
+        totals.goalsConceded += it.goalsConceded || 0;
+        totals.cleanSheets += it.cleanSheets || 0;
+        totals.penaltyGoals += it.penaltyGoals || 0;
+        totals.penaltySaves += it.penaltySaves || 0;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${it.sy}</td>
+            <td>${it.matches || 0}</td>
+            <td>${it.goalsConceded || 0}</td>
+            <td>${it.cleanSheets || 0}</td>
+            <td>${it.penaltyGoals || 0}</td>
+            <td>${it.penaltySaves || 0}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    const totalRow = document.createElement('tr');
+    totalRow.style.fontWeight = 'bold';
+    totalRow.style.backgroundColor = '#f8f9fa';
+    totalRow.style.borderTop = '2px solid #dee2e6';
+    totalRow.innerHTML = `
+        <td>TOTAL</td>
+        <td>${totals.matches}</td>
+        <td>${totals.goalsConceded}</td>
+        <td>${totals.cleanSheets}</td>
+        <td>${totals.penaltyGoals}</td>
+        <td>${totals.penaltySaves}</td>
+    `;
+    tbody.appendChild(totalRow);
+}
+
 // Load GK Seasons
 function loadGKSeasons(teamFilter = '') {
     console.log('=== LOADING GK SEASONS ===');
@@ -9334,6 +9956,10 @@ function loadGKSubTabData(subTabName) {
             console.log('Loading GK seasons...');
             loadGKSeasons(teamFilter);
             break;
+        case 'sy-table':
+            console.log('Loading GK S & SY...');
+            loadGKBySY(teamFilter);
+            break;
         default:
             console.log(`Unknown GK sub-tab: ${subTabName}`);
     }
@@ -10153,6 +10779,25 @@ function showStatsTab(arg1, arg2) {
     // Load Referees data when Referees tab is selected
     if (tabName === 'referees') {
         loadRefereesData();
+        // Auto-show and load All Referees sub-tab immediately
+        try {
+            const allRefContent = document.getElementById('all-referees-sub');
+            if (allRefContent) {
+                document.querySelectorAll('#referees-tab .referee-main-sub-content').forEach(el => el.classList.remove('active'));
+                allRefContent.classList.add('active');
+            }
+            const allRefBtn = document.querySelector('#referees-tab .stats-sub-tab[onclick*=\"all-referees\"]');
+            if (allRefBtn) {
+                document.querySelectorAll('#referees-tab .stats-sub-tab').forEach(el => el.classList.remove('active'));
+                allRefBtn.classList.add('active');
+            }
+            const currentFilteredRecords = (typeof getCurrentFilteredRecords === 'function') ? getCurrentFilteredRecords() : null;
+            if (typeof loadAllRefereesData === 'function') {
+                loadAllRefereesData(currentFilteredRecords);
+            }
+        } catch (e) {
+            console.warn('Auto-load All Referees failed', e);
+        }
     }
     
     // Load All Goalkeepers data when All Goalkeepers tab is selected
@@ -10207,7 +10852,7 @@ function showPlayerSubTab(arg1, arg2) {
     
     // Load data for the selected sub-tab if player is selected
     const searchEl = document.getElementById('player-search');
-    const selectedPlayer = searchEl ? searchEl.value.trim() : '';
+    const selectedPlayer = (searchEl && searchEl.value && searchEl.value.trim()) || (playersData && playersData.selectedPlayer && playersData.selectedPlayer.name) || '';
     if (selectedPlayer) {
         // Get current selected teams from checkboxes
         const selectedTeams = getSelectedPlayerTeams();
@@ -10258,8 +10903,11 @@ function initializeCoachTab() {
 
 // Load player sub-tab data based on current selection (Excel-only)
 function loadPlayerSubTabData(subTabName, selectedTeams = null) {
-    const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
-    const teamFilter = selectedTeams ? (Array.isArray(selectedTeams) ? selectedTeams.join(',') : selectedTeams) : (document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '');
+    const searchInput = document.getElementById('player-search');
+    const selectedPlayer = (searchInput && searchInput.value && searchInput.value.trim()) ||
+        (playersData && playersData.selectedPlayer && playersData.selectedPlayer.name) || '';
+    const teamFilter = selectedTeams ? (Array.isArray(selectedTeams) ? selectedTeams.join(',') : selectedTeams) :
+        (document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '');
     if (!selectedPlayer) return;
     switch (subTabName) {
         case 'overview':
@@ -10268,11 +10916,17 @@ function loadPlayerSubTabData(subTabName, selectedTeams = null) {
         case 'matches':
             loadPlayerMatchesWithFilter(selectedTeams || teamFilter);
             break;
+        case 'm-by-ga':
+            loadPlayerMatchesByGAWithFilter(selectedTeams || teamFilter);
+            break;
         case 'championships':
             loadPlayerChampionshipsWithFilter(selectedTeams || teamFilter);
             break;
         case 'seasons':
             loadPlayerSeasonsWithFilter(selectedTeams || teamFilter);
+            break;
+        case 'sy-table':
+            loadPlayerSYTableWithFilter(selectedTeams || teamFilter);
             break;
         case 'sy':
             loadPlayerSYWithFilter(selectedTeams || teamFilter);
@@ -14379,6 +15033,7 @@ function getCoachMatchesRecords(coachName) {
             date: formatExcelDate(match.DATE || match['DATE']),
             timestamp,
             season: normalizeStr(match.SEASON || ''),
+            sy: normalizeStr(match.SY || match.sy || match.Sy || ''),
             competition: normalizeStr(match.CHAMPION || match['CHAMPION SYSTEM'] || ''),
             championSystem: normalizeStr(match['CHAMPION SYSTEM'] || ''),
             team: coachTeam,
@@ -14745,6 +15400,89 @@ function renderCoachSeasonsTable(matches) {
     tbody.innerHTML = rowsHtml + totalRow;
 }
 
+function renderCoachSYTable(matches) {
+    const tableSelector = '#coach-sy-table';
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    if (!Array.isArray(matches) || matches.length === 0) {
+        renderCoachTablePlaceholder(tableSelector, 'No SY statistics available for this coach.');
+        return;
+    }
+    
+    const syStats = new Map();
+    
+    matches.forEach(match => {
+        const key = match.sy || 'Unknown';
+        if (!syStats.has(key)) {
+            syStats.set(key, {
+                sy: key,
+                matches: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                goalsFor: 0,
+                goalsAgainst: 0
+            });
+        }
+        const stat = syStats.get(key);
+        stat.matches++;
+        stat.goalsFor += match.goalsFor;
+        stat.goalsAgainst += match.goalsAgainst;
+        if (match.resultType === 'W') stat.wins++;
+        else if (match.resultType === 'D') stat.draws++;
+        else if (match.resultType === 'L') stat.losses++;
+    });
+    
+    const statsArray = Array.from(syStats.values()).sort((a, b) => b.sy.localeCompare(a.sy));
+    
+    const totals = {
+        matches: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0
+    };
+    
+    const rowsHtml = statsArray.map(stat => {
+        totals.matches += stat.matches;
+        totals.wins += stat.wins;
+        totals.draws += stat.draws;
+        totals.losses += stat.losses;
+        totals.goalsFor += stat.goalsFor;
+        totals.goalsAgainst += stat.goalsAgainst;
+        
+        return `
+            <tr>
+                <td style="font-weight: 500;">${stat.sy}</td>
+                <td>${stat.matches}</td>
+                <td style="color: #10b981; font-weight: 600;">${stat.wins}</td>
+                <td style="color: #f59e0b; font-weight: 600;">${stat.draws}</td>
+                <td style="color: #ef4444; font-weight: 600;">${stat.losses}</td>
+                <td>${stat.goalsFor}</td>
+                <td>${stat.goalsAgainst}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    const totalRow = `
+        <tr style="font-weight: 600; background: #f8f9fa;">
+            <td style="text-align: center;">TOTAL</td>
+            <td>${totals.matches}</td>
+            <td style="color: #10b981;">${totals.wins}</td>
+            <td style="color: #f59e0b;">${totals.draws}</td>
+            <td style="color: #ef4444;">${totals.losses}</td>
+            <td>${totals.goalsFor}</td>
+            <td>${totals.goalsAgainst}</td>
+        </tr>
+    `;
+    
+    tbody.innerHTML = rowsHtml + totalRow;
+}
+
 function renderCoachVsTeamsTable(matches) {
     const tableSelector = '#coach-vs-teams-table';
     const table = document.querySelector(tableSelector);
@@ -15037,6 +15775,9 @@ function loadCoachSubTabData(subTabName) {
                 case 'seasons':
                     renderCoachTablePlaceholder('#coach-seasons-table', 'Select a coach to load season statistics.');
                     break;
+                case 'sy-table':
+                    renderCoachTablePlaceholder('#coach-sy-table', 'Select a coach to load SY statistics.');
+                    break;
                 case 'vs-teams':
                     renderCoachTablePlaceholder('#coach-vs-teams-table', 'Select a coach to load opponent statistics.');
                     break;
@@ -15087,6 +15828,9 @@ function loadCoachSubTabData(subTabName) {
             break;
         case 'seasons':
             renderCoachSeasonsTable(filteredMatches);
+            break;
+        case 'sy-table':
+            renderCoachSYTable(filteredMatches);
             break;
         case 'vs-teams':
             renderCoachVsTeamsTable(filteredMatches);
@@ -16659,22 +17403,22 @@ function renderTrophyPlayersTable(playersData) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><strong>${player.name}</strong></td>
-            <td><strong>${player.total}</strong></td>
-            <td>${player['african-champions']}</td>
-            <td>${player['african-league']}</td>
-            <td>${player['confederation']}</td>
-            <td>${player['african-super']}</td>
-            <td>${player['african-cup-winners']}</td>
-            <td>${player['afro-asian']}</td>
-            <td>${player['egyptian-league']}</td>
-            <td>${player['egyptian-cup']}</td>
-            <td>${player['egyptian-super']}</td>
-            <td>${player['league-cup']}</td>
-            <td>${player['club-world-cup']}</td>
-            <td>${player['intercontinental']}</td>
-            <td>${player['arab-champions']}</td>
-            <td>${player['arab-cup-winners']}</td>
-            <td>${player['arab-super']}</td>
+            <td><strong>${player.total || '-'}</strong></td>
+            <td>${player['african-champions'] || '-'}</td>
+            <td>${player['african-league'] || '-'}</td>
+            <td>${player['confederation'] || '-'}</td>
+            <td>${player['african-super'] || '-'}</td>
+            <td>${player['african-cup-winners'] || '-'}</td>
+            <td>${player['afro-asian'] || '-'}</td>
+            <td>${player['egyptian-league'] || '-'}</td>
+            <td>${player['egyptian-cup'] || '-'}</td>
+            <td>${player['egyptian-super'] || '-'}</td>
+            <td>${player['league-cup'] || '-'}</td>
+            <td>${player['club-world-cup'] || '-'}</td>
+            <td>${player['intercontinental'] || '-'}</td>
+            <td>${player['arab-champions'] || '-'}</td>
+            <td>${player['arab-cup-winners'] || '-'}</td>
+            <td>${player['arab-super'] || '-'}</td>
         `;
         tbody.appendChild(row);
     });
