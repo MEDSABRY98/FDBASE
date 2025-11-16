@@ -2187,7 +2187,9 @@ function switchMainTab(tabName) {
     document.querySelectorAll('.main-tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    event.target.classList.add('active');
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
     
     // Update content
     document.querySelectorAll('.tab-content').forEach(content => {
@@ -2199,6 +2201,25 @@ function switchMainTab(tabName) {
     // Load specific data for HOW WIN tab
     if (tabName === 'how-win') {
         calculateHowWinStats();
+    }
+    
+    // Restore last searched match when returning to search-match tab
+    if (tabName === 'search-match' && window.__lastZamalekMatchId) {
+        const match = zamalekMatchesData.find(m => String(m.MATCH_ID) === String(window.__lastZamalekMatchId));
+        if (match) {
+            console.log('🔄 Restoring last searched match:', window.__lastZamalekMatchId);
+            displayZamalekMatchDetails(match);
+            document.getElementById('zamalek-match-details-container').style.display = 'block';
+            document.getElementById('zamalek-no-match-found').style.display = 'none';
+            
+            // Reset to first sub-tab (lineup)
+            document.querySelectorAll('#zamalek-match-details-container .tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#zamalek-match-details-container .tab-content').forEach(content => content.classList.remove('active'));
+            const firstTabBtn = document.querySelector('#zamalek-match-details-container .tab-button');
+            const firstTabContent = document.getElementById('zamalek-match-lineup-content');
+            if (firstTabBtn) firstTabBtn.classList.add('active');
+            if (firstTabContent) firstTabContent.classList.add('active');
+        }
     }
 }
 
@@ -4375,6 +4396,41 @@ function updateTotalsByPlayerChampionships(championships, isEmpty) {
 // SEARCH MATCH FUNCTIONALITY
 // ============================================
 
+// Normalize date to DD/MM/YYYY string (supports Excel serials and d/m/yyyy or d-m-yyyy)
+function normalizeZToDMY(value) {
+	const pad2 = n => String(n).padStart(2, '0');
+	if (value === null || value === undefined) return '';
+	const raw = String(value).trim();
+	if (!raw) return '';
+
+	// Excel serial
+	const num = parseFloat(raw);
+	if (!isNaN(num) && num > 100) {
+		const adjusted = num > 60 ? num - 1 : num;
+		const excelEpoch = new Date(1899, 11, 30);
+		const dt = new Date(excelEpoch.getTime() + adjusted * 86400 * 1000);
+		if (!isNaN(dt.getTime())) {
+			return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+		}
+	}
+
+	// D/M/Y or D-M-Y
+	let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+	if (m) {
+		const d = parseInt(m[1], 10), mo = parseInt(m[2], 10), y = parseInt(m[3], 10);
+		if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && y >= 1900) {
+			return `${pad2(d)}/${pad2(mo)}/${y}`;
+		}
+	}
+
+	// Try Date()
+	const dt = new Date(raw);
+	if (!isNaN(dt.getTime())) {
+		return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+	}
+	return '';
+}
+
 // Search for a match by ID
 function searchZamalekMatchById() {
     const searchInput = document.getElementById('zamalek-match-search-input');
@@ -4384,17 +4440,28 @@ function searchZamalekMatchById() {
     
     if (!matchId) {
         alert('Please enter a Match ID');
-        return;
+		return false;
     }
     
     // Find match in data
-    const match = zamalekMatchesData.find(m => String(m.MATCH_ID) === String(matchId));
+	let match = zamalekMatchesData.find(m => String(m.MATCH_ID) === String(matchId));
     
-    if (!match) {
+	// If not found by ID, try by Date (accepts DD/MM/YYYY or Excel serials)
+	if (!match) {
+		const looksLikeDate = /[\/\-]/.test(matchId) || /^\d{6,}$/.test(matchId);
+		if (looksLikeDate) {
+			const targetDMY = normalizeZToDMY(matchId);
+			if (targetDMY) {
+				match = zamalekMatchesData.find(m => normalizeZToDMY(m.DATE) === targetDMY);
+			}
+		}
+	}
+
+	if (!match) {
         console.log('❌ No match found with ID:', matchId);
         document.getElementById('zamalek-match-details-container').style.display = 'none';
         document.getElementById('zamalek-no-match-found').style.display = 'block';
-        return;
+		return false;
     }
     
     console.log('✅ Match found:', match);
@@ -4407,6 +4474,10 @@ function searchZamalekMatchById() {
     
     // Show details container
     document.getElementById('zamalek-match-details-container').style.display = 'block';
+
+	// Cache last match id for potential future use (non-invasive; no tab overrides)
+	try { window.__lastZamalekMatchId = String(match.MATCH_ID); } catch (e) {}
+	return true;
 }
 
 // Display match details
@@ -5046,7 +5117,9 @@ function showZamalekMatchSubTab(event, tabName) {
     buttons.forEach(btn => btn.classList.remove('active'));
     
     // Add active class to clicked button
-    event.currentTarget.classList.add('active');
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
     
     // Hide all tab contents
     const contents = document.querySelectorAll('#zamalek-match-details-container .tab-content');
@@ -5056,6 +5129,22 @@ function showZamalekMatchSubTab(event, tabName) {
     const selectedContent = document.getElementById(`zamalek-match-${tabName}-content`);
     if (selectedContent) {
         selectedContent.classList.add('active');
+    }
+    
+    // Reload data if needed - use cached match ID if available
+    const matchId = window.__lastZamalekMatchId || (document.getElementById('zamalek-match-search-input') ? document.getElementById('zamalek-match-search-input').value.trim() : '');
+    if (matchId) {
+        const match = zamalekMatchesData.find(m => String(m.MATCH_ID) === String(matchId));
+        if (match) {
+            // Reload the specific tab data
+            if (tabName === 'lineup') {
+                displayZamalekMatchLineup(match);
+            } else if (tabName === 'goals') {
+                displayZamalekMatchGoals(match);
+            } else if (tabName === 'pks') {
+                displayZamalekMatchPKS(match);
+            }
+        }
     }
 }
 

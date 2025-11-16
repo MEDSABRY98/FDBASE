@@ -2066,6 +2066,33 @@ function showStatsTab(arg1, arg2) {
         if (!egyptTeamsData.playersLoaded) {
             loadPlayersData();
         }
+        
+        // Restore last searched match when returning to search tab
+        if (window.__lastEgyptMatchId) {
+            const matches = egyptTeamsData.allRecords || [];
+            const match = matches.find(m => {
+                const mid = m.MATCH_ID || m['MATCH ID'] || '';
+                return String(mid).toLowerCase() === String(window.__lastEgyptMatchId).toLowerCase();
+            });
+            if (match) {
+                console.log('🔄 Restoring last searched match:', window.__lastEgyptMatchId);
+                const matchId = String(match.MATCH_ID || match['MATCH ID'] || '');
+                displayEgyptMatchDetails(match);
+                displayEgyptMatchLineup(matchId);
+                displayEgyptMatchGoals(matchId);
+                displayEgyptMatchGoalkeepers(matchId);
+                document.getElementById('egypt-match-details-container').style.display = 'block';
+                document.getElementById('egypt-no-match-found').style.display = 'none';
+                
+                // Reset to first sub-tab (lineup)
+                document.querySelectorAll('#egypt-match-details-container .tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('#egypt-match-lineup-content, #egypt-match-goals-content, #egypt-match-goalkeepers-content').forEach(content => content.classList.remove('active'));
+                const firstTabBtn = document.querySelector('#egypt-match-details-container .tab-button');
+                const firstTabContent = document.getElementById('egypt-match-lineup-content');
+                if (firstTabBtn) firstTabBtn.classList.add('active');
+                if (firstTabContent) firstTabContent.classList.add('active');
+            }
+        }
     } else if (tabName === 'h2h') {
         loadH2HStats();
     } else if (tabName === 'managers') {
@@ -3587,16 +3614,52 @@ function setupGoalkeepersSearch() {
 // SEARCH MATCH FUNCTIONS
 // ============================================================================
 
-// Search for match by ID
-async function searchEgyptMatchById() {
-    const searchInput = document.getElementById('egypt-match-search-input');
-    const matchId = searchInput.value.trim();
-    
-    if (!matchId) {
-        return;
+// Normalize date to DD/MM/YYYY format for comparison
+function normalizeEToDMY(value) {
+    const pad2 = n => String(n).padStart(2, '0');
+    if (value === null || value === undefined) return '';
+    const raw = String(value).trim();
+    if (!raw) return '';
+
+    // Excel serial number
+    const num = parseFloat(raw);
+    if (!isNaN(num) && num > 100) {
+        const adjusted = num > 60 ? num - 1 : num;
+        const excelEpoch = new Date(1899, 11, 30);
+        const dt = new Date(excelEpoch.getTime() + adjusted * 86400 * 1000);
+        if (!isNaN(dt.getTime())) {
+            return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+        }
+    }
+
+    // D/M/Y or D-M-Y format
+    const m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) {
+        const d = parseInt(m[1], 10), mo = parseInt(m[2], 10), y = parseInt(m[3], 10);
+        if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && y >= 1900) {
+            return `${pad2(d)}/${pad2(mo)}/${y}`;
+        }
+    }
+
+    // Try parsing as regular date string
+    const dt = new Date(raw);
+    if (!isNaN(dt.getTime())) {
+        return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
     }
     
-    console.log('🔍 Searching for match ID:', matchId);
+    return '';
+}
+
+// Search for match by ID or Date
+async function searchEgyptMatchById() {
+    const searchInput = document.getElementById('egypt-match-search-input');
+    const searchValue = searchInput.value.trim();
+    
+    if (!searchValue) {
+        return false;
+    }
+    
+    console.log('🔍 Searching for match ID or Date:', searchValue);
     console.log('🔍 Player details loaded before search:', egyptTeamsData.playerDetailsLoaded);
     
     // Make sure player data is loaded
@@ -3608,15 +3671,26 @@ async function searchEgyptMatchById() {
         } catch (error) {
             console.error('❌ Error loading player data:', error);
             showError('No Data Available');
-            return;
+            return false;
         }
     }
     
     const matches = egyptTeamsData.allRecords;
-    const match = matches.find(m => {
+    let match = matches.find(m => {
         const mid = m.MATCH_ID || m['MATCH ID'] || '';
-        return mid.toString().toLowerCase() === matchId.toLowerCase();
+        return mid.toString().toLowerCase() === searchValue.toLowerCase();
     });
+    
+    // If not found by ID, try by Date (accepts DD/MM/YYYY or Excel serials)
+    if (!match) {
+        const looksLikeDate = /[\/\-]/.test(searchValue) || /^\d{6,}$/.test(searchValue);
+        if (looksLikeDate) {
+            const targetDMY = normalizeEToDMY(searchValue);
+            if (targetDMY) {
+                match = matches.find(m => normalizeEToDMY(m.DATE) === targetDMY);
+            }
+        }
+    }
     
     console.log('🔍 Match found:', !!match);
     if (match) {
@@ -3627,6 +3701,8 @@ async function searchEgyptMatchById() {
     const noMatchFound = document.getElementById('egypt-no-match-found');
     
     if (match) {
+        const matchId = String(match.MATCH_ID || match['MATCH ID'] || '');
+        
         // Display match details
         displayEgyptMatchDetails(match);
         displayEgyptMatchLineup(matchId);
@@ -3635,9 +3711,14 @@ async function searchEgyptMatchById() {
         
         detailsContainer.style.display = 'block';
         noMatchFound.style.display = 'none';
+        
+        // Cache last match ID for future use
+        try { window.__lastEgyptMatchId = matchId; } catch (e) {}
+        return true;
     } else {
         detailsContainer.style.display = 'none';
         noMatchFound.style.display = 'block';
+        return false;
     }
 }
 
@@ -4225,7 +4306,7 @@ function displayEgyptMatchGoalkeepers(matchId) {
 function showEgyptMatchSubTab(event, tabName) {
     // Remove active class from all match sub-tabs
     const parentContainer = event.target.closest('#egypt-match-details-container');
-    const tabButtons = parentContainer.querySelectorAll('.tab-button');
+    const tabButtons = parentContainer ? parentContainer.querySelectorAll('.tab-button') : document.querySelectorAll('#egypt-match-details-container .tab-button');
     tabButtons.forEach(tab => tab.classList.remove('active'));
     
     // Remove active class from all match sub-tab contents
@@ -4234,7 +4315,9 @@ function showEgyptMatchSubTab(event, tabName) {
     });
     
     // Add active class to selected tab button and content
-    event.target.classList.add('active');
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
     
     if (tabName === 'lineup') {
         document.getElementById('egypt-match-lineup-content').classList.add('active');
@@ -4242,6 +4325,27 @@ function showEgyptMatchSubTab(event, tabName) {
         document.getElementById('egypt-match-goals-content').classList.add('active');
     } else if (tabName === 'goalkeepers') {
         document.getElementById('egypt-match-goalkeepers-content').classList.add('active');
+    }
+    
+    // Reload data if needed - use cached match ID if available
+    const matchId = window.__lastEgyptMatchId || (document.getElementById('egypt-match-search-input') ? document.getElementById('egypt-match-search-input').value.trim() : '');
+    if (matchId) {
+        const matches = egyptTeamsData.allRecords || [];
+        const match = matches.find(m => {
+            const mid = m.MATCH_ID || m['MATCH ID'] || '';
+            return String(mid).toLowerCase() === String(matchId).toLowerCase();
+        });
+        if (match) {
+            const actualMatchId = String(match.MATCH_ID || match['MATCH ID'] || '');
+            // Reload the specific tab data
+            if (tabName === 'lineup') {
+                displayEgyptMatchLineup(actualMatchId);
+            } else if (tabName === 'goals') {
+                displayEgyptMatchGoals(actualMatchId);
+            } else if (tabName === 'goalkeepers') {
+                displayEgyptMatchGoalkeepers(actualMatchId);
+            }
+        }
     }
 }
 

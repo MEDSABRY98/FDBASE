@@ -2049,20 +2049,20 @@
             <!-- Search Match Tab -->
             <div id="search-match-tab" class="stats-tab-content active">
                 <div class="stats-section">
-                    <h2 class="section-title">Search Match by ID</h2>
+					<h2 class="section-title">Search Match by ID or Date</h2>
                     
-                    <!-- Search Box -->
+					<!-- Search Box (ID or Date) -->
                     <div style="max-width: 600px; margin: 2rem auto;">
                         <div style="display: flex; gap: 1rem; align-items: center;">
-                            <input type="text" id="match-id-search" placeholder="Enter Match ID (e.g., ah1, ah100...)" 
+							<input type="text" id="match-id-search" placeholder="Enter Match ID or Date (e.g., ah100 or 13/10/2025)" 
                                    style="flex: 1; padding: 0.75rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;"
-                                   onkeypress="if(event.key==='Enter') searchMatchById()">
-                            <button onclick="searchMatchById()" style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+								   onkeypress="if(event.key==='Enter') searchMatch()">
+							<button onclick="searchMatch()" style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
                                     <circle cx="11" cy="11" r="8"/>
                                     <path d="m21 21-4.35-4.35"/>
                                 </svg>
-                                Search
+								Search
                             </button>
                         </div>
                     </div>

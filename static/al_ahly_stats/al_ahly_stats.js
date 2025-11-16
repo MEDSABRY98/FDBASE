@@ -10817,6 +10817,42 @@ function showStatsTab(arg1, arg2) {
     if (tabName === 'trophy-players') {
         loadTrophyPlayersData();
     }
+
+    // When returning to Search Match tab, restore last viewed match if cached
+    if (tabName === 'search-match') {
+        try {
+            const lastId = (typeof window !== 'undefined') ? window.__lastSearchedMatchId : '';
+            if (lastId) {
+                const detailsContainer = document.getElementById('match-details-container');
+                const noMatchFound = document.getElementById('no-match-found');
+                // If nothing is currently shown, re-render
+                if (detailsContainer && detailsContainer.style.display === 'none') {
+                    // Re-fetch match row for header
+                    const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
+                    const match = matches.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID']).toLowerCase() === String(lastId).toLowerCase());
+                    if (match) {
+                        displayMatchDetails(match);
+                    }
+                    displayMatchLineup(lastId);
+                    displayMatchGoals(lastId);
+                    displayMatchGoalkeepers(lastId);
+                    displayMatchPKS(lastId);
+                    detailsContainer.style.display = 'block';
+                    if (noMatchFound) noMatchFound.style.display = 'none';
+
+                    // Ensure a sub-tab is active
+                    document.querySelectorAll('#match-details-container .goal-details-tab-content').forEach(c => c.classList.remove('active'));
+                    const firstContent = document.getElementById('match-lineup-content');
+                    if (firstContent) firstContent.classList.add('active');
+                    document.querySelectorAll('#match-details-container .goal-details-tab').forEach(t => t.classList.remove('active'));
+                    const firstBtn = document.querySelector('#match-details-container .goal-details-tab');
+                    if (firstBtn) firstBtn.classList.add('active');
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to restore Search Match tab state', e);
+        }
+    }
 }
 
 // Player sub-tabs switching (compatible with showPlayerSubTab(event, 'name') and showPlayerSubTab('name'))
@@ -18731,7 +18767,7 @@ function searchMatchById() {
     const matchId = searchInput.value.trim();
     
     if (!matchId) {
-        return;
+		return false;
     }
     
     console.log('Searching for match:', matchId);
@@ -18744,6 +18780,9 @@ function searchMatchById() {
     const noMatchFound = document.getElementById('no-match-found');
     
     if (match) {
+		// Cache last searched match id for later tab switches
+		try { window.__lastSearchedMatchId = matchId; } catch (e) {}
+
         // Display match details
         displayMatchDetails(match);
         displayMatchLineup(matchId);
@@ -18768,10 +18807,140 @@ function searchMatchById() {
         if (firstTab) {
             firstTab.classList.add('active');
         }
+		return true;
     } else {
         detailsContainer.style.display = 'none';
         noMatchFound.style.display = 'block';
+		return false;
     }
+}
+
+// Normalize a date-like value to 'DD/MM/YYYY'
+function normalizeToDMY(dateVal) {
+	const pad2 = n => String(n).padStart(2, '0');
+	if (dateVal === null || dateVal === undefined) return '';
+	const raw = String(dateVal).trim();
+	if (!raw) return '';
+
+	// 1) Excel serial number
+	const asNum = parseFloat(raw);
+	if (!isNaN(asNum) && asNum > 100) {
+		// Adjust Excel leap year bug
+		const adjusted = asNum > 60 ? asNum - 1 : asNum;
+		const excelEpoch = new Date(1899, 11, 30);
+		const dt = new Date(excelEpoch.getTime() + adjusted * 86400 * 1000);
+		if (!isNaN(dt.getTime())) {
+			return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+		}
+	}
+
+	// 2) Try common string formats
+	// DD/MM/YYYY or D/M/YYYY
+	let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+	if (m) {
+		const d = parseInt(m[1], 10);
+		const mo = parseInt(m[2], 10);
+		const y = parseInt(m[3], 10);
+		// Basic validity
+		if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && y >= 1900) {
+			return `${pad2(d)}/${pad2(mo)}/${y}`;
+		}
+	}
+
+	// 3) Fallback to Date parser then format en-GB
+	const tryDate = new Date(raw);
+	if (!isNaN(tryDate.getTime())) {
+		return `${pad2(tryDate.getDate())}/${pad2(tryDate.getMonth() + 1)}/${tryDate.getFullYear()}`;
+	}
+
+	return '';
+}
+
+// Search for a match by Date (expects DD/MM/YYYY like 13/10/2025). Accepts optional input string.
+function searchMatchByDate(userTextParam) {
+	const input = document.getElementById('match-id-search');
+	const userText = (typeof userTextParam === 'string' ? userTextParam : (input ? input.value : '')).trim();
+	if (!userText) return false;
+
+	// Normalize user input to DMY
+	const targetDMY = normalizeToDMY(userText);
+	if (!targetDMY) {
+		console.log('Invalid date input:', userText);
+		return false;
+	}
+
+	// Get matches
+	const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
+
+	// Find first match where normalized DATE equals target
+	const found = matches.find(m => {
+		const normalized = normalizeToDMY(m.DATE || m['DATE']);
+		return normalized && normalized === targetDMY;
+	});
+
+	const detailsContainer = document.getElementById('match-details-container');
+	const noMatchFound = document.getElementById('no-match-found');
+
+	if (found) {
+		const mid = (found.MATCH_ID || found['MATCH ID'] || '').trim();
+		// Cache last searched match id
+		try { window.__lastSearchedMatchId = mid; } catch (e) {}
+
+		// Show details (reuse existing renderers)
+		displayMatchDetails(found);
+		if (mid) {
+			displayMatchLineup(mid);
+			displayMatchGoals(mid);
+			displayMatchGoalkeepers(mid);
+			displayMatchPKS(mid);
+		}
+
+		detailsContainer.style.display = 'block';
+		noMatchFound.style.display = 'none';
+
+		// Reset to first sub-tab
+		document.querySelectorAll('#match-details-container .goal-details-tab-content').forEach(c => c.classList.remove('active'));
+		document.getElementById('match-lineup-content').classList.add('active');
+		document.querySelectorAll('#match-details-container .goal-details-tab').forEach(t => t.classList.remove('active'));
+		const first = document.querySelector('#match-details-container .goal-details-tab');
+		if (first) first.classList.add('active');
+		return true;
+	} else {
+		detailsContainer.style.display = 'none';
+		noMatchFound.style.display = 'block';
+		return false;
+	}
+}
+
+// Unified search: accept either Match ID or Date in one input
+function searchMatch() {
+	const input = document.getElementById('match-id-search');
+	const raw = (input ? input.value : '').trim();
+	if (!raw) return false;
+
+	const hasLetters = /[a-zA-Z\u0600-\u06FF]/.test(raw); // includes Arabic letters too
+	const hasDateHints = /[\/\-]/.test(raw) || /^\d{6,}$/.test(raw); // dd/mm/yyyy or numeric serial
+
+	// If it has letters, likely an ID: try ID first, then date
+	if (hasLetters) {
+		const okId = searchMatchById();
+		if (!okId && hasDateHints) {
+			return searchMatchByDate(raw);
+		}
+		return okId;
+	}
+
+	// If numeric or has separators, try date first, then ID as fallback
+	if (hasDateHints) {
+		const okDate = searchMatchByDate(raw);
+		if (!okDate) {
+			return searchMatchById();
+		}
+		return okDate;
+	}
+
+	// Default to ID
+	return searchMatchById();
 }
 
 // Display match header details
@@ -19445,9 +19614,12 @@ function showMatchSubTab(event, tabName) {
     }
     
     // Load data based on selected tab
-    const matchIdInput = document.getElementById('match-id-search');
-    if (matchIdInput && matchIdInput.value.trim()) {
-        const matchId = matchIdInput.value.trim();
+	const matchIdInput = document.getElementById('match-id-search');
+	const cachedMatchId = (typeof window !== 'undefined' && window.__lastSearchedMatchId) ? window.__lastSearchedMatchId : '';
+	const inputVal = matchIdInput ? matchIdInput.value.trim() : '';
+	const effectiveMatchId = cachedMatchId || inputVal;
+	if (effectiveMatchId) {
+		const matchId = effectiveMatchId;
         console.log('Loading data for match ID:', matchId, 'in tab:', tabName);
         
         // Check if data is available
