@@ -1595,9 +1595,11 @@ window.nationalMenWW = (function () {
             .replace(/'/g, '&#39;');
     }
 
-    async function loadData(forceRefresh = false) {
+    async function loadData(forceRefresh = false, skipLoadingState = false) {
         try {
-            showLoading(true);
+            if (!skipLoadingState) {
+                showLoading(true);
+            }
             const data = await fetchData(forceRefresh);
             allRecords = data.map(normalizeRecord);
             // expose for other helpers
@@ -1614,13 +1616,17 @@ window.nationalMenWW = (function () {
             setupH2HContinentFilters();
             setupRankingTeamSearch();
             setupRankingSubTabs();
-            showLoading(false);
+            if (!skipLoadingState) {
+                showLoading(false);
+            }
         } catch (e) {
             console.error('Failed to load National Men WW data:', e);
             allRecords = [];
             renderTable([]);
             renderTeamStats([]);
-            showLoading(false);
+            if (!skipLoadingState) {
+                showLoading(false);
+            }
         }
     }
 
@@ -1711,14 +1717,18 @@ window.nationalMenWW = (function () {
     // Refresh data with visual feedback
     async function refreshData() {
         const refreshBtn = event.target.closest('button');
+        const refreshIcon = refreshBtn?.querySelector('svg');
         const originalText = refreshBtn.innerHTML;
         
-        // Show loading state
+        // Show loading state on button only
         refreshBtn.disabled = true;
-        refreshBtn.innerHTML = '<svg style="animation: spin 1s linear infinite; width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
+        if (refreshIcon) {
+            refreshIcon.classList.add('spinning');
+        }
+        refreshBtn.innerHTML = '<svg class="spinning" style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
         
         try {
-            await loadData(true);
+            await loadData(true, true); // true = force refresh, true = skip loading state
             
             // Show success message
             refreshBtn.innerHTML = '<svg style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Synced!';

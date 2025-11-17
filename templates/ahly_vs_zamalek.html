@@ -210,6 +210,51 @@
             height: 18px;
         }
 
+        /* Spinning animation for refresh button */
+        .zamalek-refresh-btn svg.spinning {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Loading Container */
+        .loading-container {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: white;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+
+        .loading-container .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-container p {
+            color: #666;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Content Tabs */
+        .content-tabs {
+            /* Content will be shown here after loading */
+        }
+
         /* Searchable Select Styles */
         .searchable-select-container {
             position: relative;
@@ -1055,7 +1100,7 @@
             </div>
 
             <!-- Main Tabs Navigation -->
-            <div class="main-tabs-nav">
+            <div class="main-tabs-nav" style="display: none;">
                 <!-- First Row (6 tabs) -->
                 <div class="main-tabs-row">
                     <button class="main-tab-btn active" onclick="switchMainTab('search-match')">Search Match</button>
@@ -1076,6 +1121,14 @@
                 </div>
             </div>
 
+            <!-- Loading Container -->
+            <div id="loading-container" class="loading-container" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading data...</p>
+            </div>
+
+            <!-- Content Tabs -->
+            <div id="content-tabs" class="content-tabs" style="display: none;">
             <!-- Search Match Tab -->
             <div id="search-match-tab" class="tab-content active">
                 <div class="zamalek-stats-section">
@@ -2273,6 +2326,8 @@
                     </div>
                 </div>
             </div>
+            </div>
+            <!-- End Content Tabs -->
 
         </div>
     </div>

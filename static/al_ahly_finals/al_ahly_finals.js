@@ -134,9 +134,11 @@ async function fetchPlayerDatabaseFromGoogleSheets(forceRefresh = false) {
 /**
  * Load and process Finals data
  */
-async function loadFinalsData(forceRefresh = false) {
+async function loadFinalsData(forceRefresh = false, skipLoadingState = false) {
     try {
-        showLoadingState(true);
+        if (!skipLoadingState) {
+            showLoadingState(true);
+        }
         
         // Fetch data from Cache (or Google Sheets if cache miss)
         const records = await fetchFinalsDataFromGoogleSheets(forceRefresh);
@@ -162,6 +164,19 @@ async function loadFinalsData(forceRefresh = false) {
         // Populate filter dropdowns
         populateFilterDropdowns();
         
+        // Hide loading, show content (only on initial load, not on refresh)
+        if (!skipLoadingState) {
+            const loadingContainer = document.getElementById('loading-container');
+            const contentTabs = document.getElementById('content-tabs');
+            
+            if (loadingContainer) {
+                loadingContainer.style.display = 'none';
+            }
+            if (contentTabs) {
+                contentTabs.style.display = 'block';
+            }
+        }
+        
         // Update statistics
         updateFinalsStatistics();
         
@@ -173,8 +188,23 @@ async function loadFinalsData(forceRefresh = false) {
     } catch (error) {
         console.error('Error loading Finals data:', error);
         // Failed to load Finals data
+        
+        // Hide loading, show content even on error (only on initial load)
+        if (!skipLoadingState) {
+            const loadingContainer = document.getElementById('loading-container');
+            const contentTabs = document.getElementById('content-tabs');
+            
+            if (loadingContainer) {
+                loadingContainer.style.display = 'none';
+            }
+            if (contentTabs) {
+                contentTabs.style.display = 'block';
+            }
+        }
     } finally {
-        showLoadingState(false);
+        if (!skipLoadingState) {
+            showLoadingState(false);
+        }
     }
 }
 
@@ -505,7 +535,72 @@ function updateAllSearchableInputs() {
  */
 async function refreshFinalsStats() {
     console.log('🔄 Force refreshing Finals data...');
-    await loadFinalsData(true); // true = force refresh, bypass cache
+    
+    const refreshBtn = document.querySelector('.finals-refresh-btn');
+    const refreshIcon = refreshBtn?.querySelector('svg');
+    
+    try {
+        // Show loading indicator on button
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            if (refreshIcon) {
+                refreshIcon.classList.add('spinning');
+            }
+            const btnText = refreshBtn.querySelector('span') || refreshBtn.childNodes[refreshBtn.childNodes.length - 1];
+            if (btnText && btnText.textContent) {
+                btnText.textContent = 'Syncing...';
+            } else {
+                // If no span, update innerHTML
+                const currentHTML = refreshBtn.innerHTML;
+                refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
+            }
+        }
+        
+        // Reload data with force refresh (but don't hide content)
+        await loadFinalsData(true, true); // true = force refresh, true = skip loading state
+        
+        // Reset button on success
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            if (refreshIcon) {
+                refreshIcon.classList.remove('spinning');
+            }
+            const btnText = refreshBtn.querySelector('span') || refreshBtn.childNodes[refreshBtn.childNodes.length - 1];
+            if (btnText && btnText.textContent) {
+                btnText.textContent = 'Synced!';
+                setTimeout(() => {
+                    if (btnText) {
+                        btnText.textContent = 'Sync Data';
+                    }
+                }, 2000);
+            } else {
+                const currentHTML = refreshBtn.innerHTML;
+                refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Synced!');
+                setTimeout(() => {
+                    refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Synced!', 'Sync Data');
+                }, 2000);
+            }
+        }
+        
+        console.log('✅ Data refreshed successfully');
+    } catch (error) {
+        console.error('❌ Error refreshing data:', error);
+        
+        // Reset button on error
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            if (refreshIcon) {
+                refreshIcon.classList.remove('spinning');
+            }
+            const btnText = refreshBtn.querySelector('span') || refreshBtn.childNodes[refreshBtn.childNodes.length - 1];
+            if (btnText && btnText.textContent) {
+                btnText.textContent = 'Sync Data';
+            } else {
+                const currentHTML = refreshBtn.innerHTML;
+                refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Sync Data');
+            }
+        }
+    }
 }
 
 // ============================================================================
@@ -1085,6 +1180,25 @@ function showLoadingState(show) {
  */
 function initializeAlAhlyFinalsStats() {
     console.log('🚀 Initializing Al Ahly Finals Statistics Module...');
+    
+    // Show filters section immediately
+    const filtersSection = document.querySelector('.filters-section');
+    const loadingContainer = document.getElementById('loading-container');
+    const contentTabs = document.getElementById('content-tabs');
+    const mainTabsNav = document.querySelector('.main-tabs-nav');
+    
+    if (filtersSection) {
+        filtersSection.style.display = 'block';
+    }
+    if (mainTabsNav) {
+        mainTabsNav.style.display = 'flex';
+    }
+    if (loadingContainer) {
+        loadingContainer.style.display = 'block';
+    }
+    if (contentTabs) {
+        contentTabs.style.display = 'none';
+    }
     
     // Add event listeners for date range filters
     const dateFromInput = document.getElementById('date-from-filter');

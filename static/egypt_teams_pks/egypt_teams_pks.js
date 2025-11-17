@@ -13,10 +13,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Load PKS data from API
-async function loadPKSData(forceRefresh = false) {
+async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
     try {
-        // Show loading container, hide content
-        showPKSLoading(true);
+        // Show loading container, hide content (only on initial load)
+        if (!skipLoadingState) {
+            showPKSLoading(true);
+        }
         
         const url = forceRefresh ? '/api/egypt-teams-pks?force_refresh=true' : '/api/egypt-teams-pks';
         const response = await fetch(url);
@@ -30,15 +32,19 @@ async function loadPKSData(forceRefresh = false) {
         // Apply filters (will show all initially)
         applyPKSFilters();
         
-        // Hide loading, show content
-        showPKSLoading(false);
+        // Hide loading, show content (only on initial load)
+        if (!skipLoadingState) {
+            showPKSLoading(false);
+        }
     } catch (error) {
         console.error('Error loading PKS data:', error);
         const loadingContainer = document.getElementById('pks-loading-container');
-        if (loadingContainer) {
+        if (loadingContainer && !skipLoadingState) {
             loadingContainer.innerHTML = '<p style="color: red;">No Data Available</p>';
         }
-        showPKSLoading(false);
+        if (!skipLoadingState) {
+            showPKSLoading(false);
+        }
     }
 }
 
@@ -59,14 +65,18 @@ function showPKSLoading(show) {
 // Refresh PKS data
 async function refreshPKSData() {
     const refreshBtn = event.target.closest('button');
+    const refreshIcon = refreshBtn?.querySelector('svg');
     const originalText = refreshBtn.innerHTML;
     
-    // Show loading state
+    // Show loading state on button only
     refreshBtn.disabled = true;
-    refreshBtn.innerHTML = '<svg class="btn-icon" style="animation: spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>Syncing...';
+    if (refreshIcon) {
+        refreshIcon.classList.add('spinning');
+    }
+    refreshBtn.innerHTML = '<svg class="btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>Syncing...';
     
     try {
-        await loadPKSData(true);
+        await loadPKSData(true, true); // true = force refresh, true = skip loading state
         
         // Show success message
         refreshBtn.innerHTML = '<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Synced!';

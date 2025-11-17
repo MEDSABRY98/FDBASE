@@ -89,9 +89,11 @@ async function fetchPKSDataFromGoogleSheets(forceRefresh = false) {
 /**
  * Load and process PKS data
  */
-async function loadPKSData(forceRefresh = false) {
+async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
     try {
-        showLoadingState(true);
+        if (!skipLoadingState) {
+            showLoadingState(true);
+        }
         
         // Fetch data from Cache (or Google Sheets if cache miss)
         const records = await fetchPKSDataFromGoogleSheets(forceRefresh);
@@ -111,6 +113,19 @@ async function loadPKSData(forceRefresh = false) {
         // Populate filter dropdowns
         populateFilterDropdowns();
         
+        // Hide loading, show content (only on initial load, not on refresh)
+        if (!skipLoadingState) {
+            const loadingContainer = document.getElementById('loading-container');
+            const contentTabs = document.getElementById('content-tabs');
+            
+            if (loadingContainer) {
+                loadingContainer.style.display = 'none';
+            }
+            if (contentTabs) {
+                contentTabs.style.display = 'block';
+            }
+        }
+        
         // Update statistics
         updatePKSStatistics();
         
@@ -119,8 +134,23 @@ async function loadPKSData(forceRefresh = false) {
     } catch (error) {
         console.error('Error loading PKS data:', error);
         // Failed to load PKS data
+        
+        // Hide loading, show content even on error (only on initial load)
+        if (!skipLoadingState) {
+            const loadingContainer = document.getElementById('loading-container');
+            const contentTabs = document.getElementById('content-tabs');
+            
+            if (loadingContainer) {
+                loadingContainer.style.display = 'none';
+            }
+            if (contentTabs) {
+                contentTabs.style.display = 'block';
+            }
+        }
     } finally {
-        showLoadingState(false);
+        if (!skipLoadingState) {
+            showLoadingState(false);
+        }
     }
 }
 
@@ -417,7 +447,51 @@ function clearPKSFilters() {
  */
 async function refreshPKSStats() {
     console.log('🔄 Force refreshing PKS data...');
-    await loadPKSData(true); // true = force refresh, bypass cache
+    
+    const refreshBtn = document.querySelector('.pks-refresh-btn');
+    const refreshIcon = refreshBtn?.querySelector('svg');
+    
+    try {
+        // Show loading indicator on button
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            if (refreshIcon) {
+                refreshIcon.classList.add('spinning');
+            }
+            const currentHTML = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
+        }
+        
+        // Reload data with force refresh (but don't hide content)
+        await loadPKSData(true, true); // true = force refresh, true = skip loading state
+        
+        // Reset button on success
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            if (refreshIcon) {
+                refreshIcon.classList.remove('spinning');
+            }
+            const currentHTML = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Synced!');
+            setTimeout(() => {
+                refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Synced!', 'Sync Data');
+            }, 2000);
+        }
+        
+        console.log('✅ Data refreshed successfully');
+    } catch (error) {
+        console.error('❌ Error refreshing data:', error);
+        
+        // Reset button on error
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            if (refreshIcon) {
+                refreshIcon.classList.remove('spinning');
+            }
+            const currentHTML = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Sync Data');
+        }
+    }
 }
 
 // ============================================================================
@@ -897,6 +971,25 @@ function showFlashMessage(message, type = 'info') {
  */
 function initializeAlAhlyPKSStats() {
     console.log('🚀 Initializing Al Ahly PKS Statistics Module...');
+    
+    // Show filters section immediately
+    const filtersSection = document.querySelector('.filters-section');
+    const loadingContainer = document.getElementById('loading-container');
+    const contentTabs = document.getElementById('content-tabs');
+    const mainTabsNav = document.querySelector('.main-tabs-nav');
+    
+    if (filtersSection) {
+        filtersSection.style.display = 'block';
+    }
+    if (mainTabsNav) {
+        mainTabsNav.style.display = 'flex';
+    }
+    if (loadingContainer) {
+        loadingContainer.style.display = 'block';
+    }
+    if (contentTabs) {
+        contentTabs.style.display = 'none';
+    }
     
     // Load PKS data on initialization
     loadPKSData();

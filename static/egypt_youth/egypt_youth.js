@@ -42,9 +42,11 @@ let youthEgyptData = {
 // MAIN DATA LOADING FUNCTION
 // ============================================================================
 
-async function loadYouthEgyptData(forceRefresh = false) {
+async function loadYouthEgyptData(forceRefresh = false, skipLoadingState = false) {
     try {
-        showLoading();
+        if (!skipLoadingState) {
+            showLoading();
+        }
         
         const url = forceRefresh ? '/api/youth-egypt/matches?refresh=true' : '/api/youth-egypt/matches';
         const response = await fetch(url);
@@ -80,8 +82,10 @@ async function loadYouthEgyptData(forceRefresh = false) {
             // Load youth players data
             loadYouthPlayersData();
             
-            // Show content, hide loading
-            hideLoading();
+            // Show content, hide loading (only on initial load)
+            if (!skipLoadingState) {
+                hideLoading();
+            }
             
         } else {
             throw new Error(data.error || 'No Data Available');
@@ -89,7 +93,9 @@ async function loadYouthEgyptData(forceRefresh = false) {
     } catch (error) {
         console.error('❌ Error loading Youth Egypt data:', error);
         showError('No Data Available');
-        hideLoading();
+        if (!skipLoadingState) {
+            hideLoading();
+        }
     }
 }
 
@@ -1444,6 +1450,39 @@ function hideLoading() {
     
     if (contentTabs) {
         contentTabs.style.display = 'block';
+    }
+}
+
+// Refresh Youth Egypt data with visual feedback
+async function refreshYouthEgyptData() {
+    const refreshBtn = event.target.closest('button');
+    const refreshIcon = refreshBtn?.querySelector('svg');
+    const originalText = refreshBtn.innerHTML;
+    
+    // Show loading state on button only
+    refreshBtn.disabled = true;
+    if (refreshIcon) {
+        refreshIcon.classList.add('spinning');
+    }
+    refreshBtn.innerHTML = '<svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
+    
+    try {
+        await loadYouthEgyptData(true, true); // true = force refresh, true = skip loading state
+        
+        // Show success message
+        refreshBtn.innerHTML = '<svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Synced!';
+        
+        setTimeout(() => {
+            refreshBtn.innerHTML = originalText;
+            refreshBtn.disabled = false;
+        }, 2000);
+    } catch (error) {
+        refreshBtn.innerHTML = '<svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>Error!';
+        
+        setTimeout(() => {
+            refreshBtn.innerHTML = originalText;
+            refreshBtn.disabled = false;
+        }, 2000);
     }
 }
 

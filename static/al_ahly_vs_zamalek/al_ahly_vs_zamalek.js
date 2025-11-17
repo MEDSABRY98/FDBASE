@@ -32,6 +32,25 @@ let currentRefereeZamalekCountriesSearch = '';
 async function initializeZamalekStats() {
     console.log('🚀 Initializing Al Ahly VS Zamalek Statistics Module...');
     
+    // Show filters section immediately
+    const filtersSection = document.querySelector('.filters-section');
+    const loadingContainer = document.getElementById('loading-container');
+    const contentTabs = document.getElementById('content-tabs');
+    const mainTabsNav = document.querySelector('.main-tabs-nav');
+    
+    if (filtersSection) {
+        filtersSection.style.display = 'block';
+    }
+    if (mainTabsNav) {
+        mainTabsNav.style.display = 'flex';
+    }
+    if (loadingContainer) {
+        loadingContainer.style.display = 'block';
+    }
+    if (contentTabs) {
+        contentTabs.style.display = 'none';
+    }
+    
     try {
         // Load all data
         await loadAllZamalekData();
@@ -43,6 +62,14 @@ async function initializeZamalekStats() {
             
             // Populate filters
             populateFilters();
+            
+            // Hide loading, show content
+            if (loadingContainer) {
+                loadingContainer.style.display = 'none';
+            }
+            if (contentTabs) {
+                contentTabs.style.display = 'block';
+            }
             
             // Initialize displays
             updateOverviewStats();
@@ -63,9 +90,21 @@ async function initializeZamalekStats() {
             console.log('✅ Initialization complete');
         } else {
             console.error('❌ No data loaded, zamalekMatchesData:', zamalekMatchesData);
+            if (loadingContainer) {
+                loadingContainer.style.display = 'none';
+            }
+            if (contentTabs) {
+                contentTabs.style.display = 'block';
+            }
         }
     } catch (error) {
         console.error('❌ Error during initialization:', error);
+        if (loadingContainer) {
+            loadingContainer.style.display = 'none';
+        }
+        if (contentTabs) {
+            contentTabs.style.display = 'block';
+        }
     }
 }
 
@@ -437,11 +476,21 @@ function clearZamalekFilters() {
 async function refreshZamalekStats() {
     console.log('🔄 Force refreshing Ahly VS Zamalek data...');
     
-    // Show loading state
-    showLoadingState(true);
+    const refreshBtn = document.querySelector('.zamalek-refresh-btn');
+    const refreshIcon = refreshBtn?.querySelector('svg');
     
     try {
-        // Reload data with force refresh
+        // Show loading indicator on button
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            if (refreshIcon) {
+                refreshIcon.classList.add('spinning');
+            }
+            const currentHTML = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
+        }
+        
+        // Reload data with force refresh (but don't hide content)
         await loadAllZamalekData(true);
         
         // Repopulate filters
@@ -462,32 +511,33 @@ async function refreshZamalekStats() {
         populateH2HTable();
         populateH2HPlayersList();
         
-        console.log('✅ Data refreshed successfully');
-        
-        // Show success message on button
-        const refreshBtn = document.querySelector('.zamalek-refresh-btn');
+        // Reset button on success
         if (refreshBtn) {
-            refreshBtn.innerHTML = `
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
-                    <path d="M20 6L9 17l-5-5"/>
-                </svg>
-                Synced!
-            `;
             refreshBtn.disabled = false;
-            
-            // Return to original text after 2 seconds
+            if (refreshIcon) {
+                refreshIcon.classList.remove('spinning');
+            }
+            const currentHTML = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Synced!');
             setTimeout(() => {
-                refreshBtn.innerHTML = `
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
-                        <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-                    </svg>
-                    Sync Data
-                `;
+                refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Synced!', 'Sync Data');
             }, 2000);
         }
+        
+        console.log('✅ Data refreshed successfully');
+        
     } catch (error) {
         console.error('❌ Error refreshing data:', error);
-        showLoadingState(false);
+        
+        // Reset button on error
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            if (refreshIcon) {
+                refreshIcon.classList.remove('spinning');
+            }
+            const currentHTML = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Sync Data');
+        }
     }
 }
 

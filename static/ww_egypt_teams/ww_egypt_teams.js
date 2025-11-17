@@ -51,6 +51,12 @@ let virtualScrollState = {
 
 async function loadWWEgyptTeamsData(forceRefresh = false) {
     try {
+        // Show filters section first (before loading data)
+        const filtersSection = document.getElementById('filters-section');
+        if (filtersSection) {
+            filtersSection.style.display = 'block';
+        }
+        
         // If force refresh, show button loading state
         if (forceRefresh) {
             setRefreshButtonLoading(true);
@@ -671,13 +677,29 @@ function clearFilters() {
 // ============================================================================
 
 function showLoading() {
-    const loading = document.getElementById('loading-container');
-    if (loading) loading.style.display = 'flex';
+    const loadingContainer = document.getElementById('loading-container');
+    const contentTabs = document.querySelector('.content-tabs');
+    
+    if (loadingContainer) {
+        loadingContainer.style.display = 'flex';
+    }
+    
+    if (contentTabs) {
+        contentTabs.style.display = 'none';
+    }
 }
 
 function hideLoading() {
-    const loading = document.getElementById('loading-container');
-    if (loading) loading.style.display = 'none';
+    const loadingContainer = document.getElementById('loading-container');
+    const contentTabs = document.querySelector('.content-tabs');
+    
+    if (loadingContainer) {
+        loadingContainer.style.display = 'none';
+    }
+    
+    if (contentTabs) {
+        contentTabs.style.display = 'block';
+    }
 }
 
 function showError(message) {
@@ -741,10 +763,10 @@ function setRefreshButtonLoading(isLoading) {
         refreshBtn.style.opacity = '0.7';
         refreshBtn.style.cursor = 'not-allowed';
         
-        // Change icon to spinner
+        // Change icon to spinner with spinning class
         const icon = refreshBtn.querySelector('svg');
         if (icon) {
-            icon.style.animation = 'spin 1s linear infinite';
+            icon.classList.add('spinning');
         }
         
         // Change text
@@ -757,7 +779,7 @@ function setRefreshButtonLoading(isLoading) {
             const btnText = refreshBtn.textContent.trim();
             refreshBtn.setAttribute('data-original-text', btnText);
             refreshBtn.innerHTML = `
-                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+                <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                 </svg>
                 Syncing...
@@ -767,6 +789,12 @@ function setRefreshButtonLoading(isLoading) {
         refreshBtn.disabled = false;
         refreshBtn.style.opacity = '1';
         refreshBtn.style.cursor = 'pointer';
+        
+        // Remove spinning class
+        const icon = refreshBtn.querySelector('svg');
+        if (icon) {
+            icon.classList.remove('spinning');
+        }
         
         // Get original text
         const originalText = refreshBtn.getAttribute('data-original-text') || 'Sync Data';
@@ -782,10 +810,6 @@ function setRefreshButtonLoading(isLoading) {
         // Return to original text after 2 seconds
         setTimeout(() => {
             if (refreshBtn) {
-                const icon = refreshBtn.querySelector('svg');
-                if (icon) {
-                    icon.style.animation = '';
-                }
                 refreshBtn.innerHTML = `
                     <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>

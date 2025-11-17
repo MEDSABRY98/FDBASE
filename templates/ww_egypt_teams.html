@@ -475,6 +475,11 @@
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
 
+        /* Spinning animation for refresh button */
+        .filter-btn-icon.spinning {
+            animation: spin 1s linear infinite;
+        }
+
         .filter-btn-icon {
             width: 18px;
             height: 18px;
@@ -870,7 +875,7 @@
                 </div>
 
                 <!-- Content Tabs -->
-                <div class="content-tabs">
+                <div class="content-tabs" style="display: none;">
                     <!-- Statistics Tabs -->
                     <div class="stats-tabs-container">
                         <div class="stats-tabs-row">

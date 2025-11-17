@@ -31,10 +31,12 @@ let virtualScrollState = {
 /**
  * Load Egyptian Clubs data from Google Apps Script
  */
-async function loadEgyptianClubsData() {
+async function loadEgyptianClubsData(forceRefresh = false, skipLoadingState = false) {
     try {
         hideError();
-        showLoading(true);
+        if (!skipLoadingState) {
+            showLoading(true);
+        }
 
         // Get Apps Script URL from server
         const configResponse = await fetch('/api/egyptian-clubs/config');
@@ -87,14 +89,18 @@ async function loadEgyptianClubsData() {
             // Setup dynamic table search
             setupDynamicTableSearch();
             
-            showLoading(false);
+            if (!skipLoadingState) {
+                showLoading(false);
+            }
         } else {
             throw new Error(result.error || 'No Data Available');
         }
     } catch (error) {
         console.error('❌ Error loading data:', error);
         showError('No Data Available');
-        showLoading(false);
+        if (!skipLoadingState) {
+            showLoading(false);
+        }
     }
 }
 
@@ -754,7 +760,7 @@ async function syncData() {
     syncText.textContent = 'Syncing...';
     
     try {
-        await loadEgyptianClubsData();
+        await loadEgyptianClubsData(true, true); // true = force refresh, true = skip loading state
         syncText.textContent = 'Synced!';
         setTimeout(() => {
             syncText.textContent = 'Sync Data';

@@ -54,9 +54,11 @@ let virtualScrollState = {
 // MAIN DATA LOADING FUNCTION
 // ============================================================================
 
-async function loadEgyptTeamsData(forceRefresh = false) {
+async function loadEgyptTeamsData(forceRefresh = false, skipLoadingState = false) {
     try {
-        showLoading();
+        if (!skipLoadingState) {
+            showLoading();
+        }
         
         const url = forceRefresh ? '/api/egypt-teams/matches?refresh=true' : '/api/egypt-teams/matches';
         const response = await fetch(url);
@@ -104,13 +106,17 @@ async function loadEgyptTeamsData(forceRefresh = false) {
             await loadPlayerDetailsOnly(true);
         }
         
-        hideLoading();
+        if (!skipLoadingState) {
+            hideLoading();
+        }
         
         console.log('✅ Egypt Teams data refreshed successfully');
         
     } catch (error) {
         console.error('Error loading Egypt Teams data:', error);
-        hideLoading();
+        if (!skipLoadingState) {
+            hideLoading();
+        }
         showError('No Data Available');
     }
 }
@@ -1431,6 +1437,9 @@ function calculatePlayerIndividualStats(playerName) {
     
     // Load player ELNADY stats
     loadPlayerElnadyStats(playerName, playerMatches);
+    
+    // Load player M By G+A stats
+    loadPlayerMatchesByGAStats(playerName);
 }
 
 function loadPlayerMatches(playerName, playerMatchIds) {
@@ -2026,6 +2035,181 @@ async function loadPlayerElnadyStats(playerName, playerMatchIds) {
 }
 
 // ============================================================================
+// M BY G+A FUNCTIONS
+// ============================================================================
+
+// Get player matches with goals or assists from EGYPT TEAM data
+function getPlayerMatchesByGAFromEgyptData(playerName) {
+    const filteredMatchIds = new Set(egyptTeamsData.filteredRecords.map(match => match['MATCH_ID']));
+    
+    // Only matches where player has GOAL or ASSIST in PLAYERDETAILS
+    const playerGARecords = egyptTeamsData.playerDetails.filter(r => {
+        const p = (r['PLAYER NAME'] || '').trim();
+        if (p !== playerName) return false;
+        
+        const gaValue = (r['GA'] || '').trim();
+        const isGoal = gaValue === 'GOAL';
+        const isAssist = gaValue === 'ASSIST';
+        if (!(isGoal || isAssist)) return false;
+        
+        const matchId = (r['MATCH_ID'] || '').trim();
+        if (!filteredMatchIds.has(matchId)) return false;
+        return true;
+    });
+    
+    console.log('[MByGA] GA records found:', playerGARecords.length);
+    
+    // Aggregate per match
+    const aggByMatch = new Map();
+    playerGARecords.forEach(r => {
+        const matchId = (r['MATCH_ID'] || '').trim();
+        if (!matchId) return;
+        const gaValue = (r['GA'] || '').trim();
+        const gatotal = parseInt(r['GATOTAL']) || 0;
+        
+        if (!aggByMatch.has(matchId)) {
+            aggByMatch.set(matchId, { goals: 0, assists: 0 });
+        }
+        const agg = aggByMatch.get(matchId);
+        if (gaValue === 'GOAL') {
+            agg.goals += gatotal;
+        } else if (gaValue === 'ASSIST') {
+            agg.assists += gatotal;
+        }
+    });
+    
+    // Join with MATCHDETAILS and minutes from LINEUPDETAILS
+    const rows = [];
+    aggByMatch.forEach((ga, mid) => {
+        const m = egyptTeamsData.filteredRecords.find(x => (x['MATCH_ID'] || '').trim() === mid);
+        if (!m) return;
+        
+        const lineupRow = egyptTeamsData.lineupDetails.find(l => 
+            (l['MATCH_ID'] || '').trim() === mid &&
+            (l['PLAYER NAME'] || '').trim() === playerName
+        );
+        const minutes = lineupRow ? (parseInt(lineupRow['MINTOTAL']) || null) : null;
+        
+        // Format date
+        let formattedDate = m.DATE || '';
+        if (formattedDate) {
+            try {
+                const numericDate = parseFloat(formattedDate);
+                if (!isNaN(numericDate) && numericDate > 25000) {
+                    const date = new Date((numericDate - 25569) * 86400 * 1000);
+                    formattedDate = date.toLocaleDateString('en-GB');
+                } else if (!isNaN(numericDate) && numericDate > 1000 && numericDate < 25000) {
+                    const date = new Date((numericDate - 25569) * 86400 * 1000);
+                    formattedDate = date.toLocaleDateString('en-GB');
+                } else {
+                    const date = new Date(formattedDate);
+                    if (!isNaN(date.getTime())) {
+                        formattedDate = date.toLocaleDateString('en-GB');
+                    }
+                }
+            } catch (e) {
+                console.log('Error formatting date:', formattedDate, e);
+            }
+        }
+        
+        rows.push({
+            date: formattedDate,
+            dateRaw: m.DATE || '',
+            season: m.SEASON || '',
+            manager: m['MANAGER EGY'] || '',
+            opponent: m['OPPONENT TEAM'] || '',
+            minutes,
+            goals: ga.goals,
+            assists: ga.assists
+        });
+    });
+    
+    // Sort by date descending (newest to oldest)
+    function parseDateStr(s) {
+        const str = String(s || '').trim();
+        const d = Date.parse(str);
+        if (!isNaN(d)) return d;
+        const num = Number(str);
+        if (!isNaN(num) && str !== '') return new Date((num - 25569) * 86400 * 1000).getTime();
+        return 0;
+    }
+    rows.sort((a, b) => parseDateStr(b.dateRaw) - parseDateStr(a.dateRaw));
+    return rows;
+}
+
+// Render player matches by G+A table
+function renderPlayerMatchesByGATable(items) {
+    const table = document.getElementById('player-m-by-ga-table');
+    if (!table) {
+        console.warn('[MByGA] Table not found');
+        return;
+    }
+    let tbody = table.querySelector('tbody');
+    if (!tbody) {
+        tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+    }
+    tbody.innerHTML = '';
+    if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;">No matches found</td></tr>';
+        return;
+    }
+    items.forEach(it => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${it.date || ''}</td>
+            <td>${it.season || ''}</td>
+            <td>${it.manager || ''}</td>
+            <td>${it.opponent || ''}</td>
+            <td>${(it.minutes === null || it.minutes === undefined) ? '-' : it.minutes}</td>
+            <td>${it.goals || 0}</td>
+            <td>${it.assists || 0}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Load player matches by G+A stats
+async function loadPlayerMatchesByGAStats(playerNameParam = null) {
+    const table = document.getElementById('player-m-by-ga-table');
+    if (!table) {
+        console.warn('[MByGA] Table not found when loading stats');
+        return;
+    }
+    let tbody = table.querySelector('tbody');
+    if (!tbody) {
+        tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+    }
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;">Loading...</td></tr>';
+    
+    // Get player name - use parameter if provided, otherwise try to get from selectedPlayer
+    let playerName = playerNameParam;
+    if (!playerName) {
+        if (egyptTeamsData.selectedPlayer) {
+            if (typeof egyptTeamsData.selectedPlayer === 'string') {
+                playerName = egyptTeamsData.selectedPlayer;
+            } else if (egyptTeamsData.selectedPlayer.name) {
+                playerName = egyptTeamsData.selectedPlayer.name;
+            }
+        }
+    }
+    
+    if (!playerName) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;">No player selected</td></tr>';
+        return;
+    }
+    
+    // Load player details if not already loaded
+    if (!egyptTeamsData.playerDetailsLoaded) {
+        await loadPlayerDetailsOnly();
+    }
+    
+    const items = getPlayerMatchesByGAFromEgyptData(playerName);
+    renderPlayerMatchesByGATable(items);
+}
+
+// ============================================================================
 // TAB SWITCHING
 // ============================================================================
 
@@ -2152,7 +2336,7 @@ function switchPlayerTab(tabName) {
     playerTabButtons.forEach(button => button.classList.remove('active'));
     
     // Hide all player tab contents
-    document.querySelectorAll('#player-overview-tab, #player-matches-tab, #player-championships-tab, #player-seasons-tab, #player-vsteams-tab, #player-elnady-tab').forEach(content => {
+    document.querySelectorAll('#player-overview-tab, #player-matches-tab, #player-m-by-ga-tab, #player-championships-tab, #player-seasons-tab, #player-vsteams-tab, #player-elnady-tab').forEach(content => {
         content.classList.remove('active');
     });
     
@@ -2163,18 +2347,25 @@ function switchPlayerTab(tabName) {
     } else if (tabName === 'player-matches') {
         document.getElementById('player-matches-tab').classList.add('active');
         playerTabButtons[1].classList.add('active');
+    } else if (tabName === 'player-m-by-ga') {
+        document.getElementById('player-m-by-ga-tab').classList.add('active');
+        playerTabButtons[2].classList.add('active');
+        // Load M By G+A data when tab is opened
+        loadPlayerMatchesByGAStats().catch(err => {
+            console.error('Error loading M By G+A stats:', err);
+        });
     } else if (tabName === 'player-championships') {
         document.getElementById('player-championships-tab').classList.add('active');
-        playerTabButtons[2].classList.add('active');
+        playerTabButtons[3].classList.add('active');
     } else if (tabName === 'player-seasons') {
         document.getElementById('player-seasons-tab').classList.add('active');
-        playerTabButtons[3].classList.add('active');
+        playerTabButtons[4].classList.add('active');
     } else if (tabName === 'player-vsteams') {
         document.getElementById('player-vsteams-tab').classList.add('active');
-        playerTabButtons[4].classList.add('active');
+        playerTabButtons[5].classList.add('active');
     } else if (tabName === 'player-elnady') {
         document.getElementById('player-elnady-tab').classList.add('active');
-        playerTabButtons[5].classList.add('active');
+        playerTabButtons[6].classList.add('active');
     }
 }
 
@@ -3231,14 +3422,18 @@ function hideLoading() {
 // Refresh Egypt Teams data with visual feedback
 async function refreshEgyptTeamsData() {
     const refreshBtn = event.target.closest('button');
+    const refreshIcon = refreshBtn?.querySelector('svg');
     const originalText = refreshBtn.innerHTML;
     
-    // Show loading state
+    // Show loading state on button only
     refreshBtn.disabled = true;
-    refreshBtn.innerHTML = '<svg class="filter-btn-icon" style="animation: spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
+    if (refreshIcon) {
+        refreshIcon.classList.add('spinning');
+    }
+    refreshBtn.innerHTML = '<svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
     
     try {
-        await loadEgyptTeamsData(true);
+        await loadEgyptTeamsData(true, true); // true = force refresh, true = skip loading state
         
         // Show success message
         refreshBtn.innerHTML = '<svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Synced!';
@@ -4064,35 +4259,38 @@ function displayEgyptMatchGoals(matchId) {
         return;
     }
     
-    // Helper function to find assist for a goal
-    const findAssist = (minute, isEgyptGoal) => {
-        return matchGoals.find(g => {
-            const gMin = g.MINUTE || g.MIN || 0;
-            const gGA = (g.GA || '').toUpperCase();
-            const gTeam = (g.TEAM || '').toLowerCase();
-            const gIsEgypt = gTeam.includes('egypt') || gTeam.includes('مصر');
-            return gGA === 'ASSIST' && gMin === minute && gIsEgypt === isEgyptGoal;
-        });
+    // Separate Egypt and opponent records (both goals and assists)
+    const egyptRecords = matchGoals.filter(g => {
+        const team = (g.TEAM || '').toLowerCase();
+        const isEgypt = team.includes('egypt') || team.includes('مصر');
+        return isEgypt;
+    });
+    
+    const opponentRecords = matchGoals.filter(g => {
+        const team = (g.TEAM || '').toLowerCase();
+        const isEgypt = team.includes('egypt') || team.includes('مصر');
+        return !isEgypt;
+    });
+    
+    // Sort by minute to maintain order from sheet
+    const sortByMinute = (a, b) => {
+        const minA = parseInt(a.MINUTE || a.MIN || 0);
+        const minB = parseInt(b.MINUTE || b.MIN || 0);
+        if (minA !== minB) return minA - minB;
+        // If same minute, goals come before assists
+        const gaA = (a.GA || '').toUpperCase();
+        const gaB = (b.GA || '').toUpperCase();
+        if (gaA === 'GOAL' && gaB === 'ASSIST') return -1;
+        if (gaA === 'ASSIST' && gaB === 'GOAL') return 1;
+        return 0;
     };
     
-    // Separate Egypt and opponent goals
-    const egyptGoals = matchGoals.filter(g => {
-        const ga = (g.GA || '').toUpperCase();
-        const team = (g.TEAM || '').toLowerCase();
-        const isEgypt = team.includes('egypt') || team.includes('مصر');
-        return ga === 'GOAL' && isEgypt;
-    });
-    
-    const opponentGoals = matchGoals.filter(g => {
-        const ga = (g.GA || '').toUpperCase();
-        const team = (g.TEAM || '').toLowerCase();
-        const isEgypt = team.includes('egypt') || team.includes('مصر');
-        return ga === 'GOAL' && !isEgypt;
-    });
+    egyptRecords.sort(sortByMinute);
+    opponentRecords.sort(sortByMinute);
     
     let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">';
     
-    // Egypt Goals
+    // Egypt Goals and Assists
     html += `
         <div>
             <h3 style="color: #dc2626; margin-bottom: 1rem;">Egypt Goals</h3>
@@ -4108,20 +4306,17 @@ function displayEgyptMatchGoals(matchId) {
                     <tbody>
     `;
     
-    egyptGoals.forEach(goal => {
-        const minute = goal.MINUTE || goal.MIN || 0;
-        const player = goal['PLAYER NAME'] || 'Unknown';
-        const gatotal = goal.GATOTAL || 1;
-        const type = goal.TYPE || 'Regular';
-        const elnady = goal.ELNADY || '-';
-        const assist = findAssist(minute, true);
-        const assistPlayer = assist ? assist['PLAYER NAME'] : null;
+    egyptRecords.forEach(record => {
+        const ga = (record.GA || '').toUpperCase();
+        const player = record['PLAYER NAME'] || 'Unknown';
+        const gatotal = record.GATOTAL || 1;
+        const type = ga === 'ASSIST' ? 'Assist' : (record.TYPE || 'Regular');
+        const elnady = record.ELNADY || '-';
         
         html += `
             <tr>
                 <td>
-                    <strong>${player}</strong> <span style="color: #dc2626; font-weight: 600;">(${gatotal})</span>
-                    ${assistPlayer ? `<div style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">↳ Assist: ${assistPlayer}</div>` : ''}
+                    <strong>${player}</strong> <span style="color: ${ga === 'GOAL' ? '#dc2626' : '#3b82f6'}; font-weight: 600;">(${gatotal})</span>
                 </td>
                 <td>${elnady}</td>
                 <td>${type}</td>
@@ -4129,7 +4324,7 @@ function displayEgyptMatchGoals(matchId) {
         `;
     });
     
-    if (egyptGoals.length === 0) {
+    if (egyptRecords.length === 0) {
         html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
     }
     
@@ -4140,7 +4335,7 @@ function displayEgyptMatchGoals(matchId) {
         </div>
     `;
     
-    // Opponent Goals
+    // Opponent Goals and Assists
     html += `
         <div>
             <h3 style="color: #3b82f6; margin-bottom: 1rem;">Opponent Goals</h3>
@@ -4156,20 +4351,17 @@ function displayEgyptMatchGoals(matchId) {
                     <tbody>
     `;
     
-    opponentGoals.forEach(goal => {
-        const minute = goal.MINUTE || goal.MIN || 0;
-        const player = goal['PLAYER NAME'] || 'Unknown';
-        const gatotal = goal.GATOTAL || 1;
-        const type = goal.TYPE || 'Regular';
-        const elnady = goal.ELNADY || '-';
-        const assist = findAssist(minute, false);
-        const assistPlayer = assist ? assist['PLAYER NAME'] : null;
+    opponentRecords.forEach(record => {
+        const ga = (record.GA || '').toUpperCase();
+        const player = record['PLAYER NAME'] || 'Unknown';
+        const gatotal = record.GATOTAL || 1;
+        const type = ga === 'ASSIST' ? 'Assist' : (record.TYPE || 'Regular');
+        const elnady = record.ELNADY || '-';
         
         html += `
             <tr>
                 <td>
-                    <strong>${player}</strong> <span style="color: #3b82f6; font-weight: 600;">(${gatotal})</span>
-                    ${assistPlayer ? `<div style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">↳ Assist: ${assistPlayer}</div>` : ''}
+                    <strong>${player}</strong> <span style="color: ${ga === 'GOAL' ? '#3b82f6' : '#dc2626'}; font-weight: 600;">(${gatotal})</span>
                 </td>
                 <td>${elnady}</td>
                 <td>${type}</td>
@@ -4177,7 +4369,7 @@ function displayEgyptMatchGoals(matchId) {
         `;
     });
     
-    if (opponentGoals.length === 0) {
+    if (opponentRecords.length === 0) {
         html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
     }
     
