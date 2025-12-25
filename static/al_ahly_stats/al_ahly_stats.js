@@ -8515,9 +8515,45 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
             }
         }
         
+        // Parse date for sorting
+        let dateForSorting = null;
+        const rawDate = match.DATE || '';
+        if (rawDate) {
+            try {
+                // Check if it's an Excel serial number
+                const numericDate = parseFloat(rawDate);
+                if (!isNaN(numericDate) && numericDate > 25000) {
+                    // Convert Excel date serial number to Date object
+                    dateForSorting = new Date((numericDate - 25569) * 86400 * 1000);
+                } else if (!isNaN(numericDate) && numericDate > 1000 && numericDate < 25000) {
+                    // Try different Excel epoch (1900-01-01)
+                    dateForSorting = new Date((numericDate - 25569) * 86400 * 1000);
+                } else if (!isNaN(numericDate) && numericDate > 40000) {
+                    // Try OLE Automation date format
+                    dateForSorting = new Date((numericDate - 25569) * 86400 * 1000);
+                } else {
+                    // Try to parse as regular date string
+                    dateForSorting = new Date(rawDate);
+                    if (isNaN(dateForSorting.getTime())) {
+                        // Try parsing DD/MM/YYYY format
+                        const parts = rawDate.toString().split(/[\/\-\.]/);
+                        if (parts.length === 3) {
+                            const [day, month, year] = parts;
+                            if (day && month && year) {
+                                dateForSorting = new Date(`${year.padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('Error parsing date for sorting:', rawDate, e);
+            }
+        }
+        
         matchesData.push({
             date: formattedDate,
             dateRaw: match.DATE || '', // Keep original for sorting
+            dateForSorting: dateForSorting, // Date object for proper sorting
             season: match.SEASON || '',
             opponentTeam: match['OPPONENT TEAM'] || '',
             goalsConceded: goalsConceded,
@@ -8528,11 +8564,24 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
         });
     });
     
-    // Sort by date (newest first) - using raw date values for better accuracy
+    // Sort by date (newest first) - using Date objects for accurate sorting
     matchesData.sort((a, b) => {
-        const dateA = parseInt(a.dateRaw) || 0;
-        const dateB = parseInt(b.dateRaw) || 0;
-        return dateB - dateA; // Newest first (higher Excel serial number = newer date)
+        const dateA = a.dateForSorting;
+        const dateB = b.dateForSorting;
+        
+        // If both dates are valid, compare them
+        if (dateA && dateB && !isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
+            return dateB.getTime() - dateA.getTime(); // Newest first (descending)
+        }
+        
+        // Fallback: if one is valid, prioritize it
+        if (dateA && !isNaN(dateA.getTime())) return -1;
+        if (dateB && !isNaN(dateB.getTime())) return 1;
+        
+        // Fallback: use raw date values (Excel serial numbers)
+        const rawA = parseFloat(a.dateRaw) || 0;
+        const rawB = parseFloat(b.dateRaw) || 0;
+        return rawB - rawA; // Newest first (higher Excel serial number = newer date)
     });
     
     console.log(`Found ${matchesData.length} matches for goalkeeper ${goalkeeperName}`);

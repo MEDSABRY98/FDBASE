@@ -193,6 +193,7 @@
             width: 100%;
             border-collapse: collapse;
             background: white;
+            table-layout: fixed;
         }
 
         .matches-table thead {
@@ -214,6 +215,15 @@
             border-bottom: 1px solid #eee;
         }
 
+        /* Match ID column - allow text wrapping */
+        .matches-table th:first-child,
+        .matches-table td:first-child {
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+
         .matches-table tbody tr:hover {
             background: #f8f9fa;
         }
@@ -229,6 +239,7 @@
         .matches-table-container .matches-table {
             border-collapse: separate;
             border-spacing: 0;
+            table-layout: fixed;
         }
         .matches-table-container .matches-table thead th {
             position: sticky;
@@ -1494,7 +1505,6 @@
                         <div class="matches-section">
                             <!-- Players Filter -->
                             <div style="margin-bottom: 2rem; text-align: center;">
-                                <label for="players-team-filter" style="font-weight: 600; color: #333; margin-right: 1rem;">Filter by Team:</label>
                                 <select id="players-team-filter" class="filter-control" style="max-width: 300px; display: inline-block;" onchange="filterPlayersByTeam()">
                                     <option value="all">All Players</option>
                                     <option value="egypt">With Egypt (Egyptian Players)</option>
@@ -1843,9 +1853,7 @@
                     <!-- All Goalkeepers Tab -->
                     <div id="goalkeepers-tab" class="stats-tab-content">
                         <div class="matches-section">
-                            <h2 class="section-title">🧤 All Goalkeepers Statistics</h2>
                             <div style="margin-bottom: 1.5rem; text-align: center;">
-                                <label for="goalkeepers-team-filter" style="font-weight: 600; color: #333; margin-right: 1rem;">Filter by Team:</label>
                                 <select id="goalkeepers-team-filter" class="filter-control" style="max-width: 300px; display: inline-block;">
                                     <option value="all">All Goalkeepers</option>
                                     <option value="egypt">With Egypt (Egypt Goalkeepers)</option>

@@ -231,8 +231,8 @@ function renderVisibleMatchRows() {
     const { allData, startIndex, endIndex } = virtualScrollState;
     const visibleData = allData.slice(startIndex, endIndex);
     
-    // Create spacer row for top
-    const topSpacer = `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="11"></td></tr>`;
+    // Create spacer row for top (only if startIndex > 0)
+    const topSpacer = startIndex > 0 ? `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="11"></td></tr>` : '';
     // Render visible rows
     const rowsHtml = visibleData.map(renderMatchRow).join('');
     // Create spacer row for bottom

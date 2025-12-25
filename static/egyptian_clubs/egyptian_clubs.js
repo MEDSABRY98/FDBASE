@@ -480,8 +480,8 @@ function renderVisibleTableRows() {
     const visibleData = allData.slice(startIndex, endIndex);
     const columns = ['DATE', 'SEASON', 'ROUND', 'H-A-N', 'EGYPT TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-L MATCH'];
     
-    // Create spacer row for top
-    const topSpacer = `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="${columns.length}"></td></tr>`;
+    // Create spacer row for top (only if startIndex > 0)
+    const topSpacer = startIndex > 0 ? `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="${columns.length}"></td></tr>` : '';
     // Render visible rows
     const rowsHtml = visibleData.map(row => renderTableRow(row, columns)).join('');
     // Create spacer row for bottom

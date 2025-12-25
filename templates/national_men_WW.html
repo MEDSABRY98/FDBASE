@@ -37,7 +37,7 @@
         .spinning { animation: spin 1s linear infinite; }
         .matches-section { background: white; border-radius: 15px; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
         .section-title { font-size: 1.4rem; font-weight: 600; color: #333; margin-bottom: 1rem; text-align: center; }
-        .matches-table { width: 100%; border-collapse: collapse; background: white; }
+        .matches-table { width: 100%; border-collapse: collapse; background: white; table-layout: fixed; }
         .matches-table thead { background: #f8f9fa; }
         .matches-table th { padding: 0.75rem; text-align: center; font-weight: 600; font-size: 0.9rem; color: #333; border-bottom: 2px solid #dee2e6; }
         .matches-table td { padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; }
@@ -58,6 +58,7 @@
         .matches-table-container .matches-table {
             border-collapse: separate;
             border-spacing: 0;
+            table-layout: fixed;
         }
         .matches-table thead th {
             position: sticky;
