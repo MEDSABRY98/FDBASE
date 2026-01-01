@@ -54,31 +54,31 @@ async function fetchPKSDataFromGoogleSheets(forceRefresh = false) {
         // Use browser cache with 24h TTL
         const fetchFunction = async () => {
             console.log('🔄 Fetching PKS data from server...');
-            
+
             const url = '/api/pks-stats-data';
             const response = await fetch(url);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const data = await response.json();
-            
+
             if (!data.success) {
                 throw new Error(data.error || 'Failed to fetch PKS data');
             }
-            
+
             const records = data.records || [];
             console.log(`✅ Successfully fetched ${records.length} records`);
-            
+
             return records;
         };
-        
+
         // Fetch with browser cache (24h TTL)
         const records = await fetchWithBrowserCache('al_ahly_pks', fetchFunction, forceRefresh);
-        
+
         return records || [];
-        
+
     } catch (error) {
         console.error('❌ Error fetching PKS data:', error);
         console.error('Error details:', error.message);
@@ -93,58 +93,75 @@ async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
     try {
         if (!skipLoadingState) {
             showLoadingState(true);
+
+            // Explicitly show loading container and hide others
+            const loadingContainer = document.getElementById('loading-container');
+            const contentTabs = document.getElementById('content-tabs');
+            const mainTabsNav = document.querySelector('.main-tabs-nav');
+
+            if (loadingContainer) loadingContainer.style.display = 'block';
+            if (contentTabs) contentTabs.style.display = 'none';
+            if (mainTabsNav) mainTabsNav.style.display = 'none';
         }
-        
+
         // Fetch data from Cache (or Google Sheets if cache miss)
         const records = await fetchPKSDataFromGoogleSheets(forceRefresh);
-        
+
         if (records.length === 0) {
             // No PKS data available
             return;
         }
-        
+
         // Store all records
         alAhlyPKSStatsData.allRecords = records;
         alAhlyPKSStatsData.filteredRecords = records;
-        
+
         // Build filter options from data
         buildFilterOptions(records);
-        
+
         // Populate filter dropdowns
         populateFilterDropdowns();
-        
+
         // Hide loading, show content (only on initial load, not on refresh)
         if (!skipLoadingState) {
             const loadingContainer = document.getElementById('loading-container');
             const contentTabs = document.getElementById('content-tabs');
-            
+            const mainTabsNav = document.querySelector('.main-tabs-nav');
+
             if (loadingContainer) {
                 loadingContainer.style.display = 'none';
             }
             if (contentTabs) {
                 contentTabs.style.display = 'block';
             }
+            if (mainTabsNav) {
+                mainTabsNav.style.display = 'flex';
+            }
         }
-        
+
         // Update statistics
         updatePKSStatistics();
-        
+
         // PKS data loaded successfully
-        
+
     } catch (error) {
         console.error('Error loading PKS data:', error);
         // Failed to load PKS data
-        
+
         // Hide loading, show content even on error (only on initial load)
         if (!skipLoadingState) {
             const loadingContainer = document.getElementById('loading-container');
             const contentTabs = document.getElementById('content-tabs');
-            
+            const mainTabsNav = document.querySelector('.main-tabs-nav');
+
             if (loadingContainer) {
                 loadingContainer.style.display = 'none';
             }
             if (contentTabs) {
                 contentTabs.style.display = 'block';
+            }
+            if (mainTabsNav) {
+                mainTabsNav.style.display = 'flex';
             }
         }
     } finally {
@@ -184,9 +201,9 @@ function buildFilterOptions(records) {
         'HOWMISS AHLY',
         'OPPONENT GK'
     ];
-    
+
     const options = {};
-    
+
     filterColumns.forEach(column => {
         const uniqueValues = new Set();
         records.forEach(record => {
@@ -197,7 +214,7 @@ function buildFilterOptions(records) {
         });
         options[column] = Array.from(uniqueValues).sort();
     });
-    
+
     alAhlyPKSStatsData.filterOptions = options;
     console.log('📊 Filter options built:', options);
 }
@@ -228,16 +245,16 @@ function populateFilterDropdowns() {
         'howmiss-ahly-filter': 'HOWMISS AHLY',
         'opponent-gk-filter': 'OPPONENT GK'
     };
-    
+
     Object.keys(filterMapping).forEach(selectId => {
         const column = filterMapping[selectId];
         const options = alAhlyPKSStatsData.filterOptions[column] || [];
-        
+
         const selectElement = document.getElementById(selectId);
         if (selectElement) {
             // Keep the "All" option
             selectElement.innerHTML = '<option value="">All</option>';
-            
+
             // Add options from data
             options.forEach(value => {
                 const option = document.createElement('option');
@@ -247,9 +264,9 @@ function populateFilterDropdowns() {
             });
         }
     });
-    
+
     console.log('✅ Filter dropdowns populated');
-    
+
     // Initialize searchable dropdowns after populating
     initializeSearchableFilters();
 }
@@ -270,27 +287,27 @@ function initializeSearchableFilters() {
  */
 function makeSelectSearchable(select) {
     if (!select || select.dataset.searchable === 'true') return;
-    
+
     select.style.display = 'none';
     select.dataset.searchable = 'true';
-    
+
     const container = document.createElement('div');
     container.className = 'searchable-select-container';
-    
+
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = select.options[0]?.text || 'Search...';
     input.value = '';
-    
+
     const dropdown = document.createElement('div');
     dropdown.className = 'dropdown-options';
     dropdown.style.display = 'none';
-    
+
     select.parentElement.insertBefore(container, select);
     container.appendChild(input);
     container.appendChild(dropdown);
     container.appendChild(select);
-    
+
     function renderOptions(filterText = '') {
         dropdown.innerHTML = '';
         const text = filterText.toLowerCase();
@@ -302,12 +319,12 @@ function makeSelectSearchable(select) {
                 const div = document.createElement('div');
                 div.textContent = label;
                 div.dataset.value = value;
-                div.addEventListener('mousedown', function(e) {
+                div.addEventListener('mousedown', function (e) {
                     e.preventDefault();
                     select.value = value;
                     input.value = label;
                     dropdown.style.display = 'none';
-                    
+
                     // Trigger change event
                     const ev = new Event('change', { bubbles: true });
                     select.dispatchEvent(ev);
@@ -317,17 +334,17 @@ function makeSelectSearchable(select) {
         });
         dropdown.style.display = dropdown.children.length ? 'block' : 'none';
     }
-    
+
     input.addEventListener('focus', () => renderOptions(input.value));
     input.addEventListener('input', () => renderOptions(input.value));
     input.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
-    
+
     // Sync input when select changes programmatically
     select.addEventListener('change', () => {
         const opt = select.options[select.selectedIndex];
         input.value = opt && opt.value ? opt.text : '';
     });
-    
+
     // Set initial value if select has a selection
     const initialOpt = select.options[select.selectedIndex];
     if (initialOpt && initialOpt.value) {
@@ -379,13 +396,13 @@ function applyPKSFilters() {
         'HOWMISS AHLY': document.getElementById('howmiss-ahly-filter')?.value || '',
         'OPPONENT GK': document.getElementById('opponent-gk-filter')?.value || ''
     };
-    
+
     // Store current filters
     alAhlyPKSStatsData.currentFilters = filters;
-    
+
     // Filter records
     let filteredRecords = alAhlyPKSStatsData.allRecords;
-    
+
     Object.keys(filters).forEach(column => {
         const filterValue = filters[column];
         if (filterValue) {
@@ -395,9 +412,9 @@ function applyPKSFilters() {
             });
         }
     });
-    
+
     alAhlyPKSStatsData.filteredRecords = filteredRecords;
-    
+
     // Update ALL statistics with filtered data - this updates ALL tabs
     updatePKSStatistics();
 }
@@ -415,12 +432,12 @@ function clearPKSFilters() {
         'ahly-team-filter', 'ahly-player-filter', 'ahly-status-filter', 'howmiss-ahly-filter',
         'opponent-gk-filter'
     ];
-    
+
     filterIds.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.value = '';
-            
+
             // Clear searchable input as well
             const container = element.closest('.searchable-select-container');
             if (container) {
@@ -431,14 +448,14 @@ function clearPKSFilters() {
             }
         }
     });
-    
+
     // Reset to all records
     alAhlyPKSStatsData.filteredRecords = alAhlyPKSStatsData.allRecords;
     alAhlyPKSStatsData.currentFilters = {};
-    
+
     // Update statistics
     updatePKSStatistics();
-    
+
     // All filters cleared
 }
 
@@ -447,10 +464,10 @@ function clearPKSFilters() {
  */
 async function refreshPKSStats() {
     console.log('🔄 Force refreshing PKS data...');
-    
+
     const refreshBtn = document.querySelector('.pks-refresh-btn');
     const refreshIcon = refreshBtn?.querySelector('svg');
-    
+
     try {
         // Show loading indicator on button
         if (refreshBtn) {
@@ -461,10 +478,10 @@ async function refreshPKSStats() {
             const currentHTML = refreshBtn.innerHTML;
             refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
         }
-        
+
         // Reload data with force refresh (but don't hide content)
         await loadPKSData(true, true); // true = force refresh, true = skip loading state
-        
+
         // Reset button on success
         if (refreshBtn) {
             refreshBtn.disabled = false;
@@ -477,11 +494,11 @@ async function refreshPKSStats() {
                 refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Synced!', 'Sync Data');
             }, 2000);
         }
-        
+
         console.log('✅ Data refreshed successfully');
     } catch (error) {
         console.error('❌ Error refreshing data:', error);
-        
+
         // Reset button on error
         if (refreshBtn) {
             refreshBtn.disabled = false;
@@ -510,9 +527,9 @@ function calculateOverviewStats(records) {
             uniqueMatches.add(record['MATCH_ID']);
         }
     });
-    
+
     const totalPKSMatches = uniqueMatches.size;
-    
+
     // Count wins and losses (based on PKS W-L column) - UNIQUE per MATCH_ID
     // Get unique matches with their PKS W-L results
     const uniqueMatchResults = new Map();
@@ -523,30 +540,30 @@ function calculateOverviewStats(records) {
             uniqueMatchResults.set(matchId, pksWL);
         }
     });
-    
+
     // Count unique wins and losses for Al Ahly
     const pksWins = Array.from(uniqueMatchResults.values()).filter(result => result === 'W').length;
     const pksLosses = Array.from(uniqueMatchResults.values()).filter(result => result === 'L').length;
-    
+
     // Count total penalties (all records are individual penalty attempts)
     const totalPenalties = records.length;
-    
+
     // Count goals scored by Ahly (assuming AHLY STATUS shows if goal was scored)
     const ahlyGoals = records.filter(r => {
         const status = r['AHLY STATUS'];
         return status && (status.includes('GOAL') || status.includes('✓') || status === 'G');
     }).length;
-    
+
     // Count misses
     const ahlyMisses = records.filter(r => {
         const howmiss = r['HOWMISS AHLY'];
         return howmiss && howmiss.trim() !== '';
     }).length;
-    
+
     // Calculate rates
     const successRate = totalPenalties > 0 ? Math.round((ahlyGoals / totalPenalties) * 100) : 0;
     const winRate = totalPKSMatches > 0 ? Math.round((pksWins / totalPKSMatches) * 100) : 0;
-    
+
     return {
         totalPKSMatches,
         pksWins,
@@ -572,7 +589,7 @@ function updateOverviewCards(stats) {
     document.getElementById('penalty-misses').textContent = stats.ahlyMisses;
     document.getElementById('pks-success-rate').textContent = stats.successRate + '%';
     document.getElementById('pks-win-rate').textContent = stats.winRate + '%';
-    
+
     // Success rate is now displayed as simple percentage
 }
 
@@ -843,12 +860,12 @@ function updateOpponentPenaltyTakersTable(records) {
 function updateGoalkeeperPKSTable(records) {
     const tbody = document.querySelector('#goalkeeper-pks-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     // Group by goalkeeper and calculate stats
     const gkStats = {};
-    
+
     records.forEach(record => {
         const gk = record['AHLY GK'];
         if (gk && gk.trim() !== '') {
@@ -861,22 +878,22 @@ function updateGoalkeeperPKSTable(records) {
                     goalsConceded: 0
                 };
             }
-            
+
             // Add match to set
             if (record['MATCH_ID']) {
                 gkStats[gk].matches.add(record['MATCH_ID']);
             }
-            
+
             // Count opponent penalties faced
             if (record['OPPONENT PLAYER'] && record['OPPONENT PLAYER'].trim() !== '') {
                 gkStats[gk].penaltiesFaced++;
-                
+
                 // Check if saved (look for 'الحارس' in HOWMISS OPPONENT)
                 const howmiss = record['HOWMISS OPPONENT'];
                 if (howmiss && howmiss.includes('الحارس')) {
                     gkStats[gk].saved++;
                 }
-                
+
                 // Count goals conceded (look for 'GOAL' in OPPONENT STATUS)
                 const status = record['OPPONENT STATUS'];
                 if (status && status.includes('GOAL')) {
@@ -885,7 +902,7 @@ function updateGoalkeeperPKSTable(records) {
             }
         }
     });
-    
+
     // Convert to array and calculate save rates
     const goalkeepers = Object.values(gkStats)
         .map(gk => ({
@@ -897,7 +914,7 @@ function updateGoalkeeperPKSTable(records) {
             saveRate: gk.penaltiesFaced > 0 ? ((gk.saved / gk.penaltiesFaced) * 100).toFixed(1) : 0
         }))
         .sort((a, b) => b.pksMatches - a.pksMatches);
-    
+
     goalkeepers.forEach(gk => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -938,7 +955,7 @@ function showLoadingState(show) {
                 </svg>
                 Synced!
             `;
-            
+
             // Return to original text after 2 seconds
             setTimeout(() => {
                 if (refreshBtn) {
@@ -971,13 +988,13 @@ function showFlashMessage(message, type = 'info') {
  */
 function initializeAlAhlyPKSStats() {
     console.log('🚀 Initializing Al Ahly PKS Statistics Module...');
-    
+
     // Show filters section immediately
     const filtersSection = document.querySelector('.filters-section');
     const loadingContainer = document.getElementById('loading-container');
     const contentTabs = document.getElementById('content-tabs');
     const mainTabsNav = document.querySelector('.main-tabs-nav');
-    
+
     if (filtersSection) {
         filtersSection.style.display = 'block';
     }
@@ -990,10 +1007,10 @@ function initializeAlAhlyPKSStats() {
     if (contentTabs) {
         contentTabs.style.display = 'none';
     }
-    
+
     // Load PKS data on initialization
     loadPKSData();
-    
+
     console.log('✅ Al Ahly PKS Statistics Module Initialized');
 }
 
@@ -1013,37 +1030,37 @@ if (document.readyState === 'loading') {
  */
 function switchMainTab(tabName) {
     console.log(`🔄 Switching to main tab: ${tabName}`);
-    
+
     // Remove active class from all main tab buttons
     document.querySelectorAll('.main-tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    
+
     // Hide all tab contents
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Activate selected tab button
     const activeButton = document.querySelector(`[onclick="switchMainTab('${tabName}')"]`);
     if (activeButton) {
         activeButton.classList.add('active');
     }
-    
+
     // Show selected tab content
     const activeContent = document.getElementById(`${tabName}-tab`);
     if (activeContent) {
         activeContent.classList.add('active');
     }
-    
+
     // Reset sub-tabs to first option when switching main tabs
     resetSubTabs(tabName);
-    
+
     // Populate H2H Teams table if switching to that tab
     if (tabName === 'h2h-teams') {
         populateH2HTeamsPKSTable();
     }
-    
+
     console.log(`✅ Switched to main tab: ${tabName}`);
 }
 
@@ -1052,13 +1069,13 @@ function switchMainTab(tabName) {
  */
 function switchSubTab(subTabName) {
     console.log(`🔄 Switching to sub tab: ${subTabName}`);
-    
+
     // Find the parent main tab
     const subTabElement = document.getElementById(subTabName);
     const mainTabElement = subTabElement.closest('.tab-content');
     const mainTabId = mainTabElement.id;
     const mainTabName = mainTabId.replace('-tab', '');
-    
+
     // Remove active class from all sub tab buttons in this main tab
     const subTabsNav = mainTabElement.querySelector('.sub-tabs-nav');
     if (subTabsNav) {
@@ -1066,23 +1083,23 @@ function switchSubTab(subTabName) {
             btn.classList.remove('active');
         });
     }
-    
+
     // Hide all sub tab contents in this main tab
     mainTabElement.querySelectorAll('.sub-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Activate selected sub tab button
     const activeSubButton = document.querySelector(`[onclick="switchSubTab('${subTabName}')"]`);
     if (activeSubButton) {
         activeSubButton.classList.add('active');
     }
-    
+
     // Show selected sub tab content
     if (subTabElement) {
         subTabElement.classList.add('active');
     }
-    
+
     console.log(`✅ Switched to sub tab: ${subTabName}`);
 }
 
@@ -1119,14 +1136,14 @@ function calculateOpponentStats(records) {
             uniqueMatches.add(record['MATCH_ID']);
         }
     });
-    
+
     const totalPKSMatches = uniqueMatches.size;
-    
+
     // Count wins and losses for opponents (based on PKS W-L column) - UNIQUE per MATCH_ID
     // PKS W-L refers to Al Ahly's result, so for opponents it's inverted:
     // When Ahly wins (W), opponents lose
     // When Ahly loses (L), opponents win
-    
+
     // Get unique matches with their PKS W-L results
     const uniqueMatchResults = new Map();
     records.forEach(record => {
@@ -1136,30 +1153,30 @@ function calculateOpponentStats(records) {
             uniqueMatchResults.set(matchId, pksWL);
         }
     });
-    
+
     // Count unique wins and losses
     const pksWins = Array.from(uniqueMatchResults.values()).filter(result => result === 'L').length; // Opponents win when Ahly loses
     const pksLosses = Array.from(uniqueMatchResults.values()).filter(result => result === 'W').length; // Opponents lose when Ahly wins
-    
+
     // Count opponent penalties
     const opponentPenalties = records.filter(r => r['OPPONENT PLAYER'] && r['OPPONENT PLAYER'].trim() !== '').length;
-    
+
     // Count opponent goals
     const opponentGoals = records.filter(r => {
         const status = r['OPPONENT STATUS'];
         return status && (status.includes('GOAL') || status.includes('✓') || status === 'G');
     }).length;
-    
+
     // Count opponent misses
     const opponentMisses = records.filter(r => {
         const howmiss = r['HOWMISS OPPONENT'];
         return howmiss && howmiss.trim() !== '';
     }).length;
-    
+
     // Calculate rates
     const opponentSuccessRate = opponentPenalties > 0 ? Math.round((opponentGoals / opponentPenalties) * 100) : 0;
     const opponentWinRate = totalPKSMatches > 0 ? Math.round((pksWins / totalPKSMatches) * 100) : 0;
-    
+
     return {
         totalPKSMatches,
         pksWins,
@@ -1179,7 +1196,7 @@ function updateOpponentStatistics(records) {
     console.log('🔄 Updating opponent statistics...', records.length, 'records');
     const stats = calculateOpponentStats(records);
     console.log('📊 Opponent stats calculated:', stats);
-    
+
     // Update opponent stat values - matching Al Ahly layout exactly
     document.getElementById('opponent-total-pks-matches').textContent = stats.totalPKSMatches;
     document.getElementById('opponent-pks-wins').textContent = stats.pksWins;
@@ -1189,7 +1206,7 @@ function updateOpponentStatistics(records) {
     document.getElementById('opponent-goals').textContent = stats.opponentGoals;
     document.getElementById('opponent-misses').textContent = stats.opponentMisses;
     document.getElementById('opponent-success-rate').textContent = stats.opponentSuccessRate + '%';
-    
+
     console.log('✅ Opponent statistics updated successfully');
 }
 
@@ -1200,12 +1217,12 @@ function updateOpponentStatistics(records) {
 function updateOpponentGoalkeeperPKSTable(records) {
     const tbody = document.querySelector('#opponent-goalkeeper-pks-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     // Group by opponent goalkeeper and calculate stats
     const gkStats = {};
-    
+
     records.forEach(record => {
         const gk = record['OPPONENT GK'];
         if (gk && gk.trim() !== '') {
@@ -1218,22 +1235,22 @@ function updateOpponentGoalkeeperPKSTable(records) {
                     goalsConceded: 0
                 };
             }
-            
+
             // Add match to set
             if (record['MATCH_ID']) {
                 gkStats[gk].matches.add(record['MATCH_ID']);
             }
-            
+
             // Count Ahly penalties faced
             if (record['AHLY PLAYER'] && record['AHLY PLAYER'].trim() !== '') {
                 gkStats[gk].penaltiesFaced++;
-                
+
                 // Check if saved (look for 'الحارس' in HOWMISS AHLY)
                 const howmiss = record['HOWMISS AHLY'];
                 if (howmiss && howmiss.includes('الحارس')) {
                     gkStats[gk].saved++;
                 }
-                
+
                 // Count goals conceded (look for 'GOAL' in AHLY STATUS)
                 const status = record['AHLY STATUS'];
                 if (status && status.includes('GOAL')) {
@@ -1242,7 +1259,7 @@ function updateOpponentGoalkeeperPKSTable(records) {
             }
         }
     });
-    
+
     // Convert to array and calculate save rates
     const goalkeepers = Object.values(gkStats)
         .map(gk => ({
@@ -1254,7 +1271,7 @@ function updateOpponentGoalkeeperPKSTable(records) {
             saveRate: gk.penaltiesFaced > 0 ? ((gk.saved / gk.penaltiesFaced) * 100).toFixed(1) : 0
         }))
         .sort((a, b) => b.pksMatches - a.pksMatches);
-    
+
     goalkeepers.forEach(gk => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1274,25 +1291,25 @@ function updateOpponentGoalkeeperPKSTable(records) {
  */
 function updatePKSStatistics() {
     const records = alAhlyPKSStatsData.filteredRecords;
-    
+
     // Calculate overview statistics
     const stats = calculateOverviewStats(records);
-    
+
     // Update Al Ahly overview cards
     updateOverviewCards(stats);
-    
+
     // Update opponent statistics
     updateOpponentStatistics(records);
-    
+
     // Update detailed tables
     updateDetailedTables(records);
-    
+
     // Update opponent goalkeeper table (opponent penalty takers already updated in updateDetailedTables)
     updateOpponentGoalkeeperPKSTable(records);
-    
+
     // Update H2H Teams table
     populateH2HTeamsPKSTable();
-    
+
     console.log('📊 PKS statistics updated (enhanced)');
 }
 
@@ -1305,22 +1322,22 @@ function updatePKSStatistics() {
  */
 function populateH2HTeamsPKSTable() {
     const records = alAhlyPKSStatsData.filteredRecords;
-    
+
     if (!records || records.length === 0) {
         console.warn('⚠️ No data available for H2H Teams PKS');
         return;
     }
-    
+
     console.log('📊 Populating H2H Teams PKS table with', records.length, 'records');
-    
+
     // Group by opponent team and MATCH_ID to count unique matches
     const teamMatchesMap = {};
-    
+
     records.forEach(record => {
         const opponentTeam = record['OPPONENT TEAM'] || 'Unknown';
         const matchId = record['MATCH_ID'] || '';
         const pksWL = (record['PKS W-L'] || '').toUpperCase().trim();
-        
+
         if (!teamMatchesMap[opponentTeam]) {
             teamMatchesMap[opponentTeam] = {
                 team: opponentTeam,
@@ -1328,23 +1345,23 @@ function populateH2HTeamsPKSTable() {
                 matchResults: {} // Store result per match
             };
         }
-        
+
         // Add match ID to set (automatically handles duplicates)
         teamMatchesMap[opponentTeam].matchIds.add(matchId);
-        
+
         // Store result for this match (last one wins if there are duplicates)
         if (matchId && pksWL) {
             teamMatchesMap[opponentTeam].matchResults[matchId] = pksWL;
         }
     });
-    
+
     // Calculate statistics per team
     const teamStats = [];
     Object.values(teamMatchesMap).forEach(teamData => {
         const matches = teamData.matchIds.size;
         let wins = 0;
         let losses = 0;
-        
+
         // Count wins and losses per unique match
         Object.values(teamData.matchResults).forEach(result => {
             if (result === 'W') {
@@ -1353,7 +1370,7 @@ function populateH2HTeamsPKSTable() {
                 losses++;
             }
         });
-        
+
         teamStats.push({
             team: teamData.team,
             matches: matches,
@@ -1361,32 +1378,32 @@ function populateH2HTeamsPKSTable() {
             losses: losses
         });
     });
-    
+
     // Sort by matches (descending)
     teamStats.sort((a, b) => b.matches - a.matches);
-    
+
     // Calculate totals
     const totals = {
         matches: 0,
         wins: 0,
         losses: 0
     };
-    
+
     teamStats.forEach(stats => {
         totals.matches += stats.matches;
         totals.wins += stats.wins;
         totals.losses += stats.losses;
     });
-    
+
     // Populate table
     const tbody = document.querySelector('#h2h-teams-pks-table tbody');
     if (!tbody) {
         console.error('❌ H2H Teams PKS table body not found');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     teamStats.forEach(stats => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1397,12 +1414,12 @@ function populateH2HTeamsPKSTable() {
         `;
         tbody.appendChild(row);
     });
-    
+
     // Update totals
     document.getElementById('h2h-pks-total-matches').textContent = totals.matches;
     document.getElementById('h2h-pks-total-wins').textContent = totals.wins;
     document.getElementById('h2h-pks-total-losses').textContent = totals.losses;
-    
+
     console.log('✅ H2H Teams PKS table populated with', teamStats.length, 'teams');
 }
 
@@ -1420,19 +1437,19 @@ function sortH2HTeamsPKSTable(column) {
         h2hTeamsPKSSortColumn = column;
         h2hTeamsPKSSortDirection = 'desc';
     }
-    
+
     const tbody = document.querySelector('#h2h-teams-pks-table tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    
+
     rows.sort((a, b) => {
         let aVal, bVal;
-        
+
         switch (column) {
             case 'team':
                 aVal = a.cells[0].textContent;
                 bVal = b.cells[0].textContent;
-                return h2hTeamsPKSSortDirection === 'asc' 
-                    ? aVal.localeCompare(bVal) 
+                return h2hTeamsPKSSortDirection === 'asc'
+                    ? aVal.localeCompare(bVal)
                     : bVal.localeCompare(aVal);
             case 'matches':
                 aVal = parseInt(a.cells[1].textContent) || 0;
@@ -1449,18 +1466,18 @@ function sortH2HTeamsPKSTable(column) {
             default:
                 return 0;
         }
-        
+
         return h2hTeamsPKSSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
     });
-    
+
     tbody.innerHTML = '';
     rows.forEach(row => tbody.appendChild(row));
-    
+
     // Update sort icons
     document.querySelectorAll('#h2h-teams-pks-table th').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     const activeHeader = document.querySelector(`#h2h-teams-pks-table th[onclick="sortH2HTeamsPKSTable('${column}')"]`);
     if (activeHeader) {
         activeHeader.classList.add(h2hTeamsPKSSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');

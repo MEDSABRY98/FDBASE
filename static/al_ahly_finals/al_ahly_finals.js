@@ -138,6 +138,15 @@ async function loadFinalsData(forceRefresh = false, skipLoadingState = false) {
     try {
         if (!skipLoadingState) {
             showLoadingState(true);
+            
+            // Explicitly show loading container and hide others
+            const loadingContainer = document.getElementById('loading-container');
+            const contentTabs = document.getElementById('content-tabs');
+            const mainTabsNav = document.querySelector('.main-tabs-nav');
+            
+            if (loadingContainer) loadingContainer.style.display = 'block';
+            if (contentTabs) contentTabs.style.display = 'none';
+            if (mainTabsNav) mainTabsNav.style.display = 'none';
         }
         
         // Fetch data from Cache (or Google Sheets if cache miss)
@@ -168,12 +177,16 @@ async function loadFinalsData(forceRefresh = false, skipLoadingState = false) {
         if (!skipLoadingState) {
             const loadingContainer = document.getElementById('loading-container');
             const contentTabs = document.getElementById('content-tabs');
+            const mainTabsNav = document.querySelector('.main-tabs-nav');
             
             if (loadingContainer) {
                 loadingContainer.style.display = 'none';
             }
             if (contentTabs) {
                 contentTabs.style.display = 'block';
+            }
+            if (mainTabsNav) {
+                mainTabsNav.style.display = 'flex';
             }
         }
         
@@ -193,12 +206,16 @@ async function loadFinalsData(forceRefresh = false, skipLoadingState = false) {
         if (!skipLoadingState) {
             const loadingContainer = document.getElementById('loading-container');
             const contentTabs = document.getElementById('content-tabs');
+            const mainTabsNav = document.querySelector('.main-tabs-nav');
             
             if (loadingContainer) {
                 loadingContainer.style.display = 'none';
             }
             if (contentTabs) {
                 contentTabs.style.display = 'block';
+            }
+            if (mainTabsNav) {
+                mainTabsNav.style.display = 'flex';
             }
         }
     } finally {

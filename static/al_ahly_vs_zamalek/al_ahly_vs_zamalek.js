@@ -17,32 +17,33 @@ let currentRefereeAhlySearch = '';
 let currentRefereeZamalekSearch = '';
 let currentRefereeAhlyCountriesSearch = '';
 let currentRefereeZamalekCountriesSearch = '';
-  let currentPlayerFilter = 'all';
-  let currentPlayerSearch = '';
-  let currentPlayerSort = { column: 'matches', direction: 'desc' };
-  let currentH2HFilter = 'all';
-  let currentH2HWithSearch = '';
-  let currentH2HAgainstSearch = '';
-  let currentH2HFileFilter = null;
-  let currentH2HSort = { column: 'matches', direction: 'desc' };
-  let currentByPlayer = '';
-  let currentByPlayerFilter = 'all';
-  
-  // Initialize Al Ahly VS Zamalek Stats module
+let currentPlayerFilter = 'all';
+let currentPlayerSearch = '';
+let currentPlayerSort = { column: 'matches', direction: 'desc' };
+let currentH2HFilter = 'all';
+let currentH2HWithSearch = '';
+let currentH2HAgainstSearch = '';
+let currentH2HFileFilter = null;
+let currentH2HSort = { column: 'matches', direction: 'desc' };
+let currentByPlayer = '';
+let currentByPlayerFilter = 'all';
+
+// Initialize Al Ahly VS Zamalek Stats module
 async function initializeZamalekStats() {
     console.log('🚀 Initializing Al Ahly VS Zamalek Statistics Module...');
-    
+
     // Show filters section immediately
     const filtersSection = document.querySelector('.filters-section');
     const loadingContainer = document.getElementById('loading-container');
     const contentTabs = document.getElementById('content-tabs');
     const mainTabsNav = document.querySelector('.main-tabs-nav');
-    
+
     if (filtersSection) {
         filtersSection.style.display = 'block';
     }
+    // Initially hide main tabs nav during loading
     if (mainTabsNav) {
-        mainTabsNav.style.display = 'flex';
+        mainTabsNav.style.display = 'none';
     }
     if (loadingContainer) {
         loadingContainer.style.display = 'block';
@@ -50,19 +51,19 @@ async function initializeZamalekStats() {
     if (contentTabs) {
         contentTabs.style.display = 'none';
     }
-    
+
     try {
         // Load all data
         await loadAllZamalekData();
-        
+
         console.log(`📊 After loadAllZamalekData, zamalekMatchesData.length = ${zamalekMatchesData.length}`);
-        
+
         if (zamalekMatchesData && zamalekMatchesData.length > 0) {
             console.log(`✅ Proceeding with ${zamalekMatchesData.length} matches`);
-            
+
             // Populate filters
             populateFilters();
-            
+
             // Hide loading, show content
             if (loadingContainer) {
                 loadingContainer.style.display = 'none';
@@ -70,7 +71,11 @@ async function initializeZamalekStats() {
             if (contentTabs) {
                 contentTabs.style.display = 'block';
             }
-            
+            // Show main tabs nav after loading
+            if (mainTabsNav) {
+                mainTabsNav.style.display = 'flex';
+            }
+
             // Initialize displays
             updateOverviewStats();
             populateMatchesTable();
@@ -86,7 +91,7 @@ async function initializeZamalekStats() {
             populateH2HTable();
             populateH2HPlayersList();
             populateByPlayerList();
-            
+
             console.log('✅ Initialization complete');
         } else {
             console.error('❌ No data loaded, zamalekMatchesData:', zamalekMatchesData);
@@ -96,6 +101,9 @@ async function initializeZamalekStats() {
             if (contentTabs) {
                 contentTabs.style.display = 'block';
             }
+            if (mainTabsNav) {
+                mainTabsNav.style.display = 'flex';
+            }
         }
     } catch (error) {
         console.error('❌ Error during initialization:', error);
@@ -104,6 +112,9 @@ async function initializeZamalekStats() {
         }
         if (contentTabs) {
             contentTabs.style.display = 'block';
+        }
+        if (mainTabsNav) {
+            mainTabsNav.style.display = 'flex';
         }
     }
 }
@@ -119,10 +130,10 @@ if (document.readyState === 'loading') {
 async function loadAllZamalekData(forceRefresh = false) {
     try {
         console.log('📡 Loading Al Ahly VS Zamalek data from API...');
-        
+
         // Always use direct fetch - backend has its own cache
         return await loadAllZamalekDataDirect(forceRefresh);
-        
+
         // OLD CODE (using frontend cacheServices - disabled)
         /*
         // Check if cacheServices is available
@@ -180,20 +191,20 @@ async function loadAllZamalekData(forceRefresh = false) {
 async function loadAllZamalekDataDirect(forceRefresh = false) {
     try {
         console.log('📡 Loading Al Ahly VS Zamalek data from API (direct)...');
-        
+
         // Fetch matches data with optional force refresh
         const url = forceRefresh ? '/api/ahly-vs-zamalek/matches?force_refresh=true' : '/api/ahly-vs-zamalek/matches';
         const response = await fetch(url);
         console.log('📥 Response status:', response.status);
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ Response error:', errorText);
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         // Check if data has matches array
         if (data.matches && Array.isArray(data.matches)) {
             zamalekMatchesData = data.matches;
@@ -206,16 +217,16 @@ async function loadAllZamalekDataDirect(forceRefresh = false) {
             zamalekMatchesData = [];
             return false;
         }
-        
+
         // Fetch player details data
         await loadPlayerDetails();
-        
+
         // Fetch lineup data
         await loadLineupData();
-        
+
         // Fetch player database
         await loadPlayerDatabase();
-        
+
         return zamalekMatchesData.length > 0;
     } catch (error) {
         console.error('❌ Error loading Ahly VS Zamalek data:', error);
@@ -228,24 +239,24 @@ async function loadAllZamalekDataDirect(forceRefresh = false) {
 async function loadPlayerDetails() {
     try {
         console.log('📡 Loading player details from API...');
-        
+
         const response = await fetch('/api/ahly-vs-zamalek/player-details');
-        
+
         if (!response.ok) {
             console.warn('⚠️ Player details not available');
             zamalekPlayerDetails = [];
             return false;
         }
-        
+
         const data = await response.json();
-        
+
         if (data.playerDetails && Array.isArray(data.playerDetails)) {
             zamalekPlayerDetails = data.playerDetails;
             console.log(`✅ Loaded ${zamalekPlayerDetails.length} player details`);
         } else {
             zamalekPlayerDetails = [];
         }
-        
+
         return zamalekPlayerDetails.length > 0;
     } catch (error) {
         console.error('❌ Error loading player details:', error);
@@ -258,7 +269,7 @@ async function loadPlayerDetails() {
 async function loadLineupData() {
     try {
         console.log('📡 Loading lineup data from API...');
-        
+
         // Load Ahly lineup
         const ahlyResponse = await fetch('/api/ahly-vs-zamalek/lineupahly');
         if (ahlyResponse.ok) {
@@ -271,7 +282,7 @@ async function loadLineupData() {
             console.warn('⚠️ Ahly lineup not available');
             zamalekLineupAhly = [];
         }
-        
+
         // Load Zamalek lineup
         const zamalekResponse = await fetch('/api/ahly-vs-zamalek/lineupzamalek');
         if (zamalekResponse.ok) {
@@ -284,7 +295,7 @@ async function loadLineupData() {
             console.warn('⚠️ Zamalek lineup not available');
             zamalekLineupZamalek = [];
         }
-        
+
         return true;
     } catch (error) {
         console.error('❌ Error loading lineup data:', error);
@@ -298,24 +309,24 @@ async function loadLineupData() {
 async function loadPlayerDatabase() {
     try {
         console.log('📡 Loading player database from API...');
-        
+
         const response = await fetch('/api/ahly-vs-zamalek/playerdatabase');
-        
+
         if (!response.ok) {
             console.warn('⚠️ Player database not available');
             zamalekPlayerDatabase = [];
             return false;
         }
-        
+
         const data = await response.json();
-        
+
         if (data.players && Array.isArray(data.players)) {
             zamalekPlayerDatabase = data.players;
             console.log(`✅ Loaded ${zamalekPlayerDatabase.length} players from database`);
         } else {
             zamalekPlayerDatabase = [];
         }
-        
+
         return zamalekPlayerDatabase.length > 0;
     } catch (error) {
         console.error('❌ Error loading player database:', error);
@@ -331,7 +342,7 @@ function populateFilters() {
         console.warn('⚠️ No data available for filters');
         return;
     }
-    
+
     const filters = {
         'match-id-filter': new Set(),
         'champion-system-filter': new Set(),
@@ -355,7 +366,7 @@ function populateFilters() {
         'finals-filter': new Set(),
         'q-filter': new Set()
     };
-    
+
     zamalekMatchesData.forEach(match => {
         filters['match-id-filter'].add(match.MATCH_ID || '');
         filters['champion-system-filter'].add(match['CHAMPION SYSTEM'] || '');
@@ -379,7 +390,7 @@ function populateFilters() {
         filters['finals-filter'].add(match.FINALS || '');
         filters['q-filter'].add(match.Q || '');
     });
-    
+
     // Populate each dropdown
     Object.keys(filters).forEach(filterId => {
         const select = document.getElementById(filterId);
@@ -394,7 +405,7 @@ function populateFilters() {
             });
         }
     });
-    
+
     // Initialize searchable dropdowns after populating
     initializeSearchableFilters();
 }
@@ -426,9 +437,9 @@ function applyZamalekFilters() {
         finals: document.getElementById('finals-filter')?.value || '',
         q: document.getElementById('q-filter')?.value || ''
     };
-    
+
     console.log('Filters applied:', currentFilters);
-    
+
     // Update all displays
     updateOverviewStats();
     calculateHowWinStats(); // Update HOW WIN tab
@@ -443,7 +454,7 @@ function applyZamalekFilters() {
     populateRefereesZamalekCountriesTable();
     populatePlayersTable();
     populateH2HTable();
-    
+
     // Update BY Players if a player is selected
     if (currentByPlayer) {
         updateByPlayerStats();
@@ -457,7 +468,7 @@ function applyZamalekFilters() {
 function clearZamalekFilters() {
     document.querySelectorAll('.zamalek-filter-control').forEach(select => {
         select.value = '';
-        
+
         // Clear searchable input as well
         const container = select.closest('.searchable-select-container');
         if (container) {
@@ -467,7 +478,7 @@ function clearZamalekFilters() {
             }
         }
     });
-    
+
     currentFilters = {};
     applyZamalekFilters();
 }
@@ -475,10 +486,10 @@ function clearZamalekFilters() {
 // Refresh data
 async function refreshZamalekStats() {
     console.log('🔄 Force refreshing Ahly VS Zamalek data...');
-    
+
     const refreshBtn = document.querySelector('.zamalek-refresh-btn');
     const refreshIcon = refreshBtn?.querySelector('svg');
-    
+
     try {
         // Show loading indicator on button
         if (refreshBtn) {
@@ -489,13 +500,13 @@ async function refreshZamalekStats() {
             const currentHTML = refreshBtn.innerHTML;
             refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
         }
-        
+
         // Reload data with force refresh (but don't hide content)
         await loadAllZamalekData(true);
-        
+
         // Repopulate filters
         populateFilters();
-        
+
         // Update displays
         updateOverviewStats();
         populateMatchesTable();
@@ -510,7 +521,7 @@ async function refreshZamalekStats() {
         populatePlayersTable();
         populateH2HTable();
         populateH2HPlayersList();
-        
+
         // Reset button on success
         if (refreshBtn) {
             refreshBtn.disabled = false;
@@ -523,12 +534,12 @@ async function refreshZamalekStats() {
                 refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Synced!', 'Sync Data');
             }, 2000);
         }
-        
+
         console.log('✅ Data refreshed successfully');
-        
+
     } catch (error) {
         console.error('❌ Error refreshing data:', error);
-        
+
         // Reset button on error
         if (refreshBtn) {
             refreshBtn.disabled = false;
@@ -570,27 +581,27 @@ function getFilteredMatches() {
     console.log('🔍 getFilteredMatches called, zamalekMatchesData:', zamalekMatchesData);
     console.log('🔍 zamalekMatchesData length:', zamalekMatchesData?.length);
     console.log('🔍 currentFilters:', currentFilters);
-    
+
     if (!zamalekMatchesData || zamalekMatchesData.length === 0) {
         console.warn('⚠️ No data in zamalekMatchesData');
         return [];
     }
-    
+
     return zamalekMatchesData.filter(match => {
         if (currentFilters.matchId && match.MATCH_ID !== currentFilters.matchId) return false;
         if (currentFilters.championSystem && match['CHAMPION SYSTEM'] !== currentFilters.championSystem) return false;
-        
+
         // Date range filter (From - To)
         if (currentFilters.dateFrom || currentFilters.dateTo) {
             const matchDate = match.DATE; // Already in YYYY-MM-DD format
-            
+
             if (matchDate) {
                 // Direct comparison (both are in YYYY-MM-DD format)
                 if (currentFilters.dateFrom && matchDate < currentFilters.dateFrom) return false;
                 if (currentFilters.dateTo && matchDate > currentFilters.dateTo) return false;
             }
         }
-        
+
         if (currentFilters.year && match.YEAR !== currentFilters.year) return false;
         if (currentFilters.season && match.SEASON !== currentFilters.season) return false;
         if (currentFilters.ahlyManager && match['AHLY MANAGER'] !== currentFilters.ahlyManager) return false;
@@ -610,7 +621,7 @@ function getFilteredMatches() {
         if (currentFilters.cleanSheet && match['CLEAN SHEET'] !== currentFilters.cleanSheet) return false;
         if (currentFilters.finals && match.FINALS !== currentFilters.finals) return false;
         if (currentFilters.q && match.Q !== currentFilters.q) return false;
-        
+
         return true;
     });
 }
@@ -619,7 +630,7 @@ function getFilteredMatches() {
 function getFilteredPlayerDetails() {
     const filteredMatches = getFilteredMatches();
     const matchIds = filteredMatches.map(m => String(m.MATCH_ID));
-    
+
     return zamalekPlayerDetails.filter(detail => {
         return matchIds.includes(String(detail.MATCH_ID));
     });
@@ -629,7 +640,7 @@ function getFilteredPlayerDetails() {
 function getFilteredLineupAhly() {
     const filteredMatches = getFilteredMatches();
     const matchIds = filteredMatches.map(m => String(m.MATCH_ID));
-    
+
     return zamalekLineupAhly.filter(lineup => {
         return matchIds.includes(String(lineup.MATCH_ID));
     });
@@ -639,7 +650,7 @@ function getFilteredLineupAhly() {
 function getFilteredLineupZamalek() {
     const filteredMatches = getFilteredMatches();
     const matchIds = filteredMatches.map(m => String(m.MATCH_ID));
-    
+
     return zamalekLineupZamalek.filter(lineup => {
         return matchIds.includes(String(lineup.MATCH_ID));
     });
@@ -650,19 +661,19 @@ function calculatePenaltyGoals(matches, isZamalek = false) {
     if (!zamalekPlayerDetails || zamalekPlayerDetails.length === 0) {
         return 0;
     }
-    
+
     // Get match IDs from filtered matches
     const matchIds = matches.map(m => m.MATCH_ID);
-    
+
     // Filter player details for these matches
     const relevantDetails = zamalekPlayerDetails.filter(detail => {
         return matchIds.includes(detail.MATCH_ID) && detail.TYPE === 'PENGOAL';
     });
-    
+
     // If we're calculating for Zamalek, we need goals against Ahly
     // Otherwise, we need goals by Ahly (which means team should be AHLY or not ZAMALEK)
     let count = 0;
-    
+
     if (isZamalek) {
         // Count PENGOAL for Zamalek team
         count = relevantDetails.filter(detail => {
@@ -676,7 +687,7 @@ function calculatePenaltyGoals(matches, isZamalek = false) {
             return team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
         }).length;
     }
-    
+
     return count;
 }
 
@@ -685,17 +696,17 @@ function calculatePenaltyMisses(matches, isZamalek = false) {
     if (!zamalekPlayerDetails || zamalekPlayerDetails.length === 0) {
         return 0;
     }
-    
+
     // Get match IDs from filtered matches
     const matchIds = matches.map(m => m.MATCH_ID);
-    
+
     // Filter player details for these matches where GA = 'PENMISSED'
     const relevantDetails = zamalekPlayerDetails.filter(detail => {
         return matchIds.includes(detail.MATCH_ID) && detail.GA === 'PENMISSED';
     });
-    
+
     let count = 0;
-    
+
     if (isZamalek) {
         // Count PENMISSED for Zamalek team
         count = relevantDetails.filter(detail => {
@@ -709,7 +720,7 @@ function calculatePenaltyMisses(matches, isZamalek = false) {
             return team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
         }).length;
     }
-    
+
     return count;
 }
 
@@ -720,11 +731,11 @@ function calculateLongestStreak(matches, resultType) {
     let maxStreakStart = null;
     let maxStreakEnd = null;
     let currentStreakStart = null;
-    
+
     matches.forEach((match, index) => {
         const result = match['W-D-L'];
         let isMatch = false;
-        
+
         if (resultType === 'W' && result === 'W') {
             isMatch = true;
         } else if (resultType === 'D' && (result === 'D' || result === 'D.')) {
@@ -732,13 +743,13 @@ function calculateLongestStreak(matches, resultType) {
         } else if (resultType === 'L' && result === 'L') {
             isMatch = true;
         }
-        
+
         if (isMatch) {
             if (currentStreak === 0) {
                 currentStreakStart = match.DATE;
             }
             currentStreak++;
-            
+
             if (currentStreak > maxStreak) {
                 maxStreak = currentStreak;
                 maxStreakStart = currentStreakStart;
@@ -749,7 +760,7 @@ function calculateLongestStreak(matches, resultType) {
             currentStreakStart = null;
         }
     });
-    
+
     return {
         count: maxStreak,
         startDate: maxStreakStart,
@@ -761,7 +772,7 @@ function calculateLongestStreak(matches, resultType) {
 function updateOverviewStats() {
     const matches = getFilteredMatches();
     console.log('📊 Updating overview stats with', matches.length, 'filtered matches');
-    
+
     // Al Ahly Stats
     const ahlyWins = matches.filter(m => m['W-D-L'] === 'W').length;
     const ahlyDraws = matches.filter(m => m['W-D-L'] === 'D' || m['W-D-L'] === 'D.').length;
@@ -771,18 +782,18 @@ function updateOverviewStats() {
     const ahlyCleanSheetsFor = matches.filter(m => (parseInt(m.GA) || 0) === 0).length;
     const ahlyCleanSheetsAgainst = matches.filter(m => (parseInt(m.GF) || 0) === 0).length;
     const ahlyWinRate = matches.length > 0 ? ((ahlyWins / matches.length) * 100).toFixed(1) : 0;
-    
+
     // Calculate streaks
     const ahlyWinStreakData = calculateLongestStreak(matches, 'W');
     const ahlyDrawStreakData = calculateLongestStreak(matches, 'D');
     const ahlyLossStreakData = calculateLongestStreak(matches, 'L');
-    
+
     // Calculate penalty goals and misses
     const ahlyPenaltyGoals = calculatePenaltyGoals(matches);
     const zamalekPenaltyGoals = calculatePenaltyGoals(matches, true);
     const ahlyPenaltyMisses = calculatePenaltyMisses(matches);
     const zamalekPenaltyMisses = calculatePenaltyMisses(matches, true);
-    
+
     // Update Al Ahly overview
     document.getElementById('ahly-total-matches').textContent = matches.length;
     document.getElementById('ahly-wins').textContent = ahlyWins;
@@ -808,16 +819,16 @@ function updateOverviewStats() {
     if (document.getElementById('zamalek-penalty-misses-opponent')) {
         document.getElementById('zamalek-penalty-misses-opponent').textContent = zamalekPenaltyMisses;
     }
-    
+
     // Update streak periods
     const ahlyWinPeriod = ahlyWinStreakData.count > 0 ? `${ahlyWinStreakData.startDate} - ${ahlyWinStreakData.endDate}` : '-';
     const ahlyDrawPeriod = ahlyDrawStreakData.count > 0 ? `${ahlyDrawStreakData.startDate} - ${ahlyDrawStreakData.endDate}` : '-';
     const ahlyLossPeriod = ahlyLossStreakData.count > 0 ? `${ahlyLossStreakData.startDate} - ${ahlyLossStreakData.endDate}` : '-';
-    
+
     document.getElementById('ahly-win-streak-period').textContent = ahlyWinPeriod;
     document.getElementById('ahly-draw-streak-period').textContent = ahlyDrawPeriod;
     document.getElementById('ahly-loss-streak-period').textContent = ahlyLossPeriod;
-    
+
     // Zamalek Stats (inverse of Ahly)
     const zamalekWins = ahlyLosses;
     const zamalekDraws = ahlyDraws;
@@ -827,12 +838,12 @@ function updateOverviewStats() {
     const zamalekCleanSheetsFor = ahlyCleanSheetsAgainst;  // Zamalek clean sheet when Ahly scored 0
     const zamalekCleanSheetsAgainst = ahlyCleanSheetsFor;  // Zamalek conceded 0 when Ahly kept clean sheet
     const zamalekWinRate = matches.length > 0 ? ((zamalekWins / matches.length) * 100).toFixed(1) : 0;
-    
+
     // Zamalek streaks (inverse of Ahly)
     const zamalekWinStreakData = ahlyLossStreakData;  // Zamalek wins when Ahly loses
     const zamalekDrawStreakData = ahlyDrawStreakData;  // Same draw streak
     const zamalekLossStreakData = ahlyWinStreakData;  // Zamalek loses when Ahly wins
-    
+
     // Update Zamalek overview
     document.getElementById('zamalek-total-matches').textContent = matches.length;
     document.getElementById('zamalek-wins').textContent = zamalekWins;
@@ -858,12 +869,12 @@ function updateOverviewStats() {
     if (document.getElementById('ahly-penalty-misses-opponent')) {
         document.getElementById('ahly-penalty-misses-opponent').textContent = ahlyPenaltyMisses;
     }
-    
+
     // Update streak periods
     const zamalekWinPeriod = zamalekWinStreakData.count > 0 ? `${zamalekWinStreakData.startDate} - ${zamalekWinStreakData.endDate}` : '-';
     const zamalekDrawPeriod = zamalekDrawStreakData.count > 0 ? `${zamalekDrawStreakData.startDate} - ${zamalekDrawStreakData.endDate}` : '-';
     const zamalekLossPeriod = zamalekLossStreakData.count > 0 ? `${zamalekLossStreakData.startDate} - ${zamalekLossStreakData.endDate}` : '-';
-    
+
     document.getElementById('zamalek-win-streak-period').textContent = zamalekWinPeriod;
     document.getElementById('zamalek-draw-streak-period').textContent = zamalekDrawPeriod;
     document.getElementById('zamalek-loss-streak-period').textContent = zamalekLossPeriod;
@@ -874,31 +885,31 @@ function populateMatchesTable() {
     const matches = getFilteredMatches();
     console.log('📋 Populating matches table with', matches.length, 'matches');
     const tbody = document.querySelector('#zamalek-matches-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     if (matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found</td></tr>';
         return;
     }
-    
+
     // Sort matches by date (newest first)
     const sortedMatches = [...matches].sort((a, b) => {
         const dateA = new Date(a.DATE);
         const dateB = new Date(b.DATE);
         return dateB - dateA; // Descending order (newest first)
     });
-    
+
     sortedMatches.forEach(match => {
         const row = document.createElement('tr');
-        
+
         const resultBadge = getResultBadge(match['W-D-L']);
-        
+
         row.innerHTML = `
             <td><strong>${match.MATCH_ID || ''}</strong></td>
             <td>${match.DATE || ''}</td>
@@ -910,7 +921,7 @@ function populateMatchesTable() {
             <td><strong>${match.GA || 0}</strong></td>
             <td>${resultBadge}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
@@ -928,26 +939,26 @@ function populateChampionshipsTable() {
     const matches = getFilteredMatches();
     console.log('🏆 Populating championships table with', matches.length, 'matches');
     const tbody = document.querySelector('#zamalek-championships-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Championships table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     if (matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found</td></tr>';
         updateTotalsChampionships([], true);
         return;
     }
-    
+
     // Calculate statistics by championship
     const championshipsMap = new Map();
-    
+
     matches.forEach(match => {
         const championship = match['CHAMPION'] || 'Unknown';
-        
+
         if (!championshipsMap.has(championship)) {
             championshipsMap.set(championship, {
                 championship: championship,
@@ -961,34 +972,34 @@ function populateChampionshipsTable() {
                 csa: 0
             });
         }
-        
+
         const stats = championshipsMap.get(championship);
         stats.matches++;
-        
+
         const result = match['W-D-L'];
         if (result === 'W') stats.wins++;
         else if (result === 'D' || result === 'D.') stats.draws++;
         else if (result === 'L') stats.losses++;
-        
+
         const gf = parseInt(match.GF) || 0;
         const ga = parseInt(match.GA) || 0;
         stats.gf += gf;
         stats.ga += ga;
-        
+
         if (ga === 0) stats.csf++; // Clean Sheet For (opponent didn't score)
         if (gf === 0) stats.csa++; // Clean Sheet Against (we didn't score)
     });
-    
+
     // Convert to array and sort by matches (descending)
     const championshipsArray = Array.from(championshipsMap.values());
     championshipsArray.sort((a, b) => b.matches - a.matches);
-    
+
     // Populate table
     championshipsArray.forEach(stat => {
         const row = document.createElement('tr');
         const gd = stat.gf - stat.ga;
         const gdClass = gd > 0 ? 'positive' : gd < 0 ? 'negative' : '';
-        
+
         row.innerHTML = `
             <td>${stat.championship}</td>
             <td>${stat.matches}</td>
@@ -1001,10 +1012,10 @@ function populateChampionshipsTable() {
             <td>${stat.csf}</td>
             <td>${stat.csa}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     updateTotalsChampionships(championshipsArray);
 }
 
@@ -1022,7 +1033,7 @@ function updateTotalsChampionships(championships, clear = false) {
         document.getElementById('total-champ-csa').textContent = '0';
         return;
     }
-    
+
     const totals = championships.reduce((acc, champ) => {
         acc.matches += champ.matches;
         acc.wins += champ.wins;
@@ -1034,9 +1045,9 @@ function updateTotalsChampionships(championships, clear = false) {
         acc.csa += champ.csa;
         return acc;
     }, { matches: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, csf: 0, csa: 0 });
-    
+
     const gd = totals.gf - totals.ga;
-    
+
     document.getElementById('total-champ-p').textContent = totals.matches;
     document.getElementById('total-champ-w').textContent = totals.wins;
     document.getElementById('total-champ-d').textContent = totals.draws;
@@ -1053,26 +1064,26 @@ function populateSeasonsTable() {
     const matches = getFilteredMatches();
     console.log('📅 Populating seasons table with', matches.length, 'matches');
     const tbody = document.querySelector('#zamalek-seasons-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Seasons table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     if (matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found</td></tr>';
         updateTotalsSeasons([], true);
         return;
     }
-    
+
     // Calculate statistics by season
     const seasonsMap = new Map();
-    
+
     matches.forEach(match => {
         const season = match['SEASON'] || 'Unknown';
-        
+
         if (!seasonsMap.has(season)) {
             seasonsMap.set(season, {
                 season: season,
@@ -1086,34 +1097,34 @@ function populateSeasonsTable() {
                 csa: 0
             });
         }
-        
+
         const stats = seasonsMap.get(season);
         stats.matches++;
-        
+
         const result = match['W-D-L'];
         if (result === 'W') stats.wins++;
         else if (result === 'D' || result === 'D.') stats.draws++;
         else if (result === 'L') stats.losses++;
-        
+
         const gf = parseInt(match.GF) || 0;
         const ga = parseInt(match.GA) || 0;
         stats.gf += gf;
         stats.ga += ga;
-        
+
         if (ga === 0) stats.csf++; // Clean Sheet For (opponent didn't score)
         if (gf === 0) stats.csa++; // Clean Sheet Against (we didn't score)
     });
-    
+
     // Convert to array and sort by season (newest first)
     const seasonsArray = Array.from(seasonsMap.values());
     seasonsArray.sort(sortSeasons);
-    
+
     // Populate table
     seasonsArray.forEach(stat => {
         const row = document.createElement('tr');
         const gd = stat.gf - stat.ga;
         const gdClass = gd > 0 ? 'positive' : gd < 0 ? 'negative' : '';
-        
+
         row.innerHTML = `
             <td>${stat.season}</td>
             <td>${stat.matches}</td>
@@ -1126,10 +1137,10 @@ function populateSeasonsTable() {
             <td>${stat.csf}</td>
             <td>${stat.csa}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     updateTotalsSeasons(seasonsArray);
 }
 
@@ -1147,7 +1158,7 @@ function updateTotalsSeasons(seasons, clear = false) {
         document.getElementById('total-season-csa').textContent = '0';
         return;
     }
-    
+
     const totals = seasons.reduce((acc, season) => {
         acc.matches += season.matches;
         acc.wins += season.wins;
@@ -1159,9 +1170,9 @@ function updateTotalsSeasons(seasons, clear = false) {
         acc.csa += season.csa;
         return acc;
     }, { matches: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, csf: 0, csa: 0 });
-    
+
     const gd = totals.gf - totals.ga;
-    
+
     document.getElementById('total-season-p').textContent = totals.matches;
     document.getElementById('total-season-w').textContent = totals.wins;
     document.getElementById('total-season-d').textContent = totals.draws;
@@ -1176,38 +1187,38 @@ function updateTotalsSeasons(seasons, clear = false) {
 // Populate managers table
 function populateManagersTable() {
     const tbody = document.querySelector('#zamalek-managers-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Managers table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     let managersStats = calculateManagersStats();
-    
+
     if (managersStats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsRow([], true);
         return;
     }
-    
+
     // Apply search filter
     if (currentManagerSearch) {
         const searchLower = currentManagerSearch.toLowerCase();
-        managersStats = managersStats.filter(stat => 
+        managersStats = managersStats.filter(stat =>
             stat.manager.toLowerCase().includes(searchLower)
         );
     }
-    
+
     // Sort by matches played (descending)
     managersStats.sort((a, b) => b.matches - a.matches);
-    
+
     managersStats.forEach(stat => {
         const row = document.createElement('tr');
         const gd = stat.gf - stat.ga;
         const gdClass = gd > 0 ? 'positive' : gd < 0 ? 'negative' : '';
-        
+
         row.innerHTML = `
             <td>${stat.manager}</td>
             <td>${stat.matches}</td>
@@ -1220,10 +1231,10 @@ function populateManagersTable() {
             <td>${stat.csf}</td>
             <td>${stat.csa}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     // Update totals row
     updateTotalsRow(managersStats, false);
 }
@@ -1242,7 +1253,7 @@ function updateTotalsRow(stats, isEmpty) {
         document.getElementById('total-csa').textContent = '0';
         return;
     }
-    
+
     const totals = stats.reduce((acc, stat) => {
         acc.matches += stat.matches;
         acc.wins += stat.wins;
@@ -1254,9 +1265,9 @@ function updateTotalsRow(stats, isEmpty) {
         acc.csa += stat.csa;
         return acc;
     }, { matches: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, csf: 0, csa: 0 });
-    
+
     const totalGd = totals.gf - totals.ga;
-    
+
     document.getElementById('total-matches').textContent = totals.matches;
     document.getElementById('total-wins').textContent = totals.wins;
     document.getElementById('total-draws').textContent = totals.draws;
@@ -1272,14 +1283,14 @@ function updateTotalsRow(stats, isEmpty) {
 function calculateManagersStats() {
     const matches = getFilteredMatches();
     const managersMap = new Map();
-    
+
     matches.forEach(match => {
         const ahlyManager = match['AHLY MANAGER'];
         const zamalekManager = match['ZAMALEK MANAGER'];
         const result = match['W-D-L'];
         const gf = parseInt(match.GF) || 0;
         const ga = parseInt(match.GA) || 0;
-        
+
         // Process Ahly manager
         if (ahlyManager && (currentManagerFilter === 'all' || currentManagerFilter === 'ahly')) {
             if (!managersMap.has(ahlyManager)) {
@@ -1295,20 +1306,20 @@ function calculateManagersStats() {
                     csa: 0
                 });
             }
-            
+
             const stats = managersMap.get(ahlyManager);
             stats.matches++;
             stats.gf += gf;
             stats.ga += ga;
-            
+
             if (result === 'W') stats.wins++;
             else if (result === 'D' || result === 'D.') stats.draws++;
             else if (result === 'L') stats.losses++;
-            
+
             if (ga === 0) stats.csf++;
             if (gf === 0) stats.csa++;
         }
-        
+
         // Process Zamalek manager
         if (zamalekManager && (currentManagerFilter === 'all' || currentManagerFilter === 'zamalek')) {
             if (!managersMap.has(zamalekManager)) {
@@ -1324,22 +1335,22 @@ function calculateManagersStats() {
                     csa: 0
                 });
             }
-            
+
             const stats = managersMap.get(zamalekManager);
             stats.matches++;
             stats.gf += ga; // Zamalek's goals are Ahly's GA
             stats.ga += gf; // Zamalek's conceded are Ahly's GF
-            
+
             // Inverse result for Zamalek
             if (result === 'L') stats.wins++;
             else if (result === 'D' || result === 'D.') stats.draws++;
             else if (result === 'W') stats.losses++;
-            
+
             if (gf === 0) stats.csf++; // Zamalek clean sheet when Ahly scored 0
             if (ga === 0) stats.csa++; // Zamalek conceded when Ahly kept clean sheet
         }
     });
-    
+
     return Array.from(managersMap.values());
 }
 
@@ -1360,13 +1371,13 @@ function searchManagers() {
 // Extract country from manager name (e.g., "Manuel José - Portugal" -> "Portugal")
 function extractManagerCountry(managerName) {
     if (!managerName) return 'Unknown';
-    
+
     // Split by " - " and get the last part
     const parts = managerName.split(' - ');
     if (parts.length > 1) {
         return parts[parts.length - 1].trim();
     }
-    
+
     // If no " - " found, return Unknown
     return 'Unknown';
 }
@@ -1375,18 +1386,18 @@ function extractManagerCountry(managerName) {
 function calculateManagersCountriesStats() {
     const matches = getFilteredMatches();
     const countriesMap = new Map();
-    
+
     matches.forEach(match => {
         const ahlyManager = match['AHLY MANAGER'];
         const zamalekManager = match['ZAMALEK MANAGER'];
         const result = match['W-D-L'];
         const gf = parseInt(match.GF) || 0;
         const ga = parseInt(match.GA) || 0;
-        
+
         // Process Ahly manager
         if (ahlyManager && (currentManagerCountriesFilter === 'all' || currentManagerCountriesFilter === 'ahly')) {
             const country = extractManagerCountry(ahlyManager);
-            
+
             if (!countriesMap.has(country)) {
                 countriesMap.set(country, {
                     country: country,
@@ -1401,25 +1412,25 @@ function calculateManagersCountriesStats() {
                     csa: 0
                 });
             }
-            
+
             const stats = countriesMap.get(country);
             stats.coaches.add(ahlyManager); // Add coach to set (automatically handles duplicates)
             stats.matches++;
             stats.gf += gf;
             stats.ga += ga;
-            
+
             if (result === 'W') stats.wins++;
             else if (result === 'D' || result === 'D.') stats.draws++;
             else if (result === 'L') stats.losses++;
-            
+
             if (ga === 0) stats.csf++;
             if (gf === 0) stats.csa++;
         }
-        
+
         // Process Zamalek manager
         if (zamalekManager && (currentManagerCountriesFilter === 'all' || currentManagerCountriesFilter === 'zamalek')) {
             const country = extractManagerCountry(zamalekManager);
-            
+
             if (!countriesMap.has(country)) {
                 countriesMap.set(country, {
                     country: country,
@@ -1434,23 +1445,23 @@ function calculateManagersCountriesStats() {
                     csa: 0
                 });
             }
-            
+
             const stats = countriesMap.get(country);
             stats.coaches.add(zamalekManager); // Add coach to set (automatically handles duplicates)
             stats.matches++;
             stats.gf += ga; // Zamalek's goals are Ahly's GA
             stats.ga += gf; // Zamalek's conceded are Ahly's GF
-            
+
             // Inverse result for Zamalek
             if (result === 'L') stats.wins++;
             else if (result === 'D' || result === 'D.') stats.draws++;
             else if (result === 'W') stats.losses++;
-            
+
             if (gf === 0) stats.csf++; // Zamalek clean sheet when Ahly scored 0
             if (ga === 0) stats.csa++; // Zamalek conceded when Ahly kept clean sheet
         }
     });
-    
+
     // Convert Set to count and return array
     return Array.from(countriesMap.values()).map(stat => ({
         ...stat,
@@ -1462,38 +1473,38 @@ function calculateManagersCountriesStats() {
 // Populate managers countries table
 function populateManagersCountriesTable() {
     const tbody = document.querySelector('#zamalek-managers-countries-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Managers countries table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     let countriesStats = calculateManagersCountriesStats();
-    
+
     if (countriesStats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsManagersCountries([], true);
         return;
     }
-    
+
     // Apply search filter
     if (currentManagerCountriesSearch) {
         const searchLower = currentManagerCountriesSearch.toLowerCase();
-        countriesStats = countriesStats.filter(stat => 
+        countriesStats = countriesStats.filter(stat =>
             stat.country.toLowerCase().includes(searchLower)
         );
     }
-    
+
     // Sort by matches played (descending)
     countriesStats.sort((a, b) => b.matches - a.matches);
-    
+
     countriesStats.forEach(stat => {
         const row = document.createElement('tr');
         const gd = stat.gf - stat.ga;
         const gdClass = gd > 0 ? 'positive' : gd < 0 ? 'negative' : '';
-        
+
         row.innerHTML = `
             <td>${stat.country}</td>
             <td>${stat.coachesCount}</td>
@@ -1507,10 +1518,10 @@ function populateManagersCountriesTable() {
             <td>${stat.csf}</td>
             <td>${stat.csa}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     // Update totals row
     updateTotalsManagersCountries(countriesStats, false);
 }
@@ -1529,7 +1540,7 @@ function updateTotalsManagersCountries(stats, isEmpty) {
         document.getElementById('total-managers-countries-csa').textContent = '0';
         return;
     }
-    
+
     const totals = stats.reduce((acc, stat) => {
         acc.matches += stat.matches;
         acc.wins += stat.wins;
@@ -1541,9 +1552,9 @@ function updateTotalsManagersCountries(stats, isEmpty) {
         acc.csa += stat.csa;
         return acc;
     }, { matches: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, csf: 0, csa: 0 });
-    
+
     const gd = totals.gf - totals.ga;
-    
+
     document.getElementById('total-managers-countries-matches').textContent = totals.matches;
     document.getElementById('total-managers-countries-wins').textContent = totals.wins;
     document.getElementById('total-managers-countries-draws').textContent = totals.draws;
@@ -1577,12 +1588,12 @@ function searchManagersCountries() {
 function calculateRefereesAhlyStats() {
     const matches = getFilteredMatches();
     const refereesMap = new Map();
-    
+
     matches.forEach(match => {
         const referee = match['REFEREE'];
         const result = match['W-D-L'];
         const matchId = match.MATCH_ID;
-        
+
         if (referee) {
             if (!refereesMap.has(referee)) {
                 refereesMap.set(referee, {
@@ -1595,49 +1606,49 @@ function calculateRefereesAhlyStats() {
                     penAgainst: 0
                 });
             }
-            
+
             const stats = refereesMap.get(referee);
             stats.matches++;
-            
+
             if (result === 'W') stats.wins++;
             else if (result === 'D' || result === 'D.') stats.draws++;
             else if (result === 'L') stats.losses++;
-            
+
             // Calculate penalties for this match
             if (zamalekPlayerDetails && zamalekPlayerDetails.length > 0) {
                 // Penalties For (Ahly)
-                const ahlyPenGoals = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+                const ahlyPenGoals = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.TYPE === 'PENGOAL' &&
                     (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
                 ).length;
-                
-                const ahlyPenMisses = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+
+                const ahlyPenMisses = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.GA === 'PENMISSED' &&
                     (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
                 ).length;
-                
+
                 stats.penFor += ahlyPenGoals + ahlyPenMisses;
-                
+
                 // Penalties Against (Zamalek)
-                const zamalekPenGoals = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+                const zamalekPenGoals = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.TYPE === 'PENGOAL' &&
                     detail.TEAM?.toUpperCase().includes('ZAMALEK')
                 ).length;
-                
-                const zamalekPenMisses = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+
+                const zamalekPenMisses = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.GA === 'PENMISSED' &&
                     detail.TEAM?.toUpperCase().includes('ZAMALEK')
                 ).length;
-                
+
                 stats.penAgainst += zamalekPenGoals + zamalekPenMisses;
             }
         }
     });
-    
+
     return Array.from(refereesMap.values());
 }
 
@@ -1645,12 +1656,12 @@ function calculateRefereesAhlyStats() {
 function calculateRefereesZamalekStats() {
     const matches = getFilteredMatches();
     const refereesMap = new Map();
-    
+
     matches.forEach(match => {
         const referee = match['REFEREE'];
         const result = match['W-D-L'];
         const matchId = match.MATCH_ID;
-        
+
         if (referee) {
             if (!refereesMap.has(referee)) {
                 refereesMap.set(referee, {
@@ -1663,86 +1674,86 @@ function calculateRefereesZamalekStats() {
                     penAgainst: 0
                 });
             }
-            
+
             const stats = refereesMap.get(referee);
             stats.matches++;
-            
+
             // Inverse result for Zamalek
             if (result === 'L') stats.wins++;
             else if (result === 'D' || result === 'D.') stats.draws++;
             else if (result === 'W') stats.losses++;
-            
+
             // Calculate penalties for this match
             if (zamalekPlayerDetails && zamalekPlayerDetails.length > 0) {
                 // Penalties For (Zamalek)
-                const zamalekPenGoals = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+                const zamalekPenGoals = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.TYPE === 'PENGOAL' &&
                     detail.TEAM?.toUpperCase().includes('ZAMALEK')
                 ).length;
-                
-                const zamalekPenMisses = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+
+                const zamalekPenMisses = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.GA === 'PENMISSED' &&
                     detail.TEAM?.toUpperCase().includes('ZAMALEK')
                 ).length;
-                
+
                 stats.penFor += zamalekPenGoals + zamalekPenMisses;
-                
+
                 // Penalties Against (Ahly)
-                const ahlyPenGoals = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+                const ahlyPenGoals = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.TYPE === 'PENGOAL' &&
                     (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
                 ).length;
-                
-                const ahlyPenMisses = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+
+                const ahlyPenMisses = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.GA === 'PENMISSED' &&
                     (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
                 ).length;
-                
+
                 stats.penAgainst += ahlyPenGoals + ahlyPenMisses;
             }
         }
     });
-    
+
     return Array.from(refereesMap.values());
 }
 
 // Populate referees Ahly table
 function populateRefereesAhlyTable() {
     const tbody = document.querySelector('#zamalek-referees-ahly-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Referees Ahly table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     let refereesStats = calculateRefereesAhlyStats();
-    
+
     if (refereesStats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsRefereesAhly([], true);
         return;
     }
-    
+
     // Apply search filter
     if (currentRefereeAhlySearch) {
         const searchLower = currentRefereeAhlySearch.toLowerCase();
-        refereesStats = refereesStats.filter(stat => 
+        refereesStats = refereesStats.filter(stat =>
             stat.referee.toLowerCase().includes(searchLower)
         );
     }
-    
+
     // Sort by matches played (descending)
     refereesStats.sort((a, b) => b.matches - a.matches);
-    
+
     refereesStats.forEach(stat => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td>${stat.referee}</td>
             <td>${stat.matches}</td>
@@ -1752,10 +1763,10 @@ function populateRefereesAhlyTable() {
             <td>${stat.penFor}</td>
             <td>${stat.penAgainst}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     // Update totals row
     updateTotalsRefereesAhly(refereesStats, false);
 }
@@ -1763,36 +1774,36 @@ function populateRefereesAhlyTable() {
 // Populate referees Zamalek table
 function populateRefereesZamalekTable() {
     const tbody = document.querySelector('#zamalek-referees-zamalek-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Referees Zamalek table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     let refereesStats = calculateRefereesZamalekStats();
-    
+
     if (refereesStats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsRefereesZamalek([], true);
         return;
     }
-    
+
     // Apply search filter
     if (currentRefereeZamalekSearch) {
         const searchLower = currentRefereeZamalekSearch.toLowerCase();
-        refereesStats = refereesStats.filter(stat => 
+        refereesStats = refereesStats.filter(stat =>
             stat.referee.toLowerCase().includes(searchLower)
         );
     }
-    
+
     // Sort by matches played (descending)
     refereesStats.sort((a, b) => b.matches - a.matches);
-    
+
     refereesStats.forEach(stat => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td>${stat.referee}</td>
             <td>${stat.matches}</td>
@@ -1802,10 +1813,10 @@ function populateRefereesZamalekTable() {
             <td>${stat.penFor}</td>
             <td>${stat.penAgainst}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     // Update totals row
     updateTotalsRefereesZamalek(refereesStats, false);
 }
@@ -1821,7 +1832,7 @@ function updateTotalsRefereesAhly(stats, isEmpty) {
         document.getElementById('total-ref-ahly-pen-against').textContent = '0';
         return;
     }
-    
+
     const totals = stats.reduce((acc, stat) => {
         acc.matches += stat.matches;
         acc.wins += stat.wins;
@@ -1831,7 +1842,7 @@ function updateTotalsRefereesAhly(stats, isEmpty) {
         acc.penAgainst += stat.penAgainst;
         return acc;
     }, { matches: 0, wins: 0, draws: 0, losses: 0, penFor: 0, penAgainst: 0 });
-    
+
     document.getElementById('total-ref-ahly-matches').textContent = totals.matches;
     document.getElementById('total-ref-ahly-wins').textContent = totals.wins;
     document.getElementById('total-ref-ahly-draws').textContent = totals.draws;
@@ -1851,7 +1862,7 @@ function updateTotalsRefereesZamalek(stats, isEmpty) {
         document.getElementById('total-ref-zamalek-pen-against').textContent = '0';
         return;
     }
-    
+
     const totals = stats.reduce((acc, stat) => {
         acc.matches += stat.matches;
         acc.wins += stat.wins;
@@ -1861,7 +1872,7 @@ function updateTotalsRefereesZamalek(stats, isEmpty) {
         acc.penAgainst += stat.penAgainst;
         return acc;
     }, { matches: 0, wins: 0, draws: 0, losses: 0, penFor: 0, penAgainst: 0 });
-    
+
     document.getElementById('total-ref-zamalek-matches').textContent = totals.matches;
     document.getElementById('total-ref-zamalek-wins').textContent = totals.wins;
     document.getElementById('total-ref-zamalek-draws').textContent = totals.draws;
@@ -1887,13 +1898,13 @@ function searchRefereesZamalek() {
 // Extract country from referee name (e.g., "Ismail Kaseb - Egypt" -> "Egypt")
 function extractRefereeCountry(refereeName) {
     if (!refereeName) return 'Unknown';
-    
+
     // Split by " - " and get the last part
     const parts = refereeName.split(' - ');
     if (parts.length > 1) {
         return parts[parts.length - 1].trim();
     }
-    
+
     // If no " - " found, return Unknown
     return 'Unknown';
 }
@@ -1902,15 +1913,15 @@ function extractRefereeCountry(refereeName) {
 function calculateRefereesAhlyCountriesStats() {
     const matches = getFilteredMatches();
     const countriesMap = new Map();
-    
+
     matches.forEach(match => {
         const referee = match['REFEREE'];
         const result = match['W-D-L'];
         const matchId = match.MATCH_ID;
-        
+
         if (referee) {
             const country = extractRefereeCountry(referee);
-            
+
             if (!countriesMap.has(country)) {
                 countriesMap.set(country, {
                     country: country,
@@ -1923,50 +1934,50 @@ function calculateRefereesAhlyCountriesStats() {
                     penAgainst: 0
                 });
             }
-            
+
             const stats = countriesMap.get(country);
             stats.referees.add(referee); // Add referee to set (automatically handles duplicates)
             stats.matches++;
-            
+
             if (result === 'W') stats.wins++;
             else if (result === 'D' || result === 'D.') stats.draws++;
             else if (result === 'L') stats.losses++;
-            
+
             // Calculate penalties for this match
             if (zamalekPlayerDetails && zamalekPlayerDetails.length > 0) {
                 // Penalties For (Ahly)
-                const ahlyPenGoals = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+                const ahlyPenGoals = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.TYPE === 'PENGOAL' &&
                     (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
                 ).length;
-                
-                const ahlyPenMisses = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+
+                const ahlyPenMisses = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.GA === 'PENMISSED' &&
                     (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
                 ).length;
-                
+
                 stats.penFor += ahlyPenGoals + ahlyPenMisses;
-                
+
                 // Penalties Against (Zamalek)
-                const zamalekPenGoals = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+                const zamalekPenGoals = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.TYPE === 'PENGOAL' &&
                     detail.TEAM?.toUpperCase().includes('ZAMALEK')
                 ).length;
-                
-                const zamalekPenMisses = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+
+                const zamalekPenMisses = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.GA === 'PENMISSED' &&
                     detail.TEAM?.toUpperCase().includes('ZAMALEK')
                 ).length;
-                
+
                 stats.penAgainst += zamalekPenGoals + zamalekPenMisses;
             }
         }
     });
-    
+
     // Convert Set to count and return array
     return Array.from(countriesMap.values()).map(stat => ({
         ...stat,
@@ -1979,15 +1990,15 @@ function calculateRefereesAhlyCountriesStats() {
 function calculateRefereesZamalekCountriesStats() {
     const matches = getFilteredMatches();
     const countriesMap = new Map();
-    
+
     matches.forEach(match => {
         const referee = match['REFEREE'];
         const result = match['W-D-L'];
         const matchId = match.MATCH_ID;
-        
+
         if (referee) {
             const country = extractRefereeCountry(referee);
-            
+
             if (!countriesMap.has(country)) {
                 countriesMap.set(country, {
                     country: country,
@@ -2000,51 +2011,51 @@ function calculateRefereesZamalekCountriesStats() {
                     penAgainst: 0
                 });
             }
-            
+
             const stats = countriesMap.get(country);
             stats.referees.add(referee); // Add referee to set (automatically handles duplicates)
             stats.matches++;
-            
+
             // Inverse result for Zamalek
             if (result === 'L') stats.wins++;
             else if (result === 'D' || result === 'D.') stats.draws++;
             else if (result === 'W') stats.losses++;
-            
+
             // Calculate penalties for this match
             if (zamalekPlayerDetails && zamalekPlayerDetails.length > 0) {
                 // Penalties For (Zamalek)
-                const zamalekPenGoals = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+                const zamalekPenGoals = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.TYPE === 'PENGOAL' &&
                     detail.TEAM?.toUpperCase().includes('ZAMALEK')
                 ).length;
-                
-                const zamalekPenMisses = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+
+                const zamalekPenMisses = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.GA === 'PENMISSED' &&
                     detail.TEAM?.toUpperCase().includes('ZAMALEK')
                 ).length;
-                
+
                 stats.penFor += zamalekPenGoals + zamalekPenMisses;
-                
+
                 // Penalties Against (Ahly)
-                const ahlyPenGoals = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+                const ahlyPenGoals = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.TYPE === 'PENGOAL' &&
                     (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
                 ).length;
-                
-                const ahlyPenMisses = zamalekPlayerDetails.filter(detail => 
-                    detail.MATCH_ID === matchId && 
+
+                const ahlyPenMisses = zamalekPlayerDetails.filter(detail =>
+                    detail.MATCH_ID === matchId &&
                     detail.GA === 'PENMISSED' &&
                     (detail.TEAM?.toUpperCase().includes('AHLY') || detail.TEAM?.toUpperCase().includes('الأهلي'))
                 ).length;
-                
+
                 stats.penAgainst += ahlyPenGoals + ahlyPenMisses;
             }
         }
     });
-    
+
     // Convert Set to count and return array
     return Array.from(countriesMap.values()).map(stat => ({
         ...stat,
@@ -2056,36 +2067,36 @@ function calculateRefereesZamalekCountriesStats() {
 // Populate referees Ahly countries table
 function populateRefereesAhlyCountriesTable() {
     const tbody = document.querySelector('#zamalek-referees-ahly-countries-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Referees Ahly Countries table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     let countriesStats = calculateRefereesAhlyCountriesStats();
-    
+
     if (countriesStats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsRefereesAhlyCountries([], true);
         return;
     }
-    
+
     // Apply search filter
     if (currentRefereeAhlyCountriesSearch) {
         const searchLower = currentRefereeAhlyCountriesSearch.toLowerCase();
-        countriesStats = countriesStats.filter(stat => 
+        countriesStats = countriesStats.filter(stat =>
             stat.country.toLowerCase().includes(searchLower)
         );
     }
-    
+
     // Sort by matches played (descending)
     countriesStats.sort((a, b) => b.matches - a.matches);
-    
+
     countriesStats.forEach(stat => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td>${stat.country}</td>
             <td>${stat.refereesCount}</td>
@@ -2096,10 +2107,10 @@ function populateRefereesAhlyCountriesTable() {
             <td>${stat.penFor}</td>
             <td>${stat.penAgainst}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     // Update totals row
     updateTotalsRefereesAhlyCountries(countriesStats, false);
 }
@@ -2107,36 +2118,36 @@ function populateRefereesAhlyCountriesTable() {
 // Populate referees Zamalek countries table
 function populateRefereesZamalekCountriesTable() {
     const tbody = document.querySelector('#zamalek-referees-zamalek-countries-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Referees Zamalek Countries table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     let countriesStats = calculateRefereesZamalekCountriesStats();
-    
+
     if (countriesStats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsRefereesZamalekCountries([], true);
         return;
     }
-    
+
     // Apply search filter
     if (currentRefereeZamalekCountriesSearch) {
         const searchLower = currentRefereeZamalekCountriesSearch.toLowerCase();
-        countriesStats = countriesStats.filter(stat => 
+        countriesStats = countriesStats.filter(stat =>
             stat.country.toLowerCase().includes(searchLower)
         );
     }
-    
+
     // Sort by matches played (descending)
     countriesStats.sort((a, b) => b.matches - a.matches);
-    
+
     countriesStats.forEach(stat => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td>${stat.country}</td>
             <td>${stat.refereesCount}</td>
@@ -2147,10 +2158,10 @@ function populateRefereesZamalekCountriesTable() {
             <td>${stat.penFor}</td>
             <td>${stat.penAgainst}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     // Update totals row
     updateTotalsRefereesZamalekCountries(countriesStats, false);
 }
@@ -2166,7 +2177,7 @@ function updateTotalsRefereesAhlyCountries(stats, isEmpty) {
         document.getElementById('total-ref-ahly-countries-pen-against').textContent = '0';
         return;
     }
-    
+
     const totals = stats.reduce((acc, stat) => {
         acc.matches += stat.matches;
         acc.wins += stat.wins;
@@ -2176,7 +2187,7 @@ function updateTotalsRefereesAhlyCountries(stats, isEmpty) {
         acc.penAgainst += stat.penAgainst;
         return acc;
     }, { matches: 0, wins: 0, draws: 0, losses: 0, penFor: 0, penAgainst: 0 });
-    
+
     document.getElementById('total-ref-ahly-countries-matches').textContent = totals.matches;
     document.getElementById('total-ref-ahly-countries-wins').textContent = totals.wins;
     document.getElementById('total-ref-ahly-countries-draws').textContent = totals.draws;
@@ -2196,7 +2207,7 @@ function updateTotalsRefereesZamalekCountries(stats, isEmpty) {
         document.getElementById('total-ref-zamalek-countries-pen-against').textContent = '0';
         return;
     }
-    
+
     const totals = stats.reduce((acc, stat) => {
         acc.matches += stat.matches;
         acc.wins += stat.wins;
@@ -2206,7 +2217,7 @@ function updateTotalsRefereesZamalekCountries(stats, isEmpty) {
         acc.penAgainst += stat.penAgainst;
         return acc;
     }, { matches: 0, wins: 0, draws: 0, losses: 0, penFor: 0, penAgainst: 0 });
-    
+
     document.getElementById('total-ref-zamalek-countries-matches').textContent = totals.matches;
     document.getElementById('total-ref-zamalek-countries-wins').textContent = totals.wins;
     document.getElementById('total-ref-zamalek-countries-draws').textContent = totals.draws;
@@ -2232,7 +2243,7 @@ function searchRefereesZamalekCountries() {
 // Switch main tab
 function switchMainTab(tabName) {
     currentMainTab = tabName;
-    
+
     // Update buttons
     document.querySelectorAll('.main-tab-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -2240,19 +2251,19 @@ function switchMainTab(tabName) {
     if (event && event.target) {
         event.target.classList.add('active');
     }
-    
+
     // Update content
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     document.getElementById(`${tabName}-tab`).classList.add('active');
-    
+
     // Load specific data for HOW WIN tab
     if (tabName === 'how-win') {
         calculateHowWinStats();
     }
-    
+
     // Restore last searched match when returning to search-match tab
     if (tabName === 'search-match' && window.__lastZamalekMatchId) {
         const match = zamalekMatchesData.find(m => String(m.MATCH_ID) === String(window.__lastZamalekMatchId));
@@ -2261,7 +2272,7 @@ function switchMainTab(tabName) {
             displayZamalekMatchDetails(match);
             document.getElementById('zamalek-match-details-container').style.display = 'block';
             document.getElementById('zamalek-no-match-found').style.display = 'none';
-            
+
             // Reset to first sub-tab (lineup)
             document.querySelectorAll('#zamalek-match-details-container .tab-button').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('#zamalek-match-details-container .tab-content').forEach(content => content.classList.remove('active'));
@@ -2280,7 +2291,7 @@ function calculateHowWinStats() {
         playerDetails: zamalekPlayerDetails ? zamalekPlayerDetails.length : 0,
         matches: zamalekMatchesData ? zamalekMatchesData.length : 0
     });
-    
+
     // Initialize counters
     const ahlyStats = {
         leadWon: 0,
@@ -2290,7 +2301,7 @@ function calculateHowWinStats() {
         comebackDrew: 0,
         behindLost: 0
     };
-    
+
     const zamalekStats = {
         leadWon: 0,
         leadDrew: 0,
@@ -2299,72 +2310,72 @@ function calculateHowWinStats() {
         comebackDrew: 0,
         behindLost: 0
     };
-    
+
     // Get filtered matches first
     const filteredMatches = getFilteredMatches();
     const filteredMatchIds = new Set(filteredMatches.map(m => m['MATCH_ID']));
-    
+
     // First pass: Check which matches have ANY unknown minutes
     const matchesWithUnknownMinutes = new Set();
-    
+
     zamalekPlayerDetails.forEach(detail => {
         const matchId = detail['MATCH_ID'];
         const minute = detail['MINUTE'];
-        
+
         // Skip if match is not in filtered matches
         if (!filteredMatchIds.has(matchId)) {
             return;
         }
-        
+
         // Mark match if it has unknown minute
         // Check for: empty, null, undefined, "?" (English), "؟" (Arabic), or string containing them
         const minuteStr = String(minute || '').trim();
-        const isUnknown = !minute || 
-                          minute === '' || 
-                          minuteStr === '?' || 
-                          minuteStr === '؟' ||   // Arabic question mark
-                          minuteStr.includes('?') || 
-                          minuteStr.includes('؟') ||  // Arabic question mark
-                          minuteStr.toLowerCase() === 'unknown';
-        
+        const isUnknown = !minute ||
+            minute === '' ||
+            minuteStr === '?' ||
+            minuteStr === '؟' ||   // Arabic question mark
+            minuteStr.includes('?') ||
+            minuteStr.includes('؟') ||  // Arabic question mark
+            minuteStr.toLowerCase() === 'unknown';
+
         if (isUnknown) {
             matchesWithUnknownMinutes.add(matchId);
         }
     });
-    
+
     // Second pass: Group goals by match ID (ONLY for matches with ALL known minutes)
     const matchGoals = {};
     let totalGoals = 0;
     let skippedGoals = 0;
-    
+
     zamalekPlayerDetails.forEach(detail => {
         totalGoals++;
         const matchId = detail['MATCH_ID'];
         const minute = detail['MINUTE'];
         const team = detail['TEAM'];
-        
+
         // Skip if match is not in filtered matches
         if (!filteredMatchIds.has(matchId)) {
             skippedGoals++;
             return;
         }
-        
+
         // Skip ENTIRE match if it has ANY unknown minutes
         if (matchesWithUnknownMinutes.has(matchId)) {
             skippedGoals++;
             return;
         }
-        
+
         // Skip if minute contains "?" or "؟" (this should not happen now, but keep as safety)
         if (!minute || minute.includes('?') || minute.includes('؟')) {
             skippedGoals++;
             return;
         }
-        
+
         if (!matchGoals[matchId]) {
             matchGoals[matchId] = [];
         }
-        
+
         // Parse minute (handle 90+5 format)
         let minuteValue = 0;
         if (minute.includes('+')) {
@@ -2373,39 +2384,39 @@ function calculateHowWinStats() {
         } else {
             minuteValue = parseInt(minute);
         }
-        
+
         matchGoals[matchId].push({
             minute: minuteValue,
             team: team,
             matchId: matchId
         });
     });
-    
+
     // Process each match
     let processedMatches = 0;
-    
+
     Object.keys(matchGoals).forEach(matchId => {
         const goals = matchGoals[matchId];
-        
+
         // Sort goals by minute
         goals.sort((a, b) => a.minute - b.minute);
-        
+
         if (goals.length === 0) return;
-        
+
         // First goal determines who scored first
         const firstGoal = goals[0];
         const firstScorer = firstGoal.team;
-        
+
         // Get match result
         const match = zamalekMatchesData.find(m => m['MATCH_ID'] === matchId);
         if (!match) {
             return;
         }
-        
+
         const result = match['W-D-L'];
-        
+
         processedMatches++;
-        
+
         // Determine stats based on first scorer and result
         if (firstScorer && firstScorer.toUpperCase().includes('AHLY')) {
             // Ahly scored first
@@ -2426,7 +2437,7 @@ function calculateHowWinStats() {
                 ahlyStats.behindLost++;
             }
         }
-        
+
         // Now calculate for Zamalek
         if (firstScorer && firstScorer.toUpperCase().includes('ZAMALEK')) {
             // Zamalek scored first
@@ -2448,7 +2459,7 @@ function calculateHowWinStats() {
             }
         }
     });
-    
+
     // Update UI
     document.getElementById('ahly-lead-won').textContent = ahlyStats.leadWon;
     document.getElementById('ahly-lead-drew').textContent = ahlyStats.leadDrew;
@@ -2456,14 +2467,14 @@ function calculateHowWinStats() {
     document.getElementById('ahly-comeback-won').textContent = ahlyStats.comebackWon;
     document.getElementById('ahly-comeback-drew').textContent = ahlyStats.comebackDrew;
     document.getElementById('ahly-behind-lost').textContent = ahlyStats.behindLost;
-    
+
     document.getElementById('zamalek-lead-won').textContent = zamalekStats.leadWon;
     document.getElementById('zamalek-lead-drew').textContent = zamalekStats.leadDrew;
     document.getElementById('zamalek-lead-lost').textContent = zamalekStats.leadLost;
     document.getElementById('zamalek-comeback-won').textContent = zamalekStats.comebackWon;
     document.getElementById('zamalek-comeback-drew').textContent = zamalekStats.comebackDrew;
     document.getElementById('zamalek-behind-lost').textContent = zamalekStats.behindLost;
-    
+
     // Update excluded matches count
     const excludedCount = matchesWithUnknownMinutes.size;
     document.getElementById('how-win-excluded-count').textContent = excludedCount;
@@ -2473,32 +2484,32 @@ function calculateHowWinStats() {
 // Switch sub tab
 function switchSubTab(tabName) {
     currentSubTab = tabName;
-    
+
     // Find the parent tab to determine which sub-tab group we're in
     const parentTab = document.getElementById(`${currentMainTab}-tab`);
     if (!parentTab) return;
-    
+
     // Update sub-tab buttons within the parent tab
     parentTab.querySelectorAll('.sub-tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    
+
     // Find and activate the clicked button
     const clickedButton = event.target;
     if (clickedButton) {
         clickedButton.classList.add('active');
     }
-    
+
     // Update sub-tab content within the parent tab
     parentTab.querySelectorAll('.sub-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     const targetContent = document.getElementById(tabName);
     if (targetContent) {
         targetContent.classList.add('active');
     }
-    
+
     // Load data for specific sub-tabs if needed
     if (tabName === 'managers-all') {
         populateManagersTable();
@@ -2537,18 +2548,18 @@ function initializeSearchableFilters() {
  */
 function makeSelectSearchable(select) {
     if (!select || select.dataset.searchable === 'true') return;
-    
+
     // Get the computed width or inline style width of the select
     const selectStyle = window.getComputedStyle(select);
     const selectWidth = select.style.width || selectStyle.width;
     const selectMaxWidth = select.style.maxWidth || selectStyle.maxWidth;
-    
+
     select.style.display = 'none';
     select.dataset.searchable = 'true';
-    
+
     const container = document.createElement('div');
     container.className = 'searchable-select-container';
-    
+
     // Apply the same width to the container
     if (selectWidth && selectWidth !== 'auto' && selectWidth !== '0px') {
         container.style.width = selectWidth;
@@ -2556,21 +2567,21 @@ function makeSelectSearchable(select) {
     if (selectMaxWidth && selectMaxWidth !== 'none' && selectMaxWidth !== '0px') {
         container.style.maxWidth = selectMaxWidth;
     }
-    
+
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = select.options[0]?.text || 'Search...';
     input.value = '';
-    
+
     const dropdown = document.createElement('div');
     dropdown.className = 'dropdown-options';
     dropdown.style.display = 'none';
-    
+
     select.parentElement.insertBefore(container, select);
     container.appendChild(input);
     container.appendChild(dropdown);
     container.appendChild(select);
-    
+
     function renderOptions(filterText = '') {
         dropdown.innerHTML = '';
         const text = filterText.toLowerCase();
@@ -2582,12 +2593,12 @@ function makeSelectSearchable(select) {
                 const div = document.createElement('div');
                 div.textContent = label;
                 div.dataset.value = value;
-                div.addEventListener('mousedown', function(e) {
+                div.addEventListener('mousedown', function (e) {
                     e.preventDefault();
                     select.value = value;
                     input.value = label;
                     dropdown.style.display = 'none';
-                    
+
                     // Trigger change event
                     const ev = new Event('change', { bubbles: true });
                     select.dispatchEvent(ev);
@@ -2597,17 +2608,17 @@ function makeSelectSearchable(select) {
         });
         dropdown.style.display = dropdown.children.length ? 'block' : 'none';
     }
-    
+
     input.addEventListener('focus', () => renderOptions(input.value));
     input.addEventListener('input', () => renderOptions(input.value));
     input.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
-    
+
     // Sync input when select changes programmatically
     select.addEventListener('change', () => {
         const opt = select.options[select.selectedIndex];
         input.value = opt && opt.value ? opt.text : '';
     });
-    
+
     // Set initial value if select has a selection
     const initialOpt = select.options[select.selectedIndex];
     if (initialOpt && initialOpt.value) {
@@ -2635,7 +2646,7 @@ function updateAllSearchableInputs() {
 // Calculate players statistics
 function calculatePlayersStats() {
     const playersMap = new Map();
-    
+
     // Get unique players from player database
     if (zamalekPlayerDatabase && zamalekPlayerDatabase.length > 0) {
         zamalekPlayerDatabase.forEach(player => {
@@ -2660,7 +2671,7 @@ function calculatePlayersStats() {
             }
         });
     }
-    
+
     // Count matches and minutes from FILTERED lineups
     const filteredLineupAhly = getFilteredLineupAhly();
     const filteredLineupZamalek = getFilteredLineupZamalek();
@@ -2669,7 +2680,7 @@ function calculatePlayersStats() {
         const playerName = lineup['PLAYER NAME'];
         const minutes = parseInt(lineup['MINTOTAL']) || 0;
         const team = lineup['TEAM'] || '';
-        
+
         if (playerName) {
             if (!playersMap.has(playerName)) {
                 playersMap.set(playerName, {
@@ -2689,11 +2700,11 @@ function calculatePlayersStats() {
                     teamZamalek: false
                 });
             }
-            
+
             const stats = playersMap.get(playerName);
             stats.matches++;
             stats.minutes += minutes;
-            
+
             // Track which team the player played for
             if (team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي')) {
                 stats.teamAhly = true;
@@ -2702,20 +2713,20 @@ function calculatePlayersStats() {
             }
         }
     });
-    
+
     // Count goals and assists from FILTERED player details
     const filteredPlayerDetails = getFilteredPlayerDetails();
     if (filteredPlayerDetails && filteredPlayerDetails.length > 0) {
         // Group goals and assists by player and match
         const goalsPerMatch = new Map();
         const assistsPerMatch = new Map();
-        
+
         filteredPlayerDetails.forEach(detail => {
             const playerName = detail['PLAYER NAME'];
             const ga = detail['GA'];
             const matchId = detail['MATCH_ID'];
             const team = detail['TEAM'] || '';
-            
+
             if (playerName) {
                 if (!playersMap.has(playerName)) {
                     playersMap.set(playerName, {
@@ -2731,14 +2742,14 @@ function calculatePlayersStats() {
                         teamZamalek: false
                     });
                 }
-                
+
                 const stats = playersMap.get(playerName);
                 const type = detail['TYPE'];
-                
+
                 // Count goals (exact match)
                 if (ga === 'GOAL') {
                     stats.goals++;
-                    
+
                     // Track goals per match for this player
                     const key = `${playerName}_${matchId}`;
                     if (!goalsPerMatch.has(key)) {
@@ -2746,11 +2757,11 @@ function calculatePlayersStats() {
                     }
                     goalsPerMatch.set(key, goalsPerMatch.get(key) + 1);
                 }
-                
+
                 // Count assists (exact match)
                 if (ga === 'ASSIST') {
                     stats.assists++;
-                    
+
                     // Track assists per match for this player
                     const key = `${playerName}_${matchId}`;
                     if (!assistsPerMatch.has(key)) {
@@ -2758,17 +2769,17 @@ function calculatePlayersStats() {
                     }
                     assistsPerMatch.set(key, assistsPerMatch.get(key) + 1);
                 }
-                
+
                 // Count penalty goals (exact match)
                 if (type === 'PENGOAL') {
                     stats.penGoals++;
                 }
-                
+
                 // Count penalty misses (exact match)
                 if (ga === 'PENMISSED') {
                     stats.penMisses++;
                 }
-                
+
                 // Track which team the player played for
                 if (team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي')) {
                     stats.teamAhly = true;
@@ -2777,12 +2788,12 @@ function calculatePlayersStats() {
                 }
             }
         });
-        
+
         // Calculate 2G, 3G, 4G+ for each player
         goalsPerMatch.forEach((goalCount, key) => {
             const playerName = key.split('_')[0];
             const stats = playersMap.get(playerName);
-            
+
             if (stats) {
                 if (goalCount === 2) {
                     stats.twoGoals++;
@@ -2793,12 +2804,12 @@ function calculatePlayersStats() {
                 }
             }
         });
-        
+
         // Calculate 2A, 3A+ for each player
         assistsPerMatch.forEach((assistCount, key) => {
             const playerName = key.split('_')[0];
             const stats = playersMap.get(playerName);
-            
+
             if (stats) {
                 if (assistCount === 2) {
                     stats.twoAssists++;
@@ -2808,7 +2819,7 @@ function calculatePlayersStats() {
             }
         });
     }
-    
+
     return Array.from(playersMap.values());
 }
 
@@ -2835,54 +2846,54 @@ function sortPlayersTable(column) {
         currentPlayerSort.column = column;
         currentPlayerSort.direction = 'desc';
     }
-    
+
     populatePlayersTable();
 }
 
 // Populate players table
 function populatePlayersTable() {
     const tbody = document.querySelector('#zamalek-players-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ Players table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     let playersStats = calculatePlayersStats();
-    
+
     if (playersStats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsPlayers([], true);
         return;
     }
-    
+
     // Apply team filter
     if (currentPlayerFilter === 'ahly') {
         playersStats = playersStats.filter(stat => stat.teamAhly);
     } else if (currentPlayerFilter === 'zamalek') {
         playersStats = playersStats.filter(stat => stat.teamZamalek);
     }
-    
+
     // Apply search filter
     if (currentPlayerSearch) {
         const searchLower = currentPlayerSearch.toLowerCase();
-        playersStats = playersStats.filter(stat => 
+        playersStats = playersStats.filter(stat =>
             stat.playerName.toLowerCase().includes(searchLower)
         );
     }
-    
+
     // Filter out players with no stats
-    playersStats = playersStats.filter(stat => 
+    playersStats = playersStats.filter(stat =>
         stat.matches > 0 || stat.minutes > 0 || stat.goals > 0 || stat.assists > 0
     );
-    
+
     // Sort based on current sort settings
     playersStats.sort((a, b) => {
         let aVal = a[currentPlayerSort.column];
         let bVal = b[currentPlayerSort.column];
-        
+
         // Handle string sorting for player names
         if (currentPlayerSort.column === 'playerName') {
             aVal = (aVal || '').toLowerCase();
@@ -2893,7 +2904,7 @@ function populatePlayersTable() {
                 return bVal.localeCompare(aVal);
             }
         }
-        
+
         // Handle numeric sorting
         if (currentPlayerSort.direction === 'asc') {
             return aVal - bVal;
@@ -2901,12 +2912,12 @@ function populatePlayersTable() {
             return bVal - aVal;
         }
     });
-    
+
     // Update sort indicators in table headers
     document.querySelectorAll('#zamalek-players-table thead th').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     const columnMap = {
         'playerName': 0,
         'matches': 1,
@@ -2921,7 +2932,7 @@ function populatePlayersTable() {
         'penGoals': 10,
         'penMisses': 11
     };
-    
+
     const columnIndex = columnMap[currentPlayerSort.column];
     if (columnIndex !== undefined) {
         const th = document.querySelector(`#zamalek-players-table thead th:nth-child(${columnIndex + 1})`);
@@ -2929,10 +2940,10 @@ function populatePlayersTable() {
             th.classList.add(currentPlayerSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
         }
     }
-    
+
     playersStats.forEach(stat => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td>${stat.playerName}</td>
             <td>${stat.matches}</td>
@@ -2947,10 +2958,10 @@ function populatePlayersTable() {
             <td>${stat.penGoals}</td>
             <td>${stat.penMisses}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     // Update totals row
     updateTotalsPlayers(playersStats, false);
 }
@@ -2971,7 +2982,7 @@ function updateTotalsPlayers(stats, isEmpty) {
         document.getElementById('total-players-pen-m').textContent = '0';
         return;
     }
-    
+
     const totals = stats.reduce((acc, stat) => {
         acc.matches += stat.matches;
         acc.minutes += stat.minutes;
@@ -2986,7 +2997,7 @@ function updateTotalsPlayers(stats, isEmpty) {
         acc.penMisses += stat.penMisses;
         return acc;
     }, { matches: 0, minutes: 0, goals: 0, twoGoals: 0, threeGoals: 0, fourPlusGoals: 0, assists: 0, twoAssists: 0, threePlusAssists: 0, penGoals: 0, penMisses: 0 });
-    
+
     document.getElementById('total-players-matches').textContent = totals.matches;
     document.getElementById('total-players-minutes').textContent = totals.minutes;
     document.getElementById('total-players-goals').textContent = totals.goals;
@@ -3008,13 +3019,13 @@ function calculateH2HStats() {
 // Calculate H2H player statistics with filtered match IDs
 function calculateH2HStatsFiltered(relevantMatchIds, teamFilter, searchedPlayerName = null, relationshipType = null) {
     const playersMap = new Map();
-    
+
     // Use FILTERED lineups based on main filters
     const filteredLineupAhly = getFilteredLineupAhly();
     const filteredLineupZamalek = getFilteredLineupZamalek();
     const allLineups = [...filteredLineupAhly, ...filteredLineupZamalek];
     const filteredMatches = getFilteredMatches();
-    
+
     // Build a map of searched player's team in each match (for WITH/AGAINST filtering)
     const searchedPlayerMatchTeams = new Map(); // matchId -> team
     if (searchedPlayerName && relationshipType && relevantMatchIds.size > 0) {
@@ -3028,43 +3039,43 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter, searchedPlayerN
             }
         });
     }
-    
+
     allLineups.forEach(lineup => {
         const playerName = lineup['PLAYER NAME'];
         const matchId = lineup['MATCH_ID'];
         const matchIdStr = String(matchId);
         const minutes = parseInt(lineup['MINTOTAL']) || 0;
         const team = lineup['TEAM'] || '';
-        
+
         // If we have H2H filtered match IDs (WITH/AGAINST), only process those matches
         if (relevantMatchIds.size > 0 && !relevantMatchIds.has(matchIdStr)) {
             return;
         }
-        
+
         // Filter by relationship (WITH/AGAINST) if searched player is provided
         if (searchedPlayerName && relationshipType && searchedPlayerMatchTeams.has(matchIdStr)) {
             const searchedTeam = searchedPlayerMatchTeams.get(matchIdStr);
-            
+
             // Skip the searched player itself
             if (playerName === searchedPlayerName) {
                 return;
             }
-            
+
             // For WITH: only include players from the same team in the same match
             if (relationshipType === 'WITH' && team !== searchedTeam) {
                 return;
             }
-            
+
             // For AGAINST: only include players from different team in the same match
             if (relationshipType === 'AGAINST' && team === searchedTeam) {
                 return;
             }
         }
-        
+
         // Track which team the player played for
         const isAhly = team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
         const isZamalek = team.toUpperCase().includes('ZAMALEK');
-        
+
         // Apply team filter at lineup level
         if (teamFilter === 'ahly' && !isAhly) {
             return;
@@ -3072,7 +3083,7 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter, searchedPlayerN
         if (teamFilter === 'zamalek' && !isZamalek) {
             return;
         }
-        
+
         if (playerName) {
             if (!playersMap.has(playerName)) {
                 playersMap.set(playerName, {
@@ -3090,24 +3101,24 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter, searchedPlayerN
                     matchIds: []
                 });
             }
-            
+
             const stats = playersMap.get(playerName);
             stats.matches++;
             stats.minutes += minutes;
             stats.matchIds.push(matchIdStr);
-            
+
             // Track which team the player played for
             if (isAhly) {
                 stats.teamAhly = true;
             } else if (isZamalek) {
                 stats.teamZamalek = true;
             }
-            
+
             // Find match result from FILTERED matches
             const match = filteredMatches.find(m => String(m.MATCH_ID) === matchIdStr);
             if (match) {
                 const result = match['W-D-L'];
-                
+
                 // If player was with Ahly
                 if (isAhly) {
                     if (result === 'W') stats.wins++;
@@ -3123,7 +3134,7 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter, searchedPlayerN
             }
         }
     });
-    
+
     // Aggregate goals and assists from filtered player details
     const filteredPlayerDetails = getFilteredPlayerDetails();
     if (filteredPlayerDetails && filteredPlayerDetails.length > 0) {
@@ -3142,17 +3153,17 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter, searchedPlayerN
             if (searchedPlayerName && relationshipType && searchedPlayerMatchTeams.has(matchIdStr)) {
                 const searchedTeam = searchedPlayerMatchTeams.get(matchIdStr);
                 const detailTeam = detail['TEAM'] || '';
-                
+
                 // Skip the searched player itself
                 if (playerName === searchedPlayerName) {
                     return;
                 }
-                
+
                 // For WITH: only include goals/assists from players from the same team in the same match
                 if (relationshipType === 'WITH' && detailTeam !== searchedTeam) {
                     return;
                 }
-                
+
                 // For AGAINST: only include goals/assists from players from different team in the same match
                 if (relationshipType === 'AGAINST' && detailTeam === searchedTeam) {
                     return;
@@ -3187,7 +3198,7 @@ function calculateH2HStatsFiltered(relevantMatchIds, teamFilter, searchedPlayerN
     playersMap.forEach(stats => {
         stats.gaTotal = stats.goals + stats.assists;
     });
-    
+
     return Array.from(playersMap.values());
 }
 
@@ -3205,13 +3216,13 @@ function clearH2HFilters() {
     currentH2HWithSearch = '';
     currentH2HAgainstSearch = '';
     clearH2HFileFilter(true);
-    
+
     // Reset dropdown filter
     const filterSelect = document.getElementById('h2h-filter');
     if (filterSelect) {
         filterSelect.value = 'all';
     }
-    
+
     // Reset WITH search dropdown
     const withSelect = document.getElementById('h2h-with-search');
     if (withSelect) {
@@ -3221,7 +3232,7 @@ function clearH2HFilters() {
             withInput.value = '';
         }
     }
-    
+
     // Reset AGAINST search dropdown
     const againstSelect = document.getElementById('h2h-against-search');
     if (againstSelect) {
@@ -3231,7 +3242,7 @@ function clearH2HFilters() {
             againstInput.value = '';
         }
     }
-    
+
     // Refresh table
     populateH2HTable();
 }
@@ -3240,13 +3251,13 @@ function clearH2HFilters() {
 function searchH2HWith() {
     const searchSelect = document.getElementById('h2h-with-search');
     currentH2HWithSearch = searchSelect.value || '';
-    
+
     // Clear the searchable input if dropdown is cleared
     const searchInput = searchSelect.parentElement.querySelector('.searchable-input');
     if (searchInput && !currentH2HWithSearch) {
         searchInput.value = '';
     }
-    
+
     populateH2HTable();
 }
 
@@ -3254,13 +3265,13 @@ function searchH2HWith() {
 function searchH2HAgainst() {
     const searchSelect = document.getElementById('h2h-against-search');
     currentH2HAgainstSearch = searchSelect.value || '';
-    
+
     // Clear the searchable input if dropdown is cleared
     const searchInput = searchSelect.parentElement.querySelector('.searchable-input');
     if (searchInput && !currentH2HAgainstSearch) {
         searchInput.value = '';
     }
-    
+
     populateH2HTable();
 }
 
@@ -3286,21 +3297,21 @@ async function handleH2HFileUpload(event) {
     if (!file) {
         return;
     }
-    
+
     try {
         const text = await file.text();
         const playerNames = text
             .split(/\r?\n/)
             .map(name => name.trim())
             .filter(name => name.length > 0);
-        
+
         if (playerNames.length === 0) {
             currentH2HFileFilter = null;
             updateH2HFileStatus('No valid player names found in file');
             populateH2HTable();
             return;
         }
-        
+
         currentH2HFileFilter = new Set(playerNames.map(name => name.toLowerCase()));
         updateH2HFileStatus(`Loaded ${currentH2HFileFilter.size} players from ${file.name}`);
         populateH2HTable();
@@ -3321,7 +3332,7 @@ function clearH2HFileFilter(suppressRefresh = false) {
         fileInput.value = '';
     }
     updateH2HFileStatus('No list loaded');
-    
+
     if (!suppressRefresh) {
         populateH2HTable();
     }
@@ -3341,14 +3352,14 @@ function sortH2HTable(column) {
 // Get players who played WITH the searched player
 function getTeammates(searchedPlayerName) {
     if (!searchedPlayerName || searchedPlayerName.trim() === '') return new Set();
-    
+
     // Use FILTERED lineups based on main filters
     const filteredLineupAhly = getFilteredLineupAhly();
     const filteredLineupZamalek = getFilteredLineupZamalek();
     const allLineups = [...filteredLineupAhly, ...filteredLineupZamalek];
-    
+
     const searchedPlayerMatches = new Map(); // matchId -> team
-    
+
     // Find all matches for searched player and their team (exact match)
     allLineups.forEach(lineup => {
         const playerName = lineup['PLAYER NAME'];
@@ -3358,14 +3369,14 @@ function getTeammates(searchedPlayerName) {
             searchedPlayerMatches.set(matchId, team);
         }
     });
-    
+
     // Find teammates (same team, same match)
     const teammates = new Set();
     allLineups.forEach(lineup => {
         const playerName = lineup['PLAYER NAME'];
         const matchId = lineup['MATCH_ID'];
         const team = lineup['TEAM'] || '';
-        
+
         if (playerName && searchedPlayerMatches.has(matchId)) {
             const searchedTeam = searchedPlayerMatches.get(matchId);
             // Same team = teammate
@@ -3374,21 +3385,21 @@ function getTeammates(searchedPlayerName) {
             }
         }
     });
-    
+
     return teammates;
 }
 
 // Get players who played AGAINST the searched player
 function getOpponents(searchedPlayerName) {
     if (!searchedPlayerName || searchedPlayerName.trim() === '') return new Set();
-    
+
     // Use FILTERED lineups based on main filters
     const filteredLineupAhly = getFilteredLineupAhly();
     const filteredLineupZamalek = getFilteredLineupZamalek();
     const allLineups = [...filteredLineupAhly, ...filteredLineupZamalek];
-    
+
     const searchedPlayerMatches = new Map(); // matchId -> team
-    
+
     // Find all matches for searched player and their team (exact match)
     allLineups.forEach(lineup => {
         const playerName = lineup['PLAYER NAME'];
@@ -3398,14 +3409,14 @@ function getOpponents(searchedPlayerName) {
             searchedPlayerMatches.set(matchId, team);
         }
     });
-    
+
     // Find opponents (different team, same match)
     const opponents = new Set();
     allLineups.forEach(lineup => {
         const playerName = lineup['PLAYER NAME'];
         const matchId = lineup['MATCH_ID'];
         const team = lineup['TEAM'] || '';
-        
+
         if (playerName && searchedPlayerMatches.has(matchId)) {
             const searchedTeam = searchedPlayerMatches.get(matchId);
             // Different team = opponent
@@ -3414,26 +3425,26 @@ function getOpponents(searchedPlayerName) {
             }
         }
     });
-    
+
     return opponents;
 }
 
 // Populate H2H table
 function populateH2HTable() {
     const tbody = document.querySelector('#zamalek-h2h-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ H2H table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     // Get match IDs based on filters (empty Set = all matches)
     let relevantMatchIds = new Set();
     let searchedPlayerName = null;
     let relationshipType = null;
-    
+
     // If WITH search is active, get only matches where searched player played
     if (currentH2HWithSearch && currentH2HWithSearch.trim() !== '') {
         searchedPlayerName = currentH2HWithSearch;
@@ -3449,7 +3460,7 @@ function populateH2HTable() {
             }
         });
     }
-    
+
     // If AGAINST search is active, get only matches where searched player played
     if (currentH2HAgainstSearch && currentH2HAgainstSearch.trim() !== '') {
         searchedPlayerName = currentH2HAgainstSearch;
@@ -3465,30 +3476,30 @@ function populateH2HTable() {
             }
         });
     }
-    
+
     // Calculate stats with filtered match IDs, team filter, searched player, and relationship type
     // This will now only calculate stats for players who played WITH or AGAINST the searched player
     let h2hStats = calculateH2HStatsFiltered(relevantMatchIds, currentH2HFilter, searchedPlayerName, relationshipType);
-    
+
     if (h2hStats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         updateTotalsH2H([], true);
         return;
     }
-    
+
     // Apply uploaded file filter (exact match, case-insensitive)
     if (currentH2HFileFilter && currentH2HFileFilter.size > 0) {
         h2hStats = h2hStats.filter(stat => currentH2HFileFilter.has((stat.playerName || '').toLowerCase()));
     }
-    
+
     // Filter out players with no stats (after all filtering)
     h2hStats = h2hStats.filter(stat => stat.matches > 0);
-    
+
     // Sort based on current sort settings
     h2hStats.sort((a, b) => {
         let aVal = a[currentH2HSort.column];
         let bVal = b[currentH2HSort.column];
-        
+
         if (currentH2HSort.column === 'playerName') {
             aVal = (aVal || '').toLowerCase();
             bVal = (bVal || '').toLowerCase();
@@ -3498,19 +3509,19 @@ function populateH2HTable() {
                 return bVal.localeCompare(aVal);
             }
         }
-        
+
         if (currentH2HSort.direction === 'asc') {
             return aVal - bVal;
         } else {
             return bVal - aVal;
         }
     });
-    
+
     // Update sort indicators
     document.querySelectorAll('#zamalek-h2h-table thead th').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     const columnMap = {
         'playerName': 0,
         'matches': 1,
@@ -3522,7 +3533,7 @@ function populateH2HTable() {
         'goals': 7,
         'assists': 8
     };
-    
+
     const columnIndex = columnMap[currentH2HSort.column];
     if (columnIndex !== undefined) {
         const th = document.querySelector(`#zamalek-h2h-table thead th:nth-child(${columnIndex + 1})`);
@@ -3530,10 +3541,10 @@ function populateH2HTable() {
             th.classList.add(currentH2HSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
         }
     }
-    
+
     h2hStats.forEach(stat => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td>${stat.playerName}</td>
             <td>${stat.matches}</td>
@@ -3545,10 +3556,10 @@ function populateH2HTable() {
             <td>${stat.goals}</td>
             <td>${stat.assists}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     updateTotalsH2H(h2hStats, false);
 }
 
@@ -3565,7 +3576,7 @@ function updateTotalsH2H(stats, isEmpty) {
         document.getElementById('total-h2h-assists').textContent = '0';
         return;
     }
-    
+
     const totals = stats.reduce((acc, stat) => {
         acc.matches += stat.matches;
         acc.minutes += stat.minutes;
@@ -3577,7 +3588,7 @@ function updateTotalsH2H(stats, isEmpty) {
         acc.assists += stat.assists;
         return acc;
     }, { matches: 0, minutes: 0, wins: 0, draws: 0, losses: 0, ga: 0, goals: 0, assists: 0 });
-    
+
     document.getElementById('total-h2h-matches').textContent = totals.matches;
     document.getElementById('total-h2h-minutes').textContent = totals.minutes;
     document.getElementById('total-h2h-wins').textContent = totals.wins;
@@ -3592,26 +3603,26 @@ function updateTotalsH2H(stats, isEmpty) {
 function populateH2HPlayersList() {
     const withSelect = document.getElementById('h2h-with-search');
     const againstSelect = document.getElementById('h2h-against-search');
-    
+
     if (!withSelect || !againstSelect) {
         console.error('❌ H2H player selects not found!');
         return;
     }
-    
+
     // Get unique player names from lineups
     const playerNames = new Set();
     const allLineups = [...zamalekLineupAhly, ...zamalekLineupZamalek];
-    
+
     allLineups.forEach(lineup => {
         const playerName = lineup['PLAYER NAME'];
         if (playerName) {
             playerNames.add(playerName);
         }
     });
-    
+
     // Sort player names alphabetically
     const sortedNames = Array.from(playerNames).sort((a, b) => a.localeCompare(b));
-    
+
     // Populate WITH select
     withSelect.innerHTML = '<option value="">Search players WITH...</option>';
     sortedNames.forEach(name => {
@@ -3620,7 +3631,7 @@ function populateH2HPlayersList() {
         option.textContent = name;
         withSelect.appendChild(option);
     });
-    
+
     // Populate AGAINST select
     againstSelect.innerHTML = '<option value="">Search players AGAINST...</option>';
     sortedNames.forEach(name => {
@@ -3629,26 +3640,26 @@ function populateH2HPlayersList() {
         option.textContent = name;
         againstSelect.appendChild(option);
     });
-    
+
     // Make both selects searchable
     makeSelectSearchable(withSelect);
     makeSelectSearchable(againstSelect);
-    
+
     console.log(`✅ Populated ${sortedNames.length} player names for H2H searchable dropdowns`);
 }
 
 // Populate BY Player dropdown list
 function populateByPlayerList() {
     const playerSelect = document.getElementById('by-player-search');
-    
+
     if (!playerSelect) {
         console.error('❌ BY player search select not found!');
         return;
     }
-    
+
     // Get unique player names from player database
     const playerNames = new Set();
-    
+
     if (zamalekPlayerDatabase && zamalekPlayerDatabase.length > 0) {
         zamalekPlayerDatabase.forEach(player => {
             const playerName = player['PLAYER NAME'];
@@ -3657,10 +3668,10 @@ function populateByPlayerList() {
             }
         });
     }
-    
+
     // Sort player names alphabetically
     const sortedNames = Array.from(playerNames).sort((a, b) => a.localeCompare(b));
-    
+
     // Populate select
     playerSelect.innerHTML = '<option value="">Search for a player...</option>';
     sortedNames.forEach(name => {
@@ -3669,10 +3680,10 @@ function populateByPlayerList() {
         option.textContent = name;
         playerSelect.appendChild(option);
     });
-    
+
     // Make select searchable
     makeSelectSearchable(playerSelect);
-    
+
     // Fix width for BY Player search container
     setTimeout(() => {
         const container = playerSelect.closest('.searchable-select-container');
@@ -3682,7 +3693,7 @@ function populateByPlayerList() {
             container.style.display = 'inline-block';
         }
     }, 100);
-    
+
     console.log(`✅ Populated ${sortedNames.length} player names for BY Player dropdown`);
 }
 
@@ -3690,22 +3701,22 @@ function populateByPlayerList() {
 function selectByPlayer() {
     const playerSelect = document.getElementById('by-player-search');
     currentByPlayer = playerSelect.value || '';
-    
+
     console.log('🎯 selectByPlayer called, selected:', currentByPlayer);
     console.log('📊 Available data - LineupAhly:', zamalekLineupAhly?.length, 'LineupZamalek:', zamalekLineupZamalek?.length);
     console.log('📊 Available data - Matches:', zamalekMatchesData?.length, 'PlayerDetails:', zamalekPlayerDetails?.length);
-    
+
     if (!currentByPlayer) {
         // Hide content, show "no selection" message
         document.getElementById('by-player-content').style.display = 'none';
         document.getElementById('by-player-no-selection').style.display = 'block';
         return;
     }
-    
+
     // Show content, hide "no selection" message
     document.getElementById('by-player-content').style.display = 'block';
     document.getElementById('by-player-no-selection').style.display = 'none';
-    
+
     // Update player stats
     updateByPlayerStats();
     populateByPlayerMatches();
@@ -3717,7 +3728,7 @@ function selectByPlayer() {
 function filterByPlayer() {
     const filterSelect = document.getElementById('by-player-filter');
     currentByPlayerFilter = filterSelect.value;
-    
+
     if (currentByPlayer) {
         updateByPlayerStats();
         populateByPlayerMatches();
@@ -3747,44 +3758,44 @@ function calculateByPlayerStats(playerName, teamFilter) {
         penAssistMisses: 0,
         penMisses: 0
     };
-    
+
     if (!playerName) return stats;
-    
+
     // Use FILTERED lineups and matches based on main filters
     const filteredLineupAhly = getFilteredLineupAhly();
     const filteredLineupZamalek = getFilteredLineupZamalek();
     const allLineups = [...filteredLineupAhly, ...filteredLineupZamalek];
     const filteredMatches = getFilteredMatches();
-    
+
     // Track goals and assists per match
     const goalsPerMatch = new Map();
     const assistsPerMatch = new Map();
-    
+
     // Count matches and minutes from lineups
     allLineups.forEach(lineup => {
         const name = lineup['PLAYER NAME'];
         if (name !== playerName) return;
-        
+
         const matchId = lineup['MATCH_ID'];
         const minutes = parseInt(lineup['MINTOTAL']) || 0;
         const team = lineup['TEAM'] || '';
-        
+
         // Determine team
         const isAhly = team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
         const isZamalek = team.toUpperCase().includes('ZAMALEK');
-        
+
         // Apply team filter
         if (teamFilter === 'ahly' && !isAhly) return;
         if (teamFilter === 'zamalek' && !isZamalek) return;
-        
+
         stats.matches++;
         stats.minutes += minutes;
-        
+
         // Find match result from FILTERED matches
         const match = filteredMatches.find(m => m.MATCH_ID === matchId);
         if (match) {
             const result = match['W-D-L'];
-            
+
             // If player was with Ahly
             if (isAhly) {
                 if (result === 'W') stats.wins++;
@@ -3799,100 +3810,100 @@ function calculateByPlayerStats(playerName, teamFilter) {
             }
         }
     });
-    
+
     // Count goals and assists from FILTERED player details
     const filteredPlayerDetails = getFilteredPlayerDetails();
     if (filteredPlayerDetails && filteredPlayerDetails.length > 0) {
         filteredPlayerDetails.forEach(detail => {
             const name = detail['PLAYER NAME'];
             if (name !== playerName) return;
-            
+
             const matchId = detail['MATCH_ID'];
             const ga = detail['GA'];
             const type = detail['TYPE'];
             const team = detail['TEAM'] || '';
-            
+
             // Determine team
             const isAhly = team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
             const isZamalek = team.toUpperCase().includes('ZAMALEK');
-            
+
             // Apply team filter
             if (teamFilter === 'ahly' && !isAhly) return;
             if (teamFilter === 'zamalek' && !isZamalek) return;
-            
+
             // Count goals
             if (ga === 'GOAL') {
                 stats.goals++;
-                
+
                 const key = `${matchId}`;
                 if (!goalsPerMatch.has(key)) {
                     goalsPerMatch.set(key, 0);
                 }
                 goalsPerMatch.set(key, goalsPerMatch.get(key) + 1);
             }
-            
+
             // Count assists
             if (ga === 'ASSIST') {
                 stats.assists++;
-                
+
                 const key = `${matchId}`;
                 if (!assistsPerMatch.has(key)) {
                     assistsPerMatch.set(key, 0);
                 }
                 assistsPerMatch.set(key, assistsPerMatch.get(key) + 1);
             }
-            
+
             // Count penalty goals
             if (type === 'PENGOAL') {
                 stats.penGoals++;
             }
-            
+
             // Count penalty make goals
             if (ga === 'PENMAKEGOAL') {
                 stats.penMakeGoals++;
             }
-            
+
             // Count penalty assist goals
             if (ga === 'PENASSISTGOAL') {
                 stats.penAssistGoals++;
             }
-            
+
             // Count penalty assist misses
             if (ga === 'PENASSISTMISSED') {
                 stats.penAssistMisses++;
             }
-            
+
             // Count penalty misses
             if (ga === 'PENMISSED') {
                 stats.penMisses++;
             }
         });
-        
+
         // Calculate multi-goal/assist stats
         goalsPerMatch.forEach(goalCount => {
             if (goalCount === 2) stats.twoGoals++;
             else if (goalCount === 3) stats.threeGoals++;
             else if (goalCount >= 4) stats.fourPlusGoals++;
         });
-        
+
         assistsPerMatch.forEach(assistCount => {
             if (assistCount === 2) stats.twoAssists++;
             else if (assistCount >= 3) stats.threePlusAssists++;
         });
     }
-    
+
     return stats;
 }
 
 // Update BY Player overview stats
 function updateByPlayerStats() {
     if (!currentByPlayer) return;
-    
+
     const stats = calculateByPlayerStats(currentByPlayer, currentByPlayerFilter);
-    
+
     // Update player name in title
     document.getElementById('by-player-name').textContent = `${currentByPlayer} Statistics`;
-    
+
     // Update stats cards
     document.getElementById('by-player-matches').textContent = stats.matches;
     document.getElementById('by-player-minutes').textContent = stats.minutes;
@@ -3916,46 +3927,46 @@ function updateByPlayerStats() {
 // Populate BY Player matches table
 function populateByPlayerMatches() {
     const tbody = document.querySelector('#by-player-matches-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ BY player matches table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     if (!currentByPlayer) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">Please select a player</td></tr>';
         return;
     }
-    
+
     console.log('🔍 Populating matches for player:', currentByPlayer, 'with filter:', currentByPlayerFilter);
-    
+
     // Use FILTERED lineups and matches based on main filters
     const filteredLineupAhly = getFilteredLineupAhly();
     const filteredLineupZamalek = getFilteredLineupZamalek();
     const allLineups = [...filteredLineupAhly, ...filteredLineupZamalek];
     const filteredMatches = getFilteredMatches();
     const playerMatches = [];
-    
+
     console.log('📊 Total FILTERED lineups:', allLineups.length);
     console.log('📊 Total FILTERED matches data:', filteredMatches.length);
-    
+
     // Get all matches where player participated
     allLineups.forEach(lineup => {
         const name = lineup['PLAYER NAME'];
         if (name !== currentByPlayer) return;
-        
+
         const matchId = lineup['MATCH_ID'];
         const minutes = parseInt(lineup['MINTOTAL']) || 0;
         const team = lineup['TEAM'] || '';
-        
+
         console.log('✅ Found lineup for player:', name, 'Match ID:', matchId, 'Team:', team, 'Minutes:', minutes);
-        
+
         // Determine team
         const isAhly = team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
         const isZamalek = team.toUpperCase().includes('ZAMALEK');
-        
+
         // Apply team filter
         if (currentByPlayerFilter === 'ahly' && !isAhly) {
             console.log('⏭️ Skipping - not Ahly match');
@@ -3965,20 +3976,20 @@ function populateByPlayerMatches() {
             console.log('⏭️ Skipping - not Zamalek match');
             return;
         }
-        
+
         // Find match details from FILTERED matches (compare as strings to handle type differences)
         const match = filteredMatches.find(m => String(m.MATCH_ID) === String(matchId));
         if (!match) {
             console.log('❌ Match not found for ID:', matchId);
             return;
         }
-        
+
         console.log('✅ Match found:', match['DATE'], match['SEASON']);
-        
+
         // Count goals and assists for this match from FILTERED player details
         let goals = 0;
         let assists = 0;
-        
+
         const filteredPlayerDetails = getFilteredPlayerDetails();
         if (filteredPlayerDetails && filteredPlayerDetails.length > 0) {
             filteredPlayerDetails.forEach(detail => {
@@ -3990,9 +4001,9 @@ function populateByPlayerMatches() {
                 }
             });
         }
-        
+
         console.log('⚽ Goals:', goals, 'Assists:', assists, 'for match', matchId);
-        
+
         // Get result based on which team the player was on
         let result = match['W-D-L'];
         if (isZamalek) {
@@ -4000,7 +4011,7 @@ function populateByPlayerMatches() {
             if (result === 'W') result = 'L';
             else if (result === 'L') result = 'W';
         }
-        
+
         let myTeam = '-';
         if (isAhly) {
             myTeam = 'Al Ahly';
@@ -4009,7 +4020,7 @@ function populateByPlayerMatches() {
         } else if (team) {
             myTeam = team;
         }
-        
+
         playerMatches.push({
             date: match['DATE'],
             season: match['SEASON'],
@@ -4021,29 +4032,29 @@ function populateByPlayerMatches() {
             assists: assists
         });
     });
-    
+
     console.log('📋 Total player matches found:', playerMatches.length);
-    
+
     // Sort by date (newest first)
     playerMatches.sort((a, b) => {
         const dateA = new Date(a.date.split('/').reverse().join('-'));
         const dateB = new Date(b.date.split('/').reverse().join('-'));
         return dateB - dateA;
     });
-    
+
     // Populate table
     if (playerMatches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found for this player</td></tr>';
         console.log('❌ No matches to display');
         return;
     }
-    
+
     playerMatches.forEach(match => {
         const row = document.createElement('tr');
-        
+
         const goalClass = match.goals > 0 ? ' by-player-goal' : '';
         const assistClass = match.assists > 0 ? ' by-player-assist' : '';
-        
+
         row.innerHTML = `
             <td>${match.date}</td>
             <td>${match.season}</td>
@@ -4054,10 +4065,10 @@ function populateByPlayerMatches() {
             <td><span class="by-player-number${goalClass}">${match.goals}</span></td>
             <td><span class="by-player-number${assistClass}">${match.assists}</span></td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     console.log('✅ Successfully populated', playerMatches.length, 'matches in table');
 }
 
@@ -4075,12 +4086,12 @@ function sortSeasons(a, b) {
     // Extract prefix (text before the year)
     const prefixA = a.season.replace(/\d{4}\/\d{2}/, '').trim();
     const prefixB = b.season.replace(/\d{4}\/\d{2}/, '').trim();
-    
+
     // If prefixes are different, sort alphabetically
     if (prefixA !== prefixB) {
         return prefixA.localeCompare(prefixB);
     }
-    
+
     // If same prefix, sort by year (newest first)
     const yearA = extractSeasonYear(a.season);
     const yearB = extractSeasonYear(b.season);
@@ -4091,17 +4102,17 @@ function sortSeasons(a, b) {
 function populateByPlayerSeasons() {
     const tbody = document.querySelector('#by-player-seasons-table tbody');
     if (!tbody) return;
-    
+
     if (!currentByPlayer) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #6c757d;">Please select a player</td></tr>';
         updateTotalsByPlayerSeasons([], true);
         return;
     }
-    
+
     console.log('📅 Populating seasons for player:', currentByPlayer);
-    
+
     const seasonsMap = new Map();
-    
+
     // First, collect matches and minutes ONLY from FILTERED LINEUPAHLY and LINEUPZAMALEK
     const filteredLineupAhly = getFilteredLineupAhly();
     const filteredLineupZamalek = getFilteredLineupZamalek();
@@ -4110,25 +4121,25 @@ function populateByPlayerSeasons() {
     allLineups.forEach(lineup => {
         const name = lineup['PLAYER NAME'];
         if (name !== currentByPlayer) return;
-        
+
         const matchId = lineup['MATCH_ID'];
         const minutes = parseInt(lineup['MINTOTAL']) || 0;
         const team = lineup['TEAM'] || '';
-        
+
         // Determine team
         const isAhly = team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
         const isZamalek = team.toUpperCase().includes('ZAMALEK');
-        
+
         // Apply team filter
         if (currentByPlayerFilter === 'ahly' && !isAhly) return;
         if (currentByPlayerFilter === 'zamalek' && !isZamalek) return;
-        
+
         // Find match details from FILTERED matches
         const match = filteredMatches.find(m => String(m.MATCH_ID) === String(matchId));
         if (!match) return;
-        
+
         const season = match['SEASON'] || 'Unknown';
-        
+
         // Initialize season stats if not exists
         if (!seasonsMap.has(season)) {
             seasonsMap.set(season, {
@@ -4139,40 +4150,40 @@ function populateByPlayerSeasons() {
                 assists: 0
             });
         }
-        
+
         const seasonStats = seasonsMap.get(season);
         seasonStats.matchIds.add(String(matchId));
         seasonStats.minutes += minutes;
     });
-    
+
     // Now add goals and assists from FILTERED PLAYERDETAILS (even if not in lineup)
     const filteredPlayerDetails = getFilteredPlayerDetails();
     if (filteredPlayerDetails && filteredPlayerDetails.length > 0) {
         filteredPlayerDetails.forEach(detail => {
             const name = detail['PLAYER NAME'];
             if (name !== currentByPlayer) return;
-            
+
             const matchId = String(detail['MATCH_ID']);
             const ga = detail['GA'];
             const team = detail['TEAM'] || '';
-            
+
             // Determine team
             const isAhly = team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
             const isZamalek = team.toUpperCase().includes('ZAMALEK');
-            
+
             // Apply team filter
             if (currentByPlayerFilter === 'ahly' && !isAhly) return;
             if (currentByPlayerFilter === 'zamalek' && !isZamalek) return;
-            
+
             // Only count goals and assists
             if (ga !== 'GOAL' && ga !== 'ASSIST') return;
-            
+
             // Find match details from FILTERED matches
             const match = filteredMatches.find(m => String(m.MATCH_ID) === matchId);
             if (!match) return;
-            
+
             const season = match['SEASON'] || 'Unknown';
-            
+
             // Add goals/assists (create season if doesn't exist)
             if (!seasonsMap.has(season)) {
                 seasonsMap.set(season, {
@@ -4183,35 +4194,35 @@ function populateByPlayerSeasons() {
                     assists: 0
                 });
             }
-            
+
             const seasonStats = seasonsMap.get(season);
             if (ga === 'GOAL') seasonStats.goals++;
             if (ga === 'ASSIST') seasonStats.assists++;
         });
     }
-    
+
     // Calculate matches count from matchIds Set
     seasonsMap.forEach(season => {
         season.matches = season.matchIds.size;
         delete season.matchIds; // Remove matchIds as we don't need it anymore
     });
-    
+
     // Convert map to array and calculate G+A
     const seasonsArray = Array.from(seasonsMap.values());
     seasonsArray.forEach(season => {
         season.ga = season.goals + season.assists;
     });
-    
+
     // Sort by season (newest first, with alphabetical prefix sorting)
     seasonsArray.sort(sortSeasons);
-    
+
     // Populate table
     if (seasonsArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #6c757d;">No data available</td></tr>';
         updateTotalsByPlayerSeasons([], true);
         return;
     }
-    
+
     tbody.innerHTML = '';
     seasonsArray.forEach(season => {
         const row = document.createElement('tr');
@@ -4225,7 +4236,7 @@ function populateByPlayerSeasons() {
         `;
         tbody.appendChild(row);
     });
-    
+
     updateTotalsByPlayerSeasons(seasonsArray);
     console.log('✅ Seasons table populated with', seasonsArray.length, 'seasons');
 }
@@ -4240,7 +4251,7 @@ function updateTotalsByPlayerSeasons(seasons, clear = false) {
         document.getElementById('total-season-assists').textContent = '0';
         return;
     }
-    
+
     const totals = seasons.reduce((acc, season) => {
         acc.matches += season.matches;
         acc.minutes += season.minutes;
@@ -4248,10 +4259,10 @@ function updateTotalsByPlayerSeasons(seasons, clear = false) {
         acc.assists += season.assists;
         return acc;
     }, { matches: 0, minutes: 0, goals: 0, assists: 0 });
-    
+
     // Calculate G+A
     totals.ga = totals.goals + totals.assists;
-    
+
     document.getElementById('total-season-matches').textContent = totals.matches;
     document.getElementById('total-season-minutes').textContent = totals.minutes;
     document.getElementById('total-season-ga').textContent = totals.ga;
@@ -4262,24 +4273,24 @@ function updateTotalsByPlayerSeasons(seasons, clear = false) {
 // Populate BY Player championships table
 function populateByPlayerChampionships() {
     const tbody = document.querySelector('#by-player-championships-table tbody');
-    
+
     if (!tbody) {
         console.error('❌ BY player championships table tbody not found!');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     if (!currentByPlayer) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #6c757d;">Please select a player</td></tr>';
         updateTotalsByPlayerChampionships([], true);
         return;
     }
-    
+
     console.log('🏆 Populating championships for player:', currentByPlayer);
-    
+
     const championshipsMap = new Map();
-    
+
     // First, collect matches and minutes ONLY from FILTERED LINEUPAHLY and LINEUPZAMALEK
     const filteredLineupAhly = getFilteredLineupAhly();
     const filteredLineupZamalek = getFilteredLineupZamalek();
@@ -4288,25 +4299,25 @@ function populateByPlayerChampionships() {
     allLineups.forEach(lineup => {
         const name = lineup['PLAYER NAME'];
         if (name !== currentByPlayer) return;
-        
+
         const matchId = lineup['MATCH_ID'];
         const minutes = parseInt(lineup['MINTOTAL']) || 0;
         const team = lineup['TEAM'] || '';
-        
+
         // Determine team
         const isAhly = team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
         const isZamalek = team.toUpperCase().includes('ZAMALEK');
-        
+
         // Apply team filter
         if (currentByPlayerFilter === 'ahly' && !isAhly) return;
         if (currentByPlayerFilter === 'zamalek' && !isZamalek) return;
-        
+
         // Find match details from FILTERED matches
         const match = filteredMatches.find(m => String(m.MATCH_ID) === String(matchId));
         if (!match) return;
-        
+
         const championship = match['CHAMPION'] || 'Unknown';
-        
+
         // Initialize championship stats if not exists
         if (!championshipsMap.has(championship)) {
             championshipsMap.set(championship, {
@@ -4317,40 +4328,40 @@ function populateByPlayerChampionships() {
                 assists: 0
             });
         }
-        
+
         const champStats = championshipsMap.get(championship);
         champStats.matchIds.add(String(matchId));
         champStats.minutes += minutes;
     });
-    
+
     // Now add goals and assists from FILTERED PLAYERDETAILS (even if not in lineup)
     const filteredPlayerDetails = getFilteredPlayerDetails();
     if (filteredPlayerDetails && filteredPlayerDetails.length > 0) {
         filteredPlayerDetails.forEach(detail => {
             const name = detail['PLAYER NAME'];
             if (name !== currentByPlayer) return;
-            
+
             const matchId = String(detail['MATCH_ID']);
             const ga = detail['GA'];
             const team = detail['TEAM'] || '';
-            
+
             // Determine team
             const isAhly = team.toUpperCase().includes('AHLY') || team.toUpperCase().includes('الأهلي');
             const isZamalek = team.toUpperCase().includes('ZAMALEK');
-            
+
             // Apply team filter
             if (currentByPlayerFilter === 'ahly' && !isAhly) return;
             if (currentByPlayerFilter === 'zamalek' && !isZamalek) return;
-            
+
             // Only count goals and assists
             if (ga !== 'GOAL' && ga !== 'ASSIST') return;
-            
+
             // Find match details from FILTERED matches
             const match = filteredMatches.find(m => String(m.MATCH_ID) === matchId);
             if (!match) return;
-            
+
             const championship = match['CHAMPION'] || 'Unknown';
-            
+
             // Add goals/assists (create championship if doesn't exist)
             if (!championshipsMap.has(championship)) {
                 championshipsMap.set(championship, {
@@ -4361,40 +4372,40 @@ function populateByPlayerChampionships() {
                     assists: 0
                 });
             }
-            
+
             const champStats = championshipsMap.get(championship);
             if (ga === 'GOAL') champStats.goals++;
             if (ga === 'ASSIST') champStats.assists++;
         });
     }
-    
+
     // Calculate matches count from matchIds Set
     championshipsMap.forEach(champ => {
         champ.matches = champ.matchIds.size;
         delete champ.matchIds; // Remove matchIds as we don't need it anymore
     });
-    
+
     // Convert map to array and calculate G+A
     const championshipsArray = Array.from(championshipsMap.values());
     championshipsArray.forEach(champ => {
         champ.ga = champ.goals + champ.assists;
     });
-    
+
     // Sort by G+A (descending)
     championshipsArray.sort((a, b) => b.ga - a.ga);
-    
+
     console.log('🏆 Total championships found:', championshipsArray.length);
-    
+
     if (championshipsArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #6c757d;">No championships found for this player</td></tr>';
         updateTotalsByPlayerChampionships([], true);
         return;
     }
-    
+
     // Populate table
     championshipsArray.forEach(champ => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td>${champ.championship}</td>
             <td>${champ.matches}</td>
@@ -4403,13 +4414,13 @@ function populateByPlayerChampionships() {
             <td>${champ.goals}</td>
             <td>${champ.assists}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     // Update totals
     updateTotalsByPlayerChampionships(championshipsArray, false);
-    
+
     console.log('✅ Successfully populated', championshipsArray.length, 'championships in table');
 }
 
@@ -4423,7 +4434,7 @@ function updateTotalsByPlayerChampionships(championships, isEmpty) {
         document.getElementById('total-champ-assists').textContent = '0';
         return;
     }
-    
+
     const totals = championships.reduce((acc, champ) => {
         acc.matches += champ.matches;
         acc.minutes += champ.minutes;
@@ -4431,10 +4442,10 @@ function updateTotalsByPlayerChampionships(championships, isEmpty) {
         acc.assists += champ.assists;
         return acc;
     }, { matches: 0, minutes: 0, goals: 0, assists: 0 });
-    
+
     // Calculate G+A
     totals.ga = totals.goals + totals.assists;
-    
+
     document.getElementById('total-champ-matches').textContent = totals.matches;
     document.getElementById('total-champ-minutes').textContent = totals.minutes;
     document.getElementById('total-champ-ga').textContent = totals.ga;
@@ -4448,101 +4459,101 @@ function updateTotalsByPlayerChampionships(championships, isEmpty) {
 
 // Normalize date to DD/MM/YYYY string (supports Excel serials and d/m/yyyy or d-m-yyyy)
 function normalizeZToDMY(value) {
-	const pad2 = n => String(n).padStart(2, '0');
-	if (value === null || value === undefined) return '';
-	const raw = String(value).trim();
-	if (!raw) return '';
+    const pad2 = n => String(n).padStart(2, '0');
+    if (value === null || value === undefined) return '';
+    const raw = String(value).trim();
+    if (!raw) return '';
 
-	// Excel serial
-	const num = parseFloat(raw);
-	if (!isNaN(num) && num > 100) {
-		const adjusted = num > 60 ? num - 1 : num;
-		const excelEpoch = new Date(1899, 11, 30);
-		const dt = new Date(excelEpoch.getTime() + adjusted * 86400 * 1000);
-		if (!isNaN(dt.getTime())) {
-			return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
-		}
-	}
+    // Excel serial
+    const num = parseFloat(raw);
+    if (!isNaN(num) && num > 100) {
+        const adjusted = num > 60 ? num - 1 : num;
+        const excelEpoch = new Date(1899, 11, 30);
+        const dt = new Date(excelEpoch.getTime() + adjusted * 86400 * 1000);
+        if (!isNaN(dt.getTime())) {
+            return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+        }
+    }
 
-	// D/M/Y or D-M-Y
-	let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-	if (m) {
-		const d = parseInt(m[1], 10), mo = parseInt(m[2], 10), y = parseInt(m[3], 10);
-		if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && y >= 1900) {
-			return `${pad2(d)}/${pad2(mo)}/${y}`;
-		}
-	}
+    // D/M/Y or D-M-Y
+    let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) {
+        const d = parseInt(m[1], 10), mo = parseInt(m[2], 10), y = parseInt(m[3], 10);
+        if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && y >= 1900) {
+            return `${pad2(d)}/${pad2(mo)}/${y}`;
+        }
+    }
 
-	// Try Date()
-	const dt = new Date(raw);
-	if (!isNaN(dt.getTime())) {
-		return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
-	}
-	return '';
+    // Try Date()
+    const dt = new Date(raw);
+    if (!isNaN(dt.getTime())) {
+        return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+    }
+    return '';
 }
 
 // Search for a match by ID
 function searchZamalekMatchById() {
     const searchInput = document.getElementById('zamalek-match-search-input');
     const matchId = searchInput.value.trim();
-    
+
     console.log('🔍 Searching for match ID:', matchId);
-    
+
     if (!matchId) {
         alert('Please enter a Match ID');
-		return false;
+        return false;
     }
-    
-    // Find match in data
-	let match = zamalekMatchesData.find(m => String(m.MATCH_ID) === String(matchId));
-    
-	// If not found by ID, try by Date (accepts DD/MM/YYYY or Excel serials)
-	if (!match) {
-		const looksLikeDate = /[\/\-]/.test(matchId) || /^\d{6,}$/.test(matchId);
-		if (looksLikeDate) {
-			const targetDMY = normalizeZToDMY(matchId);
-			if (targetDMY) {
-				match = zamalekMatchesData.find(m => normalizeZToDMY(m.DATE) === targetDMY);
-			}
-		}
-	}
 
-	if (!match) {
+    // Find match in data
+    let match = zamalekMatchesData.find(m => String(m.MATCH_ID) === String(matchId));
+
+    // If not found by ID, try by Date (accepts DD/MM/YYYY or Excel serials)
+    if (!match) {
+        const looksLikeDate = /[\/\-]/.test(matchId) || /^\d{6,}$/.test(matchId);
+        if (looksLikeDate) {
+            const targetDMY = normalizeZToDMY(matchId);
+            if (targetDMY) {
+                match = zamalekMatchesData.find(m => normalizeZToDMY(m.DATE) === targetDMY);
+            }
+        }
+    }
+
+    if (!match) {
         console.log('❌ No match found with ID:', matchId);
         document.getElementById('zamalek-match-details-container').style.display = 'none';
         document.getElementById('zamalek-no-match-found').style.display = 'block';
-		return false;
+        return false;
     }
-    
+
     console.log('✅ Match found:', match);
-    
+
     // Hide no results message
     document.getElementById('zamalek-no-match-found').style.display = 'none';
-    
+
     // Show match details
     displayZamalekMatchDetails(match);
-    
+
     // Show details container
     document.getElementById('zamalek-match-details-container').style.display = 'block';
 
-	// Cache last match id for potential future use (non-invasive; no tab overrides)
-	try { window.__lastZamalekMatchId = String(match.MATCH_ID); } catch (e) {}
-	return true;
+    // Cache last match id for potential future use (non-invasive; no tab overrides)
+    try { window.__lastZamalekMatchId = String(match.MATCH_ID); } catch (e) { }
+    return true;
 }
 
 // Display match details
 function displayZamalekMatchDetails(match) {
     console.log('📋 Displaying match details for:', match.MATCH_ID);
-    
+
     // Display match header
     displayZamalekMatchHeader(match);
-    
+
     // Display lineup (default tab)
     displayZamalekMatchLineup(match);
-    
+
     // Display goals
     displayZamalekMatchGoals(match);
-    
+
     // Display PKS data
     displayZamalekMatchPKS(match);
 }
@@ -4550,7 +4561,7 @@ function displayZamalekMatchDetails(match) {
 // Display match header
 function displayZamalekMatchHeader(match) {
     const headerContainer = document.getElementById('zamalek-match-header');
-    
+
     const date = match.DATE || '';
     const season = match.SEASON || '';
     const championship = match.CHAMPION || '';
@@ -4560,7 +4571,7 @@ function displayZamalekMatchHeader(match) {
     const ahlyScore = match.GF || 0;
     const zamalekScore = match.GA || 0;
     const penaltyResult = match.PEN || '';
-    
+
     headerContainer.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; gap: 3rem; margin-bottom: 1.5rem;">
             <div style="text-align: center; flex: 1;">
@@ -4593,28 +4604,28 @@ function displayZamalekMatchHeader(match) {
 function displayZamalekMatchLineup(match) {
     const matchId = String(match.MATCH_ID);
     const container = document.getElementById('zamalek-match-lineup-container');
-    
+
     console.log('👥 Displaying lineup for match:', matchId);
-    
+
     // Get lineups for this match
     const ahlyLineup = zamalekLineupAhly.filter(l => String(l.MATCH_ID) === matchId);
     const zamalekLineup = zamalekLineupZamalek.filter(l => String(l.MATCH_ID) === matchId);
-    
+
     console.log('Al Ahly lineup:', ahlyLineup.length, 'players');
     console.log('Zamalek lineup:', zamalekLineup.length, 'players');
-    
+
     // Get goals data for this match
-    const matchGoals = zamalekPlayerDetails.filter(detail => 
+    const matchGoals = zamalekPlayerDetails.filter(detail =>
         String(detail.MATCH_ID) === matchId && (detail.GA === 'GOAL' || detail.GA === 'ASSIST')
     );
-    
+
     if (ahlyLineup.length === 0 && zamalekLineup.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No lineup data available for this match</p>';
         return;
     }
-    
+
     let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">';
-    
+
     // Ahly Lineup
     html += `
         <div>
@@ -4632,17 +4643,17 @@ function displayZamalekMatchLineup(match) {
                     </thead>
                     <tbody>
     `;
-    
+
     if (ahlyLineup.length > 0) {
         ahlyLineup.forEach((player, index) => {
             const playerName = player['PLAYER NAME'] || 'Unknown';
             const minutes = player.MINTOTAL || player.MINMAT || 0;
             const playerOut = player.PLAYEROUT || player['PLAYER NAME OUT'] || '';
             const minOut = player.MINOUT || '';
-            
+
             const isSubFromStatus = typeof player.STATU === 'string' && player.STATU.toUpperCase().includes('SUB');
             const isSubstitute = isSubFromStatus || index >= 11;
-            
+
             let status = '';
             if (!isSubstitute) {
                 status = '<span class="badge badge-success">Starting XI</span>';
@@ -4652,34 +4663,34 @@ function displayZamalekMatchLineup(match) {
                     status += `<br><small style="color: #666;">(Replaced ${playerOut} at ${minOut}')</small>`;
                 }
             }
-            
+
             // Calculate goals and assists for this player
             const playerGoalRecords = matchGoals.filter(g => g['PLAYER NAME'] === playerName && g.GA === 'GOAL' && g.TEAM === 'AHLY');
             const playerAssistRecords = matchGoals.filter(g => g['PLAYER NAME'] === playerName && g.GA === 'ASSIST' && g.TEAM === 'AHLY');
-            
+
             const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
             const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
-            
-            const goalsDisplay = playerGoals > 0 ? 
-                `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
+
+            const goalsDisplay = playerGoals > 0 ?
+                `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` :
                 '<span style="color: #999;">-</span>';
-            
-            const assistsDisplay = playerAssists > 0 ? 
-                `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🎯</span>` : 
+
+            const assistsDisplay = playerAssists > 0 ?
+                `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🎯</span>` :
                 '<span style="color: #999;">-</span>';
-            
+
             let playerNameWithArrows = `<strong>${playerName}</strong>`;
-            
+
             const isGoalkeeper = index === 0;
             if (isGoalkeeper) {
                 playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
             }
-            
+
             const wasSubstitutedIn = index >= 11;
             if (wasSubstitutedIn) {
                 playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
             }
-            
+
             html += `
                 <tr>
                     <td>${playerNameWithArrows}</td>
@@ -4693,14 +4704,14 @@ function displayZamalekMatchLineup(match) {
     } else {
         html += '<tr><td colspan="5" style="text-align: center; color: #999;">No lineup</td></tr>';
     }
-    
+
     html += `
                     </tbody>
                 </table>
             </div>
         </div>
     `;
-    
+
     // Zamalek Lineup
     html += `
         <div>
@@ -4718,17 +4729,17 @@ function displayZamalekMatchLineup(match) {
                     </thead>
                     <tbody>
     `;
-    
+
     if (zamalekLineup.length > 0) {
         zamalekLineup.forEach((player, index) => {
             const playerName = player['PLAYER NAME'] || 'Unknown';
             const minutes = player.MINTOTAL || player.MINMAT || 0;
             const playerOut = player.PLAYEROUT || player['PLAYER NAME OUT'] || '';
             const minOut = player.MINOUT || '';
-            
+
             const isSubFromStatus = typeof player.STATU === 'string' && player.STATU.toUpperCase().includes('SUB');
             const isSubstitute = isSubFromStatus || index >= 11;
-            
+
             let status = '';
             if (!isSubstitute) {
                 status = '<span class="badge badge-success">Starting XI</span>';
@@ -4738,34 +4749,34 @@ function displayZamalekMatchLineup(match) {
                     status += `<br><small style=\"color: #666;\">(Replaced ${playerOut} at ${minOut}')` + `</small>`;
                 }
             }
-            
+
             // Calculate goals and assists for this player
             const playerGoalRecords = matchGoals.filter(g => g['PLAYER NAME'] === playerName && g.GA === 'GOAL' && g.TEAM === 'ZAMALEK');
             const playerAssistRecords = matchGoals.filter(g => g['PLAYER NAME'] === playerName && g.GA === 'ASSIST' && g.TEAM === 'ZAMALEK');
-            
+
             const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
             const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
-            
-            const goalsDisplay = playerGoals > 0 ? 
-                `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
+
+            const goalsDisplay = playerGoals > 0 ?
+                `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` :
                 '<span style="color: #999;">-</span>';
-            
-            const assistsDisplay = playerAssists > 0 ? 
-                `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🎯</span>` : 
+
+            const assistsDisplay = playerAssists > 0 ?
+                `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🎯</span>` :
                 '<span style="color: #999;">-</span>';
-            
+
             let playerNameWithArrows = `<strong>${playerName}</strong>`;
-            
+
             const isGoalkeeper = index === 0;
             if (isGoalkeeper) {
                 playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
             }
-            
+
             const wasSubstitutedIn = index >= 11;
             if (wasSubstitutedIn) {
                 playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
             }
-            
+
             html += `
                 <tr>
                     <td>${playerNameWithArrows}</td>
@@ -4779,16 +4790,16 @@ function displayZamalekMatchLineup(match) {
     } else {
         html += '<tr><td colspan="5" style="text-align: center; color: #999;">No lineup</td></tr>';
     }
-    
+
     html += `
                     </tbody>
                 </table>
             </div>
         </div>
     `;
-    
+
     html += '</div>';
-    
+
     container.innerHTML = html;
 }
 
@@ -4796,20 +4807,20 @@ function displayZamalekMatchLineup(match) {
 function displayZamalekMatchGoals(match) {
     const matchId = String(match.MATCH_ID);
     const container = document.getElementById('zamalek-match-goals-container');
-    
+
     console.log('⚽ Displaying goals for match:', matchId);
-    
+
     const matchGoals = zamalekPlayerDetails.filter(detail => {
         const mid = String(detail.MATCH_ID);
         const ga = (detail.GA || '').toUpperCase();
         return mid === matchId && (ga === 'GOAL' || ga === 'ASSIST');
     });
-    
+
     if (matchGoals.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No goals data available for this match</p>';
         return;
     }
-    
+
     // Helper function to find assist for a goal
     const findAssist = (minute, isAhlyGoal) => {
         return matchGoals.find(g => {
@@ -4821,22 +4832,22 @@ function displayZamalekMatchGoals(match) {
             return gGA === 'ASSIST' && gMin === goalMinute && gIsAhly === isAhlyGoal;
         });
     };
-    
+
     // Separate Ahly and Zamalek goals
     const ahlyGoals = matchGoals.filter(g => {
         const ga = (g.GA || '').toUpperCase();
         const team = (g.TEAM || '').toUpperCase();
         return ga === 'GOAL' && team === 'AHLY';
     });
-    
+
     const zamalekGoals = matchGoals.filter(g => {
         const ga = (g.GA || '').toUpperCase();
         const team = (g.TEAM || '').toUpperCase();
         return ga === 'GOAL' && team === 'ZAMALEK';
     });
-    
+
     let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">';
-    
+
     // Ahly Goals
     html += `
         <div>
@@ -4852,7 +4863,7 @@ function displayZamalekMatchGoals(match) {
                     </thead>
                     <tbody>
     `;
-    
+
     ahlyGoals.forEach(goal => {
         const minute = goal.MINUTE || goal.MIN || 0;
         const player = goal['PLAYER NAME'] || 'Unknown';
@@ -4861,7 +4872,7 @@ function displayZamalekMatchGoals(match) {
         const elnady = goal.ELNADY || '-';
         const assist = findAssist(minute, true);
         const assistPlayer = assist ? assist['PLAYER NAME'] : null;
-        
+
         html += `
                     <tr>
                         <td><strong>${minute}'</strong></td>
@@ -4873,18 +4884,18 @@ function displayZamalekMatchGoals(match) {
                     </tr>
         `;
     });
-    
+
     if (ahlyGoals.length === 0) {
         html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
     }
-    
+
     html += `
                     </tbody>
                 </table>
             </div>
         </div>
     `;
-    
+
     // Zamalek Goals
     html += `
         <div>
@@ -4900,7 +4911,7 @@ function displayZamalekMatchGoals(match) {
                     </thead>
                     <tbody>
     `;
-    
+
     zamalekGoals.forEach(goal => {
         const minute = goal.MINUTE || goal.MIN || 0;
         const player = goal['PLAYER NAME'] || 'Unknown';
@@ -4909,7 +4920,7 @@ function displayZamalekMatchGoals(match) {
         const elnady = goal.ELNADY || '-';
         const assist = findAssist(minute, false);
         const assistPlayer = assist ? assist['PLAYER NAME'] : null;
-        
+
         html += `
             <tr>
                 <td><strong>${minute}'</strong></td>
@@ -4921,20 +4932,20 @@ function displayZamalekMatchGoals(match) {
             </tr>
         `;
     });
-    
+
     if (zamalekGoals.length === 0) {
         html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
     }
-    
+
     html += `
                     </tbody>
                 </table>
             </div>
         </div>
     `;
-    
+
     html += '</div>';
-    
+
     container.innerHTML = html;
 }
 
@@ -4942,43 +4953,43 @@ function displayZamalekMatchGoals(match) {
 async function displayZamalekMatchPKS(match) {
     const container = document.getElementById('zamalek-match-pks-container');
     const matchId = match.MATCH_ID;
-    
+
     console.log('🎯 Displaying PKS data for match:', matchId);
-    
+
     try {
         // Fetch PKS data from Google Sheets with force refresh to see debugging
         const response = await fetch(`/api/pks-data?match_id=${encodeURIComponent(matchId)}&force_refresh=true`);
         const pksData = await response.json();
-        
+
         // Check if response is an error
         if (pksData.error) {
             console.error('PKS API Error:', pksData.error);
             container.innerHTML = `<p style="text-align: center; color: #dc3545; padding: 2rem;">Error: ${pksData.error}</p>`;
             return;
         }
-        
+
         // Check if pksData is an array
         if (!Array.isArray(pksData)) {
             console.error('PKS data is not an array:', pksData);
             container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 2rem;">Invalid PKS data format</p>';
             return;
         }
-        
+
         if (pksData.length === 0) {
             container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No PKS data available for this match</p>';
             return;
         }
-        
+
         // Separate Al Ahly and Zamalek players
-        const ahlyPlayers = pksData.filter(player => 
+        const ahlyPlayers = pksData.filter(player =>
             player['AHLY PLAYER'] && player['AHLY PLAYER'].trim() !== ''
         );
-        const zamalekPlayers = pksData.filter(player => 
+        const zamalekPlayers = pksData.filter(player =>
             player['ZAMALEK PLAYER'] && player['ZAMALEK PLAYER'].trim() !== ''
         );
-        
+
         let html = '<div class="pks-match-container" style="display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap;">';
-        
+
         // Al Ahly PKS Section
         if (ahlyPlayers.length > 0) {
             html += `
@@ -4995,20 +5006,20 @@ async function displayZamalekMatchPKS(match) {
                             </thead>
                             <tbody>
             `;
-            
+
             ahlyPlayers.forEach((player, index) => {
                 const playerName = player['AHLY PLAYER'] || 'Unknown';
                 const status = player['AHLY STATUS'] || '';
                 const isGoal = status === 'GOAL';
                 const howMissed = player['HOWMISS AHLY'] || '';
-                
+
                 // Alternate row colors
                 const rowColor = index % 2 === 0 ? '#f8f9fa' : '#ffffff';
                 const resultIcon = isGoal ? '✅' : '❌';
                 const resultText = isGoal ? 'Goal' : 'Miss';
                 const resultColor = isGoal ? '#28a745' : '#dc3545';
                 const details = isGoal ? 'Perfect shot!' : (howMissed || 'Missed');
-                
+
                 html += `
                     <tr style="background-color: ${rowColor}; border-bottom: 1px solid #e9ecef;">
                         <td style="padding: 12px 16px; font-weight: 500; color: #333;">${playerName}</td>
@@ -5017,7 +5028,7 @@ async function displayZamalekMatchPKS(match) {
                     </tr>
                 `;
             });
-            
+
             html += `
                             </tbody>
                         </table>
@@ -5025,7 +5036,7 @@ async function displayZamalekMatchPKS(match) {
                 </div>
             `;
         }
-        
+
         // Zamalek PKS Section
         if (zamalekPlayers.length > 0) {
             html += `
@@ -5042,20 +5053,20 @@ async function displayZamalekMatchPKS(match) {
                             </thead>
                             <tbody>
             `;
-            
+
             zamalekPlayers.forEach((player, index) => {
                 const playerName = player['ZAMALEK PLAYER'] || 'Unknown';
                 const status = player['ZAMALEK STATUS'] || '';
                 const isGoal = status === 'GOAL';
                 const howMissed = player['HOWMISS ZAMALEK'] || '';
-                
+
                 // Alternate row colors
                 const rowColor = index % 2 === 0 ? '#f8f9fa' : '#ffffff';
                 const resultIcon = isGoal ? '✅' : '❌';
                 const resultText = isGoal ? 'Goal' : 'Miss';
                 const resultColor = isGoal ? '#28a745' : '#dc3545';
                 const details = isGoal ? 'Perfect shot!' : (howMissed || 'Missed');
-                
+
                 html += `
                     <tr style="background-color: ${rowColor}; border-bottom: 1px solid #e9ecef;">
                         <td style="padding: 12px 16px; font-weight: 500; color: #333;">${playerName}</td>
@@ -5064,7 +5075,7 @@ async function displayZamalekMatchPKS(match) {
                     </tr>
                 `;
             });
-            
+
             html += `
                             </tbody>
                         </table>
@@ -5072,7 +5083,7 @@ async function displayZamalekMatchPKS(match) {
                 </div>
             `;
         }
-        
+
         // Goalkeepers Section
         html += `
             <div style="margin-top: 3rem; display: flex; gap: 2rem; flex-wrap: wrap;">
@@ -5090,10 +5101,10 @@ async function displayZamalekMatchPKS(match) {
                 </div>
             </div>
         `;
-        
+
         html += '</div>';
         container.innerHTML = html;
-        
+
     } catch (error) {
         console.error('Error loading PKS data:', error);
         container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 2rem;">Error loading PKS data</p>';
@@ -5105,14 +5116,14 @@ function getGoalkeeperStats(pksData, gkColumn, opponentPlayerColumn) {
     if (!pksData || pksData.length === 0) {
         return '<p style="text-align: center; color: #ccc;">No goalkeeper data available</p>';
     }
-    
+
     // Get goalkeeper name from first record
     const gkName = pksData[0][gkColumn] || 'Unknown';
-    
+
     // Count total shots faced and saves
     let totalShots = 0;
     let saves = 0;
-    
+
     pksData.forEach((player) => {
         const opponentPlayer = player[opponentPlayerColumn];
         // Build correct column names 
@@ -5123,7 +5134,7 @@ function getGoalkeeperStats(pksData, gkColumn, opponentPlayerColumn) {
         const howMissColumnName = `HOWMISS ${teamName}`;
         const opponentStatus = player[statusColumnName];
         const howMissed = player[howMissColumnName];
-        
+
         if (opponentPlayer && opponentPlayer.trim() !== '') {
             totalShots++;
             // If the player missed and the reason contains "الحارس" (goalkeeper), it's a save
@@ -5134,9 +5145,9 @@ function getGoalkeeperStats(pksData, gkColumn, opponentPlayerColumn) {
             }
         }
     });
-    
+
     const savePercentage = totalShots > 0 ? Math.round((saves / totalShots) * 100) : 0;
-    
+
     return `
         <div style="text-align: center;">
             <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">${gkName}</div>
@@ -5161,26 +5172,26 @@ function getGoalkeeperStats(pksData, gkColumn, opponentPlayerColumn) {
 // Switch between match sub-tabs (lineup, goals)
 function showZamalekMatchSubTab(event, tabName) {
     console.log('🔄 Switching to match sub-tab:', tabName);
-    
+
     // Remove active class from all tab buttons
     const buttons = document.querySelectorAll('#zamalek-match-details-container .tab-button');
     buttons.forEach(btn => btn.classList.remove('active'));
-    
+
     // Add active class to clicked button
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
-    
+
     // Hide all tab contents
     const contents = document.querySelectorAll('#zamalek-match-details-container .tab-content');
     contents.forEach(content => content.classList.remove('active'));
-    
+
     // Show selected tab content
     const selectedContent = document.getElementById(`zamalek-match-${tabName}-content`);
     if (selectedContent) {
         selectedContent.classList.add('active');
     }
-    
+
     // Reload data if needed - use cached match ID if available
     const matchId = window.__lastZamalekMatchId || (document.getElementById('zamalek-match-search-input') ? document.getElementById('zamalek-match-search-input').value.trim() : '');
     if (matchId) {
