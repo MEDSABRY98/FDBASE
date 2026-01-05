@@ -6503,4 +6503,4 @@ if __name__ == '__main__':
     else:
         # Web deployment mode - just run Flask
         port = env_port
-        app.run(host='0.0.0.0', port=port)
+        app.run(host='0.0.0.0', port=port, debug=True)
