@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Egypt National Teams - Football Data Entry System</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
         .stats-container {
             min-height: 100vh;
             background: #ffffff;
         }
-        
+
         .main-tabs-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -44,13 +45,13 @@
             width: 20px;
             height: 20px;
         }
-        
+
         .stats-content {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             padding: 2rem;
             backdrop-filter: blur(10px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
 
         .page-header {
@@ -90,8 +91,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Stats Overview Cards */
@@ -106,7 +112,7 @@
             border-radius: 15px;
             padding: 2rem;
             text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
         }
 
@@ -138,7 +144,7 @@
             background: white;
             border-radius: 15px;
             padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         /* Sortable table headers */
@@ -227,31 +233,34 @@
         .matches-table tbody tr:hover {
             background: #f8f9fa;
         }
-        
+
         /* Virtual Scrolling support */
-        .matches-table-container { 
-            max-height: 2000px; 
-            overflow-y: auto; 
-            overflow-x: auto; 
+        .matches-table-container {
+            max-height: 2000px;
+            overflow-y: auto;
+            overflow-x: auto;
             position: relative;
         }
+
         /* Sticky header - keep thead fixed during scroll */
         .matches-table-container .matches-table {
             border-collapse: separate;
             border-spacing: 0;
             table-layout: fixed;
         }
+
         .matches-table-container .matches-table thead th {
             position: sticky;
             top: 0;
             z-index: 10;
             background: #f8f9fa;
         }
-        
+
         /* Table search input */
         .table-search-container {
             margin-bottom: 1rem;
         }
+
         .table-search-input {
             width: 100%;
             max-width: 500px;
@@ -260,6 +269,7 @@
             border-radius: 8px;
             font-size: 1rem;
         }
+
         .table-search-input:focus {
             outline: none;
             border-color: #667eea;
@@ -295,7 +305,7 @@
             border-radius: 15px;
             padding: 2rem;
             margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .filters-title {
@@ -506,8 +516,13 @@
         }
 
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .filter-btn-icon {
@@ -524,63 +539,44 @@
         /* Statistics Tabs Container */
         .stats-tabs-container {
             margin-bottom: 2rem;
-        }
-
-        .stats-tabs-row {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 1rem;
+            width: 100%;
         }
 
         .stats-tabs {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 100%;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.75rem;
+            width: 100%;
         }
 
         .stats-tab {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
-            padding: 1rem 2rem;
+            padding: 0.75rem 0.25rem;
             background: #f8f9fa;
             color: #495057;
             border: none;
-            border-radius: 12px;
-            font-weight: 500;
+            border-radius: 8px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            flex: 1;
-            width: 100%;
             text-align: center;
+            width: 100%;
+            height: 100%;
+            font-size: 0.9rem;
         }
 
         .stats-tab:hover {
             background: #e9ecef;
-            color: #343a40;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .stats-tab.active {
-            background: #007bff;
+            background: #667eea;
             color: white;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
-        }
-
-        .stats-tab.active:hover {
-            background: #0056b3;
-            color: white;
-        }
-
-        .stats-tab .icon {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
         }
 
         /* Tab Content */
@@ -594,8 +590,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Responsive Design */
@@ -620,7 +623,7 @@
                 flex-direction: column;
                 gap: 0.5rem;
             }
-            
+
             .stats-tab {
                 width: 100%;
                 flex: 1;
@@ -702,18 +705,20 @@
             .filter-row {
                 grid-template-columns: repeat(2, 1fr);
             }
-            
+
             .filter-actions {
                 flex-direction: column;
             }
-            
-            .finals-filter-btn, .clear-filters-btn, .finals-refresh-btn {
+
+            .finals-filter-btn,
+            .clear-filters-btn,
+            .finals-refresh-btn {
                 width: 100%;
             }
         }
 
         /* Search Match Lineup Styles */
-        #egypt-match-lineup-container > div {
+        #egypt-match-lineup-container>div {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
             gap: 2rem !important;
@@ -722,11 +727,11 @@
 
         /* Search Match Responsive Styles */
         @media (max-width: 768px) {
-            #egypt-match-lineup-container > div {
+            #egypt-match-lineup-container>div {
                 grid-template-columns: 1fr !important;
             }
-            
-            #egypt-match-goals-container > div {
+
+            #egypt-match-goals-container>div {
                 grid-template-columns: 1fr !important;
             }
         }
@@ -735,15 +740,15 @@
             .filter-row {
                 grid-template-columns: 1fr;
             }
-            
+
             .filters-title {
                 font-size: 1.25rem;
             }
-            
+
             .filter-item label {
                 font-size: 0.85rem;
             }
-            
+
             .filter-control {
                 font-size: 0.9rem;
                 padding: 0.65rem 0.9rem;
@@ -809,7 +814,7 @@
             padding: 1rem;
             transition: all 0.3s ease;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .elnady-club-card:hover {
@@ -854,13 +859,14 @@
         }
     </style>
 </head>
+
 <body>
     <div class="stats-container">
         <div class="main-tabs-container">
             <div class="back-to-main">
                 <a href="/" class="back-btn">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
                     </svg>
                     Back to Main Dashboard
                 </a>
@@ -868,218 +874,243 @@
 
             <div class="stats-content">
 
-        <!-- Filters Section - Visible immediately -->
-        <div class="filters-section" id="filters-section">
-            <h2 class="filters-title">🔍 Filters</h2>
-            
-            <div class="filter-grid">
-                <!-- Row 0 - Trophy Filter -->
-                <div class="filter-row">
-                    <div class="filter-item">
-                        <label>Trophy</label>
-                        <select id="filter-trophy" class="filter-control">
-                            <option value="">All</option>
-                            <option value="only-trophy">Only Trophy</option>
-                        </select>
-                    </div>
-                </div>
+                <!-- Filters Section - Visible immediately -->
+                <div class="filters-section" id="filters-section">
+                    <h2 class="filters-title">🔍 Filters</h2>
 
-                <!-- Row 1 -->
-                <div class="filter-row">
-                    <div class="filter-item">
-                        <label>Match ID</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-match-id" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
+                    <div class="filter-grid">
+                        <!-- Row 0 - Trophy Filter -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Trophy</label>
+                                <select id="filter-trophy" class="filter-control">
+                                    <option value="">All</option>
+                                    <option value="only-trophy">Only Trophy</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>System Kind</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-system-kind" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>Age</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-age" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>Champion System</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-champion-system" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Row 2 -->
-                <div class="filter-row">
-                    <div class="filter-item">
-                        <label>Date From</label>
-                        <input type="date" id="filter-date-from" class="filter-control">
-                    </div>
-                    <div class="filter-item">
-                        <label>Date To</label>
-                        <input type="date" id="filter-date-to" class="filter-control">
-                    </div>
-                    <div class="filter-item">
-                        <label>Manager EGY</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-manager-egy" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
+                        <!-- Row 1 -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Match ID</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-match-id" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>System Kind</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-system-kind" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Age</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-age" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Champion System</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-champion-system" class="filter-control"
+                                        placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>Manager Opponent</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-manager-opponent" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Row 3 -->
-                <div class="filter-row">
-                    <div class="filter-item">
-                        <label>Referee</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-refree" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
+                        <!-- Row 2 -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Date From</label>
+                                <input type="date" id="filter-date-from" class="filter-control">
+                            </div>
+                            <div class="filter-item">
+                                <label>Date To</label>
+                                <input type="date" id="filter-date-to" class="filter-control">
+                            </div>
+                            <div class="filter-item">
+                                <label>Manager EGY</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-manager-egy" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Manager Opponent</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-manager-opponent" class="filter-control"
+                                        placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>Champion</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-champion" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>Season</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-season" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>Round</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-round" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Row 4 -->
-                <div class="filter-row">
-                    <div class="filter-item">
-                        <label>Place</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-place" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
+                        <!-- Row 3 -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Referee</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-refree" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Champion</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-champion" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Season</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-season" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Round</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-round" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>H-A-N</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-han" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>Egypt Team</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-egypt-team" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>Goals For</label>
-                        <input type="number" id="filter-gf" class="filter-control" placeholder="Goals For" min="0">
-                    </div>
-                </div>
 
-                <!-- Row 5 -->
-                <div class="filter-row">
-                    <div class="filter-item">
-                        <label>Goals Against</label>
-                        <input type="number" id="filter-ga" class="filter-control" placeholder="Goals Against" min="0">
-                    </div>
-                    <div class="filter-item">
-                        <label>ET</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-et" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
+                        <!-- Row 4 -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Place</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-place" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>H-A-N</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-han" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Egypt Team</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-egypt-team" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Goals For</label>
+                                <input type="number" id="filter-gf" class="filter-control" placeholder="Goals For"
+                                    min="0">
+                            </div>
                         </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>PEN</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-pen" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>Opponent Team</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-opponent-team" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Row 6 -->
-                <div class="filter-row">
-                    <div class="filter-item">
-                        <label>Result (W-D-L)</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-result" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
+                        <!-- Row 5 -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Goals Against</label>
+                                <input type="number" id="filter-ga" class="filter-control" placeholder="Goals Against"
+                                    min="0">
+                            </div>
+                            <div class="filter-item">
+                                <label>ET</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-et" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>PEN</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-pen" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Opponent Team</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-opponent-team" class="filter-control"
+                                        placeholder="All" autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 6 -->
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label>Result (W-D-L)</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-result" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>Clean Sheet</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-cs" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>W-L Q & F</label>
+                                <div class="searchable-select-container">
+                                    <input type="text" id="filter-wl-qf" class="filter-control" placeholder="All"
+                                        autocomplete="off">
+                                    <div class="dropdown-options" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="filter-item">
+                                <label>NOTE</label>
+                                <input type="text" id="filter-note" class="filter-control" placeholder="Search Note...">
+                            </div>
                         </div>
                     </div>
-                    <div class="filter-item">
-                        <label>Clean Sheet</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-cs" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>W-L Q & F</label>
-                        <div class="searchable-select-container">
-                            <input type="text" id="filter-wl-qf" class="filter-control" placeholder="All" autocomplete="off">
-                            <div class="dropdown-options" style="display: none;"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item">
-                        <label>NOTE</label>
-                        <input type="text" id="filter-note" class="filter-control" placeholder="Search Note...">
-                    </div>
-                </div>
-            </div>
 
                     <!-- Filter Actions -->
                     <div class="filter-actions">
                         <button class="finals-filter-btn" onclick="applyFilters()">
-                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="3">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                             Apply Filters
                         </button>
                         <button class="clear-filters-btn" onclick="clearFilters()">
-                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="3">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
                             Clear All
                         </button>
                         <button class="finals-refresh-btn" onclick="refreshEgyptTeamsData()">
-                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                             </svg>
                             Sync Data
                         </button>
@@ -1096,107 +1127,43 @@
                 <div id="content-tabs" class="content-tabs" style="display: none;">
                     <!-- Statistics Tabs -->
                     <div class="stats-tabs-container">
-                        <!-- First Row of Tabs -->
-                        <div class="stats-tabs-row">
-                            <div class="stats-tabs">
-                                <button class="stats-tab active" onclick="showStatsTab(event, 'search')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="11" cy="11" r="8"/>
-                                        <path d="m21 21-4.35-4.35"/>
-                                    </svg>
-                                    Search Match
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'overview')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M12 20V10M18 20V4M6 20v-4"/>
-                                    </svg>
-                                    Overview
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'matches')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                        <line x1="9" y1="9" x2="15" y2="9"/>
-                                        <line x1="9" y1="15" x2="15" y2="15"/>
-                                    </svg>
-                                    Matches
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'mainstats')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                                    </svg>
-                                    Main Stats
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'h2h')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                        <circle cx="9" cy="7" r="4"/>
-                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                                    </svg>
-                                    H2H Teams
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'managers')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                        <circle cx="12" cy="7" r="4"/>
-                                    </svg>
-                                    Coaches
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Second Row of Tabs -->
-                        <div class="stats-tabs-row">
-                            <div class="stats-tabs">
-                                <button class="stats-tab" onclick="showStatsTab(event, 'referees')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                        <line x1="16" y1="2" x2="16" y2="6"/>
-                                        <line x1="8" y1="2" x2="8" y2="6"/>
-                                        <line x1="3" y1="10" x2="21" y2="10"/>
-                                    </svg>
-                                    Referees
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'players')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                        <circle cx="9" cy="7" r="4"/>
-                                    </svg>
-                                    All Players
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'byplayer')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                        <circle cx="9" cy="7" r="4"/>
-                                    </svg>
-                                    BY Player
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'goalkeepers')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                        <line x1="16" y1="2" x2="16" y2="6"/>
-                                        <line x1="8" y1="2" x2="8" y2="6"/>
-                                        <line x1="3" y1="10" x2="21" y2="10"/>
-                                    </svg>
-                                    All Goalkeepers
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'bygoalkeepers')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                        <circle cx="9" cy="7" r="4"/>
-                                    </svg>
-                                    BY Goalkeepers
-                                </button>
-                                <button class="stats-tab" onclick="showStatsTab(event, 'elnady')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                        <line x1="16" y1="2" x2="16" y2="6"/>
-                                        <line x1="8" y1="2" x2="8" y2="6"/>
-                                        <line x1="3" y1="10" x2="21" y2="10"/>
-                                    </svg>
-                                    ElNady Stats
-                                </button>
-                            </div>
+                        <div class="stats-tabs">
+                            <button class="stats-tab active" onclick="showStatsTab(event, 'search')">
+                                Search Match
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'overview')">
+                                Overview
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'matches')">
+                                Matches
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'mainstats')">
+                                Main Stats
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'h2h')">
+                                H2H Teams
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'managers')">
+                                Coaches
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'referees')">
+                                Referees
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'players')">
+                                All Players
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'byplayer')">
+                                BY Player
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'goalkeepers')">
+                                All Goalkeepers
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'bygoalkeepers')">
+                                BY Goalkeepers
+                            </button>
+                            <button class="stats-tab" onclick="showStatsTab(event, 'elnady')">
+                                ElNady Stats
+                            </button>
                         </div>
                     </div>
 
@@ -1204,17 +1171,20 @@
                     <div id="search-tab" class="stats-tab-content active">
                         <div class="stats-section">
                             <h2 class="section-title">Search Match by ID or Date</h2>
-                            
+
                             <!-- Search Box -->
                             <div style="max-width: 600px; margin: 2rem auto;">
                                 <div style="display: flex; gap: 1rem; align-items: center;">
-                                    <input type="text" id="egypt-match-search-input" placeholder="Enter Match ID (e.g., eg1, eg100...) or Date (e.g., 13/10/2025)" 
-                                           style="flex: 1; padding: 0.75rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;"
-                                           onkeypress="if(event.key==='Enter') searchEgyptMatchById()">
-                                    <button onclick="searchEgyptMatchById()" style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
-                                            <circle cx="11" cy="11" r="8"/>
-                                            <path d="m21 21-4.35-4.35"/>
+                                    <input type="text" id="egypt-match-search-input"
+                                        placeholder="Enter Match ID (e.g., eg1, eg100...) or Date (e.g., 13/10/2025)"
+                                        style="flex: 1; padding: 0.75rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;"
+                                        onkeypress="if(event.key==='Enter') searchEgyptMatchById()">
+                                    <button onclick="searchEgyptMatchById()"
+                                        style="padding: 0.75rem 2rem; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            style="width: 20px; height: 20px;">
+                                            <circle cx="11" cy="11" r="8" />
+                                            <path d="m21 21-4.35-4.35" />
                                         </svg>
                                         Search
                                     </button>
@@ -1225,10 +1195,11 @@
                         <!-- Match Details Container -->
                         <div id="egypt-match-details-container" style="display: none;">
                             <!-- Match Header -->
-                            <div id="egypt-match-header" style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 12px; margin-bottom: 2rem;">
+                            <div id="egypt-match-header"
+                                style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 12px; margin-bottom: 2rem;">
                                 <!-- Will be populated dynamically -->
                             </div>
-                            
+
                             <!-- Match Sub-tabs -->
                             <div class="tabs-header" style="margin-bottom: 1.5rem;">
                                 <button class="tab-button active" onclick="showEgyptMatchSubTab(event, 'lineup')">
@@ -1241,19 +1212,19 @@
                                     🧤 Goalkeepers
                                 </button>
                             </div>
-                            
+
                             <!-- Match Sub-tab Contents -->
                             <div class="tab-content-wrapper">
                                 <!-- Lineup Content -->
                                 <div id="egypt-match-lineup-content" class="tab-content active">
                                     <div id="egypt-match-lineup-container"></div>
                                 </div>
-                                
+
                                 <!-- Goals Content -->
                                 <div id="egypt-match-goals-content" class="tab-content">
                                     <div id="egypt-match-goals-container"></div>
                                 </div>
-                                
+
                                 <!-- Goalkeepers Content -->
                                 <div id="egypt-match-goalkeepers-content" class="tab-content">
                                     <div id="egypt-match-goalkeepers-container"></div>
@@ -1262,7 +1233,8 @@
                         </div>
 
                         <!-- No Results Message -->
-                        <div id="egypt-no-match-found" style="display: none; text-align: center; padding: 3rem; color: #999;">
+                        <div id="egypt-no-match-found"
+                            style="display: none; text-align: center; padding: 3rem; color: #999;">
                             <p style="font-size: 1.2rem;">❌ No match found with this ID</p>
                         </div>
                     </div>
@@ -1333,7 +1305,8 @@
                         <div class="matches-section">
                             <h2 class="section-title">Match History</h2>
                             <div class="table-search-container">
-                                <input type="search" id="matches-search-input" class="table-search-input" placeholder="Search in matches table...">
+                                <input type="search" id="matches-search-input" class="table-search-input"
+                                    placeholder="Search in matches table...">
                             </div>
                             <div class="matches-table-container">
                                 <table class="matches-table" id="egypt-teams-matches-table">
@@ -1364,13 +1337,13 @@
                     <div id="h2h-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <h2 class="section-title">Head to Head Statistics</h2>
-                            
+
                             <!-- H2H Search Box -->
                             <div style="margin-bottom: 1.5rem; text-align: center;">
-                                <input type="text" id="h2h-search" placeholder="🔍 Search team..." 
+                                <input type="text" id="h2h-search" placeholder="🔍 Search team..."
                                     style="padding: 0.75rem 1rem; width: 300px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;">
                             </div>
-                            
+
                             <div style="overflow-x: auto;">
                                 <table class="matches-table">
                                     <thead>
@@ -1399,7 +1372,7 @@
                     <div id="managers-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <h2 class="section-title">Managers Statistics</h2>
-                            
+
                             <!-- Sub Tabs -->
                             <div class="tabs-header" style="margin-bottom: 2rem;">
                                 <button class="tab-button active" onclick="switchManagersTab('egypt')">
@@ -1412,7 +1385,7 @@
 
                             <!-- Managers Search Box -->
                             <div style="margin-bottom: 1.5rem; text-align: center;">
-                                <input type="text" id="managers-search" placeholder="🔍 Search manager..." 
+                                <input type="text" id="managers-search" placeholder="🔍 Search manager..."
                                     style="padding: 0.75rem 1rem; width: 300px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;">
                             </div>
 
@@ -1472,13 +1445,13 @@
                     <div id="referees-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <h2 class="section-title">Referees Statistics</h2>
-                            
+
                             <!-- Referees Search Box -->
                             <div style="margin-bottom: 1.5rem; text-align: center;">
-                                <input type="text" id="referees-search" placeholder="🔍 Search referee..." 
+                                <input type="text" id="referees-search" placeholder="🔍 Search referee..."
                                     style="padding: 0.75rem 1rem; width: 300px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;">
                             </div>
-                            
+
                             <div style="overflow-x: auto;">
                                 <table class="matches-table">
                                     <thead>
@@ -1505,38 +1478,47 @@
                         <div class="matches-section">
                             <!-- Players Filter -->
                             <div style="margin-bottom: 2rem; text-align: center;">
-                                <select id="players-team-filter" class="filter-control" style="max-width: 300px; display: inline-block;" onchange="filterPlayersByTeam()">
+                                <select id="players-team-filter" class="filter-control"
+                                    style="max-width: 300px; display: inline-block;" onchange="filterPlayersByTeam()">
                                     <option value="all">All Players</option>
                                     <option value="egypt">With Egypt (Egyptian Players)</option>
                                     <option value="opponent">Against Egypt (Opponent Players)</option>
                                 </select>
                             </div>
-                            
+
                             <!-- Players Search -->
                             <div style="margin-bottom: 2rem; text-align: center;">
-                                <input type="text" id="all-players-search" placeholder="🔍 Search in players table..." 
-                                    style="padding: 0.75rem 1rem; width: 400px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;" autocomplete="off">
+                                <input type="text" id="all-players-search" placeholder="🔍 Search in players table..."
+                                    style="padding: 0.75rem 1rem; width: 400px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;"
+                                    autocomplete="off">
                             </div>
-                            
+
                             <!-- Players Loading -->
-                            <div id="players-loading" class="loading-container" style="display: none; min-height: 200px;">
+                            <div id="players-loading" class="loading-container"
+                                style="display: none; min-height: 200px;">
                                 <div class="spinner"></div>
                                 <p>Loading players data...</p>
                             </div>
-                            
+
                             <div id="players-table-container" style="overflow-x: auto;">
                                 <table class="matches-table">
                                     <thead>
                                         <tr>
                                             <th>#</th>
-                                            <th class="sortable-header" onclick="sortPlayersBy('playerName')">Player Name</th>
+                                            <th class="sortable-header" onclick="sortPlayersBy('playerName')">Player
+                                                Name</th>
                                             <th class="sortable-header" onclick="sortPlayersBy('matches')">Matches</th>
                                             <th class="sortable-header" onclick="sortPlayersBy('minutes')">Minutes</th>
-                                            <th class="sortable-header sorted-desc" onclick="sortPlayersBy('totalGA')">G+A</th>
-                                            <th class="sortable-header" onclick="sortPlayersBy('officialGoals')">Official Goals</th>
-                                            <th class="sortable-header" onclick="sortPlayersBy('friendlyGoals')">Friendly Goals</th>
-                                            <th class="sortable-header" onclick="sortPlayersBy('officialAssists')">Official Assists</th>
-                                            <th class="sortable-header" onclick="sortPlayersBy('friendlyAssists')">Friendly Assists</th>
+                                            <th class="sortable-header sorted-desc" onclick="sortPlayersBy('totalGA')">
+                                                G+A</th>
+                                            <th class="sortable-header" onclick="sortPlayersBy('officialGoals')">
+                                                Official Goals</th>
+                                            <th class="sortable-header" onclick="sortPlayersBy('friendlyGoals')">
+                                                Friendly Goals</th>
+                                            <th class="sortable-header" onclick="sortPlayersBy('officialAssists')">
+                                                Official Assists</th>
+                                            <th class="sortable-header" onclick="sortPlayersBy('friendlyAssists')">
+                                                Friendly Assists</th>
                                         </tr>
                                     </thead>
                                     <tbody id="players-tbody">
@@ -1552,39 +1534,45 @@
                         <div class="matches-section">
                             <!-- Player Search -->
                             <div style="margin-bottom: 2rem; text-align: center;">
-                                <label for="player-search" style="font-weight: 600; color: #333; margin-right: 1rem;">Search Player:</label>
-                                <input type="text" id="player-search" class="filter-control" style="max-width: 400px; display: inline-block;" placeholder="Type player name..." autocomplete="off">
-                                <div id="player-search-results" style="max-width: 400px; margin: 0.5rem auto; display: none;"></div>
+                                <label for="player-search"
+                                    style="font-weight: 600; color: #333; margin-right: 1rem;">Search Player:</label>
+                                <input type="text" id="player-search" class="filter-control"
+                                    style="max-width: 400px; display: inline-block;" placeholder="Type player name..."
+                                    autocomplete="off">
+                                <div id="player-search-results"
+                                    style="max-width: 400px; margin: 0.5rem auto; display: none;"></div>
                             </div>
 
                             <!-- Player Info Container -->
                             <div id="player-info-container" style="display: none;">
-                                <h3 id="selected-player-name" style="text-align: center; font-size: 1.8rem; color: #333; margin-bottom: 2rem;"></h3>
+                                <h3 id="selected-player-name"
+                                    style="text-align: center; font-size: 1.8rem; color: #333; margin-bottom: 2rem;">
+                                </h3>
 
-                                    <!-- Sub Tabs -->
-                                    <div class="tabs-header" style="margin-bottom: 2rem;">
-                                        <button class="tab-button active" onclick="switchPlayerTab('player-overview')">
-                                            📊 Overview
-                                        </button>
-                                        <button class="tab-button" onclick="switchPlayerTab('player-matches')">
-                                            ⚽ Matches
-                                        </button>
-                                        <button class="tab-button" onclick="switchPlayerTab('player-m-by-ga')">
-                                            📊 M By G+A
-                                        </button>
-                                        <button class="tab-button" onclick="switchPlayerTab('player-championships')">
-                                            🏆 Championships
-                                        </button>
-                                        <button class="tab-button" onclick="switchPlayerTab('player-seasons')">
-                                            📅 Seasons
-                                        </button>
-                                        <button class="tab-button" onclick="switchPlayerTab('player-vsteams')">
-                                            🆚 VS Teams
-                                        </button>
-                                        <button class="tab-button" onclick="switchPlayerTab('player-elnady')">
-                                            ⚽ ELNADY
-                                        </button>
-                                    </div>
+                                <!-- Sub Tabs -->
+                                <div class="tabs-header" style="margin-bottom: 2rem;">
+                                    <button class="tab-button active" onclick="switchPlayerTab('player-overview')">
+                                        📊 Overview
+                                    </button>
+                                    <button class="tab-button" onclick="switchPlayerTab('player-matches')">
+                                        ⚽ Matches
+                                    </button>
+                                    <button class="tab-button" onclick="switchPlayerTab('player-m-by-ga')">
+                                        📊 M By G+A
+                                    </button>
+                                    <button class="tab-button" onclick="switchPlayerTab('player-championships')">
+                                        🏆 Championships
+                                    </button>
+                                    <button class="tab-button" onclick="switchPlayerTab('player-seasons')">
+                                        📅 Seasons
+                                    </button>
+                                    <button class="tab-button" onclick="switchPlayerTab('player-vsteams')">
+                                        🆚 VS Teams
+                                    </button>
+                                    <button class="tab-button" onclick="switchPlayerTab('player-elnady')">
+                                        ⚽ ELNADY
+                                    </button>
+                                </div>
 
                                 <!-- Player Overview Tab -->
                                 <div id="player-overview-tab" class="tab-content active">
@@ -1717,131 +1705,133 @@
                                     </div>
                                 </div>
 
-                                    <!-- Player Matches Tab -->
-                                    <div id="player-matches-tab" class="tab-content">
-                                        <div style="overflow-x: auto;">
-                                            <table class="matches-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Date</th>
-                                                        <th>Season</th>
-                                                        <th>Egypt Manager</th>
-                                                        <th>Opponent</th>
-                                                        <th>Minutes</th>
-                                                        <th>Goals</th>
-                                                        <th>Penalty Goals</th>
-                                                        <th>Assists</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="player-matches-tbody">
-                                                    <!-- Player matches will be loaded here -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    <!-- Player M By G+A Tab -->
-                                    <div id="player-m-by-ga-tab" class="tab-content">
-                                        <div style="overflow-x: auto;">
-                                            <table class="matches-table" id="player-m-by-ga-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Date</th>
-                                                        <th>Season</th>
-                                                        <th>Egypt Manager</th>
-                                                        <th>Opponent</th>
-                                                        <th>Minutes</th>
-                                                        <th>Goals</th>
-                                                        <th>Assists</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <!-- Data will be loaded dynamically -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    <!-- Player Championships Tab -->
-                                    <div id="player-championships-tab" class="tab-content">
-                                        <div style="overflow-x: auto;">
-                                            <table class="matches-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Championship</th>
-                                                        <th>Matches</th>
-                                                        <th>Minutes</th>
-                                                        <th>G+A</th>
-                                                        <th>Official Goals</th>
-                                                        <th>Friendly Goals</th>
-                                                        <th>Official Assists</th>
-                                                        <th>Friendly Assists</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="player-championships-tbody">
-                                                    <!-- Player championships stats will be loaded here -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    <!-- Player Seasons Tab -->
-                                    <div id="player-seasons-tab" class="tab-content">
-                                        <div style="overflow-x: auto;">
-                                            <table class="matches-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Season</th>
-                                                        <th>Matches</th>
-                                                        <th>Minutes</th>
-                                                        <th>G+A</th>
-                                                        <th>Official Goals</th>
-                                                        <th>Friendly Goals</th>
-                                                        <th>Official Assists</th>
-                                                        <th>Friendly Assists</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="player-seasons-tbody">
-                                                    <!-- Player seasons stats will be loaded here -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    <!-- Player VS Teams Tab -->
-                                    <div id="player-vsteams-tab" class="tab-content">
-                                        <div style="overflow-x: auto;">
-                                            <table class="matches-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Opponent Team</th>
-                                                        <th>Matches</th>
-                                                        <th>Minutes</th>
-                                                        <th>G+A</th>
-                                                        <th>Official Goals</th>
-                                                        <th>Friendly Goals</th>
-                                                        <th>Official Assists</th>
-                                                        <th>Friendly Assists</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="player-vsteams-tbody">
-                                                    <!-- Player vs teams stats will be loaded here -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    <!-- Player ELNADY Tab -->
-                                    <div id="player-elnady-tab" class="tab-content">
-                                        <div id="player-elnady-cards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; padding: 1rem;">
-                                            <!-- Player club cards will be loaded here -->
-                                        </div>
+                                <!-- Player Matches Tab -->
+                                <div id="player-matches-tab" class="tab-content">
+                                    <div style="overflow-x: auto;">
+                                        <table class="matches-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Season</th>
+                                                    <th>Egypt Manager</th>
+                                                    <th>Opponent</th>
+                                                    <th>Minutes</th>
+                                                    <th>Goals</th>
+                                                    <th>Penalty Goals</th>
+                                                    <th>Assists</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="player-matches-tbody">
+                                                <!-- Player matches will be loaded here -->
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
 
+                                <!-- Player M By G+A Tab -->
+                                <div id="player-m-by-ga-tab" class="tab-content">
+                                    <div style="overflow-x: auto;">
+                                        <table class="matches-table" id="player-m-by-ga-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Season</th>
+                                                    <th>Egypt Manager</th>
+                                                    <th>Opponent</th>
+                                                    <th>Minutes</th>
+                                                    <th>Goals</th>
+                                                    <th>Assists</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Data will be loaded dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Player Championships Tab -->
+                                <div id="player-championships-tab" class="tab-content">
+                                    <div style="overflow-x: auto;">
+                                        <table class="matches-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Championship</th>
+                                                    <th>Matches</th>
+                                                    <th>Minutes</th>
+                                                    <th>G+A</th>
+                                                    <th>Official Goals</th>
+                                                    <th>Friendly Goals</th>
+                                                    <th>Official Assists</th>
+                                                    <th>Friendly Assists</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="player-championships-tbody">
+                                                <!-- Player championships stats will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Player Seasons Tab -->
+                                <div id="player-seasons-tab" class="tab-content">
+                                    <div style="overflow-x: auto;">
+                                        <table class="matches-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Season</th>
+                                                    <th>Matches</th>
+                                                    <th>Minutes</th>
+                                                    <th>G+A</th>
+                                                    <th>Official Goals</th>
+                                                    <th>Friendly Goals</th>
+                                                    <th>Official Assists</th>
+                                                    <th>Friendly Assists</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="player-seasons-tbody">
+                                                <!-- Player seasons stats will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Player VS Teams Tab -->
+                                <div id="player-vsteams-tab" class="tab-content">
+                                    <div style="overflow-x: auto;">
+                                        <table class="matches-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Opponent Team</th>
+                                                    <th>Matches</th>
+                                                    <th>Minutes</th>
+                                                    <th>G+A</th>
+                                                    <th>Official Goals</th>
+                                                    <th>Friendly Goals</th>
+                                                    <th>Official Assists</th>
+                                                    <th>Friendly Assists</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="player-vsteams-tbody">
+                                                <!-- Player vs teams stats will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Player ELNADY Tab -->
+                                <div id="player-elnady-tab" class="tab-content">
+                                    <div id="player-elnady-cards"
+                                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; padding: 1rem;">
+                                        <!-- Player club cards will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- No Player Selected Message -->
                             <div id="no-player-selected" style="text-align: center; padding: 4rem; color: #666;">
-                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem;">
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" style="margin-bottom: 1rem;">
                                     <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                                 <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Search for a Player</h3>
@@ -1854,33 +1844,43 @@
                     <div id="goalkeepers-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <div style="margin-bottom: 1.5rem; text-align: center;">
-                                <select id="goalkeepers-team-filter" class="filter-control" style="max-width: 300px; display: inline-block;">
+                                <select id="goalkeepers-team-filter" class="filter-control"
+                                    style="max-width: 300px; display: inline-block;">
                                     <option value="all">All Goalkeepers</option>
                                     <option value="egypt">With Egypt (Egypt Goalkeepers)</option>
                                     <option value="opponent">Against Egypt (Opponent Goalkeepers)</option>
                                 </select>
                             </div>
-                            <div class="table-search-container" style="margin-bottom: 1rem; max-width: 400px; margin-left: auto; margin-right: auto;">
-                                <input type="search" id="goalkeepers-search-input" class="table-search-input" placeholder="Search goalkeepers..." autocomplete="off">
+                            <div class="table-search-container"
+                                style="margin-bottom: 1rem; max-width: 400px; margin-left: auto; margin-right: auto;">
+                                <input type="search" id="goalkeepers-search-input" class="table-search-input"
+                                    placeholder="Search goalkeepers..." autocomplete="off">
                             </div>
-                            
+
                             <!-- Goalkeepers Loading -->
-                            <div id="goalkeepers-loading" class="loading-container" style="display: none; min-height: 200px;">
+                            <div id="goalkeepers-loading" class="loading-container"
+                                style="display: none; min-height: 200px;">
                                 <div class="spinner"></div>
                                 <p>Loading goalkeepers data...</p>
                             </div>
-                            
+
                             <div id="goalkeepers-table-container" style="overflow-x: auto;">
                                 <table class="matches-table">
                                     <thead>
                                         <tr>
                                             <th>#</th>
-                                            <th class="sortable-header" onclick="sortGoalkeepersBy('name')">Goalkeeper Name</th>
-                                            <th class="sortable-header sorted-desc" onclick="sortGoalkeepersBy('matches')">Matches</th>
-                                            <th class="sortable-header" onclick="sortGoalkeepersBy('goalsConceded')">Goals Conceded</th>
-                                            <th class="sortable-header" onclick="sortGoalkeepersBy('cleanSheets')">Clean Sheets</th>
-                                            <th class="sortable-header" onclick="sortGoalkeepersBy('penaltiesConceded')">Penalties Conceded</th>
-                                            <th class="sortable-header" onclick="sortGoalkeepersBy('penaltiesSaved')">Penalties Saved</th>
+                                            <th class="sortable-header" onclick="sortGoalkeepersBy('name')">Goalkeeper
+                                                Name</th>
+                                            <th class="sortable-header sorted-desc"
+                                                onclick="sortGoalkeepersBy('matches')">Matches</th>
+                                            <th class="sortable-header" onclick="sortGoalkeepersBy('goalsConceded')">
+                                                Goals Conceded</th>
+                                            <th class="sortable-header" onclick="sortGoalkeepersBy('cleanSheets')">Clean
+                                                Sheets</th>
+                                            <th class="sortable-header"
+                                                onclick="sortGoalkeepersBy('penaltiesConceded')">Penalties Conceded</th>
+                                            <th class="sortable-header" onclick="sortGoalkeepersBy('penaltiesSaved')">
+                                                Penalties Saved</th>
                                         </tr>
                                     </thead>
                                     <tbody id="goalkeepers-tbody">
@@ -1896,24 +1896,33 @@
                         <div class="matches-section">
                             <!-- Goalkeeper Search -->
                             <div style="margin-bottom: 2rem; text-align: center;">
-                                <label for="goalkeeper-search" style="font-weight: 600; color: #333; margin-right: 1rem;">Search Goalkeeper:</label>
-                                <input type="text" id="goalkeeper-search" class="filter-control" style="max-width: 400px; display: inline-block;" placeholder="Type goalkeeper name..." autocomplete="off">
-                                <div id="goalkeeper-search-results" style="max-width: 400px; margin: 0.5rem auto; display: none;"></div>
+                                <label for="goalkeeper-search"
+                                    style="font-weight: 600; color: #333; margin-right: 1rem;">Search
+                                    Goalkeeper:</label>
+                                <input type="text" id="goalkeeper-search" class="filter-control"
+                                    style="max-width: 400px; display: inline-block;"
+                                    placeholder="Type goalkeeper name..." autocomplete="off">
+                                <div id="goalkeeper-search-results"
+                                    style="max-width: 400px; margin: 0.5rem auto; display: none;"></div>
                             </div>
 
                             <!-- Goalkeeper Info Container -->
                             <div id="goalkeeper-info-container" style="display: none;">
-                                <h3 id="selected-goalkeeper-name" style="text-align: center; font-size: 1.8rem; color: #333; margin-bottom: 2rem;"></h3>
+                                <h3 id="selected-goalkeeper-name"
+                                    style="text-align: center; font-size: 1.8rem; color: #333; margin-bottom: 2rem;">
+                                </h3>
 
                                 <!-- Sub Tabs -->
                                 <div class="tabs-header" style="margin-bottom: 2rem;">
-                                    <button class="tab-button active" onclick="switchGoalkeeperTab('goalkeeper-overview')">
+                                    <button class="tab-button active"
+                                        onclick="switchGoalkeeperTab('goalkeeper-overview')">
                                         📊 Overview
                                     </button>
                                     <button class="tab-button" onclick="switchGoalkeeperTab('goalkeeper-matches')">
                                         ⚽ Matches
                                     </button>
-                                    <button class="tab-button" onclick="switchGoalkeeperTab('goalkeeper-championships')">
+                                    <button class="tab-button"
+                                        onclick="switchGoalkeeperTab('goalkeeper-championships')">
                                         🏆 Championships
                                     </button>
                                     <button class="tab-button" onclick="switchGoalkeeperTab('goalkeeper-seasons')">
@@ -1926,7 +1935,8 @@
 
                                 <!-- Goalkeeper Overview Tab -->
                                 <div id="goalkeeper-overview-tab" class="tab-content active">
-                                    <div id="goalkeeper-overview-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                                    <div id="goalkeeper-overview-container"
+                                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
                                         <!-- Cards will be loaded here -->
                                     </div>
                                 </div>
@@ -1934,7 +1944,8 @@
                                 <!-- Goalkeeper Matches Tab -->
                                 <div id="goalkeeper-matches-tab" class="tab-content">
                                     <div class="table-search-container" style="margin-bottom: 1rem;">
-                                        <input type="search" id="goalkeeper-matches-search-input" class="table-search-input" placeholder="Search in matches table...">
+                                        <input type="search" id="goalkeeper-matches-search-input"
+                                            class="table-search-input" placeholder="Search in matches table...">
                                     </div>
                                     <div style="overflow-x: auto;">
                                         <table class="matches-table">
@@ -2022,7 +2033,8 @@
 
                             <!-- No Goalkeeper Selected Message -->
                             <div id="no-goalkeeper-selected" style="text-align: center; padding: 4rem; color: #666;">
-                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem;">
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" style="margin-bottom: 1rem;">
                                     <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                                 <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Search for a Goalkeeper</h3>
@@ -2046,10 +2058,12 @@
                         <!-- All Clubs Tab -->
                         <div id="elnady-all-clubs-tab" class="tab-content active">
                             <!-- Search Box -->
-                            <div style="margin-bottom: 1.5rem; max-width: 500px; margin-left: auto; margin-right: auto;">
-                                <input type="text" id="all-clubs-search" class="filter-control" placeholder="🔍 Search for a club..." style="width: 100%; text-align: center;">
+                            <div
+                                style="margin-bottom: 1.5rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+                                <input type="text" id="all-clubs-search" class="filter-control"
+                                    placeholder="🔍 Search for a club..." style="width: 100%; text-align: center;">
                             </div>
-                            
+
                             <div style="overflow-x: auto;">
                                 <table class="matches-table">
                                     <thead>
@@ -2070,18 +2084,22 @@
                         <div id="elnady-by-club-tab" class="tab-content">
                             <!-- ELNADY Search Box -->
                             <div style="margin-bottom: 2rem; text-align: center;">
-                                <label style="font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 0.5rem; display: block;">
+                                <label
+                                    style="font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 0.5rem; display: block;">
                                     🔍 Search Club
                                 </label>
                                 <div class="searchable-select-container" style="max-width: 500px; margin: 0 auto;">
-                                    <input type="text" id="elnady-search" class="filter-control" placeholder="Search for a club..." autocomplete="off">
+                                    <input type="text" id="elnady-search" class="filter-control"
+                                        placeholder="Search for a club..." autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
 
                             <!-- Club Stats Content -->
                             <div id="elnady-club-content" style="display: none;">
-                                <h3 id="selected-club-name" style="text-align: center; font-size: 1.8rem; color: #333; margin-bottom: 2rem;"></h3>
+                                <h3 id="selected-club-name"
+                                    style="text-align: center; font-size: 1.8rem; color: #333; margin-bottom: 2rem;">
+                                </h3>
 
                                 <!-- Sub Tabs for Club Stats -->
                                 <div class="tabs-header" style="margin-bottom: 2rem;">
@@ -2170,7 +2188,8 @@
 
                             <!-- No Club Selected Message -->
                             <div id="no-club-selected" style="text-align: center; padding: 4rem; color: #666;">
-                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem;">
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" style="margin-bottom: 1rem;">
                                     <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                                 <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Search for a Club</h3>
@@ -2248,5 +2267,5 @@
     <script src="{{ url_for('static', filename='browser_cache.js') }}"></script>
     <script src="{{ url_for('static', filename='egypt_teams/egypt_teams.js') }}"></script>
 </body>
-</html>
 
+</html>
