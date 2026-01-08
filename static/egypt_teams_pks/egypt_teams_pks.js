@@ -7,31 +7,41 @@ const pksEgyptData = {
 };
 
 // Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     loadPKSData();
     setupSearchableSelects();
 });
 
 // Load PKS data from API
 async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
+    const refreshBtn = document.querySelector('.refresh-btn');
+
+    // Set loading state on button for initial load
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        const icon = refreshBtn.querySelector('svg');
+        if (icon) icon.classList.add('spinning');
+        refreshBtn.innerHTML = '<svg class="btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>Syncing...';
+    }
+
     try {
         // Show loading container, hide content (only on initial load)
         if (!skipLoadingState) {
             showPKSLoading(true);
         }
-        
+
         const url = forceRefresh ? '/api/egypt-teams-pks?force_refresh=true' : '/api/egypt-teams-pks';
         const response = await fetch(url);
         const data = await response.json();
-        
+
         pksEgyptData.allRecords = data.records || [];
-        
+
         // Build filter options
         buildFilterOptions();
-        
+
         // Apply filters (will show all initially)
         applyPKSFilters();
-        
+
         // Hide loading, show content (only on initial load)
         if (!skipLoadingState) {
             showPKSLoading(false);
@@ -45,6 +55,22 @@ async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
         if (!skipLoadingState) {
             showPKSLoading(false);
         }
+        // Re-throw error if force refresh so caller knows it failed
+        if (forceRefresh) throw error;
+    } finally {
+        // Reset button only if NOT force refresh (initial load)
+        // If force refresh, the calling function handles the "Synced!" state and reset
+        if (!forceRefresh && refreshBtn) {
+            refreshBtn.disabled = false;
+            const icon = refreshBtn.querySelector('svg');
+            if (icon) icon.classList.remove('spinning');
+            refreshBtn.innerHTML = `
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Sync Data
+            `;
+        }
     }
 }
 
@@ -52,11 +78,11 @@ async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
 function showPKSLoading(show) {
     const loadingContainer = document.getElementById('pks-loading-container');
     const contentContainer = document.getElementById('pks-main-content');
-    
+
     if (loadingContainer) {
         loadingContainer.style.display = show ? 'flex' : 'none';
     }
-    
+
     if (contentContainer) {
         contentContainer.style.display = show ? 'none' : 'block';
     }
@@ -67,27 +93,27 @@ async function refreshPKSData() {
     const refreshBtn = event.target.closest('button');
     const refreshIcon = refreshBtn?.querySelector('svg');
     const originalText = refreshBtn.innerHTML;
-    
+
     // Show loading state on button only
     refreshBtn.disabled = true;
     if (refreshIcon) {
         refreshIcon.classList.add('spinning');
     }
     refreshBtn.innerHTML = '<svg class="btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>Syncing...';
-    
+
     try {
         await loadPKSData(true, true); // true = force refresh, true = skip loading state
-        
+
         // Show success message
         refreshBtn.innerHTML = '<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Synced!';
-        
+
         setTimeout(() => {
             refreshBtn.innerHTML = originalText;
             refreshBtn.disabled = false;
         }, 2000);
     } catch (error) {
         refreshBtn.innerHTML = '<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>Error!';
-        
+
         setTimeout(() => {
             refreshBtn.innerHTML = originalText;
             refreshBtn.disabled = false;
@@ -110,7 +136,7 @@ function buildFilterOptions() {
         'filter-opponent-gk': new Set(),
         'filter-result': new Set()
     };
-    
+
     pksEgyptData.allRecords.forEach(record => {
         if (record['PKS System']) options['filter-pks-system'].add(record['PKS System']);
         if (record['CHAMPION System']) options['filter-champion-system'].add(record['CHAMPION System']);
@@ -124,25 +150,25 @@ function buildFilterOptions() {
         if (record['OPPONENT GK']) options['filter-opponent-gk'].add(record['OPPONENT GK']);
         if (record['W-D-L PKS']) options['filter-result'].add(record['W-D-L PKS']);
     });
-    
+
     pksEgyptData.filterOptions = options;
 }
 
 // Setup searchable select dropdowns
 function setupSearchableSelects() {
     const filterInputs = document.querySelectorAll('.searchable-select-container input');
-    
+
     filterInputs.forEach(input => {
-        input.addEventListener('focus', function() {
+        input.addEventListener('focus', function () {
             showDropdown(this);
         });
-        
-        input.addEventListener('input', function() {
+
+        input.addEventListener('input', function () {
             filterDropdown(this);
         });
-        
+
         // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (!e.target.closest('.searchable-select-container')) {
                 document.querySelectorAll('.dropdown-options').forEach(dropdown => {
                     dropdown.style.display = 'none';
@@ -157,26 +183,26 @@ function showDropdown(input) {
     const container = input.closest('.searchable-select-container');
     const dropdown = container.querySelector('.dropdown-options');
     const filterId = input.id;
-    
+
     // Get options for this filter
     const options = pksEgyptData.filterOptions[filterId];
     if (!options) return;
-    
+
     // Clear and populate dropdown
     dropdown.innerHTML = '';
     const sortedOptions = Array.from(options).sort();
-    
+
     sortedOptions.forEach(option => {
         const div = document.createElement('div');
         div.className = 'dropdown-option';
         div.textContent = option;
-        div.addEventListener('click', function() {
+        div.addEventListener('click', function () {
             input.value = option;
             dropdown.style.display = 'none';
         });
         dropdown.appendChild(div);
     });
-    
+
     dropdown.style.display = 'block';
 }
 
@@ -185,7 +211,7 @@ function filterDropdown(input) {
     const container = input.closest('.searchable-select-container');
     const dropdown = container.querySelector('.dropdown-options');
     const filter = input.value.toLowerCase();
-    
+
     const options = dropdown.querySelectorAll('.dropdown-option');
     options.forEach(option => {
         const text = option.textContent.toLowerCase();
@@ -199,12 +225,12 @@ function switchPKSTab(tabName) {
     const tabButtons = document.querySelectorAll('.main-tab-btn');
     tabButtons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
+
     // Update tab content
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     if (tabName === 'overview') {
         document.getElementById('overview-tab').classList.add('active');
     } else if (tabName === 'players') {
@@ -220,7 +246,7 @@ function switchPKSTab(tabName) {
         document.getElementById('goalkeepers-tab').classList.add('active');
         displayEgyptGoalkeepers();
     }
-    
+
     pksEgyptData.currentTab = tabName;
 }
 
@@ -230,12 +256,12 @@ function switchPlayersSubTab(tabName) {
     const subTabButtons = document.querySelectorAll('#players-tab .sub-tab-btn');
     subTabButtons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
+
     // Update sub tab content
     document.querySelectorAll('#players-tab .sub-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     if (tabName === 'egypt') {
         document.getElementById('egypt-players-subtab').classList.add('active');
         displayEgyptPlayers();
@@ -251,12 +277,12 @@ function switchGKSubTab(tabName) {
     const subTabButtons = document.querySelectorAll('#goalkeepers-tab .sub-tab-btn');
     subTabButtons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
+
     // Update sub tab content
     document.querySelectorAll('#goalkeepers-tab .sub-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     if (tabName === 'egypt') {
         document.getElementById('egypt-gk-subtab').classList.add('active');
         displayEgyptGoalkeepers();
@@ -308,30 +334,30 @@ function applyPKSFilters() {
         opponentGK: document.getElementById('filter-opponent-gk').value.trim(),
         result: document.getElementById('filter-result').value.trim()
     };
-    
+
     // Filter records
     pksEgyptData.filteredRecords = pksEgyptData.allRecords.filter(record => {
         const matchIdStr = String(record['MATCH_ID'] || '').toLowerCase();
         return (!filters.matchId || matchIdStr.includes(filters.matchId)) &&
-               (!filters.pksSystem || record['PKS System'] === filters.pksSystem) &&
-               (!filters.championSystem || record['CHAMPION System'] === filters.championSystem) &&
-               (!filters.egyptTeam || record['Egypt TEAM'] === filters.egyptTeam) &&
-               (!filters.egyptPlayer || record['Egypt PLAYER'] === filters.egyptPlayer) &&
-               (!filters.egyptStatus || record['Egypt STATUS'] === filters.egyptStatus) &&
-               (!filters.opponentTeam || record['OPPONENT TEAM'] === filters.opponentTeam) &&
-               (!filters.opponentPlayer || record['OPPONENT PLAYER'] === filters.opponentPlayer) &&
-               (!filters.opponentStatus || record['OPPONENT STATUS'] === filters.opponentStatus) &&
-               (!filters.egyptGK || record['EGYPT GK'] === filters.egyptGK) &&
-               (!filters.opponentGK || record['OPPONENT GK'] === filters.opponentGK) &&
-               (!filters.result || record['W-D-L PKS'] === filters.result);
+            (!filters.pksSystem || record['PKS System'] === filters.pksSystem) &&
+            (!filters.championSystem || record['CHAMPION System'] === filters.championSystem) &&
+            (!filters.egyptTeam || record['Egypt TEAM'] === filters.egyptTeam) &&
+            (!filters.egyptPlayer || record['Egypt PLAYER'] === filters.egyptPlayer) &&
+            (!filters.egyptStatus || record['Egypt STATUS'] === filters.egyptStatus) &&
+            (!filters.opponentTeam || record['OPPONENT TEAM'] === filters.opponentTeam) &&
+            (!filters.opponentPlayer || record['OPPONENT PLAYER'] === filters.opponentPlayer) &&
+            (!filters.opponentStatus || record['OPPONENT STATUS'] === filters.opponentStatus) &&
+            (!filters.egyptGK || record['EGYPT GK'] === filters.egyptGK) &&
+            (!filters.opponentGK || record['OPPONENT GK'] === filters.opponentGK) &&
+            (!filters.result || record['W-D-L PKS'] === filters.result);
     });
-    
+
     // Calculate and display statistics
     calculatePKSStatistics();
-    
+
     // Display filtered data in table
     displayPKSData();
-    
+
     // Update Players Stats if that tab is active
     if (pksEgyptData.currentTab === 'players') {
         const activeSubTab = document.querySelector('.sub-tab-btn.active');
@@ -341,12 +367,12 @@ function applyPKSFilters() {
             displayOpponentPlayers();
         }
     }
-    
+
     // Update H2H Teams if that tab is active
     if (pksEgyptData.currentTab === 'h2h') {
         displayH2HTeams();
     }
-    
+
     // Update GKS Stats if that tab is active
     if (pksEgyptData.currentTab === 'goalkeepers') {
         const activeSubTab = document.querySelector('.sub-tab-btn.active');
@@ -361,7 +387,7 @@ function applyPKSFilters() {
 // Calculate statistics
 function calculatePKSStatistics() {
     const records = pksEgyptData.filteredRecords;
-    
+
     // Total Matches (unique MATCH_ID)
     const uniqueMatches = new Set();
     records.forEach(record => {
@@ -370,12 +396,12 @@ function calculatePKSStatistics() {
         }
     });
     const totalMatches = uniqueMatches.size;
-    
+
     // Wins and Losses
     let wins = 0;
     let losses = 0;
     const processedMatches = new Set();
-    
+
     records.forEach(record => {
         const matchId = record['MATCH_ID'];
         if (matchId && !processedMatches.has(matchId)) {
@@ -385,18 +411,18 @@ function calculatePKSStatistics() {
             if (result && result.includes('L')) losses++;
         }
     });
-    
+
     // Calculate Win Rate
     const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
-    
+
     // Total Penalties, Goals, Misses
     const totalPenalties = records.filter(r => r['Egypt STATUS']).length;
     const goals = records.filter(r => r['Egypt STATUS'] === 'GOAL').length;
     const misses = records.filter(r => r['Egypt STATUS'] === 'MISS').length;
-    
+
     // Calculate Success Rate
     const successRate = totalPenalties > 0 ? Math.round((goals / totalPenalties) * 100) : 0;
-    
+
     // Update display
     displayOverviewCards({
         totalMatches,
@@ -506,7 +532,7 @@ function clearPKSFilters() {
     document.getElementById('filter-egypt-gk').value = '';
     document.getElementById('filter-opponent-gk').value = '';
     document.getElementById('filter-result').value = '';
-    
+
     applyPKSFilters();
 }
 
@@ -515,16 +541,16 @@ function displayEgyptPlayers() {
     const records = pksEgyptData.filteredRecords;
     const tbody = document.getElementById('egypt-players-tbody');
     tbody.innerHTML = '';
-    
+
     // Group by Egypt player
     const playersData = {};
-    
+
     records.forEach(record => {
         const player = record['Egypt PLAYER'];
         const status = record['Egypt STATUS'];
-        
+
         if (!player) return;
-        
+
         if (!playersData[player]) {
             playersData[player] = {
                 totalPenalties: 0,
@@ -532,10 +558,10 @@ function displayEgyptPlayers() {
                 misses: 0
             };
         }
-        
+
         if (status) {
             playersData[player].totalPenalties++;
-            
+
             if (status === 'GOAL') {
                 playersData[player].goals++;
             } else if (status === 'MISS') {
@@ -543,14 +569,14 @@ function displayEgyptPlayers() {
             }
         }
     });
-    
+
     // Convert to array and sort by total penalties
     const playersArray = Object.keys(playersData).map(player => {
         const data = playersData[player];
-        const successRate = data.totalPenalties > 0 
-            ? Math.round((data.goals / data.totalPenalties) * 100) 
+        const successRate = data.totalPenalties > 0
+            ? Math.round((data.goals / data.totalPenalties) * 100)
             : 0;
-        
+
         return {
             name: player,
             totalPenalties: data.totalPenalties,
@@ -559,13 +585,13 @@ function displayEgyptPlayers() {
             successRate: successRate
         };
     }).sort((a, b) => b.totalPenalties - a.totalPenalties);
-    
+
     // Display in table
     if (playersArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #666;">No records found</td></tr>';
         return;
     }
-    
+
     playersArray.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -584,16 +610,16 @@ function displayOpponentPlayers() {
     const records = pksEgyptData.filteredRecords;
     const tbody = document.getElementById('opponent-players-tbody');
     tbody.innerHTML = '';
-    
+
     // Group by Opponent player
     const playersData = {};
-    
+
     records.forEach(record => {
         const player = record['OPPONENT PLAYER'];
         const status = record['OPPONENT STATUS'];
-        
+
         if (!player) return;
-        
+
         if (!playersData[player]) {
             playersData[player] = {
                 totalPenalties: 0,
@@ -601,10 +627,10 @@ function displayOpponentPlayers() {
                 misses: 0
             };
         }
-        
+
         if (status) {
             playersData[player].totalPenalties++;
-            
+
             if (status === 'GOAL') {
                 playersData[player].goals++;
             } else if (status === 'MISS') {
@@ -612,14 +638,14 @@ function displayOpponentPlayers() {
             }
         }
     });
-    
+
     // Convert to array and sort by total penalties
     const playersArray = Object.keys(playersData).map(player => {
         const data = playersData[player];
-        const successRate = data.totalPenalties > 0 
-            ? Math.round((data.goals / data.totalPenalties) * 100) 
+        const successRate = data.totalPenalties > 0
+            ? Math.round((data.goals / data.totalPenalties) * 100)
             : 0;
-        
+
         return {
             name: player,
             totalPenalties: data.totalPenalties,
@@ -628,13 +654,13 @@ function displayOpponentPlayers() {
             successRate: successRate
         };
     }).sort((a, b) => b.totalPenalties - a.totalPenalties);
-    
+
     // Display in table
     if (playersArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #666;">No records found</td></tr>';
         return;
     }
-    
+
     playersArray.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -653,18 +679,18 @@ function displayEgyptGoalkeepers() {
     const records = pksEgyptData.filteredRecords;
     const tbody = document.getElementById('egypt-gk-tbody');
     tbody.innerHTML = '';
-    
+
     // Group by Egypt goalkeeper
     const gkData = {};
-    
+
     records.forEach(record => {
         const gk = record['EGYPT GK'];
         const matchId = record['MATCH_ID'];
         const opponentStatus = record['OPPONENT STATUS'];
         const opponentHowMiss = record['OPPONENT HOW MISS'];
-        
+
         if (!gk) return;
-        
+
         if (!gkData[gk]) {
             gkData[gk] = {
                 matches: new Set(),
@@ -673,35 +699,35 @@ function displayEgyptGoalkeepers() {
                 goalsConceded: 0
             };
         }
-        
+
         // Add match
         if (matchId) {
             gkData[gk].matches.add(matchId);
         }
-        
+
         // Count penalties faced and saved
         if (opponentStatus) {
             gkData[gk].penaltiesFaced++;
-            
+
             // Check if goalkeeper saved
             if (opponentHowMiss && opponentHowMiss.toLowerCase().includes('الحارس')) {
                 gkData[gk].penaltiesSaved++;
             }
-            
+
             // Count goals conceded
             if (opponentStatus === 'GOAL') {
                 gkData[gk].goalsConceded++;
             }
         }
     });
-    
+
     // Convert to array and sort by matches
     const gkArray = Object.keys(gkData).map(gk => {
         const data = gkData[gk];
-        const saveRate = data.penaltiesFaced > 0 
-            ? Math.round((data.penaltiesSaved / data.penaltiesFaced) * 100) 
+        const saveRate = data.penaltiesFaced > 0
+            ? Math.round((data.penaltiesSaved / data.penaltiesFaced) * 100)
             : 0;
-        
+
         return {
             name: gk,
             pksMatches: data.matches.size,
@@ -711,13 +737,13 @@ function displayEgyptGoalkeepers() {
             goalsConceded: data.goalsConceded
         };
     }).sort((a, b) => b.pksMatches - a.pksMatches);
-    
+
     // Display in table
     if (gkArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #666;">No records found</td></tr>';
         return;
     }
-    
+
     gkArray.forEach(gk => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -737,18 +763,18 @@ function displayOpponentGoalkeepers() {
     const records = pksEgyptData.filteredRecords;
     const tbody = document.getElementById('opponent-gk-tbody');
     tbody.innerHTML = '';
-    
+
     // Group by Opponent goalkeeper
     const gkData = {};
-    
+
     records.forEach(record => {
         const gk = record['OPPONENT GK'];
         const matchId = record['MATCH_ID'];
         const egyptStatus = record['Egypt STATUS'];
         const egyptHowMiss = record['EGYPT HOW MISS'];
-        
+
         if (!gk) return;
-        
+
         if (!gkData[gk]) {
             gkData[gk] = {
                 matches: new Set(),
@@ -757,35 +783,35 @@ function displayOpponentGoalkeepers() {
                 goalsConceded: 0
             };
         }
-        
+
         // Add match
         if (matchId) {
             gkData[gk].matches.add(matchId);
         }
-        
+
         // Count penalties faced and saved
         if (egyptStatus) {
             gkData[gk].penaltiesFaced++;
-            
+
             // Check if goalkeeper saved
             if (egyptHowMiss && egyptHowMiss.toLowerCase().includes('الحارس')) {
                 gkData[gk].penaltiesSaved++;
             }
-            
+
             // Count goals conceded
             if (egyptStatus === 'GOAL') {
                 gkData[gk].goalsConceded++;
             }
         }
     });
-    
+
     // Convert to array and sort by matches
     const gkArray = Object.keys(gkData).map(gk => {
         const data = gkData[gk];
-        const saveRate = data.penaltiesFaced > 0 
-            ? Math.round((data.penaltiesSaved / data.penaltiesFaced) * 100) 
+        const saveRate = data.penaltiesFaced > 0
+            ? Math.round((data.penaltiesSaved / data.penaltiesFaced) * 100)
             : 0;
-        
+
         return {
             name: gk,
             pksMatches: data.matches.size,
@@ -795,13 +821,13 @@ function displayOpponentGoalkeepers() {
             goalsConceded: data.goalsConceded
         };
     }).sort((a, b) => b.pksMatches - a.pksMatches);
-    
+
     // Display in table
     if (gkArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #666;">No records found</td></tr>';
         return;
     }
-    
+
     gkArray.forEach(gk => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -821,17 +847,17 @@ function displayH2HTeams() {
     const records = pksEgyptData.filteredRecords;
     const tbody = document.getElementById('h2h-tbody');
     tbody.innerHTML = '';
-    
+
     // Group by opponent team
     const teamsData = {};
-    
+
     records.forEach(record => {
         const team = record['OPPONENT TEAM'];
         const matchId = record['MATCH_ID'];
         const result = record['W-D-L PKS'];
-        
+
         if (!team) return;
-        
+
         if (!teamsData[team]) {
             teamsData[team] = {
                 matches: new Set(),
@@ -839,11 +865,11 @@ function displayH2HTeams() {
                 losses: new Set()
             };
         }
-        
+
         // Add match ID to track unique matches
         if (matchId) {
             teamsData[team].matches.add(matchId);
-            
+
             // Track wins and losses per match
             if (result) {
                 if (result.includes('W')) {
@@ -854,7 +880,7 @@ function displayH2HTeams() {
             }
         }
     });
-    
+
     // Convert to array and sort by matches count
     const teamsArray = Object.keys(teamsData).map(team => ({
         name: team,
@@ -862,13 +888,13 @@ function displayH2HTeams() {
         wins: teamsData[team].wins.size,
         losses: teamsData[team].losses.size
     })).sort((a, b) => b.matches - a.matches);
-    
+
     // Display in table
     if (teamsArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: #666;">No records found</td></tr>';
         return;
     }
-    
+
     teamsArray.forEach(team => {
         const row = document.createElement('tr');
         row.innerHTML = `

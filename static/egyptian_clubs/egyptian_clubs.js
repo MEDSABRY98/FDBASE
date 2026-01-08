@@ -32,6 +32,17 @@ let virtualScrollState = {
  * Load Egyptian Clubs data from Google Apps Script
  */
 async function loadEgyptianClubsData(forceRefresh = false, skipLoadingState = false) {
+    const syncBtn = document.getElementById('sync-data-btn');
+    const syncIcon = document.getElementById('sync-icon');
+    const syncText = document.getElementById('sync-btn-text');
+
+    // Always set loading state on button
+    if (syncBtn && syncIcon && syncText) {
+        syncBtn.disabled = true;
+        syncIcon.classList.add('spinning');
+        syncText.textContent = 'Syncing...';
+    }
+
     try {
         hideError();
         if (!skipLoadingState) {
@@ -41,7 +52,7 @@ async function loadEgyptianClubsData(forceRefresh = false, skipLoadingState = fa
         // Get Apps Script URL from server
         const configResponse = await fetch('/api/egyptian-clubs/config');
         const config = await configResponse.json();
-        
+
         if (config.success && config.appsScriptUrl) {
             egyptianClubsData.appsScriptUrl = config.appsScriptUrl;
         } else {
@@ -56,7 +67,7 @@ async function loadEgyptianClubsData(forceRefresh = false, skipLoadingState = fa
             // Find the main data sheet (first sheet with match data)
             const sheetNames = Object.keys(result.data);
             let mainSheet = null;
-            
+
             // Try to find a sheet with the expected columns
             for (const sheetName of sheetNames) {
                 const sheet = result.data[sheetName];
@@ -65,30 +76,30 @@ async function loadEgyptianClubsData(forceRefresh = false, skipLoadingState = fa
                     break;
                 }
             }
-            
+
             if (!mainSheet) {
                 // If no sheet with MATCH_ID, use the first sheet
                 mainSheet = result.data[sheetNames[0]];
             }
-            
+
             egyptianClubsData.allRecords = mainSheet || [];
             egyptianClubsData.filteredRecords = [...egyptianClubsData.allRecords];
-            
+
             console.log('✅ Data loaded successfully');
             console.log('📊 Total records:', egyptianClubsData.allRecords.length);
-            
+
             // Generate UI
             populateFilters();
             renderTable();
             calculateH2HStats();
             populateFaceToFaceDropdowns();
-            
+
             // Add filter event listeners
             addFilterListeners();
-            
+
             // Setup dynamic table search
             setupDynamicTableSearch();
-            
+
             if (!skipLoadingState) {
                 showLoading(false);
             }
@@ -100,6 +111,22 @@ async function loadEgyptianClubsData(forceRefresh = false, skipLoadingState = fa
         showError('No Data Available');
         if (!skipLoadingState) {
             showLoading(false);
+        }
+        // If error occurred during force refresh, we should probably reset button here or let the caller handle it.
+        // But since we have a finally block, we can handle the !forceRefresh case there.
+        // For forceRefresh=true, the caller (syncData) catches errors too? 
+        // Actually loadEgyptianClubsData catches the error, so syncData awaits a promise that resolves (with void).
+        // We need to re-throw error if we want syncData to know it failed?
+        // Or handle button reset here for error case too?
+        if (forceRefresh) throw error;
+
+    } finally {
+        // Reset button only if NOT force refresh (initial load)
+        // If force refresh, the calling function (syncData) handles the "Synced!" state and reset
+        if (!forceRefresh && syncBtn && syncIcon && syncText) {
+            syncBtn.disabled = false;
+            syncIcon.classList.remove('spinning');
+            syncText.textContent = 'Sync Data';
         }
     }
 }
@@ -122,7 +149,7 @@ function populateFilters() {
         'clean-sheet-filter': 'CLEAN SHEET',
         'pen-filter': 'PEN'
     };
-    
+
     Object.keys(filters).forEach(filterId => {
         const columnName = filters[filterId];
         const uniqueValues = [...new Set(
@@ -130,7 +157,7 @@ function populateFilters() {
                 .map(record => record[columnName])
                 .filter(val => val !== null && val !== undefined && val !== '')
         )].sort();
-        
+
         const select = document.getElementById(filterId);
         if (select) {
             select.innerHTML = '<option value="">All</option>';
@@ -142,10 +169,10 @@ function populateFilters() {
             });
         }
     });
-    
+
     // Populate H-A-N checklist
     populateHANChecklist();
-    
+
     // Initialize searchable filters after populating
     initializeSearchableFilters();
 }
@@ -159,7 +186,7 @@ function populateHANChecklist() {
             .map(record => record['H-A-N'])
             .filter(val => val !== null && val !== undefined && val !== '')
     )].sort();
-    
+
     const checklistDropdown = document.getElementById('han-checklist');
     if (checklistDropdown) {
         checklistDropdown.innerHTML = uniqueValues.map(value => `
@@ -174,7 +201,7 @@ function populateHANChecklist() {
 /**
  * Toggle checklist dropdown
  */
-window.toggleChecklist = function(checklistId) {
+window.toggleChecklist = function (checklistId) {
     const dropdown = document.getElementById(checklistId);
     if (dropdown) {
         const isVisible = dropdown.style.display === 'block';
@@ -190,10 +217,10 @@ window.toggleChecklist = function(checklistId) {
 /**
  * Update H-A-N filter based on selected checkboxes
  */
-window.updateHANFilter = function() {
+window.updateHANFilter = function () {
     const checkboxes = document.querySelectorAll('#han-checklist input[type="checkbox"]:checked');
     const selectedValues = Array.from(checkboxes).map(cb => cb.value);
-    
+
     const displayText = document.getElementById('han-display-text');
     if (displayText) {
         if (selectedValues.length === 0) {
@@ -204,16 +231,16 @@ window.updateHANFilter = function() {
             displayText.textContent = `${selectedValues.length} selected`;
         }
     }
-    
+
     // Store selected values for filtering
     egyptianClubsData.hanSelectedValues = selectedValues;
-    
+
     // Apply filters
     applyFilters();
 };
 
 // Close checklist when clicking outside
-document.addEventListener('click', function(event) {
+document.addEventListener('click', function (event) {
     if (!event.target.closest('.checklist-container')) {
         document.querySelectorAll('.checklist-dropdown').forEach(dropdown => {
             dropdown.style.display = 'none';
@@ -252,13 +279,13 @@ function applyFilters() {
         dateFrom: document.getElementById('date-from-filter')?.value || '',
         dateTo: document.getElementById('date-to-filter')?.value || ''
     };
-    
+
     egyptianClubsData.filteredRecords = egyptianClubsData.allRecords.filter(record => {
         // Match ID filter
         if (filters.matchId && !String(record['MATCH_ID'] || '').toLowerCase().includes(filters.matchId.toLowerCase())) {
             return false;
         }
-        
+
         // Select filters
         if (filters.championSystem && record['CHAMPION SYSTEM'] !== filters.championSystem) return false;
         if (filters.year && record['YEAR'] !== filters.year) return false;
@@ -274,32 +301,32 @@ function applyFilters() {
         if (filters.result && record['W-L MATCH'] !== filters.result) return false;
         if (filters.cleanSheet && record['CLEAN SHEET'] !== filters.cleanSheet) return false;
         if (filters.pen && record['PEN'] !== filters.pen) return false;
-        
+
         // Date range filter
         if (filters.dateFrom || filters.dateTo) {
             const recordDate = new Date(record['DATE']);
             if (filters.dateFrom && recordDate < new Date(filters.dateFrom)) return false;
             if (filters.dateTo && recordDate > new Date(filters.dateTo)) return false;
         }
-        
+
         return true;
     });
-    
+
     // Reset sort to default (by date, newest first)
     egyptianClubsData.currentSort = { column: null, ascending: true };
-    
+
     renderTable();
     calculateH2HStats();
-    
+
     // Clear search input when filters are applied
     const searchInput = document.getElementById('matches-search-input');
     if (searchInput) searchInput.value = '';
-    
+
     // Update Face to Face if teams are selected
-    const hasF2FSelection = document.getElementById('f2f-egypt-team')?.value || 
-                           document.getElementById('f2f-egypt-all')?.value || 
-                           document.getElementById('f2f-opponent-team')?.value || 
-                           document.getElementById('f2f-country')?.value;
+    const hasF2FSelection = document.getElementById('f2f-egypt-team')?.value ||
+        document.getElementById('f2f-egypt-all')?.value ||
+        document.getElementById('f2f-opponent-team')?.value ||
+        document.getElementById('f2f-country')?.value;
     if (hasF2FSelection) {
         updateFaceToFace();
     }
@@ -317,13 +344,13 @@ function clearAllFilters() {
         const ev = new Event('change', { bubbles: true });
         select.dispatchEvent(ev);
     });
-    
+
     // Clear searchable input filters
     const searchableInputs = document.querySelectorAll('.searchable-select-container input');
     searchableInputs.forEach(input => {
         input.value = '';
     });
-    
+
     // Clear H-A-N checklist
     document.querySelectorAll('#han-checklist input[type="checkbox"]').forEach(cb => {
         cb.checked = false;
@@ -333,30 +360,30 @@ function clearAllFilters() {
     if (hanDisplayText) {
         hanDisplayText.textContent = 'All';
     }
-    
+
     // Clear input filters
     document.getElementById('match-id-filter').value = '';
     document.getElementById('date-from-filter').value = '';
     document.getElementById('date-to-filter').value = '';
     document.getElementById('table-search').value = '';
-    
+
     // Clear table search input
     const searchInput = document.getElementById('matches-search-input');
     if (searchInput) searchInput.value = '';
-    
+
     // Reset filtered records and sort
     egyptianClubsData.filteredRecords = [...egyptianClubsData.allRecords];
     egyptianClubsData.currentSort = { column: null, ascending: true };
-    
+
     // Update UI
     renderTable();
     calculateH2HStats();
-    
+
     // Update Face to Face if teams are selected
-    const hasF2FSelection = document.getElementById('f2f-egypt-team')?.value || 
-                           document.getElementById('f2f-egypt-all')?.value || 
-                           document.getElementById('f2f-opponent-team')?.value || 
-                           document.getElementById('f2f-country')?.value;
+    const hasF2FSelection = document.getElementById('f2f-egypt-team')?.value ||
+        document.getElementById('f2f-egypt-all')?.value ||
+        document.getElementById('f2f-opponent-team')?.value ||
+        document.getElementById('f2f-country')?.value;
     if (hasF2FSelection) {
         updateFaceToFace();
     }
@@ -370,41 +397,41 @@ function clearAllFilters() {
 function calculateDoubleWins(data) {
     // Group matches by Egypt Team, Opponent Team, Season, and Round
     const groups = {};
-    
+
     data.forEach(record => {
         const egyptTeam = record['EGYPT TEAM'];
         const opponentTeam = record['OPPONENT TEAM'];
         const season = record['SEASON'];
         const round = record['ROUND'];
         const result = record['W-L MATCH'];
-        
+
         if (!egyptTeam || !opponentTeam || !season || !round) return;
-        
+
         const key = `${egyptTeam}|${opponentTeam}|${season}|${round}`;
-        
+
         if (!groups[key]) {
             groups[key] = {
                 wins: 0,
                 matches: 0
             };
         }
-        
+
         groups[key].matches += 1;
-        
+
         if (result === 'W' || result === 'Win') {
             groups[key].wins += 1;
         }
     });
-    
+
     // Count groups where there are exactly 2 wins (or more, but we need at least 2)
     let doubleWinsCount = 0;
-    
+
     Object.values(groups).forEach(group => {
         if (group.wins >= 2) {
             doubleWinsCount += 1;
         }
     });
-    
+
     return doubleWinsCount;
 }
 
@@ -415,41 +442,41 @@ function calculateDoubleWins(data) {
 function calculateDoubleLosses(data) {
     // Group matches by Egypt Team, Opponent Team, Season, and Round
     const groups = {};
-    
+
     data.forEach(record => {
         const egyptTeam = record['EGYPT TEAM'];
         const opponentTeam = record['OPPONENT TEAM'];
         const season = record['SEASON'];
         const round = record['ROUND'];
         const result = record['W-L MATCH'];
-        
+
         if (!egyptTeam || !opponentTeam || !season || !round) return;
-        
+
         const key = `${egyptTeam}|${opponentTeam}|${season}|${round}`;
-        
+
         if (!groups[key]) {
             groups[key] = {
                 losses: 0,
                 matches: 0
             };
         }
-        
+
         groups[key].matches += 1;
-        
+
         if (result === 'L' || result === 'Loss') {
             groups[key].losses += 1;
         }
     });
-    
+
     // Count groups where there are exactly 2 losses (or more, but we need at least 2)
     let doubleLossesCount = 0;
-    
+
     Object.values(groups).forEach(group => {
         if (group.losses >= 2) {
             doubleLossesCount += 1;
         }
     });
-    
+
     return doubleLossesCount;
 }
 
@@ -457,7 +484,7 @@ function calculateDoubleLosses(data) {
 function renderTableRow(row, columns) {
     return '<tr>' + columns.map(col => {
         let value = row[col] !== null && row[col] !== undefined ? row[col] : '';
-        
+
         // Format DATE column to show only date without time
         if (col === 'DATE' && value) {
             const date = new Date(value);
@@ -466,7 +493,7 @@ function renderTableRow(row, columns) {
                 value = date.toISOString().split('T')[0];
             }
         }
-        
+
         return `<td>${escapeHtml(String(value))}</td>`;
     }).join('') + '</tr>';
 }
@@ -475,18 +502,18 @@ function renderTableRow(row, columns) {
 function renderVisibleTableRows() {
     const tbody = document.getElementById('table-body');
     if (!tbody) return;
-    
+
     const { allData, startIndex, endIndex } = virtualScrollState;
     const visibleData = allData.slice(startIndex, endIndex);
     const columns = ['DATE', 'SEASON', 'ROUND', 'H-A-N', 'EGYPT TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-L MATCH'];
-    
+
     // Create spacer row for top (only if startIndex > 0)
     const topSpacer = startIndex > 0 ? `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="${columns.length}"></td></tr>` : '';
     // Render visible rows
     const rowsHtml = visibleData.map(row => renderTableRow(row, columns)).join('');
     // Create spacer row for bottom
     const bottomSpacer = `<tr style="height: ${Math.max(0, allData.length - endIndex) * virtualScrollState.rowHeight}px;"><td colspan="${columns.length}"></td></tr>`;
-    
+
     tbody.innerHTML = topSpacer + rowsHtml + bottomSpacer;
 }
 
@@ -497,9 +524,9 @@ function renderTable() {
     const data = egyptianClubsData.filteredRecords;
     const thead = document.getElementById('table-headers');
     const tbody = document.getElementById('table-body');
-    
+
     if (!thead || !tbody) return;
-    
+
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="100%" class="no-data">No data available</td></tr>';
         // Remove scroll handlers if they exist
@@ -512,15 +539,15 @@ function renderTable() {
         }
         return;
     }
-    
+
     // Define specific columns to display in order
     const columns = ['DATE', 'SEASON', 'ROUND', 'H-A-N', 'EGYPT TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-L MATCH'];
-    
+
     // Generate headers
-    thead.innerHTML = columns.map(col => 
+    thead.innerHTML = columns.map(col =>
         `<th onclick="sortTable('${col}')">${col} ⇅</th>`
     ).join('');
-    
+
     // Sort data by DATE (newest first) if no custom sort is applied
     let sortedData = [...data];
     if (!egyptianClubsData.currentSort.column) {
@@ -530,7 +557,7 @@ function renderTable() {
             return dateB - dateA; // Descending order (newest first)
         });
     }
-    
+
     // For small datasets (< 1000 rows), render everything at once for better compatibility
     if (sortedData.length <= 1000) {
         tbody.innerHTML = sortedData.map(row => renderTableRow(row, columns)).join('');
@@ -544,24 +571,24 @@ function renderTable() {
         }
         return;
     }
-    
+
     // For large datasets, use virtual scrolling
     virtualScrollState.allData = sortedData;
     virtualScrollState.currentViewData = sortedData;
-    
+
     // Reset scroll state
     virtualScrollState.startIndex = 0;
     virtualScrollState.endIndex = Math.min(25, sortedData.length);
-    
+
     // Reset scroll position
     const container = document.querySelector('.matches-table-container');
     if (container) {
         container.scrollTop = 0;
     }
-    
+
     // Initial render
     renderVisibleTableRows();
-    
+
     // Setup virtual scrolling
     setupVirtualScrolling();
 }
@@ -574,33 +601,33 @@ function setupVirtualScrolling() {
             container.removeEventListener('scroll', virtualScrollState.scrollHandler);
         }
     }
-    
+
     // Create new scroll handler
     virtualScrollState.scrollHandler = function handleScroll(e) {
         const container = e.target;
         if (!container) return;
-        
+
         const scrollTop = container.scrollTop || 0;
         const containerHeight = container.clientHeight || 0;
         const { allData, rowHeight, bufferSize } = virtualScrollState;
-        
+
         // Calculate which rows should be visible
         const visibleStart = Math.floor(scrollTop / rowHeight);
         const visibleEnd = Math.ceil((scrollTop + containerHeight) / rowHeight);
-        
+
         // Add buffer
         const bufferStart = Math.max(0, visibleStart - bufferSize);
         const bufferEnd = Math.min(allData.length, visibleEnd + bufferSize);
-        
+
         // Only re-render if the visible range has changed significantly
-        if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 || 
+        if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 ||
             Math.abs(bufferEnd - virtualScrollState.endIndex) > 5) {
             virtualScrollState.startIndex = bufferStart;
             virtualScrollState.endIndex = bufferEnd;
             renderVisibleTableRows();
         }
     };
-    
+
     // Attach scroll listener to the table container
     const container = document.querySelector('.matches-table-container');
     if (container) {
@@ -619,11 +646,11 @@ function setupDynamicTableSearch() {
 
     newSearchInput.addEventListener('keyup', () => {
         const searchTerm = newSearchInput.value.toLowerCase().trim();
-        
+
         // Get current filtered records
         const currentData = egyptianClubsData.filteredRecords;
         const columns = ['DATE', 'SEASON', 'ROUND', 'H-A-N', 'EGYPT TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-L MATCH'];
-        
+
         // Sort data by DATE (newest first) if no custom sort is applied
         let sortedData = [...currentData];
         if (!egyptianClubsData.currentSort.column) {
@@ -633,7 +660,7 @@ function setupDynamicTableSearch() {
                 return dateB - dateA;
             });
         }
-        
+
         // If dataset is small, use regular filtering without virtual scroll
         if (sortedData.length <= 1000) {
             if (!searchTerm) {
@@ -644,12 +671,12 @@ function setupDynamicTableSearch() {
                 // Filter data based on search
                 const tbody = document.getElementById('table-body');
                 if (!tbody) return;
-                
+
                 const filtered = sortedData.filter((row) => {
                     const rowText = columns.map(c => String(row[c] || '')).join(' ').toLowerCase();
                     return rowText.includes(searchTerm);
                 });
-                
+
                 if (filtered.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="100%" class="no-data">No data available</td></tr>';
                 } else {
@@ -658,7 +685,7 @@ function setupDynamicTableSearch() {
                 return;
             }
         }
-        
+
         // For large datasets with virtual scrolling
         if (!searchTerm) {
             // No search term, restore full data
@@ -674,13 +701,13 @@ function setupDynamicTableSearch() {
             // Keep currentViewData as the original (before search) for when user clears search
             virtualScrollState.currentViewData = sortedData;
         }
-        
+
         // Reset scroll position
         const container = document.querySelector('.matches-table-container');
         if (container) {
             container.scrollTop = 0;
         }
-        
+
         // Reset scroll and re-render
         virtualScrollState.startIndex = 0;
         virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
@@ -700,13 +727,13 @@ function escapeHtml(text) {
  * Sort table by column
  */
 function sortTable(column) {
-    const isAscending = egyptianClubsData.currentSort.column === column ? 
+    const isAscending = egyptianClubsData.currentSort.column === column ?
         !egyptianClubsData.currentSort.ascending : true;
-    
+
     egyptianClubsData.filteredRecords.sort((a, b) => {
         let valA = a[column];
         let valB = b[column];
-        
+
         // Handle dates specially
         if (column === 'DATE') {
             valA = new Date(valA || '');
@@ -720,12 +747,12 @@ function sortTable(column) {
             valA = String(valA || '').toLowerCase();
             valB = String(valB || '').toLowerCase();
         }
-        
+
         if (valA < valB) return isAscending ? -1 : 1;
         if (valA > valB) return isAscending ? 1 : -1;
         return 0;
     });
-    
+
     egyptianClubsData.currentSort = { column, ascending: isAscending };
     renderTable();
 }
@@ -752,13 +779,13 @@ async function syncData() {
     const syncBtn = document.getElementById('sync-data-btn');
     const syncIcon = document.getElementById('sync-icon');
     const syncText = document.getElementById('sync-btn-text');
-    
+
     if (!syncBtn || !syncIcon || !syncText) return;
-    
+
     syncBtn.disabled = true;
     syncIcon.classList.add('spinning');
     syncText.textContent = 'Syncing...';
-    
+
     try {
         await loadEgyptianClubsData(true, true); // true = force refresh, true = skip loading state
         syncText.textContent = 'Synced!';
@@ -783,11 +810,11 @@ async function syncData() {
 function showLoading(show) {
     const loadingContainer = document.getElementById('loading-container');
     const contentContainer = document.getElementById('main-content');
-    
+
     if (loadingContainer) {
         loadingContainer.style.display = show ? 'flex' : 'none';
     }
-    
+
     if (contentContainer) {
         contentContainer.style.display = show ? 'none' : 'block';
     }
@@ -823,19 +850,19 @@ function showStatsTab(event, tabId) {
     tabContents.forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Remove active class from all tabs
     const tabs = document.querySelectorAll('.stats-tab');
     tabs.forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Show selected tab content
     const selectedTab = document.getElementById(tabId);
     if (selectedTab) {
         selectedTab.classList.add('active');
     }
-    
+
     // Add active class to clicked tab
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
@@ -857,27 +884,27 @@ function initializeSearchableFilters() {
  */
 function makeSelectSearchable(select) {
     if (!select || select.dataset.searchable === 'true') return;
-    
+
     select.style.display = 'none';
     select.dataset.searchable = 'true';
-    
+
     const container = document.createElement('div');
     container.className = 'searchable-select-container';
-    
+
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = select.options[0]?.text || 'Search...';
     input.value = '';
-    
+
     const dropdown = document.createElement('div');
     dropdown.className = 'dropdown-options';
     dropdown.style.display = 'none';
-    
+
     select.parentElement.insertBefore(container, select);
     container.appendChild(input);
     container.appendChild(dropdown);
     container.appendChild(select);
-    
+
     function renderOptions(filterText = '') {
         dropdown.innerHTML = '';
         const text = filterText.toLowerCase();
@@ -889,7 +916,7 @@ function makeSelectSearchable(select) {
                 const div = document.createElement('div');
                 div.textContent = label;
                 div.dataset.value = value;
-                div.addEventListener('mousedown', function(e) {
+                div.addEventListener('mousedown', function (e) {
                     e.preventDefault();
                     select.value = value;
                     input.value = label;
@@ -903,7 +930,7 @@ function makeSelectSearchable(select) {
         });
         dropdown.style.display = dropdown.children.length ? 'block' : 'none';
     }
-    
+
     input.addEventListener('focus', () => renderOptions(input.value));
     input.addEventListener('input', () => renderOptions(input.value));
     input.addEventListener('blur', () => {
@@ -911,9 +938,9 @@ function makeSelectSearchable(select) {
             dropdown.style.display = 'none';
         }, 200);
     });
-    
+
     // Update input when select changes programmatically
-    select.addEventListener('change', function() {
+    select.addEventListener('change', function () {
         if (select.value === '') {
             input.value = '';
         } else {
@@ -930,14 +957,14 @@ function makeSelectSearchable(select) {
  */
 function calculateH2HStats() {
     const data = egyptianClubsData.filteredRecords;
-    
+
     // Calculate stats for Egypt teams
     const egyptTeamsStats = {};
-    
+
     data.forEach(record => {
         const team = record['EGYPT TEAM'];
         if (!team) return;
-        
+
         if (!egyptTeamsStats[team]) {
             egyptTeamsStats[team] = {
                 team: team,
@@ -952,39 +979,39 @@ function calculateH2HStats() {
                 CA: 0
             };
         }
-        
+
         const stats = egyptTeamsStats[team];
         stats.P += 1;
-        
+
         const result = record['W-L MATCH'];
         if (result === 'W' || result === 'Win') stats.W += 1;
         else if (result === 'D' || result === 'D.' || result === 'Draw') stats.D += 1;
         else if (result === 'L' || result === 'Loss') stats.L += 1;
-        
+
         const gf = parseInt(record['GF']) || 0;
         const ga = parseInt(record['GA']) || 0;
-        
+
         stats.GF += gf;
         stats.GA += ga;
-        
+
         if (ga === 0) stats.CF += 1; // Clean sheet for (didn't concede)
         if (gf === 0) stats.CA += 1; // Clean sheet against (didn't score)
     });
-    
+
     // Calculate goal difference
     Object.values(egyptTeamsStats).forEach(stats => {
         stats.GD = stats.GF - stats.GA;
     });
-    
+
     egyptianClubsData.h2hData.egyptTeams = Object.values(egyptTeamsStats);
-    
+
     // Calculate stats for Opponent teams
     const opponentTeamsStats = {};
-    
+
     data.forEach(record => {
         const team = record['OPPONENT TEAM'];
         if (!team) return;
-        
+
         if (!opponentTeamsStats[team]) {
             opponentTeamsStats[team] = {
                 team: team,
@@ -999,33 +1026,33 @@ function calculateH2HStats() {
                 CA: 0
             };
         }
-        
+
         const stats = opponentTeamsStats[team];
         stats.P += 1;
-        
+
         const result = record['W-L MATCH'];
         // For opponent, reverse the result
         if (result === 'L' || result === 'Loss') stats.W += 1;
         else if (result === 'D' || result === 'D.' || result === 'Draw') stats.D += 1;
         else if (result === 'W' || result === 'Win') stats.L += 1;
-        
+
         const gf = parseInt(record['GA']) || 0; // Opponent's GF is Egypt's GA
         const ga = parseInt(record['GF']) || 0; // Opponent's GA is Egypt's GF
-        
+
         stats.GF += gf;
         stats.GA += ga;
-        
+
         if (ga === 0) stats.CF += 1; // Clean sheet for opponent
         if (gf === 0) stats.CA += 1; // Clean sheet against opponent
     });
-    
+
     // Calculate goal difference
     Object.values(opponentTeamsStats).forEach(stats => {
         stats.GD = stats.GF - stats.GA;
     });
-    
+
     egyptianClubsData.h2hData.opponentTeams = Object.values(opponentTeamsStats);
-    
+
     // Render H2H tables
     renderH2HTables();
 }
@@ -1045,21 +1072,21 @@ function renderH2HTable(type) {
     const data = type === 'egypt' ? egyptianClubsData.h2hData.egyptTeams : egyptianClubsData.h2hData.opponentTeams;
     const tbody = document.getElementById(type === 'egypt' ? 'egypt-teams-body' : 'opponent-teams-body');
     const tfoot = document.getElementById(type === 'egypt' ? 'egypt-teams-footer' : 'opponent-teams-footer');
-    
+
     if (!tbody) return;
-    
+
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" class="no-data">No data available</td></tr>';
         if (tfoot) tfoot.innerHTML = '';
         return;
     }
-    
+
     // Sort by matches played (descending) by default if no custom sort
     let sortedData = [...data];
     if (!egyptianClubsData.h2hData.currentSort.column || egyptianClubsData.h2hData.currentSort.type !== type) {
         sortedData.sort((a, b) => b.P - a.P);
     }
-    
+
     tbody.innerHTML = sortedData.map(team => `
         <tr>
             <td>${team.team}</td>
@@ -1074,7 +1101,7 @@ function renderH2HTable(type) {
             <td>${team.CA}</td>
         </tr>
     `).join('');
-    
+
     // Calculate and render totals
     if (tfoot) {
         const totals = {
@@ -1088,7 +1115,7 @@ function renderH2HTable(type) {
             CF: 0,
             CA: 0
         };
-        
+
         sortedData.forEach(team => {
             totals.P += team.P;
             totals.W += team.W;
@@ -1099,9 +1126,9 @@ function renderH2HTable(type) {
             totals.CF += team.CF;
             totals.CA += team.CA;
         });
-        
+
         totals.GD = totals.GF - totals.GA;
-        
+
         tfoot.innerHTML = `
             <tr>
                 <td style="text-align: center;"><strong>Total</strong></td>
@@ -1124,15 +1151,15 @@ function renderH2HTable(type) {
  */
 function sortH2HTable(type, column) {
     const data = type === 'egypt' ? egyptianClubsData.h2hData.egyptTeams : egyptianClubsData.h2hData.opponentTeams;
-    
-    const isAscending = egyptianClubsData.h2hData.currentSort.type === type && 
-                        egyptianClubsData.h2hData.currentSort.column === column ? 
-                        !egyptianClubsData.h2hData.currentSort.ascending : true;
-    
+
+    const isAscending = egyptianClubsData.h2hData.currentSort.type === type &&
+        egyptianClubsData.h2hData.currentSort.column === column ?
+        !egyptianClubsData.h2hData.currentSort.ascending : true;
+
     data.sort((a, b) => {
         let valA = column === 'team' ? a.team : a[column];
         let valB = column === 'team' ? b.team : b[column];
-        
+
         if (column === 'team') {
             valA = String(valA || '').toLowerCase();
             valB = String(valB || '').toLowerCase();
@@ -1140,12 +1167,12 @@ function sortH2HTable(type, column) {
             valA = parseFloat(valA) || 0;
             valB = parseFloat(valB) || 0;
         }
-        
+
         if (valA < valB) return isAscending ? -1 : 1;
         if (valA > valB) return isAscending ? 1 : -1;
         return 0;
     });
-    
+
     egyptianClubsData.h2hData.currentSort = { type, column, ascending: isAscending };
     renderH2HTable(type);
 }
@@ -1159,19 +1186,19 @@ function showH2HSubTab(event, tabId) {
     subContents.forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Remove active class from all sub tabs
     const subTabs = document.querySelectorAll('.h2h-sub-tab');
     subTabs.forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Show selected sub tab content
     const selectedContent = document.getElementById(tabId);
     if (selectedContent) {
         selectedContent.classList.add('active');
     }
-    
+
     // Add active class to clicked sub tab
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
@@ -1184,12 +1211,12 @@ function showH2HSubTab(event, tabId) {
 function searchH2HTable(type, searchValue) {
     const tbody = document.getElementById(type === 'egypt' ? 'egypt-teams-body' : 'opponent-teams-body');
     const tfoot = document.getElementById(type === 'egypt' ? 'egypt-teams-footer' : 'opponent-teams-footer');
-    
+
     if (!tbody) return;
-    
+
     const rows = tbody.querySelectorAll('tr');
     const searchTerm = searchValue.toLowerCase().trim();
-    
+
     // Filter rows
     rows.forEach(row => {
         const text = row.textContent.toLowerCase();
@@ -1199,7 +1226,7 @@ function searchH2HTable(type, searchValue) {
             row.style.display = 'none';
         }
     });
-    
+
     // Recalculate totals based on visible rows
     if (tfoot) {
         const totals = {
@@ -1213,7 +1240,7 @@ function searchH2HTable(type, searchValue) {
             CF: 0,
             CA: 0
         };
-        
+
         rows.forEach(row => {
             if (row.style.display !== 'none') {
                 const cells = row.querySelectorAll('td');
@@ -1229,9 +1256,9 @@ function searchH2HTable(type, searchValue) {
                 }
             }
         });
-        
+
         totals.GD = totals.GF - totals.GA;
-        
+
         tfoot.innerHTML = `
             <tr>
                 <td style="text-align: center;"><strong>Total</strong></td>
@@ -1255,7 +1282,7 @@ function searchH2HTable(type, searchValue) {
 function populateFaceToFaceDropdowns() {
     // Use all records for dropdown options (not filtered)
     const data = egyptianClubsData.allRecords;
-    
+
     // Get unique Egypt teams
     const egyptTeams = [...new Set(data.map(r => r['EGYPT TEAM']).filter(t => t))].sort();
     const egyptTeamSelect = document.getElementById('f2f-egypt-team');
@@ -1265,7 +1292,7 @@ function populateFaceToFaceDropdowns() {
             egyptTeams.map(team => `<option value="${team}">${team}</option>`).join('');
         egyptTeamSelect.value = currentValue;
     }
-    
+
     // Get unique Opponent teams
     const opponentTeams = [...new Set(data.map(r => r['OPPONENT TEAM']).filter(t => t))].sort();
     const opponentTeamSelect = document.getElementById('f2f-opponent-team');
@@ -1275,7 +1302,7 @@ function populateFaceToFaceDropdowns() {
             opponentTeams.map(team => `<option value="${team}">${team}</option>`).join('');
         opponentTeamSelect.value = currentValue;
     }
-    
+
     // Get unique Countries
     const countries = [...new Set(data.map(r => r['COUNTRY TEAM']).filter(c => c))].sort();
     const countrySelect = document.getElementById('f2f-country');
@@ -1296,7 +1323,7 @@ function updateFaceToFace() {
     const egyptAll = document.getElementById('f2f-egypt-all')?.value || '';
     const opponentTeam = document.getElementById('f2f-opponent-team')?.value || '';
     const country = document.getElementById('f2f-country')?.value || '';
-    
+
     // Clear opposite selections
     if (egyptAll === 'ALL') {
         document.getElementById('f2f-egypt-team').value = '';
@@ -1310,29 +1337,29 @@ function updateFaceToFace() {
     if (opponentTeam) {
         document.getElementById('f2f-country').value = '';
     }
-    
+
     // Check if we have valid selection
     const hasEgyptSide = egyptTeam || egyptAll === 'ALL';
     const hasOpponentSide = opponentTeam || country;
-    
+
     if (!hasEgyptSide || !hasOpponentSide) {
-        document.getElementById('f2f-table-body').innerHTML = 
+        document.getElementById('f2f-table-body').innerHTML =
             '<tr><td colspan="3" style="text-align: center; padding: 2rem; color: #999;">Please select teams to compare</td></tr>';
         document.getElementById('f2f-team1-header').textContent = 'Egypt Side';
         document.getElementById('f2f-team2-header').textContent = 'Opponent Side';
         document.getElementById('f2f-title').textContent = 'Select teams to compare';
         return;
     }
-    
+
     // Start with filtered data (affected by top filters)
     let egyptData = egyptianClubsData.filteredRecords;
-    
+
     // Filter data for Egypt side
     if (egyptTeam) {
         egyptData = egyptData.filter(r => r['EGYPT TEAM'] === egyptTeam);
     }
     // If egyptAll === 'ALL', no filtering needed
-    
+
     // Further filter for opponent side
     if (opponentTeam) {
         egyptData = egyptData.filter(r => r['OPPONENT TEAM'] === opponentTeam);
@@ -1343,23 +1370,23 @@ function updateFaceToFace() {
             egyptData = egyptData.filter(r => r['COUNTRY TEAM'] === country);
         }
     }
-    
+
     // Calculate opponent stats (reverse perspective)
     const opponentData = calculateOpponentStats(egyptData);
-    
+
     // Calculate Egypt stats
     const egyptStats = calculateSideStats(egyptData, true);
-    
+
     // Update headers
     const egyptSideName = egyptAll === 'ALL' ? 'All Egypt Teams' : (egyptTeam || 'Egypt Side');
     const opponentSideName = country === 'ALL_OPPONENTS' ? 'All Opponent Teams' : (country || opponentTeam || 'Opponent Side');
-    
+
     document.getElementById('f2f-team1-header').textContent = egyptSideName;
     document.getElementById('f2f-team2-header').textContent = opponentSideName;
-    
+
     // Update title
     document.getElementById('f2f-title').textContent = `${egyptSideName} vs ${opponentSideName} Matches`;
-    
+
     // Render comparison table
     renderFaceToFaceTable(egyptStats, opponentData);
 }
@@ -1370,7 +1397,7 @@ function updateFaceToFace() {
 function calculateSideStats(data, isEgypt = true) {
     // Calculate unique seasons
     const uniqueSeasons = new Set(data.map(r => r['SEASON']).filter(s => s));
-    
+
     const stats = {
         totalSeasons: uniqueSeasons.size,
         totalMatches: data.length,
@@ -1395,31 +1422,31 @@ function calculateSideStats(data, isEgypt = true) {
 function calculateBiggestWin(data, isEgypt = true) {
     // Filter only wins
     const wins = data.filter(r => r['W-L MATCH'] === 'W' || r['W-L MATCH'] === 'Win');
-    
+
     if (wins.length === 0) {
         return { score: '-', date: '', team: '', opponent: '', allWins: [] };
     }
-    
+
     let maxDiff = -1;
     let biggestWins = [];
-    
+
     // Find the maximum goal difference
     wins.forEach(record => {
         const gf = parseInt(record['GF']) || 0;
         const ga = parseInt(record['GA']) || 0;
         const diff = gf - ga;
-        
+
         if (diff > maxDiff) {
             maxDiff = diff;
         }
     });
-    
+
     // Collect all wins with the maximum goal difference
     wins.forEach(record => {
         const gf = parseInt(record['GF']) || 0;
         const ga = parseInt(record['GA']) || 0;
         const diff = gf - ga;
-        
+
         if (diff === maxDiff) {
             biggestWins.push({
                 score: `${gf}-${ga}`,
@@ -1429,10 +1456,10 @@ function calculateBiggestWin(data, isEgypt = true) {
             });
         }
     });
-    
+
     // Sort by date (newest first)
     biggestWins.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
     return {
         score: biggestWins[0]?.score || '-',
         date: biggestWins[0]?.date || '',
@@ -1448,7 +1475,7 @@ function calculateBiggestWin(data, isEgypt = true) {
 function calculateOpponentStats(data) {
     // Calculate unique seasons
     const uniqueSeasons = new Set(data.map(r => r['SEASON']).filter(s => s));
-    
+
     const stats = {
         totalSeasons: uniqueSeasons.size,
         totalMatches: data.length,
@@ -1473,31 +1500,31 @@ function calculateOpponentStats(data) {
 function calculateBiggestWinOpponent(data) {
     // Filter only opponent wins (Egypt losses)
     const wins = data.filter(r => r['W-L MATCH'] === 'L' || r['W-L MATCH'] === 'Loss');
-    
+
     if (wins.length === 0) {
         return { score: '-', date: '', team: '', opponent: '', allWins: [] };
     }
-    
+
     let maxDiff = -1;
     let biggestWins = [];
-    
+
     // Find the maximum goal difference
     wins.forEach(record => {
         const gf = parseInt(record['GA']) || 0; // Opponent's GF is Egypt's GA
         const ga = parseInt(record['GF']) || 0; // Opponent's GA is Egypt's GF
         const diff = gf - ga;
-        
+
         if (diff > maxDiff) {
             maxDiff = diff;
         }
     });
-    
+
     // Collect all wins with the maximum goal difference
     wins.forEach(record => {
         const gf = parseInt(record['GA']) || 0; // Opponent's GF is Egypt's GA
         const ga = parseInt(record['GF']) || 0; // Opponent's GA is Egypt's GF
         const diff = gf - ga;
-        
+
         if (diff === maxDiff) {
             biggestWins.push({
                 score: `${gf}-${ga}`,
@@ -1507,10 +1534,10 @@ function calculateBiggestWinOpponent(data) {
             });
         }
     });
-    
+
     // Sort by date (newest first)
     biggestWins.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
     return {
         score: biggestWins[0]?.score || '-',
         date: biggestWins[0]?.date || '',
@@ -1525,7 +1552,7 @@ function calculateBiggestWinOpponent(data) {
  */
 function renderFaceToFaceTable(egyptStats, opponentStats) {
     const tbody = document.getElementById('f2f-table-body');
-    
+
     const statsRows = [
         ['Total Seasons', egyptStats.totalSeasons, opponentStats.totalSeasons],
         ['Total Matches', egyptStats.totalMatches, opponentStats.totalMatches],
@@ -1540,28 +1567,28 @@ function renderFaceToFaceTable(egyptStats, opponentStats) {
         ['Finals Wins', egyptStats.finalsWins, opponentStats.finalsWins],
         ['Biggest Win', egyptStats.biggestWin, opponentStats.biggestWin, true] // true = special formatting
     ];
-    
+
     tbody.innerHTML = statsRows.map(([stat, val1, val2, isSpecial]) => {
         let val1Html = val1;
         let val2Html = val2;
-        
+
         // Special formatting for Biggest Win
         if (isSpecial && typeof val1 === 'object' && typeof val2 === 'object') {
-            val1Html = val1.score !== '-' 
-                ? `${val1.allWins && val1.allWins.length > 1 ? 
-                    val1.allWins.map(win => `<div style="font-size: 0.9rem; font-weight: 600; color: #333; margin-top: 4px;">${win.score}</div><div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${win.date} - ${win.team} vs ${win.opponent}</div>`).join('') : 
+            val1Html = val1.score !== '-'
+                ? `${val1.allWins && val1.allWins.length > 1 ?
+                    val1.allWins.map(win => `<div style="font-size: 0.9rem; font-weight: 600; color: #333; margin-top: 4px;">${win.score}</div><div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${win.date} - ${win.team} vs ${win.opponent}</div>`).join('') :
                     `<div style="font-size: 0.8rem; color: #666;">${val1.date}</div><div style="font-size: 0.85rem; color: #888;">${val1.team}</div><div style="font-size: 0.8rem; color: #e74c3c; margin-top: 2px;">${val1.opponent || ''}</div>`}`
                 : '-';
-            val2Html = val2.score !== '-' 
-                ? `${val2.allWins && val2.allWins.length > 1 ? 
-                    val2.allWins.map(win => `<div style="font-size: 0.9rem; font-weight: 600; color: #333; margin-top: 4px;">${win.score}</div><div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${win.date} - ${win.team} vs ${win.opponent}</div>`).join('') : 
+            val2Html = val2.score !== '-'
+                ? `${val2.allWins && val2.allWins.length > 1 ?
+                    val2.allWins.map(win => `<div style="font-size: 0.9rem; font-weight: 600; color: #333; margin-top: 4px;">${win.score}</div><div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${win.date} - ${win.team} vs ${win.opponent}</div>`).join('') :
                     `<div style="font-size: 0.8rem; color: #666;">${val2.date}</div><div style="font-size: 0.85rem; color: #888;">${val2.team}</div><div style="font-size: 0.8rem; color: #e74c3c; margin-top: 2px;">${val2.opponent || ''}</div>`}`
                 : '-';
         } else {
             // Determine which value is higher (only if both are numbers and greater than 0)
             const num1 = parseFloat(val1);
             const num2 = parseFloat(val2);
-            
+
             if (!isNaN(num1) && !isNaN(num2)) {
                 if (num1 > num2 && num1 > 0) {
                     val1Html = `<span class="f2f-highlight">${val1}</span>`;
@@ -1570,7 +1597,7 @@ function renderFaceToFaceTable(egyptStats, opponentStats) {
                 }
             }
         }
-        
+
         return `
             <tr>
                 <td style="text-align: center;">${val1Html}</td>

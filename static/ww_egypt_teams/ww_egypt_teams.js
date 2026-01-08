@@ -56,69 +56,73 @@ async function loadWWEgyptTeamsData(forceRefresh = false) {
         if (filtersSection) {
             filtersSection.style.display = 'block';
         }
-        
-        // If force refresh, show button loading state
-        if (forceRefresh) {
-            setRefreshButtonLoading(true);
-        } else {
+
+        // Always set button loading state
+        setRefreshButtonLoading(true);
+
+        if (!forceRefresh) {
             showLoading();
         }
-        
+
         const url = forceRefresh ? '/api/ww-egypt-teams/matches?refresh=true' : '/api/ww-egypt-teams/matches';
         const response = await fetch(url);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.error) {
             throw new Error(data.error);
         }
-        
+
         // Store data
         wwEgyptTeamsData.allRecords = data.matches || [];
         wwEgyptTeamsData.filteredRecords = [...wwEgyptTeamsData.allRecords];
-        
+
         // Load trophy seasons
         await loadTrophySeasons(forceRefresh);
-        
+
         // Populate filter options
         populateFilterOptions();
-        
+
         // Calculate statistics
         calculateStatistics();
-        
+
         // Update UI
         updateOverviewStats();
         displayMatches();
         setupDynamicTableSearch();
-        
+
         // If players are loaded, recalculate player statistics
         if (wwEgyptTeamsData.playersLoaded) {
             calculatePlayerStatistics();
             displayPlayers();
         }
-        
+
         if (forceRefresh) {
-            setRefreshButtonLoading(false);
+            setRefreshButtonLoading(false, true);
             showSuccess('✅ Data synced successfully!');
         } else {
             hideLoading();
         }
-        
+
         console.log('✅ WW Egypt Teams data loaded successfully');
-        
+
     } catch (error) {
         console.error('Error loading WW Egypt Teams data:', error);
-        
+
         if (forceRefresh) {
-            setRefreshButtonLoading(false);
+            setRefreshButtonLoading(false, false);
             showError('Failed to sync data. Please try again.');
         } else {
             hideLoading();
             showError('No Data Available');
+        }
+    } finally {
+        if (!forceRefresh) {
+            setRefreshButtonLoading(false, true, false);
         }
     }
 }
@@ -130,7 +134,7 @@ async function loadWWEgyptTeamsData(forceRefresh = false) {
 function calculateLongestStreak(records, resultTypes) {
     let longestStreak = 0;
     let currentStreak = 0;
-    
+
     records.forEach(record => {
         const result = record['W-D-L'];
         if (resultTypes.includes(result)) {
@@ -140,23 +144,23 @@ function calculateLongestStreak(records, resultTypes) {
             currentStreak = 0;
         }
     });
-    
+
     return longestStreak;
 }
 
 function calculateStatistics() {
     const records = wwEgyptTeamsData.filteredRecords;
-    
+
     wwEgyptTeamsData.totalMatches = records.length;
     wwEgyptTeamsData.wins = records.filter(r => r['W-D-L'] === 'W').length;
     wwEgyptTeamsData.draws = records.filter(r => ['D', 'D WITH G', 'D.'].includes(r['W-D-L'])).length;
     wwEgyptTeamsData.losses = records.filter(r => r['W-D-L'] === 'L').length;
     wwEgyptTeamsData.totalGoalsFor = records.reduce((sum, r) => sum + (parseInt(r['GF'] || 0)), 0);
     wwEgyptTeamsData.totalGoalsAgainst = records.reduce((sum, r) => sum + (parseInt(r['GA'] || 0)), 0);
-    
+
     wwEgyptTeamsData.cleanSheetFor = records.filter(r => parseInt(r['GA'] || 0) === 0).length;
     wwEgyptTeamsData.cleanSheetAgainst = records.filter(r => parseInt(r['GF'] || 0) === 0).length;
-    
+
     wwEgyptTeamsData.longestWinStreak = calculateLongestStreak(records, ['W']);
     wwEgyptTeamsData.longestDrawStreak = calculateLongestStreak(records, ['D', 'D WITH G', 'D.']);
     wwEgyptTeamsData.longestLossStreak = calculateLongestStreak(records, ['L']);
@@ -191,7 +195,7 @@ function renderMatchRow(match) {
     const ga = match['GA'] || 0;
     const opponent = match['OPPONENT TEAM'] || '';
     const result = match['W-D-L'] || '';
-    
+
     let resultBadge = '';
     if (result === 'W') {
         resultBadge = '<span class="badge badge-success">W</span>';
@@ -200,7 +204,7 @@ function renderMatchRow(match) {
     } else if (result === 'L') {
         resultBadge = '<span class="badge badge-danger">L</span>';
     }
-    
+
     return `
         <tr>
             <td>${escapeHtml(date)}</td>
@@ -220,23 +224,23 @@ function renderMatchRow(match) {
 function renderVisibleMatchRows() {
     const tbody = document.getElementById('matches-tbody');
     if (!tbody) return;
-    
+
     const { allData, startIndex, endIndex } = virtualScrollState;
     const visibleData = allData.slice(startIndex, endIndex);
-    
+
     const topSpacer = `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="10"></td></tr>`;
     const rowsHtml = visibleData.map(renderMatchRow).join('');
     const bottomSpacer = `<tr style="height: ${Math.max(0, allData.length - endIndex) * virtualScrollState.rowHeight}px;"><td colspan="10"></td></tr>`;
-    
+
     tbody.innerHTML = topSpacer + rowsHtml + bottomSpacer;
 }
 
 function displayMatches() {
     const tbody = document.getElementById('matches-tbody');
     if (!tbody) return;
-    
+
     const matches = wwEgyptTeamsData.filteredRecords.slice().reverse();
-    
+
     if (matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
         if (virtualScrollState.scrollHandler) {
@@ -248,7 +252,7 @@ function displayMatches() {
         }
         return;
     }
-    
+
     if (matches.length <= 1000) {
         const rowsHtml = matches.map(renderMatchRow).join('');
         tbody.innerHTML = rowsHtml;
@@ -261,17 +265,17 @@ function displayMatches() {
         }
         return;
     }
-    
+
     virtualScrollState.allData = matches;
     virtualScrollState.currentViewData = matches;
     virtualScrollState.startIndex = 0;
     virtualScrollState.endIndex = Math.min(25, matches.length);
-    
+
     const container = document.querySelector('.matches-table-container');
     if (container) {
         container.scrollTop = 0;
     }
-    
+
     renderVisibleMatchRows();
     setupVirtualScrolling();
 }
@@ -283,29 +287,29 @@ function setupVirtualScrolling() {
             container.removeEventListener('scroll', virtualScrollState.scrollHandler);
         }
     }
-    
+
     virtualScrollState.scrollHandler = function handleScroll(e) {
         const container = e.target;
         if (!container) return;
-        
+
         const scrollTop = container.scrollTop || 0;
         const containerHeight = container.clientHeight || 0;
         const { allData, rowHeight, bufferSize } = virtualScrollState;
-        
+
         const visibleStart = Math.floor(scrollTop / rowHeight);
         const visibleEnd = Math.ceil((scrollTop + containerHeight) / rowHeight);
-        
+
         const bufferStart = Math.max(0, visibleStart - bufferSize);
         const bufferEnd = Math.min(allData.length, visibleEnd + bufferSize);
-        
-        if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 || 
+
+        if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 ||
             Math.abs(bufferEnd - virtualScrollState.endIndex) > 5) {
             virtualScrollState.startIndex = bufferStart;
             virtualScrollState.endIndex = bufferEnd;
             renderVisibleMatchRows();
         }
     };
-    
+
     const container = document.querySelector('.matches-table-container');
     if (container) {
         container.addEventListener('scroll', virtualScrollState.scrollHandler);
@@ -322,7 +326,7 @@ function setupDynamicTableSearch() {
     newSearchInput.addEventListener('keyup', () => {
         const searchTerm = newSearchInput.value.toLowerCase().trim();
         const currentMatches = wwEgyptTeamsData.filteredRecords.slice().reverse();
-        
+
         if (currentMatches.length <= 1000) {
             if (!searchTerm) {
                 displayMatches();
@@ -330,13 +334,13 @@ function setupDynamicTableSearch() {
             } else {
                 const tbody = document.getElementById('matches-tbody');
                 if (!tbody) return;
-                
+
                 const filtered = currentMatches.filter((match) => {
                     const cols = ['DATE', 'MANAGER EGY', 'SEASON', 'ROUND', 'H-A-N', 'Egypt TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-D-L'];
                     const rowText = cols.map(c => String(match[c] || '')).join(' ').toLowerCase();
                     return rowText.includes(searchTerm);
                 });
-                
+
                 if (filtered.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
                 } else {
@@ -346,7 +350,7 @@ function setupDynamicTableSearch() {
                 return;
             }
         }
-        
+
         if (!searchTerm) {
             virtualScrollState.allData = currentMatches;
             virtualScrollState.currentViewData = currentMatches;
@@ -359,12 +363,12 @@ function setupDynamicTableSearch() {
             virtualScrollState.allData = filtered;
             virtualScrollState.currentViewData = currentMatches;
         }
-        
+
         const container = document.querySelector('.matches-table-container');
         if (container) {
             container.scrollTop = 0;
         }
-        
+
         virtualScrollState.startIndex = 0;
         virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
         renderVisibleMatchRows();
@@ -400,19 +404,19 @@ function setupSearchableSelect(inputId, fieldName) {
     input.dataset.options = JSON.stringify(uniqueValues);
     input.dataset.allOptions = JSON.stringify(uniqueValues);
 
-    input.addEventListener('focus', function() {
+    input.addEventListener('focus', function () {
         showDropdownOptions(this, uniqueValues);
     });
 
-    input.addEventListener('input', function() {
+    input.addEventListener('input', function () {
         const searchTerm = this.value.toLowerCase();
-        const filteredOptions = uniqueValues.filter(opt => 
+        const filteredOptions = uniqueValues.filter(opt =>
             opt.toLowerCase().includes(searchTerm)
         );
         showDropdownOptions(this, filteredOptions);
     });
 
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!container.contains(e.target)) {
             dropdown.style.display = 'none';
         }
@@ -422,13 +426,13 @@ function setupSearchableSelect(inputId, fieldName) {
 function showDropdownOptions(input, options) {
     const container = input.closest('.searchable-select-container');
     const dropdown = container.querySelector('.dropdown-options');
-    
+
     dropdown.innerHTML = '';
-    
+
     const allOption = document.createElement('div');
     allOption.className = 'dropdown-option';
     allOption.textContent = 'All';
-    allOption.addEventListener('click', function() {
+    allOption.addEventListener('click', function () {
         input.value = '';
         dropdown.style.display = 'none';
     });
@@ -438,7 +442,7 @@ function showDropdownOptions(input, options) {
         const optionDiv = document.createElement('div');
         optionDiv.className = 'dropdown-option';
         optionDiv.textContent = option;
-        optionDiv.addEventListener('click', function() {
+        optionDiv.addEventListener('click', function () {
             input.value = option;
             dropdown.style.display = 'none';
         });
@@ -461,14 +465,14 @@ async function loadTrophySeasons(forceRefresh = false) {
             wwEgyptTeamsData.trophySeasons = [];
             return;
         }
-        
+
         const data = await response.json();
         if (data.error) {
             console.warn('⚠️ Error loading trophy seasons:', data.error);
             wwEgyptTeamsData.trophySeasons = [];
             return;
         }
-        
+
         wwEgyptTeamsData.trophySeasons = data.seasons || [];
         console.log(`✅ Loaded ${wwEgyptTeamsData.trophySeasons.length} trophy-winning seasons`);
     } catch (error) {
@@ -499,11 +503,11 @@ function populateFilterOptions() {
         'filter-et': 'ET',
         'filter-pen': 'PEN'
     };
-    
+
     Object.entries(filterFields).forEach(([filterId, fieldName]) => {
         setupSearchableSelect(filterId, fieldName);
     });
-    
+
     document.getElementById('filters-section').style.display = 'block';
 }
 
@@ -535,7 +539,7 @@ function applyFilters() {
         gf: document.getElementById('filter-gf').value,
         ga: document.getElementById('filter-ga').value
     };
-    
+
     wwEgyptTeamsData.filteredRecords = wwEgyptTeamsData.allRecords.filter(record => {
         // Trophy filter - only show matches from trophy-winning seasons
         if (filters.trophy === 'only-trophy') {
@@ -544,7 +548,7 @@ function applyFilters() {
                 return false;
             }
         }
-        
+
         if (filters.matchId && record['MATCH_ID'] !== filters.matchId) return false;
         if (filters.championSystem && record['CHAMPION SYSTEM'] !== filters.championSystem) return false;
         if (filters.systemKind && record['SYSTEM KIND'] !== filters.systemKind) return false;
@@ -565,26 +569,26 @@ function applyFilters() {
         if (filters.wlqf && record['W-L Q & F'] !== filters.wlqf) return false;
         if (filters.et && record['ET'] !== filters.et) return false;
         if (filters.note && !record['NOTE']?.toLowerCase().includes(filters.note.toLowerCase())) return false;
-        
+
         if (filters.dateFrom && record['DATE'] && new Date(record['DATE']) < new Date(filters.dateFrom)) return false;
         if (filters.dateTo && record['DATE'] && new Date(record['DATE']) > new Date(filters.dateTo)) return false;
-        
+
         if (filters.gf && parseInt(record['GF'] || 0) !== parseInt(filters.gf)) return false;
         if (filters.ga && parseInt(record['GA'] || 0) !== parseInt(filters.ga)) return false;
-        
+
         return true;
     });
-    
+
     calculateStatistics();
     updateOverviewStats();
     displayMatches();
-    
+
     // Recalculate player statistics if players are loaded
     if (wwEgyptTeamsData.playersLoaded) {
         calculatePlayerStatistics();
         displayPlayers();
     }
-    
+
     // Update ELNADY tab if it's active
     const elnadyTab = document.getElementById('elnady-tab');
     if (elnadyTab && elnadyTab.classList.contains('active')) {
@@ -595,7 +599,7 @@ function applyFilters() {
         }
         // Update search options for By ELNADY tab
         setupElnadySearch();
-        
+
         // If a club is selected, refresh its stats
         const clubContent = document.getElementById('elnady-club-content');
         const selectedClubName = document.getElementById('selected-club-name');
@@ -606,10 +610,10 @@ function applyFilters() {
             }
         }
     }
-    
+
     const searchInput = document.getElementById('matches-search-input');
     if (searchInput) searchInput.value = '';
-    
+
     console.log(`Filtered ${wwEgyptTeamsData.filteredRecords.length} of ${wwEgyptTeamsData.allRecords.length} matches`);
 }
 
@@ -621,29 +625,29 @@ function clearFilters() {
     document.getElementById('filter-gf').value = '';
     document.getElementById('filter-ga').value = '';
     document.getElementById('filter-note').value = '';
-    
+
     const searchableInputs = document.querySelectorAll('.searchable-select-container input');
     searchableInputs.forEach(input => {
         input.value = '';
     });
-    
+
     const dropdowns = document.querySelectorAll('.dropdown-options');
     dropdowns.forEach(dropdown => {
         dropdown.style.display = 'none';
     });
-    
+
     wwEgyptTeamsData.filteredRecords = [...wwEgyptTeamsData.allRecords];
     populateFilterOptions();
     calculateStatistics();
     updateOverviewStats();
     displayMatches();
-    
+
     // Recalculate player statistics if players are loaded
     if (wwEgyptTeamsData.playersLoaded) {
         calculatePlayerStatistics();
         displayPlayers();
     }
-    
+
     // Update ELNADY tab if it's active
     const elnadyTab = document.getElementById('elnady-tab');
     if (elnadyTab && elnadyTab.classList.contains('active')) {
@@ -654,7 +658,7 @@ function clearFilters() {
         }
         // Update search options for By ELNADY tab
         setupElnadySearch();
-        
+
         // If a club is selected, refresh its stats
         const clubContent = document.getElementById('elnady-club-content');
         const selectedClubName = document.getElementById('selected-club-name');
@@ -665,10 +669,10 @@ function clearFilters() {
             }
         }
     }
-    
+
     const searchInput = document.getElementById('matches-search-input');
     if (searchInput) searchInput.value = '';
-    
+
     console.log('Filters cleared');
 }
 
@@ -679,11 +683,11 @@ function clearFilters() {
 function showLoading() {
     const loadingContainer = document.getElementById('loading-container');
     const contentTabs = document.querySelector('.content-tabs');
-    
+
     if (loadingContainer) {
         loadingContainer.style.display = 'flex';
     }
-    
+
     if (contentTabs) {
         contentTabs.style.display = 'none';
     }
@@ -692,11 +696,11 @@ function showLoading() {
 function hideLoading() {
     const loadingContainer = document.getElementById('loading-container');
     const contentTabs = document.querySelector('.content-tabs');
-    
+
     if (loadingContainer) {
         loadingContainer.style.display = 'none';
     }
-    
+
     if (contentTabs) {
         contentTabs.style.display = 'block';
     }
@@ -754,21 +758,21 @@ if (!document.getElementById('ww-egypt-teams-animations')) {
     document.head.appendChild(style);
 }
 
-function setRefreshButtonLoading(isLoading) {
+function setRefreshButtonLoading(isLoading, success = true, showFeedback = true) {
     const refreshBtn = document.querySelector('.finals-refresh-btn');
     if (!refreshBtn) return;
-    
+
     if (isLoading) {
         refreshBtn.disabled = true;
         refreshBtn.style.opacity = '0.7';
         refreshBtn.style.cursor = 'not-allowed';
-        
+
         // Change icon to spinner with spinning class
         const icon = refreshBtn.querySelector('svg');
         if (icon) {
             icon.classList.add('spinning');
         }
-        
+
         // Change text
         const textSpan = refreshBtn.childNodes[refreshBtn.childNodes.length - 1];
         if (textSpan && textSpan.nodeType === Node.TEXT_NODE) {
@@ -789,24 +793,49 @@ function setRefreshButtonLoading(isLoading) {
         refreshBtn.disabled = false;
         refreshBtn.style.opacity = '1';
         refreshBtn.style.cursor = 'pointer';
-        
+
         // Remove spinning class
         const icon = refreshBtn.querySelector('svg');
         if (icon) {
             icon.classList.remove('spinning');
         }
-        
+
+        // If no feedback needed, just reset immediately
+        if (!showFeedback) {
+            const icon = refreshBtn.querySelector('svg');
+            if (icon) icon.classList.remove('spinning');
+            const originalText = refreshBtn.getAttribute('data-original-text') || 'Sync Data';
+
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                ${originalText}
+            `;
+            return;
+        }
+
         // Get original text
         const originalText = refreshBtn.getAttribute('data-original-text') || 'Sync Data';
-        
-        // Show success message first
-        refreshBtn.innerHTML = `
-            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 6L9 17l-5-5"/>
-            </svg>
-            Synced!
-        `;
-        
+
+        // Show message based on success status
+        if (success) {
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 6L9 17l-5-5"/>
+                </svg>
+                Synced!
+            `;
+        } else {
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Error!
+            `;
+        }
+
         // Return to original text after 2 seconds
         setTimeout(() => {
             if (refreshBtn) {
@@ -828,31 +857,31 @@ function setRefreshButtonLoading(isLoading) {
 async function loadWWEgyptTeamsPlayers(forceRefresh = false) {
     try {
         showPlayersLoading();
-        
+
         const url = forceRefresh ? '/api/ww-egypt-teams/players?refresh=true' : '/api/ww-egypt-teams/players';
         const response = await fetch(url);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.error) {
             throw new Error(data.error);
         }
-        
+
         // Store data
         wwEgyptTeamsData.playerDetails = data.playerDetails || [];
         wwEgyptTeamsData.playersLoaded = true;
-        
+
         // Calculate player statistics from filtered matches
         calculatePlayerStatistics();
         displayPlayers();
         hidePlayersLoading();
-        
+
         console.log('✅ WW Egypt Teams players data loaded successfully');
-        
+
     } catch (error) {
         console.error('Error loading WW Egypt Teams players data:', error);
         hidePlayersLoading();
@@ -863,35 +892,35 @@ async function loadWWEgyptTeamsPlayers(forceRefresh = false) {
 function calculatePlayerStatistics() {
     // Get match IDs from filtered matches
     const filteredMatchIds = new Set(wwEgyptTeamsData.filteredRecords.map(match => match['MATCH_ID']));
-    
+
     // Calculate goals and assists for each player
     const playersMatches = {};
     const playersGoals = {};
     const playersAssists = {};
     const playersClubGoals = {}; // Track goals per club for each player
-    
+
     wwEgyptTeamsData.playerDetails.forEach(detail => {
         const playerName = (detail['PLAYER NAME'] || '').trim();
         const matchId = (detail['MATCH_ID'] || '').trim();
         const gaValue = (detail['GA'] || '').trim();
         const gatotal = parseInt(detail['GATOTAL'] || 0) || 0;
         const elnady = (detail['ELNADY'] || '').trim();
-        
+
         if (!playerName || !matchId) return;
-        
+
         // Only count if match is in filtered matches
         if (!filteredMatchIds.has(matchId)) return;
-        
+
         // Track unique matches for each player
         if (!playersMatches[playerName]) {
             playersMatches[playerName] = new Set();
         }
         playersMatches[playerName].add(matchId);
-        
+
         // Count goals
         if (gaValue === 'GOAL') {
             playersGoals[playerName] = (playersGoals[playerName] || 0) + gatotal;
-            
+
             // Track goals per club
             if (elnady) {
                 if (!playersClubGoals[playerName]) {
@@ -905,27 +934,27 @@ function calculatePlayerStatistics() {
             playersAssists[playerName] = (playersAssists[playerName] || 0) + gatotal;
         }
     });
-    
+
     // Build players list
     const playersMap = new Map();
-    
+
     // Get all unique players from playerDetails
     wwEgyptTeamsData.playerDetails.forEach(detail => {
         const playerName = (detail['PLAYER NAME'] || '').trim();
         if (!playerName) return;
-        
+
         const matchId = (detail['MATCH_ID'] || '').trim();
         if (!filteredMatchIds.has(matchId)) return;
-        
+
         if (!playersMap.has(playerName)) {
             const matches = playersMatches[playerName] ? playersMatches[playerName].size : 0;
             const goals = playersGoals[playerName] || 0;
             const assists = playersAssists[playerName] || 0;
             const totalGA = goals + assists;
-            
+
             // Get team from first occurrence
             const team = (detail['TEAM'] || '').trim();
-            
+
             // Get top club (club with most goals)
             let topClub = '';
             let topClubGoals = 0;
@@ -938,12 +967,12 @@ function calculatePlayerStatistics() {
                     topClubGoals = clubEntries[0][1];
                 }
             }
-            
+
             // Get all clubs with goals (for display)
             const clubsData = playersClubGoals[playerName] ? Object.entries(playersClubGoals[playerName])
                 .map(([club, goals]) => ({ club, goals }))
                 .sort((a, b) => b.goals - a.goals) : [];
-            
+
             playersMap.set(playerName, {
                 playerName,
                 team,
@@ -957,13 +986,13 @@ function calculatePlayerStatistics() {
             });
         }
     });
-    
+
     // Convert to array and sort by G+A (descending), then by goals (descending)
     wwEgyptTeamsData.allPlayers = Array.from(playersMap.values()).sort((a, b) => {
         if (b.totalGA !== a.totalGA) return b.totalGA - a.totalGA;
         return b.goals - a.goals;
     });
-    
+
     // Set players to all players by default
     wwEgyptTeamsData.players = [...wwEgyptTeamsData.allPlayers];
 }
@@ -977,19 +1006,19 @@ function sortPlayersBy(column) {
         wwEgyptTeamsData.currentSortColumn = column;
         wwEgyptTeamsData.currentSortDirection = column === 'playerName' ? 'asc' : 'desc';
     }
-    
+
     // Update header classes
     const headers = document.querySelectorAll('.sortable-header');
     headers.forEach(header => {
         header.classList.remove('sorted-asc', 'sorted-desc');
     });
-    
+
     // Add class to current sorted column
     const currentHeader = document.querySelector(`[onclick="sortPlayersBy('${column}')"]`);
     if (currentHeader) {
         currentHeader.classList.add(`sorted-${wwEgyptTeamsData.currentSortDirection}`);
     }
-    
+
     displayPlayers();
 }
 
@@ -997,21 +1026,21 @@ function displayPlayers() {
     const tbody = document.getElementById('players-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     // Check if there's an active search
     const searchInput = document.getElementById('all-players-search');
     const searchTerm = searchInput && searchInput.value ? searchInput.value.toLowerCase().trim() : '';
-    
+
     // Determine which players to display
     let playersToDisplay = wwEgyptTeamsData.players;
-    
+
     // Apply team filter
     const teamFilter = wwEgyptTeamsData.currentPlayersTeamFilter || 'all';
     if (teamFilter !== 'all') {
         playersToDisplay = playersToDisplay.filter(player => {
             const teamName = (player.team || '').toLowerCase();
             const isEgypt = isEgyptTeamName(teamName);
-            
+
             if (teamFilter === 'egypt') {
                 return isEgypt;
             }
@@ -1021,7 +1050,7 @@ function displayPlayers() {
             return true;
         });
     }
-    
+
     // If there's a search term, filter the players
     if (searchTerm) {
         playersToDisplay = playersToDisplay.filter((player) => {
@@ -1030,31 +1059,31 @@ function displayPlayers() {
             const assists = String(player.assists || '').toLowerCase();
             const totalGA = String(player.totalGA || '').toLowerCase();
             const clubs = player.clubsData ? player.clubsData.map(c => c.club.toLowerCase()).join(' ') : '';
-            
+
             const rowText = `${playerName} ${goals} ${assists} ${totalGA} ${clubs}`;
             return rowText.includes(searchTerm);
         });
     }
-    
+
     if (playersToDisplay.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No players found</td></tr>';
         return;
     }
-    
+
     // Keep filter select in sync with state
     const teamFilterSelect = document.getElementById('all-players-team-filter');
     if (teamFilterSelect && teamFilterSelect.value !== teamFilter) {
         teamFilterSelect.value = teamFilter;
     }
-    
+
     // Sort players based on current sort column and direction
     const sortedPlayers = [...playersToDisplay].sort((a, b) => {
         const column = wwEgyptTeamsData.currentSortColumn;
         const direction = wwEgyptTeamsData.currentSortDirection;
-        
+
         let valueA = a[column];
         let valueB = b[column];
-        
+
         // Handle string sorting (playerName)
         if (column === 'playerName') {
             valueA = (valueA || '').toLowerCase();
@@ -1065,21 +1094,21 @@ function displayPlayers() {
                 return valueB.localeCompare(valueA);
             }
         }
-        
+
         // Handle number sorting
         valueA = valueA || 0;
         valueB = valueB || 0;
-        
+
         if (direction === 'asc') {
             return valueA - valueB;
         } else {
             return valueB - valueA;
         }
     });
-    
+
     sortedPlayers.forEach((player, index) => {
         const row = document.createElement('tr');
-        
+
         // Format clubs data for display
         let clubsDisplay = '';
         if (player.clubsData && player.clubsData.length > 0) {
@@ -1087,7 +1116,7 @@ function displayPlayers() {
         } else {
             clubsDisplay = '-';
         }
-        
+
         row.innerHTML = `
             <td>${index + 1}</td>
             <td><strong style="font-size: 1.1rem;">${escapeHtml(player.playerName)}</strong></td>
@@ -1096,15 +1125,15 @@ function displayPlayers() {
             <td style="text-align: center;"><span style="font-weight: bold; font-size: 1.2rem;">${player.assists}</span></td>
             <td style="font-size: 1rem; color: #555;">${clubsDisplay}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
-    
+
     // Add total row
     const totalGoals = sortedPlayers.reduce((sum, player) => sum + (player.goals || 0), 0);
     const totalAssists = sortedPlayers.reduce((sum, player) => sum + (player.assists || 0), 0);
     const totalGA = totalGoals + totalAssists;
-    
+
     const totalRow = document.createElement('tr');
     totalRow.style.backgroundColor = '#f0f0f0';
     totalRow.style.fontWeight = 'bold';
@@ -1123,10 +1152,10 @@ function displayPlayers() {
 function setupPlayersSearch() {
     const searchInput = document.getElementById('all-players-search');
     if (!searchInput) return;
-    
+
     if (searchInput.dataset.searchSetup === 'true') return;
     searchInput.dataset.searchSetup = 'true';
-    
+
     searchInput.addEventListener('input', () => {
         displayPlayers();
     });
@@ -1135,15 +1164,15 @@ function setupPlayersSearch() {
 function setupPlayersTeamFilter() {
     const filterSelect = document.getElementById('all-players-team-filter');
     if (!filterSelect) return;
-    
+
     if (filterSelect.dataset.teamFilterSetup === 'true') {
         filterSelect.value = wwEgyptTeamsData.currentPlayersTeamFilter || 'all';
         return;
     }
-    
+
     filterSelect.dataset.teamFilterSetup = 'true';
     filterSelect.value = wwEgyptTeamsData.currentPlayersTeamFilter || 'all';
-    
+
     filterSelect.addEventListener('change', () => {
         wwEgyptTeamsData.currentPlayersTeamFilter = filterSelect.value || 'all';
         displayPlayers();
@@ -1177,11 +1206,11 @@ function switchElnadyTab(tabName) {
     const tabButtons = document.querySelectorAll('#elnady-tab > .tabs-header .tab-button');
     tabButtons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
+
     // Update tab content
     document.getElementById('elnady-all-clubs-tab').classList.remove('active');
     document.getElementById('elnady-by-club-tab').classList.remove('active');
-    
+
     if (tabName === 'all-clubs') {
         document.getElementById('elnady-all-clubs-tab').classList.add('active');
         loadAllClubsStats();
@@ -1200,28 +1229,28 @@ async function loadAllClubsStats() {
     if (!wwEgyptTeamsData.playersLoaded) {
         await loadWWEgyptTeamsPlayers();
     }
-    
+
     // Get filtered match IDs from current filters
     const filteredMatchIds = new Set(wwEgyptTeamsData.filteredRecords.map(match => match['MATCH_ID']));
-    
+
     // Calculate goals and unique players per club (only from filtered matches)
     const clubGoals = {};
     const clubPlayers = {};
-    
+
     wwEgyptTeamsData.playerDetails.forEach(detail => {
         const elnady = (detail['ELNADY'] || '').trim();
         const playerName = (detail['PLAYER NAME'] || '').trim();
         const gaValue = (detail['GA'] || '').trim();
         const matchId = (detail['MATCH_ID'] || '').trim();
         const gatotal = parseInt(detail['GATOTAL']) || 0;
-        
+
         if (!elnady || !filteredMatchIds.has(matchId)) return;
-        
+
         // Count goals
         if (gaValue === 'GOAL') {
             clubGoals[elnady] = (clubGoals[elnady] || 0) + gatotal;
         }
-        
+
         // Track unique players
         if (playerName) {
             if (!clubPlayers[elnady]) {
@@ -1230,20 +1259,20 @@ async function loadAllClubsStats() {
             clubPlayers[elnady].add(playerName);
         }
     });
-    
+
     // Convert to array and sort by goals descending
     allClubsFullData = Object.entries(clubGoals).map(([club, goals]) => ({
         club,
         players: clubPlayers[club] ? clubPlayers[club].size : 0,
         goals
     })).sort((a, b) => b.goals - a.goals);
-    
+
     // Setup search if not already setup
     if (!allClubsSearchSetup) {
         setupAllClubsSearch();
         allClubsSearchSetup = true;
     }
-    
+
     // Display all clubs
     displayAllClubs(allClubsFullData);
 }
@@ -1251,21 +1280,21 @@ async function loadAllClubsStats() {
 function setupAllClubsSearch() {
     const searchInput = document.getElementById('all-clubs-search');
     if (!searchInput) return;
-    
-    searchInput.addEventListener('input', function() {
+
+    searchInput.addEventListener('input', function () {
         const searchTerm = this.value.toLowerCase().trim();
-        
+
         if (!searchTerm) {
             // Show all clubs if search is empty
             displayAllClubs(allClubsFullData);
             return;
         }
-        
+
         // Filter clubs by search term
-        const filtered = allClubsFullData.filter(club => 
+        const filtered = allClubsFullData.filter(club =>
             club.club.toLowerCase().includes(searchTerm)
         );
-        
+
         displayAllClubs(filtered);
     });
 }
@@ -1274,17 +1303,17 @@ function displayAllClubs(clubsArray) {
     const tbody = document.getElementById('all-clubs-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (clubsArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">No clubs found</td></tr>';
         return;
     }
-    
+
     // Calculate totals
     let totalPlayers = 0;
     let totalGoals = 0;
     const uniquePlayers = new Set();
-    
+
     clubsArray.forEach((club, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1293,12 +1322,12 @@ function displayAllClubs(clubsArray) {
             <td style="text-align: center; font-weight: 600; font-size: 1.1rem;">${club.goals}</td>
         `;
         tbody.appendChild(row);
-        
+
         // Accumulate totals
         totalPlayers += club.players;
         totalGoals += club.goals;
     });
-    
+
     // Add total row
     const totalRow = document.createElement('tr');
     totalRow.style.backgroundColor = '#f0f0f0';
@@ -1320,10 +1349,10 @@ async function setupElnadySearch() {
     if (!wwEgyptTeamsData.playersLoaded) {
         await loadWWEgyptTeamsPlayers();
     }
-    
+
     // Get filtered match IDs from current filters
     const filteredMatchIds = new Set(wwEgyptTeamsData.filteredRecords.map(match => match['MATCH_ID']));
-    
+
     // Extract unique ELNADY values (only from filtered matches)
     const elnadyValues = new Set();
     wwEgyptTeamsData.playerDetails.forEach(detail => {
@@ -1333,34 +1362,34 @@ async function setupElnadySearch() {
             elnadyValues.add(elnady);
         }
     });
-    
+
     currentElnadyOptions = Array.from(elnadyValues).sort();
-    
+
     // Setup searchable select (only once)
     if (!elnadySearchSetup) {
         const input = document.getElementById('elnady-search');
         if (!input) return;
         const container = input.closest('.searchable-select-container');
         const dropdown = container.querySelector('.dropdown-options');
-        
+
         // Setup event listeners
-        input.addEventListener('focus', function() {
+        input.addEventListener('focus', function () {
             showElnadyDropdownOptions(input, currentElnadyOptions);
         });
-        
-        input.addEventListener('input', function() {
+
+        input.addEventListener('input', function () {
             const searchTerm = this.value.toLowerCase();
             const filtered = currentElnadyOptions.filter(opt => opt.toLowerCase().includes(searchTerm));
             showElnadyDropdownOptions(input, filtered);
         });
-        
+
         // Handle clicking outside to close dropdown
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (!container.contains(e.target)) {
                 dropdown.style.display = 'none';
             }
         });
-        
+
         elnadySearchSetup = true;
     }
 }
@@ -1369,14 +1398,14 @@ async function setupElnadySearch() {
 function showElnadyDropdownOptions(input, options) {
     const container = input.closest('.searchable-select-container');
     const dropdown = container.querySelector('.dropdown-options');
-    
+
     dropdown.innerHTML = '';
-    
+
     // Add "All" option
     const allOption = document.createElement('div');
     allOption.className = 'dropdown-option';
     allOption.textContent = 'All';
-    allOption.addEventListener('click', function() {
+    allOption.addEventListener('click', function () {
         input.value = '';
         dropdown.style.display = 'none';
         document.getElementById('elnady-club-content').style.display = 'none';
@@ -1389,7 +1418,7 @@ function showElnadyDropdownOptions(input, options) {
         const optionDiv = document.createElement('div');
         optionDiv.className = 'dropdown-option';
         optionDiv.textContent = option;
-        optionDiv.addEventListener('click', function() {
+        optionDiv.addEventListener('click', function () {
             input.value = option;
             dropdown.style.display = 'none';
             // Load club stats immediately when option is clicked
@@ -1406,13 +1435,13 @@ function switchClubTab(tabName) {
     const tabButtons = document.querySelectorAll('#elnady-club-content .tabs-header .tab-button');
     tabButtons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
+
     // Update tab content
     document.getElementById('club-players-tab').classList.remove('active');
     document.getElementById('club-championships-tab').classList.remove('active');
     document.getElementById('club-seasons-tab').classList.remove('active');
     document.getElementById('club-opponents-tab').classList.remove('active');
-    
+
     document.getElementById(`${tabName}-tab`).classList.add('active');
 }
 
@@ -1421,43 +1450,43 @@ function loadClubStats(clubName) {
     document.getElementById('elnady-club-content').style.display = 'block';
     document.getElementById('no-club-selected').style.display = 'none';
     document.getElementById('selected-club-name').textContent = clubName;
-    
+
     // Get filtered match IDs from current filters
     const filteredMatchIds = new Set(wwEgyptTeamsData.filteredRecords.map(match => match['MATCH_ID']));
-    
+
     // Filter player details for this club AND filtered matches
     const clubDetails = wwEgyptTeamsData.playerDetails.filter(detail => {
         const elnady = (detail['ELNADY'] || '').trim();
         const matchId = (detail['MATCH_ID'] || '').trim();
         return elnady === clubName && filteredMatchIds.has(matchId);
     });
-    
+
     // Calculate players stats
     const playersGoals = {};
     clubDetails.forEach(detail => {
         const playerName = (detail['PLAYER NAME'] || '').trim();
         const gaValue = (detail['GA'] || '').trim();
         const gatotal = parseInt(detail['GATOTAL']) || 0;
-        
+
         if (playerName && gaValue === 'GOAL') {
             playersGoals[playerName] = (playersGoals[playerName] || 0) + gatotal;
         }
     });
-    
+
     const playersArray = Object.entries(playersGoals).map(([player, goals]) => ({
         player,
         goals
     })).sort((a, b) => b.goals - a.goals);
-    
+
     displayClubPlayers(playersArray);
-    
+
     // Calculate championships stats
     const championshipsGoals = {};
     clubDetails.forEach(detail => {
         const gaValue = (detail['GA'] || '').trim();
         const gatotal = parseInt(detail['GATOTAL']) || 0;
         const matchId = (detail['MATCH_ID'] || '').trim();
-        
+
         if (gaValue === 'GOAL' && matchId) {
             // Find match to get championship
             const match = wwEgyptTeamsData.allRecords.find(m => m['MATCH_ID'] === matchId);
@@ -1469,21 +1498,21 @@ function loadClubStats(clubName) {
             }
         }
     });
-    
+
     const championshipsArray = Object.entries(championshipsGoals).map(([championship, goals]) => ({
         championship,
         goals
     })).sort((a, b) => b.goals - a.goals);
-    
+
     displayClubChampionships(championshipsArray);
-    
+
     // Calculate seasons stats
     const seasonsGoals = {};
     clubDetails.forEach(detail => {
         const gaValue = (detail['GA'] || '').trim();
         const gatotal = parseInt(detail['GATOTAL']) || 0;
         const matchId = (detail['MATCH_ID'] || '').trim();
-        
+
         if (gaValue === 'GOAL' && matchId) {
             // Find match to get season
             const match = wwEgyptTeamsData.allRecords.find(m => m['MATCH_ID'] === matchId);
@@ -1495,7 +1524,7 @@ function loadClubStats(clubName) {
             }
         }
     });
-    
+
     const seasonsArray = Object.entries(seasonsGoals).map(([season, goals]) => ({
         season,
         goals
@@ -1506,16 +1535,16 @@ function loadClubStats(clubName) {
         }
         return b.goals - a.goals;
     });
-    
+
     displayClubSeasons(seasonsArray);
-    
+
     // Calculate opponents stats
     const opponentsGoals = {};
     clubDetails.forEach(detail => {
         const gaValue = (detail['GA'] || '').trim();
         const gatotal = parseInt(detail['GATOTAL']) || 0;
         const matchId = (detail['MATCH_ID'] || '').trim();
-        
+
         if (gaValue === 'GOAL' && matchId) {
             // Find match to get opponent
             const match = wwEgyptTeamsData.allRecords.find(m => m['MATCH_ID'] === matchId);
@@ -1527,12 +1556,12 @@ function loadClubStats(clubName) {
             }
         }
     });
-    
+
     const opponentsArray = Object.entries(opponentsGoals).map(([opponent, goals]) => ({
         opponent,
         goals
     })).sort((a, b) => b.goals - a.goals);
-    
+
     displayClubOpponents(opponentsArray);
 }
 
@@ -1540,12 +1569,12 @@ function displayClubPlayers(playersArray) {
     const tbody = document.getElementById('club-players-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (playersArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 2rem;">No data available</td></tr>';
         return;
     }
-    
+
     playersArray.forEach((player, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1560,12 +1589,12 @@ function displayClubChampionships(championshipsArray) {
     const tbody = document.getElementById('club-championships-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (championshipsArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 2rem;">No data available</td></tr>';
         return;
     }
-    
+
     championshipsArray.forEach((championship, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1580,12 +1609,12 @@ function displayClubSeasons(seasonsArray) {
     const tbody = document.getElementById('club-seasons-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (seasonsArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 2rem;">No data available</td></tr>';
         return;
     }
-    
+
     seasonsArray.forEach((season, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1600,12 +1629,12 @@ function displayClubOpponents(opponentsArray) {
     const tbody = document.getElementById('club-opponents-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (opponentsArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 2rem;">No data available</td></tr>';
         return;
     }
-    
+
     opponentsArray.forEach((opponent, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1620,7 +1649,7 @@ function displayClubOpponents(opponentsArray) {
 // INITIALIZATION
 // ============================================================================
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     loadWWEgyptTeamsData();
 });
 

@@ -102,6 +102,14 @@ async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
             if (loadingContainer) loadingContainer.style.display = 'block';
             if (contentTabs) contentTabs.style.display = 'none';
             if (mainTabsNav) mainTabsNav.style.display = 'none';
+
+            // Disable Sync Button during initial load
+            const refreshBtn = document.querySelector('.pks-refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.style.opacity = '0.6';
+                refreshBtn.style.cursor = 'not-allowed';
+            }
         }
 
         // Fetch data from Cache (or Google Sheets if cache miss)
@@ -167,6 +175,14 @@ async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
     } finally {
         if (!skipLoadingState) {
             showLoadingState(false);
+
+            // Re-enable Sync Button after load
+            const refreshBtn = document.querySelector('.pks-refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.style.opacity = '1';
+                refreshBtn.style.cursor = 'pointer';
+            }
         }
     }
 }

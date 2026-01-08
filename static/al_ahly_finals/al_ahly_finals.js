@@ -138,47 +138,55 @@ async function loadFinalsData(forceRefresh = false, skipLoadingState = false) {
     try {
         if (!skipLoadingState) {
             showLoadingState(true);
-            
+
             // Explicitly show loading container and hide others
             const loadingContainer = document.getElementById('loading-container');
             const contentTabs = document.getElementById('content-tabs');
             const mainTabsNav = document.querySelector('.main-tabs-nav');
-            
+
             if (loadingContainer) loadingContainer.style.display = 'block';
             if (contentTabs) contentTabs.style.display = 'none';
             if (mainTabsNav) mainTabsNav.style.display = 'none';
+
+            // Disable Sync Button during initial load
+            const refreshBtn = document.querySelector('.finals-refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.style.opacity = '0.6';
+                refreshBtn.style.cursor = 'not-allowed';
+            }
         }
-        
+
         // Fetch data from Cache (or Google Sheets if cache miss)
         const records = await fetchFinalsDataFromGoogleSheets(forceRefresh);
         const playersData = await fetchPlayersDataFromGoogleSheets(forceRefresh);
         const lineupData = await fetchLineupDataFromGoogleSheets(forceRefresh);
         const playerDatabase = await fetchPlayerDatabaseFromGoogleSheets(forceRefresh);
-        
+
         if (records.length === 0) {
             // No Finals data available
             return;
         }
-        
+
         // Store all records
         alAhlyFinalsStatsData.allRecords = records;
         alAhlyFinalsStatsData.filteredRecords = records;
         alAhlyFinalsStatsData.playersData = playersData;
         alAhlyFinalsStatsData.lineupData = lineupData;
         alAhlyFinalsStatsData.playerDatabase = playerDatabase;
-        
+
         // Build filter options from data
         buildFilterOptions(records);
-        
+
         // Populate filter dropdowns
         populateFilterDropdowns();
-        
+
         // Hide loading, show content (only on initial load, not on refresh)
         if (!skipLoadingState) {
             const loadingContainer = document.getElementById('loading-container');
             const contentTabs = document.getElementById('content-tabs');
             const mainTabsNav = document.querySelector('.main-tabs-nav');
-            
+
             if (loadingContainer) {
                 loadingContainer.style.display = 'none';
             }
@@ -189,25 +197,25 @@ async function loadFinalsData(forceRefresh = false, skipLoadingState = false) {
                 mainTabsNav.style.display = 'flex';
             }
         }
-        
+
         // Update statistics
         updateFinalsStatistics();
-        
+
         // Initialize unified player search (By Players tab)
         initializeUnifiedPlayerSearch();
-        
+
         // Finals data loaded successfully
-        
+
     } catch (error) {
         console.error('Error loading Finals data:', error);
         // Failed to load Finals data
-        
+
         // Hide loading, show content even on error (only on initial load)
         if (!skipLoadingState) {
             const loadingContainer = document.getElementById('loading-container');
             const contentTabs = document.getElementById('content-tabs');
             const mainTabsNav = document.querySelector('.main-tabs-nav');
-            
+
             if (loadingContainer) {
                 loadingContainer.style.display = 'none';
             }
@@ -221,6 +229,14 @@ async function loadFinalsData(forceRefresh = false, skipLoadingState = false) {
     } finally {
         if (!skipLoadingState) {
             showLoadingState(false);
+
+            // Re-enable Sync Button after load
+            const refreshBtn = document.querySelector('.finals-refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.style.opacity = '1';
+                refreshBtn.style.cursor = 'pointer';
+            }
         }
     }
 }
@@ -253,9 +269,9 @@ function buildFilterOptions(records) {
         'C.S',
         'W-L FINAL'
     ];
-    
+
     const options = {};
-    
+
     filterColumns.forEach(column => {
         const uniqueValues = new Set();
         records.forEach(record => {
@@ -266,7 +282,7 @@ function buildFilterOptions(records) {
         });
         options[column] = Array.from(uniqueValues).sort();
     });
-    
+
     alAhlyFinalsStatsData.filterOptions = options;
     console.log('📊 Filter options built:', options);
 }
@@ -295,16 +311,16 @@ function populateFilterDropdowns() {
         'cs-filter': 'C.S',
         'wl-final-filter': 'W-L FINAL'
     };
-    
+
     Object.keys(filterMapping).forEach(selectId => {
         const column = filterMapping[selectId];
         const options = alAhlyFinalsStatsData.filterOptions[column] || [];
-        
+
         const selectElement = document.getElementById(selectId);
         if (selectElement) {
             // Keep the "All" option
             selectElement.innerHTML = '<option value="">All</option>';
-            
+
             // Add options from data
             options.forEach(value => {
                 const option = document.createElement('option');
@@ -316,9 +332,9 @@ function populateFilterDropdowns() {
             console.warn(`Filter element not found: ${selectId}`);
         }
     });
-    
+
     console.log('✅ Filter dropdowns populated');
-    
+
     // Initialize searchable dropdowns after populating
     initializeSearchableFilters();
 }
@@ -332,7 +348,7 @@ function applyFinalsFilters() {
         const element = document.getElementById(id);
         return element ? element.value : '';
     };
-    
+
     const filters = {
         'MATCH_ID': getFilterValue('match-id-filter'),
         'CHAMPION System': getFilterValue('champion-system-filter'),
@@ -352,17 +368,17 @@ function applyFinalsFilters() {
         'C.S': getFilterValue('cs-filter'),
         'W-L FINAL': getFilterValue('wl-final-filter')
     };
-    
+
     // Get date range filters
     const dateFrom = document.getElementById('date-from-filter')?.value || '';
     const dateTo = document.getElementById('date-to-filter')?.value || '';
-    
+
     // Store current filters
     alAhlyFinalsStatsData.currentFilters = filters;
-    
+
     // Filter records
     let filteredRecords = alAhlyFinalsStatsData.allRecords;
-    
+
     // Apply regular filters
     Object.keys(filters).forEach(column => {
         const filterValue = filters[column];
@@ -373,13 +389,13 @@ function applyFinalsFilters() {
             });
         }
     });
-    
+
     // Apply date range filter
     if (dateFrom || dateTo) {
         filteredRecords = filteredRecords.filter(record => {
             const recordDate = record['DATE'];
             if (!recordDate) return false;
-            
+
             // Parse date - handle various formats (DD/MM/YYYY, DD-MM-YYYY, etc.)
             const dateParts = recordDate.toString().split(/[\/\-\.]/);
             if (dateParts.length === 3) {
@@ -388,18 +404,18 @@ function applyFinalsFilters() {
                 const month = dateParts[1].padStart(2, '0');
                 const year = dateParts[2];
                 const recordDateFormatted = `${year}-${month}-${day}`; // Convert to YYYY-MM-DD for comparison
-                
+
                 // Check if within range
                 if (dateFrom && recordDateFormatted < dateFrom) return false;
                 if (dateTo && recordDateFormatted > dateTo) return false;
             }
-            
+
             return true;
         });
     }
-    
+
     alAhlyFinalsStatsData.filteredRecords = filteredRecords;
-    
+
     // Update statistics with filtered data
     updateFinalsStatistics();
 }
@@ -416,12 +432,12 @@ function clearFinalsFilters() {
         'et-filter', 'pen-filter', 'opponent-team-filter', 'wl-match-filter',
         'cs-filter', 'wl-final-filter'
     ];
-    
+
     filterIds.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             element.value = '';
-            
+
             // Clear searchable input as well
             const container = element.closest('.searchable-select-container');
             if (container) {
@@ -432,20 +448,20 @@ function clearFinalsFilters() {
             }
         }
     });
-    
+
     // Clear date range inputs
     const dateFromInput = document.getElementById('date-from-filter');
     const dateToInput = document.getElementById('date-to-filter');
     if (dateFromInput) dateFromInput.value = '';
     if (dateToInput) dateToInput.value = '';
-    
+
     // Reset to all records
     alAhlyFinalsStatsData.filteredRecords = alAhlyFinalsStatsData.allRecords;
     alAhlyFinalsStatsData.currentFilters = {};
-    
+
     // Update statistics
     updateFinalsStatistics();
-    
+
     // All filters cleared
 }
 
@@ -465,27 +481,27 @@ function initializeSearchableFilters() {
  */
 function makeSelectSearchable(select) {
     if (!select || select.dataset.searchable === 'true') return;
-    
+
     select.style.display = 'none';
     select.dataset.searchable = 'true';
-    
+
     const container = document.createElement('div');
     container.className = 'searchable-select-container';
-    
+
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = select.options[0]?.text || 'Search...';
     input.value = '';
-    
+
     const dropdown = document.createElement('div');
     dropdown.className = 'dropdown-options';
     dropdown.style.display = 'none';
-    
+
     select.parentElement.insertBefore(container, select);
     container.appendChild(input);
     container.appendChild(dropdown);
     container.appendChild(select);
-    
+
     function renderOptions(filterText = '') {
         dropdown.innerHTML = '';
         const text = filterText.toLowerCase();
@@ -497,12 +513,12 @@ function makeSelectSearchable(select) {
                 const div = document.createElement('div');
                 div.textContent = label;
                 div.dataset.value = value;
-                div.addEventListener('mousedown', function(e) {
+                div.addEventListener('mousedown', function (e) {
                     e.preventDefault();
                     select.value = value;
                     input.value = label;
                     dropdown.style.display = 'none';
-                    
+
                     // Trigger change event
                     const ev = new Event('change', { bubbles: true });
                     select.dispatchEvent(ev);
@@ -512,17 +528,17 @@ function makeSelectSearchable(select) {
         });
         dropdown.style.display = dropdown.children.length ? 'block' : 'none';
     }
-    
+
     input.addEventListener('focus', () => renderOptions(input.value));
     input.addEventListener('input', () => renderOptions(input.value));
     input.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
-    
+
     // Sync input when select changes programmatically
     select.addEventListener('change', () => {
         const opt = select.options[select.selectedIndex];
         input.value = opt && opt.value ? opt.text : '';
     });
-    
+
     // Set initial value if select has a selection
     const initialOpt = select.options[select.selectedIndex];
     if (initialOpt && initialOpt.value) {
@@ -552,10 +568,10 @@ function updateAllSearchableInputs() {
  */
 async function refreshFinalsStats() {
     console.log('🔄 Force refreshing Finals data...');
-    
+
     const refreshBtn = document.querySelector('.finals-refresh-btn');
     const refreshIcon = refreshBtn?.querySelector('svg');
-    
+
     try {
         // Show loading indicator on button
         if (refreshBtn) {
@@ -572,10 +588,10 @@ async function refreshFinalsStats() {
                 refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
             }
         }
-        
+
         // Reload data with force refresh (but don't hide content)
         await loadFinalsData(true, true); // true = force refresh, true = skip loading state
-        
+
         // Reset button on success
         if (refreshBtn) {
             refreshBtn.disabled = false;
@@ -598,11 +614,11 @@ async function refreshFinalsStats() {
                 }, 2000);
             }
         }
-        
+
         console.log('✅ Data refreshed successfully');
     } catch (error) {
         console.error('❌ Error refreshing data:', error);
-        
+
         // Reset button on error
         if (refreshBtn) {
             refreshBtn.disabled = false;
@@ -633,12 +649,12 @@ function calculateOverviewStats(records) {
     const finalsWonSet = new Set();
     const finalsWonBothSet = new Set();
     const finalsLostSet = new Set();
-    
+
     records.forEach(record => {
         const matchId = record['MATCH_ID'];
         if (matchId) {
             uniqueMatchIds.add(matchId);
-            
+
             const wlFinal = (record['W-L FINAL'] || '').toUpperCase().trim();
             if (wlFinal === 'W' || wlFinal === 'WE') {
                 finalsWonSet.add(matchId);
@@ -650,16 +666,16 @@ function calculateOverviewStats(records) {
             }
         }
     });
-    
+
     const finalsWon = finalsWonSet.size;
     const finalsLost = finalsLostSet.size;
     const totalMatches = finalsWon + finalsLost;
-    
+
     // Count match wins/losses/draws based on W-L MATCH column
     let matchWins = 0;
     let matchLosses = 0;
     let matchDraws = 0;
-    
+
     records.forEach(record => {
         const wlMatch = record['W-L MATCH'];
         if (wlMatch) {
@@ -673,21 +689,21 @@ function calculateOverviewStats(records) {
             }
         }
     });
-    
+
     // Calculate win rate
     const finalWinRate = totalMatches > 0 ? Math.round((finalsWon / totalMatches) * 100) : 0;
-    
+
     // Count total goals scored and conceded
     let totalGoalsFor = 0;
     let totalGoalsAgainst = 0;
-    
+
     records.forEach(record => {
         const gf = parseInt(record['GF']) || 0;
         const ga = parseInt(record['GA']) || 0;
         totalGoalsFor += gf;
         totalGoalsAgainst += ga;
     });
-    
+
     // Count clean sheets (when GA = 0)
     let cleanSheets = 0;
     records.forEach(record => {
@@ -696,7 +712,7 @@ function calculateOverviewStats(records) {
             cleanSheets++;
         }
     });
-    
+
     return {
         totalMatches,
         finalsWon,
@@ -737,20 +753,20 @@ function updateOverviewCards(stats) {
 function updateFinalsMatchesTable(records) {
     const tbody = document.querySelector('#finals-matches-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     // Sort by date (newest first)
     const sortedRecords = [...records].sort((a, b) => {
         const dateA = new Date(a['DATE'] || '1900-01-01');
         const dateB = new Date(b['DATE'] || '1900-01-01');
-        
+
         return dateB - dateA; // Newest first
     });
-    
+
     sortedRecords.forEach(match => {
         const row = document.createElement('tr');
-        
+
         // Status badge based on W-L FINAL
         let finalStatusBadge = '';
         const wlFinal = match['W-L FINAL'];
@@ -761,7 +777,7 @@ function updateFinalsMatchesTable(records) {
                 finalStatusBadge = '<span class="badge badge-danger">Lost</span>';
             }
         }
-        
+
         // Match result badge based on W-L MATCH
         let matchStatusBadge = '';
         const wlMatch = match['W-L MATCH'];
@@ -775,7 +791,7 @@ function updateFinalsMatchesTable(records) {
                 matchStatusBadge = '<span class="badge badge-warning">D</span>';
             }
         }
-        
+
         row.innerHTML = `
             <td>${match['MATCH_ID'] || '-'}</td>
             <td>${match['SEASON'] || '-'}</td>
@@ -791,7 +807,7 @@ function updateFinalsMatchesTable(records) {
         `;
         tbody.appendChild(row);
     });
-    
+
     // Show message if no matches found
     if (sortedRecords.length === 0) {
         const row = document.createElement('tr');
@@ -820,11 +836,11 @@ function calculateOpponentStats(records) {
     const finalsWonSet = new Set();
     const finalsWonBothSet = new Set();
     const finalsLostSet = new Set();
-    
+
     records.forEach(record => {
         const matchId = record['MATCH_ID'];
         const wlFinal = record['W-L FINAL'];
-        
+
         if (matchId && wlFinal) {
             const wlFinalUpper = wlFinal.toUpperCase().trim();
             if (wlFinalUpper === 'WE') {
@@ -837,16 +853,16 @@ function calculateOpponentStats(records) {
             }
         }
     });
-    
+
     const finalsWon = finalsWonSet.size;
     const finalsLost = finalsLostSet.size;
     const totalMatches = finalsWon + finalsLost;
-    
+
     // Count match wins/losses/draws from opponent perspective
     let matchWins = 0;
     let matchLosses = 0;
     let matchDraws = 0;
-    
+
     records.forEach(record => {
         const wlMatch = record['W-L MATCH'];
         if (wlMatch) {
@@ -860,21 +876,21 @@ function calculateOpponentStats(records) {
             }
         }
     });
-    
+
     // Calculate win rate
     const winRate = totalMatches > 0 ? Math.round((finalsWon / totalMatches) * 100) : 0;
-    
+
     // Count total goals (GA for Ahly = GF for opponents, and vice versa)
     let totalGoalsFor = 0;
     let totalGoalsAgainst = 0;
-    
+
     records.forEach(record => {
         const gf = parseInt(record['GF']) || 0;
         const ga = parseInt(record['GA']) || 0;
         totalGoalsFor += ga; // Opponent goals = Ahly GA
         totalGoalsAgainst += gf; // Opponent conceded = Ahly GF
     });
-    
+
     // Count clean sheets (when GF = 0, opponents kept clean sheet)
     let cleanSheets = 0;
     records.forEach(record => {
@@ -883,7 +899,7 @@ function calculateOpponentStats(records) {
             cleanSheets++;
         }
     });
-    
+
     return {
         totalMatches,
         finalsWon,
@@ -924,10 +940,10 @@ function updateOpponentOverviewCards(stats) {
 function processPlayersData(matchRecords, playersData) {
     // Get MATCH_IDs from filtered matches
     const matchIds = new Set(matchRecords.map(r => r['MATCH_ID']));
-    
+
     // Filter players data for these matches only
     const filteredPlayers = playersData.filter(p => matchIds.has(p['MATCH_ID']));
-    
+
     return filteredPlayers;
 }
 
@@ -936,21 +952,21 @@ function processPlayersData(matchRecords, playersData) {
  */
 function calculateAhlyPlayersStats(matchRecords, playersData, lineupData) {
     const matchIds = new Set(matchRecords.map(r => r['MATCH_ID']));
-    
+
     // Group by player name
     const playerStats = {};
-    
+
     // Process PLAYERDETAILS data for goals and assists AND as secondary source for match participation
     const filteredPlayers = playersData.filter(p => matchIds.has(p['MATCH_ID']));
-    
+
     filteredPlayers.forEach(record => {
         const playerName = record['PLAYER NAME'];
         const matchId = record['MATCH_ID'];
         const gaTotal = parseInt(record['GATOTAL']) || 0;
         const gaType = record['GA'] || '';
-        
+
         if (!playerName || playerName.trim() === '') return;
-        
+
         if (!playerStats[playerName]) {
             playerStats[playerName] = {
                 name: playerName,
@@ -963,32 +979,32 @@ function calculateAhlyPlayersStats(matchRecords, playersData, lineupData) {
                 totalContributions: 0
             };
         }
-        
+
         // Add match to set (PLAYERDETAILS as primary source for participation)
         if (matchId) {
             playerStats[playerName].matches.add(matchId);
         }
-        
+
         // Count contributions
         if (gaType.toUpperCase().includes('G')) {
             playerStats[playerName].goals += gaTotal;
         } else if (gaType.toUpperCase().includes('A')) {
             playerStats[playerName].assists += gaTotal;
         }
-        
+
         playerStats[playerName].totalContributions += gaTotal;
     });
-    
+
     // Process LINEUP11 data to add matches where player appeared but didn't score/assist
     // This serves as a secondary source to catch players who were in lineup but had no contributions
     const filteredLineup = lineupData.filter(l => matchIds.has(l['MATCH_ID']));
-    
+
     filteredLineup.forEach(record => {
         const playerName = record['PLAYER NAME'];
         const matchId = record['MATCH_ID'];
-        
+
         if (!playerName || playerName.trim() === '') return;
-        
+
         if (!playerStats[playerName]) {
             playerStats[playerName] = {
                 name: playerName,
@@ -1001,17 +1017,17 @@ function calculateAhlyPlayersStats(matchRecords, playersData, lineupData) {
                 totalContributions: 0
             };
         }
-        
+
         // Add match to set (if already added from PLAYERDETAILS, Set will ignore duplicate)
         if (matchId) {
             playerStats[playerName].matches.add(matchId);
         }
     });
-    
+
     // Calculate finals won and lost for each player
     Object.keys(playerStats).forEach(playerName => {
         const player = playerStats[playerName];
-        
+
         // Count unique finals won and lost (by MATCH_ID)
         const finalsWonSet = new Set();
         const finalsLostSet = new Set();
@@ -1027,15 +1043,15 @@ function calculateAhlyPlayersStats(matchRecords, playersData, lineupData) {
         });
         player.finalsWon = finalsWonSet.size;
         player.finalsLost = finalsLostSet.size;
-        
+
         // Calculate Finals Played as sum of won + lost finals
         player.finalsPlayed = player.finalsWon + player.finalsLost;
-        
+
         // Calculate win rate
-        player.winRate = player.finalsPlayed > 0 ? 
+        player.winRate = player.finalsPlayed > 0 ?
             ((player.finalsWon / player.finalsPlayed) * 100).toFixed(1) : '0.0';
     });
-    
+
     return Object.values(playerStats);
 }
 
@@ -1045,14 +1061,14 @@ function calculateAhlyPlayersStats(matchRecords, playersData, lineupData) {
 function updateAhlyPlayersTable(matchRecords, playersData, lineupData) {
     const tbody = document.querySelector('#ahly-players-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     const players = calculateAhlyPlayersStats(matchRecords, playersData, lineupData);
-    
+
     // Sort by total contributions (goals + assists) descending
     players.sort((a, b) => b.totalContributions - a.totalContributions);
-    
+
     players.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1067,7 +1083,7 @@ function updateAhlyPlayersTable(matchRecords, playersData, lineupData) {
         `;
         tbody.appendChild(row);
     });
-    
+
     // Show message if no players found
     if (players.length === 0) {
         const row = document.createElement('tr');
@@ -1089,9 +1105,9 @@ function updateAhlyPlayersTable(matchRecords, playersData, lineupData) {
 function updateOpponentPlayersTable(matchRecords, playersData) {
     const tbody = document.querySelector('#opponent-players-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     const row = document.createElement('tr');
     row.innerHTML = `
         <td colspan="7" class="empty-state">
@@ -1111,38 +1127,38 @@ function updateFinalsStatistics() {
     const records = alAhlyFinalsStatsData.filteredRecords;
     const playersData = alAhlyFinalsStatsData.playersData;
     const lineupData = alAhlyFinalsStatsData.lineupData;
-    
+
     // Calculate overview statistics
     const stats = calculateOverviewStats(records);
     const opponentStats = calculateOpponentStats(records);
-    
+
     // Update overview cards
     updateOverviewCards(stats);
     updateOpponentOverviewCards(opponentStats);
-    
+
     // Update matches table
     updateFinalsMatchesTable(records);
-    
+
     // Update H2H Teams table
     populateH2HTeamsTable();
-    
+
     // Update Managers tables
     populateAhlyManagersTable();
     populateOpponentManagersTable();
-    
+
     // Update players tables
     updateAhlyPlayersTable(records, playersData, lineupData);
     updateOpponentPlayersTable(records, playersData);
-    
+
     // Update player overview if a player is selected (with proper team filtering)
     if (alAhlyFinalsStatsData.selectedAhlyPlayer) {
         displayPlayerOverview('ahly', alAhlyFinalsStatsData.selectedAhlyPlayer);
     }
-    
+
     if (alAhlyFinalsStatsData.selectedOpponentPlayer) {
         displayPlayerOverview('opponent', alAhlyFinalsStatsData.selectedOpponentPlayer);
     }
-    
+
     console.log('📊 Finals statistics updated');
 }
 
@@ -1172,7 +1188,7 @@ function showLoadingState(show) {
                 </svg>
                 Synced!
             `;
-            
+
             // Return to original text after 2 seconds
             setTimeout(() => {
                 if (refreshBtn) {
@@ -1197,13 +1213,13 @@ function showLoadingState(show) {
  */
 function initializeAlAhlyFinalsStats() {
     console.log('🚀 Initializing Al Ahly Finals Statistics Module...');
-    
+
     // Show filters section immediately
     const filtersSection = document.querySelector('.filters-section');
     const loadingContainer = document.getElementById('loading-container');
     const contentTabs = document.getElementById('content-tabs');
     const mainTabsNav = document.querySelector('.main-tabs-nav');
-    
+
     if (filtersSection) {
         filtersSection.style.display = 'block';
     }
@@ -1216,26 +1232,26 @@ function initializeAlAhlyFinalsStats() {
     if (contentTabs) {
         contentTabs.style.display = 'none';
     }
-    
+
     // Add event listeners for date range filters
     const dateFromInput = document.getElementById('date-from-filter');
     const dateToInput = document.getElementById('date-to-filter');
-    
+
     if (dateFromInput) {
         dateFromInput.addEventListener('change', () => {
             applyFinalsFilters();
         });
     }
-    
+
     if (dateToInput) {
         dateToInput.addEventListener('change', () => {
             applyFinalsFilters();
         });
     }
-    
+
     // Load Finals data on initialization
     loadFinalsData();
-    
+
     console.log('✅ Al Ahly Finals Statistics Module Initialized');
 }
 
@@ -1247,7 +1263,7 @@ if (document.readyState === 'loading') {
 }
 
 // Re-initialize when page is shown (back/forward cache)
-window.addEventListener('pageshow', function(event) {
+window.addEventListener('pageshow', function (event) {
     // If the page was restored from bfcache, reload the data
     if (event.persisted) {
         console.log('🔄 Page restored from cache, reloading data...');
@@ -1264,43 +1280,43 @@ window.addEventListener('pageshow', function(event) {
  */
 function switchMainTab(tabName) {
     console.log(`🔄 Switching to main tab: ${tabName}`);
-    
+
     // Remove active class from all main tab buttons
     document.querySelectorAll('.main-tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    
+
     // Hide all tab contents
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Activate selected tab button
     const activeButton = document.querySelector(`[onclick="switchMainTab('${tabName}')"]`);
     if (activeButton) {
         activeButton.classList.add('active');
     }
-    
+
     // Show selected tab content
     const activeContent = document.getElementById(`${tabName}-tab`);
     if (activeContent) {
         activeContent.classList.add('active');
     }
-    
+
     // Reset sub-tabs to first option when switching main tabs
     resetSubTabs(tabName);
-    
+
     // Populate H2H Teams table when switching to it
     if (tabName === 'h2h-teams') {
         populateH2HTeamsTable();
     }
-    
+
     // Populate Managers tables when switching to managers tab
     if (tabName === 'managers') {
         populateAhlyManagersTable();
         populateOpponentManagersTable();
     }
-    
+
     console.log(`✅ Switched to main tab: ${tabName}`);
 }
 
@@ -1309,11 +1325,11 @@ function switchMainTab(tabName) {
  */
 function switchSubTab(subTabName) {
     console.log(`🔄 Switching to sub tab: ${subTabName}`);
-    
+
     // Find the parent main tab
     const subTabElement = document.getElementById(subTabName);
     const mainTabElement = subTabElement.closest('.tab-content');
-    
+
     // Remove active class from all sub tab buttons in this main tab
     const subTabsNav = mainTabElement.querySelector('.sub-tabs-nav');
     if (subTabsNav) {
@@ -1321,26 +1337,26 @@ function switchSubTab(subTabName) {
             btn.classList.remove('active');
         });
     }
-    
+
     // Hide all sub tab contents in this main tab
     mainTabElement.querySelectorAll('.sub-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Activate selected sub tab button
     const activeSubButton = document.querySelector(`[onclick="switchSubTab('${subTabName}')"]`);
     if (activeSubButton) {
         activeSubButton.classList.add('active');
     }
-    
+
     // Show selected sub tab content
     if (subTabElement) {
         subTabElement.classList.add('active');
     }
-    
+
     // Reset nested sub tabs to first option
     resetNestedSubTabs(subTabName);
-    
+
     console.log(`✅ Switched to sub tab: ${subTabName}`);
 }
 
@@ -1357,7 +1373,7 @@ function resetSubTabs(mainTabName) {
                 const firstSubTabName = firstSubTabButton.getAttribute('onclick')
                     .match(/switchSubTab\('([^']+)'\)/)[1];
                 switchSubTab(firstSubTabName);
-                
+
                 // Also reset nested sub tabs
                 resetNestedSubTabs(firstSubTabName);
             }
@@ -1392,11 +1408,11 @@ function resetNestedSubTabs(subTabName) {
  */
 function switchNestedSubTab(nestedSubTabName) {
     console.log(`🔄 Switching to nested sub tab: ${nestedSubTabName}`);
-    
+
     // Find the parent sub tab
     const nestedSubTabElement = document.getElementById(nestedSubTabName);
     const subTabElement = nestedSubTabElement.closest('.sub-tab-content');
-    
+
     // Remove active class from all nested sub tab buttons in this sub tab
     const nestedSubTabsNav = subTabElement.querySelector('.sub-tabs-nav-nested');
     if (nestedSubTabsNav) {
@@ -1404,23 +1420,23 @@ function switchNestedSubTab(nestedSubTabName) {
             btn.classList.remove('active');
         });
     }
-    
+
     // Hide all nested sub tab contents in this sub tab
     subTabElement.querySelectorAll('.sub-tab-nested-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Activate selected nested sub tab button
     const activeNestedButton = document.querySelector(`[onclick="switchNestedSubTab('${nestedSubTabName}')"]`);
     if (activeNestedButton) {
         activeNestedButton.classList.add('active');
     }
-    
+
     // Show selected nested sub tab content
     if (nestedSubTabElement) {
         nestedSubTabElement.classList.add('active');
     }
-    
+
     console.log(`✅ Switched to nested sub tab: ${nestedSubTabName}`);
 }
 
@@ -1429,19 +1445,19 @@ function switchNestedSubTab(nestedSubTabName) {
  */
 function updatePlayerMatchesTable(playerName, teamFilter) {
     console.log('🔄 Updating player matches table:', { playerName, teamFilter });
-    
+
     const tbody = document.querySelector('#player-matches-table tbody');
     if (!tbody) {
         console.log('❌ Player matches table tbody not found');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     const matchRecords = alAhlyFinalsStatsData.filteredRecords;
     const lineupData = alAhlyFinalsStatsData.lineupData;
     const playersData = alAhlyFinalsStatsData.playersData;
-    
+
     // Get match IDs from filtered matches
     const matchIds = new Set(matchRecords.map(r => r['MATCH_ID']));
     const normalizeDateString = (dateStr) => {
@@ -1459,7 +1475,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         }
         return '';
     };
-    
+
     const matchRecordsByIdAndDate = {};
     matchRecords.forEach(record => {
         const matchId = record['MATCH_ID'];
@@ -1468,38 +1484,38 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         const key = `${matchId}||${dateKey}`;
         matchRecordsByIdAndDate[key] = record;
     });
-    
+
     // Get player matches from both PLAYERDETAILS (primary) and LINEUP11 (secondary)
     const playerMatches = new Set();
-    
+
     // Get matches from PLAYERDETAILS (PRIMARY SOURCE)
     const playerContributions = playersData.filter(p => {
         if (!matchIds.has(p['MATCH_ID'])) return false;
         if (p['PLAYER NAME'] !== playerName) return false;
-        
+
         // Apply team filter if set
         if (teamFilter) {
             const team = (p['TEAM'] || '').trim();
             return team === teamFilter;
         }
-        
+
         return true;
     });
-    
+
     // Get matches from LINEUP11 (SECONDARY SOURCE)
     const playerLineup = lineupData.filter(l => {
         if (!matchIds.has(l['MATCH_ID'])) return false;
         if (l['PLAYER NAME'] !== playerName) return false;
-        
+
         // Apply team filter if set
         if (teamFilter) {
             const team = (l['TEAM'] || '').trim();
             return team === teamFilter;
         }
-        
+
         return true;
     });
-    
+
     // Add matches from both sources (PLAYERDETAILS first, then LINEUP11)
     playerContributions.forEach(contribution => {
         const matchId = contribution['MATCH_ID'];
@@ -1507,16 +1523,16 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
             playerMatches.add(matchId);
         }
     });
-    
+
     playerLineup.forEach(lineup => {
         const matchId = lineup['MATCH_ID'];
         if (matchId) {
             playerMatches.add(matchId);
         }
     });
-    
+
     console.log('📊 Found player matches:', playerMatches.size);
-    
+
     // Group contributions by match
     const contributionsByMatch = {};
     playerContributions.forEach(contribution => {
@@ -1531,7 +1547,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         if (!dateKey) {
             dateKey = '__ALL__';
         }
-        
+
         if (!contributionsByMatch[matchId]) {
             contributionsByMatch[matchId] = {};
         }
@@ -1539,19 +1555,19 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
             contributionsByMatch[matchId][dateKey] = { goals: 0, assists: 0 };
         }
         const contributionBucket = contributionsByMatch[matchId][dateKey];
-        
+
         // Count goals and assists
         if (gaType === 'G' || gaType === 'GOAL') {
             contributionBucket.goals += gaTotal;
         }
-        
+
         if (gaType === 'A' || gaType === 'ASSIST') {
             contributionBucket.assists += gaTotal;
         }
     });
-    
+
     const finalMatchInfoById = buildFinalMatchInfo(matchRecords);
-    
+
     const parseDateToTimestamp = (dateStr) => {
         if (!dateStr) return new Date('1900-01-01').getTime();
         const parts = dateStr.toString().split(/[\/\-\.]/);
@@ -1568,7 +1584,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         const fallback = new Date(dateStr).getTime();
         return Number.isNaN(fallback) ? new Date('1900-01-01').getTime() : fallback;
     };
-    
+
     const playerMatchRows = matchRecords
         .map((record, index) => ({ record, index }))
         .filter(({ record }) => {
@@ -1583,7 +1599,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
             const finalInfo = finalMatchInfoById[matchId];
             const isDecisiveRow = finalInfo?.record === record;
             const wlFinal = isDecisiveRow ? (finalInfo?.wlFinal || record['W-L FINAL'] || '-') : '';
-            
+
             return {
                 matchId,
                 date: record['DATE'] || '-',
@@ -1598,7 +1614,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
                 originalIndex: index
             };
         });
-    
+
     // Sort by date (newest first) and fallback to original order
     playerMatchRows.sort((a, b) => {
         if (b.sortKey !== a.sortKey) {
@@ -1606,9 +1622,9 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         }
         return b.originalIndex - a.originalIndex;
     });
-    
+
     console.log('📋 Player match rows:', playerMatchRows.length, 'rows');
-    
+
     if (playerMatchRows.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1622,19 +1638,19 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         tbody.appendChild(row);
         return;
     }
-    
+
     // Populate table
     playerMatchRows.forEach(match => {
         const row = document.createElement('tr');
-        
+
         // Highlight goals and assists if > 0 (wrap number in span)
-        const goalsHTML = match.goals > 0 
-            ? `<span class="highlight-value" style="font-size: 1.1em;">${match.goals}</span>` 
+        const goalsHTML = match.goals > 0
+            ? `<span class="highlight-value" style="font-size: 1.1em;">${match.goals}</span>`
             : match.goals;
-        const assistsHTML = match.assists > 0 
-            ? `<span class="highlight-value" style="font-size: 1.1em;">${match.assists}</span>` 
+        const assistsHTML = match.assists > 0
+            ? `<span class="highlight-value" style="font-size: 1.1em;">${match.assists}</span>`
             : match.assists;
-        
+
         // Final W/L badge
         let finalWlHTML = match.wlFinal || '';
         if (match.wlFinal && match.wlFinal !== '-') {
@@ -1647,7 +1663,7 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
         } else if (match.showFinalResult && match.wlFinal === '-') {
             finalWlHTML = '-';
         }
-        
+
         row.innerHTML = `
             <td>${match.date}</td>
             <td>${match.season}</td>
@@ -1666,22 +1682,22 @@ function updatePlayerMatchesTable(playerName, teamFilter) {
  */
 function buildFinalMatchInfo(records) {
     const entriesByMatchId = {};
-    
+
     records.forEach((record, index) => {
         const matchId = record['MATCH_ID'];
         if (!matchId) return;
-        
+
         if (!entriesByMatchId[matchId]) {
             entriesByMatchId[matchId] = [];
         }
         entriesByMatchId[matchId].push({ record, index });
     });
-    
+
     const finalInfoByMatchId = {};
-    
+
     Object.entries(entriesByMatchId).forEach(([matchId, entries]) => {
         entries.sort((a, b) => a.index - b.index);
-        
+
         let finalEntry = null;
         for (let i = entries.length - 1; i >= 0; i--) {
             const wlFinal = (entries[i].record['W-L FINAL'] || '').toUpperCase().trim();
@@ -1690,11 +1706,11 @@ function buildFinalMatchInfo(records) {
                 break;
             }
         }
-        
+
         if (!finalEntry) {
             finalEntry = entries[entries.length - 1];
         }
-        
+
         const record = finalEntry.record;
         finalInfoByMatchId[matchId] = {
             opponentTeam: record['OPPONENT TEAM'] || 'Unknown',
@@ -1702,7 +1718,7 @@ function buildFinalMatchInfo(records) {
             record
         };
     });
-    
+
     return finalInfoByMatchId;
 }
 
@@ -1711,15 +1727,15 @@ function buildFinalMatchInfo(records) {
  */
 function updatePlayerVsTeamsTable(playerName, teamFilter) {
     console.log('🔄 Updating player vs teams table:', { playerName, teamFilter });
-    
+
     const tbody = document.querySelector('#player-vs-teams-table tbody');
     if (!tbody) {
         console.log('❌ Player vs teams table tbody not found');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     if (!playerName) {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1733,12 +1749,12 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
         tbody.appendChild(row);
         return;
     }
-    
+
     const matchRecords = alAhlyFinalsStatsData.filteredRecords;
     const finalMatchInfoById = buildFinalMatchInfo(matchRecords);
     const playersData = alAhlyFinalsStatsData.playersData;
     const lineupData = alAhlyFinalsStatsData.lineupData;
-    
+
     if (!matchRecords || matchRecords.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1752,7 +1768,7 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
         tbody.appendChild(row);
         return;
     }
-    
+
     // Build lookup of match records by MATCH_ID
     // Helper to ensure stats object exists
     const statsByOpponent = {};
@@ -1770,41 +1786,41 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
         }
         return statsByOpponent[key];
     };
-    
+
     // Filter player contributions and lineup data by team (if provided)
     const playerContributions = playersData.filter(p => {
         if (!finalMatchInfoById[p['MATCH_ID']]) return false;
         if (p['PLAYER NAME'] !== playerName) return false;
-        
+
         if (teamFilter) {
             const team = (p['TEAM'] || '').trim();
             return team === teamFilter;
         }
-        
+
         return true;
     });
-    
+
     const playerLineup = lineupData.filter(l => {
         if (!finalMatchInfoById[l['MATCH_ID']]) return false;
         if (l['PLAYER NAME'] !== playerName) return false;
-        
+
         if (teamFilter) {
             const team = (l['TEAM'] || '').trim();
             return team === teamFilter;
         }
-        
+
         return true;
     });
-    
+
     // Register match participation helper
     const registerMatchParticipation = (matchId) => {
         const finalInfo = finalMatchInfoById[matchId];
         if (!finalInfo) return;
-        
+
         const opponentTeam = finalInfo.opponentTeam;
         const stats = ensureOpponentStats(opponentTeam);
         stats.matchIds.add(matchId);
-        
+
         const wlFinal = finalInfo.wlFinal;
         if (wlFinal === 'W') {
             stats.finalsWonIds.add(matchId);
@@ -1812,37 +1828,37 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
             stats.finalsLostIds.add(matchId);
         }
     };
-    
+
     // Process player contributions for goals and assists
     playerContributions.forEach(contribution => {
         const matchId = contribution['MATCH_ID'];
         if (!matchId) return;
-        
+
         registerMatchParticipation(matchId);
-        
+
         const finalInfo = finalMatchInfoById[matchId];
         if (!finalInfo) return;
-        
+
         const opponentTeam = finalInfo.opponentTeam;
         const stats = ensureOpponentStats(opponentTeam);
-        
+
         const gaTotal = parseInt(contribution['GATOTAL']) || 0;
         const gaType = (contribution['GA'] || '').toUpperCase().trim();
-        
+
         if (gaType === 'G' || gaType === 'GOAL') {
             stats.goals += gaTotal;
         } else if (gaType === 'A' || gaType === 'ASSIST') {
             stats.assists += gaTotal;
         }
     });
-    
+
     // Ensure matches from lineup are counted (even without contributions)
     playerLineup.forEach(lineup => {
         const matchId = lineup['MATCH_ID'];
         if (!matchId) return;
         registerMatchParticipation(matchId);
     });
-    
+
     const opponentStatsArray = Object.values(statsByOpponent).map(stats => {
         const finalsWon = stats.finalsWonIds.size;
         const finalsLost = stats.finalsLostIds.size;
@@ -1851,7 +1867,7 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
         const goals = stats.goals;
         const assists = stats.assists;
         const gaTotal = goals + assists;
-        
+
         return {
             opponentTeam: stats.opponentTeam,
             matches: matchesCount,
@@ -1863,7 +1879,7 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
             assists
         };
     }).filter(stats => stats.matches > 0);
-    
+
     if (opponentStatsArray.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1877,10 +1893,10 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
         tbody.appendChild(row);
         return;
     }
-    
+
     // Sort by total matches descending
     opponentStatsArray.sort((a, b) => b.matches - a.matches);
-    
+
     opponentStatsArray.forEach(stats => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1906,21 +1922,21 @@ function updatePlayerVsTeamsTable(playerName, teamFilter) {
  */
 function initializeUnifiedPlayerSearch() {
     console.log('🔍 Initializing unified player search...');
-    
+
     const searchInput = document.getElementById('unified-player-search');
     const dropdown = document.getElementById('unified-player-dropdown');
     const teamFilter = document.getElementById('player-team-filter');
-    
+
     if (!searchInput || !dropdown || !teamFilter) {
         console.log('❌ Unified player search elements not found');
         return;
     }
-    
+
     // Populate team filter dropdown
     populateTeamFilter();
-    
+
     // Search input handlers
-    searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', function () {
         const searchTerm = this.value.trim().toLowerCase();
         const selectedTeam = teamFilter.value;
         if (searchTerm.length > 0) {
@@ -1929,26 +1945,26 @@ function initializeUnifiedPlayerSearch() {
             dropdown.style.display = 'none';
         }
     });
-    
-    searchInput.addEventListener('focus', function() {
+
+    searchInput.addEventListener('focus', function () {
         const searchTerm = this.value.trim().toLowerCase();
         const selectedTeam = teamFilter.value;
         if (searchTerm.length > 0) {
             showUnifiedPlayerDropdown(searchTerm, selectedTeam);
         }
     });
-    
-    searchInput.addEventListener('blur', function() {
+
+    searchInput.addEventListener('blur', function () {
         setTimeout(() => {
             dropdown.style.display = 'none';
         }, 300);
     });
-    
+
     // Team filter change handler
-    teamFilter.addEventListener('change', function() {
+    teamFilter.addEventListener('change', function () {
         const selectedPlayer = alAhlyFinalsStatsData.selectedUnifiedPlayer;
         const selectedTeam = this.value;
-        
+
         if (selectedPlayer) {
             // Update overview with new team filter
             displayUnifiedPlayerOverview(selectedPlayer, selectedTeam);
@@ -1958,7 +1974,7 @@ function initializeUnifiedPlayerSearch() {
             updatePlayerVsTeamsTable(selectedPlayer, selectedTeam);
         }
     });
-    
+
     console.log('✅ Unified player search initialized');
 }
 
@@ -1968,25 +1984,25 @@ function initializeUnifiedPlayerSearch() {
 function populateTeamFilter(playerName = null) {
     const teamFilter = document.getElementById('player-team-filter');
     if (!teamFilter) return;
-    
+
     const previousValue = teamFilter.value;
     const allTeams = new Set();
     const playerSpecificTeams = new Set();
-    
+
     const { playerDatabase, playersData, lineupData } = alAhlyFinalsStatsData;
-    
+
     // Always collect all teams in case we need a full list (no player selected)
     playerDatabase.forEach(player => {
         const team = (player['TEAM'] || '').trim();
         if (team) {
             allTeams.add(team);
         }
-        
+
         if (playerName && player['PLAYER NAME'] === playerName && team) {
             playerSpecificTeams.add(team);
         }
     });
-    
+
     if (playerName) {
         // Include teams from PLAYERDETAILS dataset
         playersData.forEach(record => {
@@ -1997,7 +2013,7 @@ function populateTeamFilter(playerName = null) {
                 }
             }
         });
-        
+
         // Include teams from LINEUP dataset
         lineupData.forEach(record => {
             if (record['PLAYER NAME'] === playerName) {
@@ -2008,22 +2024,22 @@ function populateTeamFilter(playerName = null) {
             }
         });
     }
-    
+
     const teamsToRender = playerName ? playerSpecificTeams : allTeams;
-    
+
     // Clear and repopulate dropdown
     teamFilter.innerHTML = '<option value="">All Teams</option>';
-    
+
     // Sort teams alphabetically
     const sortedTeams = Array.from(teamsToRender).sort();
-    
+
     sortedTeams.forEach(team => {
         const option = document.createElement('option');
         option.value = team;
         option.textContent = team;
         teamFilter.appendChild(option);
     });
-    
+
     if (playerName) {
         // Reset to "All Teams" when a specific player is selected
         teamFilter.value = '';
@@ -2041,22 +2057,22 @@ function populateTeamFilter(playerName = null) {
 function showUnifiedPlayerDropdown(searchTerm, teamFilter) {
     const dropdown = document.getElementById('unified-player-dropdown');
     if (!dropdown) return;
-    
+
     // Filter players by search term and team (if selected)
     const filteredPlayers = alAhlyFinalsStatsData.playerDatabase.filter(player => {
         const playerName = (player['PLAYER NAME'] || '').toLowerCase();
         const team = (player['TEAM'] || '').trim();
-        
+
         const matchesSearch = playerName.includes(searchTerm);
         const matchesTeam = !teamFilter || team === teamFilter;
-        
+
         return matchesSearch && matchesTeam && playerName !== '';
     });
-    
+
     // Remove duplicates by player name
     const uniquePlayers = [];
     const seenNames = new Set();
-    
+
     filteredPlayers.forEach(player => {
         const name = player['PLAYER NAME'];
         if (!seenNames.has(name)) {
@@ -2064,31 +2080,31 @@ function showUnifiedPlayerDropdown(searchTerm, teamFilter) {
             uniquePlayers.push(player);
         }
     });
-    
+
     // Populate dropdown
     dropdown.innerHTML = '';
-    
+
     if (uniquePlayers.length === 0) {
         dropdown.innerHTML = '<div class="player-dropdown-item">No players found</div>';
         dropdown.style.display = 'block';
         return;
     }
-    
+
     uniquePlayers.slice(0, 10).forEach(player => {
         const div = document.createElement('div');
         div.className = 'player-dropdown-item';
         div.innerHTML = `
             <div class="player-name">${player['PLAYER NAME']}</div>
         `;
-        
-        div.addEventListener('mousedown', function(e) {
+
+        div.addEventListener('mousedown', function (e) {
             e.preventDefault();
             selectUnifiedPlayer(player['PLAYER NAME']);
         });
-        
+
         dropdown.appendChild(div);
     });
-    
+
     dropdown.style.display = 'block';
 }
 
@@ -2097,32 +2113,32 @@ function showUnifiedPlayerDropdown(searchTerm, teamFilter) {
  */
 function selectUnifiedPlayer(playerName) {
     console.log(`🎯 Selected player: ${playerName}`);
-    
+
     const searchInput = document.getElementById('unified-player-search');
     const dropdown = document.getElementById('unified-player-dropdown');
     const teamFilter = document.getElementById('player-team-filter');
-    
+
     if (searchInput) {
         searchInput.value = playerName;
     }
-    
+
     if (dropdown) {
         dropdown.style.display = 'none';
     }
-    
+
     // Store selected player
     alAhlyFinalsStatsData.selectedUnifiedPlayer = playerName;
-    
+
     // Refresh team filter with teams specific to this player
     populateTeamFilter(playerName);
-    
+
     // Display player overview
     const selectedTeam = teamFilter ? teamFilter.value : '';
     displayUnifiedPlayerOverview(playerName, selectedTeam);
-    
+
     // Update player matches table
     updatePlayerMatchesTable(playerName, selectedTeam);
-    
+
     // Update player vs teams table
     updatePlayerVsTeamsTable(playerName, selectedTeam);
 }
@@ -2133,10 +2149,10 @@ function selectUnifiedPlayer(playerName) {
 function displayUnifiedPlayerOverview(playerName, teamFilter) {
     const container = document.getElementById('unified-player-overview-cards');
     if (!container) return;
-    
+
     // Calculate player statistics with team filter
     const stats = calculateUnifiedPlayerStats(playerName, teamFilter);
-    
+
     // Create overview cards HTML
     container.innerHTML = `
         <div class="player-overview-card">
@@ -2256,27 +2272,27 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
     const matchRecords = alAhlyFinalsStatsData.filteredRecords;
     const lineupData = alAhlyFinalsStatsData.lineupData;
     const playersData = alAhlyFinalsStatsData.playersData;
-    
+
     // Get match IDs from filtered matches
     const matchIds = new Set(matchRecords.map(r => r['MATCH_ID']));
-    
+
     // Collect all matches for this player (with team filter)
     const playerMatches = new Set();
-    
+
     // Filter player contributions by team (if filter is set) - PRIMARY SOURCE
     const playerContributions = playersData.filter(p => {
         if (!matchIds.has(p['MATCH_ID'])) return false;
         if (p['PLAYER NAME'] !== playerName) return false;
-        
+
         // Apply team filter if set
         if (teamFilter) {
             const team = (p['TEAM'] || '').trim();
             return team === teamFilter;
         }
-        
+
         return true;
     });
-    
+
     // Add matches from PLAYERDETAILS (PRIMARY SOURCE for participation)
     playerContributions.forEach(contribution => {
         const matchId = contribution['MATCH_ID'];
@@ -2284,21 +2300,21 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
             playerMatches.add(matchId);
         }
     });
-    
+
     // Filter lineup data by team (if filter is set) - SECONDARY SOURCE
     const playerLineup = lineupData.filter(l => {
         if (!matchIds.has(l['MATCH_ID'])) return false;
         if (l['PLAYER NAME'] !== playerName) return false;
-        
+
         // Apply team filter if set
         if (teamFilter) {
             const team = (l['TEAM'] || '').trim();
             return team === teamFilter;
         }
-        
+
         return true;
     });
-    
+
     // Add matches from LINEUP11 (SECONDARY SOURCE - catches players in lineup with no contributions)
     playerLineup.forEach(lineup => {
         const matchId = lineup['MATCH_ID'];
@@ -2306,27 +2322,27 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
             playerMatches.add(matchId);
         }
     });
-    
+
     // Count matches played
     const matchesPlayed = playerLineup.length;
-    
+
     // Determine if player is with Ahly or opponent based on team filter
     let isAhlyPlayer = true; // Default to Ahly player
     if (teamFilter) {
         const teamUpper = teamFilter.toUpperCase();
         isAhlyPlayer = teamUpper.includes('AHLY') || teamUpper.includes('الأهلي');
     }
-    
+
     // Count unique finals won and lost (by MATCH_ID)
     const finalsWonSet = new Set();
     const finalsLostSet = new Set();
     const finalMatchInfoById = buildFinalMatchInfo(matchRecords);
     Object.entries(finalMatchInfoById).forEach(([matchId, finalInfo]) => {
         if (!playerMatches.has(matchId)) return;
-        
+
         const wlFinal = finalInfo.wlFinal;
         if (!wlFinal) return;
-        
+
         if (isAhlyPlayer) {
             if (wlFinal === 'W') finalsWonSet.add(matchId);
             if (wlFinal === 'L') finalsLostSet.add(matchId);
@@ -2337,13 +2353,13 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
     });
     const finalsWon = finalsWonSet.size;
     const finalsLost = finalsLostSet.size;
-    
+
     // Finals played = sum of won + lost finals
     const finalsPlayed = finalsWon + finalsLost;
-    
+
     // Calculate win rate
     const winRate = finalsPlayed > 0 ? Math.round((finalsWon / finalsPlayed) * 100) : 0;
-    
+
     // Calculate goals and assists
     let goals = 0;
     let assists = 0;
@@ -2351,16 +2367,16 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
     let penaltyAG = 0;
     let penMissed = 0;
     let fkCount = 0;
-    
+
     const goalsPerMatch = {};
     const assistsPerMatch = {};
-    
+
     playerContributions.forEach(contribution => {
         const matchId = contribution['MATCH_ID'];
         const gaTotal = parseInt(contribution['GATOTAL']) || 0;
         const gaType = (contribution['GA'] || '').toUpperCase().trim();
         const goalType = (contribution['TYPE'] || '').toUpperCase();
-        
+
         // Count FK
         if (goalType.includes('FK')) {
             const fkMatches = goalType.match(/FK/g);
@@ -2368,22 +2384,22 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
                 fkCount += fkMatches.length;
             }
         }
-        
+
         // Check for PENASSISTGOAL
         if (gaType === 'PENASSISTGOAL') {
             penaltyAG += gaTotal;
         }
-        
+
         // Check for PENMISSED
         if (gaType === 'PENMISSED') {
             penMissed += gaTotal;
         }
-        
+
         // Check for goals
         if (gaType === 'G' || gaType === 'GOAL') {
             goals += gaTotal;
             goalsPerMatch[matchId] = (goalsPerMatch[matchId] || 0) + gaTotal;
-            
+
             // Count penalty goals
             if (goalType.includes('PENGOAL')) {
                 const pengoalMatches = goalType.match(/PENGOAL/g);
@@ -2392,38 +2408,38 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
                 }
             }
         }
-        
+
         // Check for assists
         if (gaType === 'A' || gaType === 'ASSIST') {
             assists += gaTotal;
             assistsPerMatch[matchId] = (assistsPerMatch[matchId] || 0) + gaTotal;
         }
     });
-    
+
     const goalsAndAssists = goals + assists;
-    
+
     // Calculate braces, hat-tricks, 4+ for goals
     let braces = 0;
     let hatTricks = 0;
     let fourPlusGoals = 0;
-    
+
     Object.values(goalsPerMatch).forEach(matchGoals => {
         if (matchGoals === 2) braces++;
         else if (matchGoals === 3) hatTricks++;
         else if (matchGoals >= 4) fourPlusGoals++;
     });
-    
+
     // Calculate braces, hat-tricks, 4+ for assists
     let assistBraces = 0;
     let assistHatTricks = 0;
     let fourPlusAssists = 0;
-    
+
     Object.values(assistsPerMatch).forEach(matchAssists => {
         if (matchAssists === 2) assistBraces++;
         else if (matchAssists === 3) assistHatTricks++;
         else if (matchAssists >= 4) fourPlusAssists++;
     });
-    
+
     return {
         matchesPlayed,
         finalsPlayed,
@@ -2455,22 +2471,22 @@ function calculateUnifiedPlayerStats(playerName, teamFilter) {
  */
 function populateH2HTeamsTable() {
     const records = alAhlyFinalsStatsData.filteredRecords;
-    
+
     if (!records || records.length === 0) {
         console.warn('⚠️ No data available for H2H Teams');
         return;
     }
-    
+
     console.log('📊 Populating H2H Teams table with', records.length, 'records');
-    
+
     // Store original data for filtering
     if (!window.h2hTeamsOriginalData) {
         window.h2hTeamsOriginalData = [];
     }
-    
+
     // Group by opponent team
     const teamStats = {};
-    
+
     records.forEach(record => {
         const opponentTeam = record['OPPONENT TEAM'] || 'Unknown';
         const matchId = record['MATCH_ID'] || '';
@@ -2479,7 +2495,7 @@ function populateH2HTeamsTable() {
         const gf = parseInt(record['GF']) || 0;
         const ga = parseInt(record['GA']) || 0;
         const et = (record['ET'] || '').toUpperCase().trim();
-        
+
         if (!teamStats[opponentTeam]) {
             teamStats[opponentTeam] = {
                 team: opponentTeam,
@@ -2494,13 +2510,13 @@ function populateH2HTeamsTable() {
                 goalsAgainst: 0
             };
         }
-        
+
         const stats = teamStats[opponentTeam];
-        
+
         // Track unique MATCH_ID for finals count
         if (matchId) {
             stats.uniqueMatchIds.add(matchId);
-            
+
             // Track finals won/lost by unique MATCH_ID
             if (wlFinal === 'W') {
                 stats.finalsWonIds.add(matchId);
@@ -2508,12 +2524,12 @@ function populateH2HTeamsTable() {
                 stats.finalsLostIds.add(matchId);
             }
         }
-        
+
         // Count matches (all records)
         stats.matches++;
         stats.goalsFor += gf;
         stats.goalsAgainst += ga;
-        
+
         // Count match results based on W-L MATCH column
         if (wlMatch === 'W') {
             stats.wins++;
@@ -2524,7 +2540,7 @@ function populateH2HTeamsTable() {
             stats.losses++;
         }
     });
-    
+
     // Convert Sets to counts
     Object.values(teamStats).forEach(stats => {
         stats.finalsWon = stats.finalsWonIds.size;
@@ -2535,20 +2551,20 @@ function populateH2HTeamsTable() {
         delete stats.finalsWonIds;
         delete stats.finalsLostIds;
     });
-    
+
     // Convert to array and sort by finals (descending)
     let teamsArray = Object.values(teamStats);
     teamsArray.sort((a, b) => b.finals - a.finals);
-    
+
     // Store original data for filtering
     window.h2hTeamsOriginalData = teamsArray;
-    
+
     // Render table with all data initially
     renderH2HTeamsTable(teamsArray);
-    
+
     // Initialize search functionality
     initializeH2HTeamsSearch();
-    
+
     console.log('✅ H2H Teams table populated with', teamsArray.length, 'teams');
 }
 
@@ -2568,7 +2584,7 @@ function renderH2HTeamsTable(teamsArray) {
         goalsFor: 0,
         goalsAgainst: 0
     };
-    
+
     // Sum stats from filtered teams
     teamsArray.forEach(stats => {
         totals.finals += stats.finals;
@@ -2581,20 +2597,20 @@ function renderH2HTeamsTable(teamsArray) {
         totals.goalsFor += stats.goalsFor;
         totals.goalsAgainst += stats.goalsAgainst;
     });
-    
+
     // Populate table
     const tbody = document.querySelector('#h2h-teams-table tbody');
     if (!tbody) {
         console.error('❌ H2H Teams table body not found');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     teamsArray.forEach(stats => {
         const gd = stats.goalsFor - stats.goalsAgainst;
         const gdClass = gd > 0 ? 'positive' : gd < 0 ? 'negative' : '';
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${stats.team}</td>
@@ -2611,7 +2627,7 @@ function renderH2HTeamsTable(teamsArray) {
         `;
         tbody.appendChild(row);
     });
-    
+
     // Update totals
     document.getElementById('h2h-total-finals').textContent = totals.finals;
     document.getElementById('h2h-total-finals-won').textContent = totals.finalsWon;
@@ -2622,7 +2638,7 @@ function renderH2HTeamsTable(teamsArray) {
     document.getElementById('h2h-total-losses').textContent = totals.losses;
     document.getElementById('h2h-total-gf').textContent = totals.goalsFor;
     document.getElementById('h2h-total-ga').textContent = totals.goalsAgainst;
-    
+
     const totalGd = totals.goalsFor - totals.goalsAgainst;
     const totalGdElement = document.getElementById('h2h-total-gd');
     totalGdElement.textContent = (totalGd > 0 ? '+' : '') + totalGd;
@@ -2635,8 +2651,8 @@ function renderH2HTeamsTable(teamsArray) {
 function initializeH2HTeamsSearch() {
     const searchInput = document.getElementById('h2h-teams-search');
     if (!searchInput) return;
-    
-    searchInput.addEventListener('input', function() {
+
+    searchInput.addEventListener('input', function () {
         const searchTerm = this.value.toLowerCase().trim();
         filterH2HTeamsTable(searchTerm);
     });
@@ -2647,15 +2663,15 @@ function initializeH2HTeamsSearch() {
  */
 function filterH2HTeamsTable(searchTerm) {
     if (!window.h2hTeamsOriginalData) return;
-    
+
     let filteredTeams = window.h2hTeamsOriginalData;
-    
+
     if (searchTerm) {
-        filteredTeams = window.h2hTeamsOriginalData.filter(team => 
+        filteredTeams = window.h2hTeamsOriginalData.filter(team =>
             team.team.toLowerCase().includes(searchTerm)
         );
     }
-    
+
     renderH2HTeamsTable(filteredTeams);
 }
 
@@ -2673,20 +2689,20 @@ function sortH2HTeamsTable(column) {
         h2hTeamsSortColumn = column;
         h2hTeamsSortDirection = 'desc';
     }
-    
+
     // Get current filtered data or original data
     const currentData = window.h2hTeamsOriginalData || [];
-    
+
     // Sort the data
     const sortedData = [...currentData].sort((a, b) => {
         let aVal, bVal;
-        
+
         switch (column) {
             case 'team':
                 aVal = a.team;
                 bVal = b.team;
-                return h2hTeamsSortDirection === 'asc' 
-                    ? aVal.localeCompare(bVal) 
+                return h2hTeamsSortDirection === 'asc'
+                    ? aVal.localeCompare(bVal)
                     : bVal.localeCompare(aVal);
             case 'finals':
                 aVal = a.finals;
@@ -2731,18 +2747,18 @@ function sortH2HTeamsTable(column) {
             default:
                 return 0;
         }
-        
+
         return h2hTeamsSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
     });
-    
+
     // Re-render table with sorted data
     renderH2HTeamsTable(sortedData);
-    
+
     // Update sort icons
     document.querySelectorAll('#h2h-teams-table th').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     const activeHeader = document.querySelector(`#h2h-teams-table th[onclick="sortH2HTeamsTable('${column}')"]`);
     if (activeHeader) {
         activeHeader.classList.add(h2hTeamsSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
@@ -2758,17 +2774,17 @@ function sortH2HTeamsTable(column) {
  */
 function populateAhlyManagersTable() {
     const records = alAhlyFinalsStatsData.filteredRecords;
-    
+
     if (!records || records.length === 0) {
         console.warn('⚠️ No data available for Ahly Managers');
         return;
     }
-    
+
     console.log('📊 Populating Ahly Managers table with', records.length, 'records');
-    
+
     // Group by Ahly manager
     const managerStats = {};
-    
+
     records.forEach(record => {
         const manager = record['AHLY MANAGER'] || 'Unknown';
         const matchId = record['MATCH_ID'] || '';
@@ -2776,7 +2792,7 @@ function populateAhlyManagersTable() {
         const wlFinal = (record['W-L FINAL'] || '').toUpperCase().trim();
         const gf = parseInt(record['GF']) || 0;
         const ga = parseInt(record['GA']) || 0;
-        
+
         if (!managerStats[manager]) {
             managerStats[manager] = {
                 manager: manager,
@@ -2791,13 +2807,13 @@ function populateAhlyManagersTable() {
                 goalsAgainst: 0
             };
         }
-        
+
         const stats = managerStats[manager];
-        
+
         // Track unique MATCH_ID for finals count
         if (matchId) {
             stats.uniqueMatchIds.add(matchId);
-            
+
             // Track finals won/lost by unique MATCH_ID
             if (wlFinal === 'W') {
                 stats.finalsWonIds.add(matchId);
@@ -2805,12 +2821,12 @@ function populateAhlyManagersTable() {
                 stats.finalsLostIds.add(matchId);
             }
         }
-        
+
         // Count matches (all records)
         stats.matches++;
         stats.goalsFor += gf;
         stats.goalsAgainst += ga;
-        
+
         // Count match results based on W-L MATCH column
         if (wlMatch === 'W') {
             stats.wins++;
@@ -2820,7 +2836,7 @@ function populateAhlyManagersTable() {
             stats.losses++;
         }
     });
-    
+
     // Convert Sets to counts
     Object.values(managerStats).forEach(stats => {
         stats.finalsWon = stats.finalsWonIds.size;
@@ -2831,15 +2847,15 @@ function populateAhlyManagersTable() {
         delete stats.finalsWonIds;
         delete stats.finalsLostIds;
     });
-    
+
     // Convert to array and sort by finals (descending)
     let managersArray = Object.values(managerStats);
     managersArray.sort((a, b) => b.finals - a.finals);
-    
+
     // Calculate totals (unique MATCH_IDs from original records)
     const totalFinalsWonIds = new Set();
     const totalFinalsLostIds = new Set();
-    
+
     records.forEach(record => {
         const matchId = record['MATCH_ID'];
         if (matchId) {
@@ -2851,7 +2867,7 @@ function populateAhlyManagersTable() {
             }
         }
     });
-    
+
     const totals = {
         finalsWon: totalFinalsWonIds.size,
         finalsLost: totalFinalsLostIds.size,
@@ -2863,10 +2879,10 @@ function populateAhlyManagersTable() {
         goalsFor: 0,
         goalsAgainst: 0
     };
-    
+
     // Calculate Total Finals as sum of Finals Won + Finals Lost
     totals.finals = totals.finalsWon + totals.finalsLost;
-    
+
     // Sum match stats and goals
     managersArray.forEach(stats => {
         totals.matches += stats.matches;
@@ -2876,20 +2892,20 @@ function populateAhlyManagersTable() {
         totals.goalsFor += stats.goalsFor;
         totals.goalsAgainst += stats.goalsAgainst;
     });
-    
+
     // Populate table
     const tbody = document.querySelector('#ahly-managers-table tbody');
     if (!tbody) {
         console.error('❌ Ahly Managers table body not found');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     managersArray.forEach(stats => {
         const gd = stats.goalsFor - stats.goalsAgainst;
         const gdClass = gd > 0 ? 'positive' : gd < 0 ? 'negative' : '';
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${stats.manager}</td>
@@ -2906,7 +2922,7 @@ function populateAhlyManagersTable() {
         `;
         tbody.appendChild(row);
     });
-    
+
     // Update totals
     document.getElementById('ahly-mgr-total-finals').textContent = totals.finals;
     document.getElementById('ahly-mgr-total-finals-won').textContent = totals.finalsWon;
@@ -2917,12 +2933,12 @@ function populateAhlyManagersTable() {
     document.getElementById('ahly-mgr-total-losses').textContent = totals.losses;
     document.getElementById('ahly-mgr-total-gf').textContent = totals.goalsFor;
     document.getElementById('ahly-mgr-total-ga').textContent = totals.goalsAgainst;
-    
+
     const totalGd = totals.goalsFor - totals.goalsAgainst;
     const totalGdElement = document.getElementById('ahly-mgr-total-gd');
     totalGdElement.textContent = (totalGd > 0 ? '+' : '') + totalGd;
     totalGdElement.className = totalGd > 0 ? 'positive' : totalGd < 0 ? 'negative' : '';
-    
+
     console.log('✅ Ahly Managers table populated with', managersArray.length, 'managers');
 }
 
@@ -2931,17 +2947,17 @@ function populateAhlyManagersTable() {
  */
 function populateOpponentManagersTable() {
     const records = alAhlyFinalsStatsData.filteredRecords;
-    
+
     if (!records || records.length === 0) {
         console.warn('⚠️ No data available for Opponent Managers');
         return;
     }
-    
+
     console.log('📊 Populating Opponent Managers table with', records.length, 'records');
-    
+
     // Group by opponent manager
     const managerStats = {};
-    
+
     records.forEach(record => {
         const manager = record['OPPONENT MANAGER'] || 'Unknown';
         const matchId = record['MATCH_ID'] || '';
@@ -2949,7 +2965,7 @@ function populateOpponentManagersTable() {
         const wlFinal = (record['W-L FINAL'] || '').toUpperCase().trim();
         const gf = parseInt(record['GF']) || 0;
         const ga = parseInt(record['GA']) || 0;
-        
+
         if (!managerStats[manager]) {
             managerStats[manager] = {
                 manager: manager,
@@ -2964,13 +2980,13 @@ function populateOpponentManagersTable() {
                 goalsAgainst: 0
             };
         }
-        
+
         const stats = managerStats[manager];
-        
+
         // Track unique MATCH_ID for finals count
         if (matchId) {
             stats.uniqueMatchIds.add(matchId);
-            
+
             // Track finals won/lost by unique MATCH_ID (reversed for opponents)
             if (wlFinal === 'W') {
                 stats.finalsLostIds.add(matchId);  // Ahly won = opponent lost
@@ -2978,13 +2994,13 @@ function populateOpponentManagersTable() {
                 stats.finalsWonIds.add(matchId);   // Ahly lost = opponent won
             }
         }
-        
+
         // Count matches (all records)
         stats.matches++;
         // For opponent managers, GF and GA are reversed
         stats.goalsFor += ga;
         stats.goalsAgainst += gf;
-        
+
         // Count match results (reversed for opponents)
         if (wlMatch === 'W') {
             stats.losses++;  // Ahly won = opponent lost
@@ -2994,7 +3010,7 @@ function populateOpponentManagersTable() {
             stats.wins++;  // Ahly lost = opponent won
         }
     });
-    
+
     // Convert Sets to counts
     Object.values(managerStats).forEach(stats => {
         stats.finalsWon = stats.finalsWonIds.size;
@@ -3005,15 +3021,15 @@ function populateOpponentManagersTable() {
         delete stats.finalsWonIds;
         delete stats.finalsLostIds;
     });
-    
+
     // Convert to array and sort by finals (descending)
     let managersArray = Object.values(managerStats);
     managersArray.sort((a, b) => b.finals - a.finals);
-    
+
     // Calculate totals (unique MATCH_IDs from original records)
     const totalFinalsWonIds = new Set();
     const totalFinalsLostIds = new Set();
-    
+
     records.forEach(record => {
         const matchId = record['MATCH_ID'];
         if (matchId) {
@@ -3026,7 +3042,7 @@ function populateOpponentManagersTable() {
             }
         }
     });
-    
+
     const totals = {
         finalsWon: totalFinalsWonIds.size,
         finalsLost: totalFinalsLostIds.size,
@@ -3038,10 +3054,10 @@ function populateOpponentManagersTable() {
         goalsFor: 0,
         goalsAgainst: 0
     };
-    
+
     // Calculate Total Finals as sum of Finals Won + Finals Lost
     totals.finals = totals.finalsWon + totals.finalsLost;
-    
+
     // Sum match stats and goals
     managersArray.forEach(stats => {
         totals.matches += stats.matches;
@@ -3051,20 +3067,20 @@ function populateOpponentManagersTable() {
         totals.goalsFor += stats.goalsFor;
         totals.goalsAgainst += stats.goalsAgainst;
     });
-    
+
     // Populate table
     const tbody = document.querySelector('#opponent-managers-table tbody');
     if (!tbody) {
         console.error('❌ Opponent Managers table body not found');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     managersArray.forEach(stats => {
         const gd = stats.goalsFor - stats.goalsAgainst;
         const gdClass = gd > 0 ? 'positive' : gd < 0 ? 'negative' : '';
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${stats.manager}</td>
@@ -3081,7 +3097,7 @@ function populateOpponentManagersTable() {
         `;
         tbody.appendChild(row);
     });
-    
+
     // Update totals
     document.getElementById('opp-mgr-total-finals').textContent = totals.finals;
     document.getElementById('opp-mgr-total-finals-won').textContent = totals.finalsWon;
@@ -3092,12 +3108,12 @@ function populateOpponentManagersTable() {
     document.getElementById('opp-mgr-total-losses').textContent = totals.losses;
     document.getElementById('opp-mgr-total-gf').textContent = totals.goalsFor;
     document.getElementById('opp-mgr-total-ga').textContent = totals.goalsAgainst;
-    
+
     const totalGd = totals.goalsFor - totals.goalsAgainst;
     const totalGdElement = document.getElementById('opp-mgr-total-gd');
     totalGdElement.textContent = (totalGd > 0 ? '+' : '') + totalGd;
     totalGdElement.className = totalGd > 0 ? 'positive' : totalGd < 0 ? 'negative' : '';
-    
+
     console.log('✅ Opponent Managers table populated with', managersArray.length, 'managers');
 }
 
@@ -3115,19 +3131,19 @@ function sortAhlyManagersTable(column) {
         ahlyManagersSortColumn = column;
         ahlyManagersSortDirection = 'desc';
     }
-    
+
     const tbody = document.querySelector('#ahly-managers-table tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    
+
     rows.sort((a, b) => {
         let aVal, bVal;
-        
+
         switch (column) {
             case 'manager':
                 aVal = a.cells[0].textContent;
                 bVal = b.cells[0].textContent;
-                return ahlyManagersSortDirection === 'asc' 
-                    ? aVal.localeCompare(bVal) 
+                return ahlyManagersSortDirection === 'asc'
+                    ? aVal.localeCompare(bVal)
                     : bVal.localeCompare(aVal);
             case 'finals':
                 aVal = parseInt(a.cells[1].textContent) || 0;
@@ -3172,18 +3188,18 @@ function sortAhlyManagersTable(column) {
             default:
                 return 0;
         }
-        
+
         return ahlyManagersSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
     });
-    
+
     tbody.innerHTML = '';
     rows.forEach(row => tbody.appendChild(row));
-    
+
     // Update sort icons
     document.querySelectorAll('#ahly-managers-table th').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     const activeHeader = document.querySelector(`#ahly-managers-table th[onclick="sortAhlyManagersTable('${column}')"]`);
     if (activeHeader) {
         activeHeader.classList.add(ahlyManagersSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
@@ -3204,19 +3220,19 @@ function sortOpponentManagersTable(column) {
         opponentManagersSortColumn = column;
         opponentManagersSortDirection = 'desc';
     }
-    
+
     const tbody = document.querySelector('#opponent-managers-table tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    
+
     rows.sort((a, b) => {
         let aVal, bVal;
-        
+
         switch (column) {
             case 'manager':
                 aVal = a.cells[0].textContent;
                 bVal = b.cells[0].textContent;
-                return opponentManagersSortDirection === 'asc' 
-                    ? aVal.localeCompare(bVal) 
+                return opponentManagersSortDirection === 'asc'
+                    ? aVal.localeCompare(bVal)
                     : bVal.localeCompare(aVal);
             case 'finals':
                 aVal = parseInt(a.cells[1].textContent) || 0;
@@ -3261,18 +3277,18 @@ function sortOpponentManagersTable(column) {
             default:
                 return 0;
         }
-        
+
         return opponentManagersSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
     });
-    
+
     tbody.innerHTML = '';
     rows.forEach(row => tbody.appendChild(row));
-    
+
     // Update sort icons
     document.querySelectorAll('#opponent-managers-table th').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     const activeHeader = document.querySelector(`#opponent-managers-table th[onclick="sortOpponentManagersTable('${column}')"]`);
     if (activeHeader) {
         activeHeader.classList.add(opponentManagersSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');

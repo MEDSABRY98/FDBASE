@@ -52,6 +52,22 @@ async function initializeZamalekStats() {
         contentTabs.style.display = 'none';
     }
 
+    // Disable Sync Button during initial load and show loading state
+    const refreshBtn = document.querySelector('.zamalek-refresh-btn');
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.style.opacity = '0.6';
+        refreshBtn.style.cursor = 'not-allowed';
+        // Add syncing state with spinner
+        const refreshIcon = refreshBtn.querySelector('svg');
+        if (refreshIcon) {
+            refreshIcon.classList.add('spinning');
+        }
+        // Update text to Syncing...
+        const currentHTML = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
+    }
+
     try {
         // Load all data
         await loadAllZamalekData();
@@ -115,6 +131,21 @@ async function initializeZamalekStats() {
         }
         if (mainTabsNav) {
             mainTabsNav.style.display = 'flex';
+        }
+    } finally {
+        // Re-enable Sync Button after load
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.style.opacity = '1';
+            refreshBtn.style.cursor = 'pointer';
+
+            const refreshIcon = refreshBtn.querySelector('svg');
+            if (refreshIcon) {
+                refreshIcon.classList.remove('spinning');
+            }
+            // Restore text to Sync Data
+            const currentHTML = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Sync Data');
         }
     }
 }

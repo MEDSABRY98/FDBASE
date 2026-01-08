@@ -43,50 +43,64 @@ let youthEgyptData = {
 // ============================================================================
 
 async function loadYouthEgyptData(forceRefresh = false, skipLoadingState = false) {
+    const refreshBtn = document.querySelector('.finals-refresh-btn');
+
+    // Set loading state on button
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.style.opacity = '0.7';
+        refreshBtn.style.cursor = 'not-allowed';
+        const icon = refreshBtn.querySelector('svg');
+        if (icon) icon.classList.add('spinning');
+
+        // Change text to Syncing...
+        refreshBtn.innerHTML = '<svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
+    }
+
     try {
         if (!skipLoadingState) {
             showLoading();
         }
-        
+
         const url = forceRefresh ? '/api/youth-egypt/matches?refresh=true' : '/api/youth-egypt/matches';
         const response = await fetch(url);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success && data.records) {
             youthEgyptData.allRecords = data.records;
             youthEgyptData.filteredRecords = [...data.records];
-            
+
             console.log('✅ Youth Egypt data loaded successfully');
             console.log('📊 Total records:', youthEgyptData.allRecords.length);
-            
+
             // Load trophy seasons
             await loadTrophySeasons(forceRefresh);
-            
+
             // Generate filter options
             generateFilterOptions();
-            
+
             // Load overview stats
             loadOverviewStats();
-            
+
             // Render matches table
             renderMatchesTable();
-            
+
             // Add filter event listeners
             addFilterListeners();
-            
+
             // Load youth players data
             loadYouthPlayersData();
-            
+
             // Show content, hide loading (only on initial load)
             if (!skipLoadingState) {
                 hideLoading();
             }
-            
+
         } else {
             throw new Error(data.error || 'No Data Available');
         }
@@ -95,6 +109,23 @@ async function loadYouthEgyptData(forceRefresh = false, skipLoadingState = false
         showError('No Data Available');
         if (!skipLoadingState) {
             hideLoading();
+        }
+        if (forceRefresh) throw error;
+    } finally {
+        // Reset button only if NOT force refresh (initial load)
+        if (!forceRefresh && refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.style.opacity = '1';
+            refreshBtn.style.cursor = 'pointer';
+            const icon = refreshBtn.querySelector('svg');
+            if (icon) icon.classList.remove('spinning');
+
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                Sync Data
+            `;
         }
     }
 }
@@ -106,22 +137,22 @@ async function loadYouthEgyptData(forceRefresh = false, skipLoadingState = false
 async function loadYouthPlayersData() {
     try {
         console.log('👥 Loading Youth Players data...');
-        
+
         const response = await fetch('/api/youth-egypt/players');
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success && data.records) {
             youthEgyptData.youthPlayers = data.records;
             youthEgyptData.youthPlayersLoaded = true;
-            
+
             console.log('✅ Youth Players data loaded successfully');
             console.log('👥 Total youth players records:', youthEgyptData.youthPlayers.length);
-            
+
         } else {
             throw new Error(data.error || 'No Data Available');
         }
@@ -148,14 +179,14 @@ async function loadTrophySeasons(forceRefresh = false) {
             youthEgyptData.trophySeasons = [];
             return;
         }
-        
+
         const data = await response.json();
         if (data.error) {
             console.warn('⚠️ Error loading trophy seasons:', data.error);
             youthEgyptData.trophySeasons = [];
             return;
         }
-        
+
         youthEgyptData.trophySeasons = data.seasons || [];
         console.log(`✅ Loaded ${youthEgyptData.trophySeasons.length} trophy-winning seasons`);
     } catch (error) {
@@ -166,16 +197,16 @@ async function loadTrophySeasons(forceRefresh = false) {
 
 function generateFilterOptions() {
     const columns = [
-        'CHAMPION SYSTEM', 'SYSTEM KIND', 'AGE', 'MATCH_ID', 'MANAGER EGY', 'MANAGER OPPONENT', 
-        'REFREE', 'CHAMPION', 'SEASON', 'ROUND', 'PLACE', 'H-A-N', 'Egypt TEAM', 'W-D-L', 
+        'CHAMPION SYSTEM', 'SYSTEM KIND', 'AGE', 'MATCH_ID', 'MANAGER EGY', 'MANAGER OPPONENT',
+        'REFREE', 'CHAMPION', 'SEASON', 'ROUND', 'PLACE', 'H-A-N', 'Egypt TEAM', 'W-D-L',
         'CLEAN SHEET', 'W-L Q & F', 'ET', 'PEN', 'OPPONENT TEAM'
     ];
-    
+
     columns.forEach(column => {
         const values = [...new Set(youthEgyptData.allRecords.map(record => record[column]).filter(val => val && val.toString().trim()))];
         youthEgyptData.filterOptions[column] = values.sort();
     });
-    
+
     populateFilters();
 }
 
@@ -201,15 +232,15 @@ function populateFilters() {
         'filter-pen': 'PEN',
         'filter-opponent-team': 'OPPONENT TEAM'
     };
-    
+
     Object.entries(filterMappings).forEach(([filterId, column]) => {
         const inputElement = document.getElementById(filterId);
         if (!inputElement) return;
-        
+
         const container = inputElement.parentElement;
         const dropdown = container.querySelector('.dropdown-options');
         const input = inputElement;
-        
+
         if (dropdown && youthEgyptData.filterOptions[column]) {
             dropdown.innerHTML = '';
             youthEgyptData.filterOptions[column].forEach(value => {
@@ -230,19 +261,19 @@ function populateFilters() {
 function addFilterListeners() {
     // Searchable select listeners
     document.querySelectorAll('.searchable-select-container input').forEach(input => {
-        input.addEventListener('focus', function() {
+        input.addEventListener('focus', function () {
             const dropdown = this.parentElement.querySelector('.dropdown-options');
             if (dropdown) {
                 dropdown.style.display = 'block';
             }
         });
-        
-        input.addEventListener('input', function() {
+
+        input.addEventListener('input', function () {
             const dropdown = this.parentElement.querySelector('.dropdown-options');
             if (dropdown) {
                 const options = dropdown.querySelectorAll('.dropdown-option');
                 const searchTerm = this.value.toLowerCase();
-                
+
                 options.forEach(option => {
                     if (option.textContent.toLowerCase().includes(searchTerm)) {
                         option.style.display = 'block';
@@ -253,9 +284,9 @@ function addFilterListeners() {
             }
         });
     });
-    
+
     // Close dropdowns when clicking outside
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!e.target.closest('.searchable-select-container')) {
             document.querySelectorAll('.dropdown-options').forEach(dropdown => {
                 dropdown.style.display = 'none';
@@ -292,7 +323,7 @@ function applyFilters() {
         opponentTeam: document.getElementById('filter-opponent-team').value,
         note: document.getElementById('filter-note').value.trim()
     };
-    
+
     youthEgyptData.filteredRecords = youthEgyptData.allRecords.filter(record => {
         // Trophy filter - only show matches from trophy-winning seasons
         if (filters.trophy === 'only-trophy') {
@@ -301,7 +332,7 @@ function applyFilters() {
                 return false;
             }
         }
-        
+
         return (
             (!filters.championSystem || record['CHAMPION SYSTEM'] === filters.championSystem) &&
             (!filters.systemKind || record['SYSTEM KIND'] === filters.systemKind) &&
@@ -329,17 +360,17 @@ function applyFilters() {
             (!filters.note || (record['NOTE'] && record['NOTE'].toLowerCase().includes(filters.note.toLowerCase())))
         );
     });
-    
+
     // Update overview stats and matches table
     loadOverviewStats();
     renderMatchesTable();
-    
+
     // Update players stats if we're in players tab
     const playersTab = document.getElementById('players-tab');
     if (playersTab && playersTab.classList.contains('active')) {
         const byPlayerTab = document.getElementById('by-player-tab');
         const byElnadyTab = document.getElementById('by-elnady-tab');
-        
+
         if (byPlayerTab && byPlayerTab.classList.contains('active')) {
             loadYouthPlayersStats();
         } else if (byElnadyTab && byElnadyTab.classList.contains('active')) {
@@ -352,19 +383,19 @@ function clearFilters() {
     document.querySelectorAll('.filter-control').forEach(input => {
         input.value = '';
     });
-    
+
     youthEgyptData.filteredRecords = [...youthEgyptData.allRecords];
-    
+
     // Update overview stats and matches table
     loadOverviewStats();
     renderMatchesTable();
-    
+
     // Update players stats if we're in players tab
     const playersTab = document.getElementById('players-tab');
     if (playersTab && playersTab.classList.contains('active')) {
         const byPlayerTab = document.getElementById('by-player-tab');
         const byElnadyTab = document.getElementById('by-elnady-tab');
-        
+
         if (byPlayerTab && byPlayerTab.classList.contains('active')) {
             loadYouthPlayersStats();
         } else if (byElnadyTab && byElnadyTab.classList.contains('active')) {
@@ -379,23 +410,23 @@ function clearFilters() {
 
 function loadOverviewStats() {
     const records = youthEgyptData.filteredRecords;
-    
+
     youthEgyptData.totalMatches = records.length;
     youthEgyptData.wins = records.filter(r => r['W-D-L'] === 'W').length;
     youthEgyptData.draws = records.filter(r => r['W-D-L'] === 'D' || r['W-D-L'] === 'D.').length;
     youthEgyptData.losses = records.filter(r => r['W-D-L'] === 'L').length;
-    
+
     youthEgyptData.totalGoalsFor = records.reduce((sum, r) => sum + (parseInt(r['GF']) || 0), 0);
     youthEgyptData.totalGoalsAgainst = records.reduce((sum, r) => sum + (parseInt(r['GA']) || 0), 0);
-    
+
     // Clean Sheet For: عندما مصر ما تسجل عليها أهداف (GA = 0)
     youthEgyptData.cleanSheetFor = records.filter(r => parseInt(r['GA'] || 0) === 0).length;
     // Clean Sheet Against: عندما مصر ما تسجل أهداف (GF = 0)  
     youthEgyptData.cleanSheetAgainst = records.filter(r => parseInt(r['GF'] || 0) === 0).length;
-    
+
     // Calculate streaks
     calculateStreaks(records);
-    
+
     // Update UI
     updateOverviewUI();
 }
@@ -403,15 +434,15 @@ function loadOverviewStats() {
 function calculateStreaks(records) {
     // Sort by date
     const sortedRecords = [...records].sort((a, b) => new Date(a['DATE']) - new Date(b['DATE']));
-    
+
     let currentWinStreak = 0;
     let currentDrawStreak = 0;
     let currentLossStreak = 0;
-    
+
     let maxWinStreak = 0;
     let maxDrawStreak = 0;
     let maxLossStreak = 0;
-    
+
     for (const record of sortedRecords) {
         if (record['W-D-L'] === 'W') {
             currentWinStreak++;
@@ -430,7 +461,7 @@ function calculateStreaks(records) {
             maxLossStreak = Math.max(maxLossStreak, currentLossStreak);
         }
     }
-    
+
     youthEgyptData.longestWinStreak = maxWinStreak;
     youthEgyptData.longestDrawStreak = maxDrawStreak;
     youthEgyptData.longestLossStreak = maxLossStreak;
@@ -454,15 +485,15 @@ function updateOverviewUI() {
 function renderMatchesTable() {
     const tbody = document.getElementById('matches-tbody');
     tbody.innerHTML = '';
-    
+
     youthEgyptData.filteredRecords.forEach((record, index) => {
         const row = document.createElement('tr');
-        
+
         // Extract numeric values with proper defaults
         const round = record['ROUND'] || 0;
         const gf = record['GF'] || 0;
         const ga = record['GA'] || 0;
-        
+
         row.innerHTML = `
             <td>${record['DATE'] || ''}</td>
             <td>${record['AGE'] || ''}</td>
@@ -476,13 +507,13 @@ function renderMatchesTable() {
             <td><span class="badge ${getResultBadgeClass(record['W-D-L'])}">${record['W-D-L'] || ''}</span></td>
             <td><span class="badge ${record['CLEAN SHEET'] === 'YES' ? 'badge-success' : 'badge-warning'}">${record['CLEAN SHEET'] || ''}</span></td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
 
 function getResultBadgeClass(result) {
-    switch(result) {
+    switch (result) {
         case 'W': return 'badge-success';
         case 'D': return 'badge-warning';
         case 'L': return 'badge-danger';
@@ -498,15 +529,15 @@ function switchTab(tabName) {
     // Remove active class from all modern tab buttons
     const modernTabButtons = document.querySelectorAll('.modern-tab-button');
     modernTabButtons.forEach(button => button.classList.remove('active'));
-    
+
     // Remove active class from all legacy tab buttons (for other sections)
     const legacyTabButtons = document.querySelectorAll('.tabs-header > .tab-button');
     legacyTabButtons.forEach(button => button.classList.remove('active'));
-    
+
     // Hide all tab contents
     const tabContents = document.querySelectorAll('#content-tabs > .tab-content');
     tabContents.forEach(content => content.classList.remove('active'));
-    
+
     // Show selected tab
     if (tabName === 'overview') {
         document.getElementById('overview-tab').classList.add('active');
@@ -530,13 +561,13 @@ function switchTab(tabName) {
         document.getElementById('players-tab').classList.add('active');
         const playersButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'players\')"]');
         if (playersButton) playersButton.classList.add('active');
-        
+
         // Load players data first, then show stats
         loadYouthPlayersData().then(() => {
             // Check which sub-tab is active
             const byPlayerTab = document.getElementById('by-player-tab');
             const byElnadyTab = document.getElementById('by-elnady-tab');
-            
+
             if (byPlayerTab && byPlayerTab.classList.contains('active')) {
                 loadYouthPlayersStats();
             } else if (byElnadyTab && byElnadyTab.classList.contains('active')) {
@@ -555,11 +586,11 @@ function switchTab(tabName) {
 
 function loadH2HStats() {
     const opponentStats = {};
-    
+
     youthEgyptData.filteredRecords.forEach(record => {
         const opponent = record['OPPONENT TEAM'];
         if (!opponent) return;
-        
+
         if (!opponentStats[opponent]) {
             opponentStats[opponent] = {
                 matches: 0,
@@ -572,36 +603,36 @@ function loadH2HStats() {
                 cleanSheetsAgainst: 0
             };
         }
-        
+
         const stats = opponentStats[opponent];
         stats.matches++;
-        
+
         if (record['W-D-L'] === 'W') stats.wins++;
         else if (record['W-D-L'] === 'D' || record['W-D-L'] === 'D.') stats.draws++;
         else if (record['W-D-L'] === 'L') stats.losses++;
-        
+
         stats.goalsFor += parseInt(record['GF']) || 0;
         stats.goalsAgainst += parseInt(record['GA']) || 0;
-        
+
         // Clean Sheet For: عندما مصر ما تسجل عليها أهداف (GA = 0)
         if (parseInt(record['GA'] || 0) === 0) stats.cleanSheetsFor++;
         // Clean Sheet Against: عندما مصر ما تسجل أهداف (GF = 0)
         if (parseInt(record['GF'] || 0) === 0) stats.cleanSheetsAgainst++;
     });
-    
+
     renderH2HTable(opponentStats);
 }
 
 function renderH2HTable(opponentStats) {
     const tbody = document.getElementById('h2h-tbody');
     tbody.innerHTML = '';
-    
+
     const sortedOpponents = Object.entries(opponentStats)
         .sort((a, b) => b[1].matches - a[1].matches);
-    
+
     sortedOpponents.forEach(([opponent, stats]) => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td><a href="#" class="opponent-link" onclick="showOpponentAgeStats('${opponent}')">${opponent}</a></td>
             <td>${stats.matches}</td>
@@ -614,7 +645,7 @@ function renderH2HTable(opponentStats) {
             <td>${stats.cleanSheetsFor}</td>
             <td>${stats.cleanSheetsAgainst}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
@@ -629,11 +660,11 @@ function loadManagersStats() {
 
 function loadEgyptManagersStats() {
     const managerStats = {};
-    
+
     youthEgyptData.filteredRecords.forEach(record => {
         const manager = record['MANAGER EGY'];
         if (!manager) return;
-        
+
         if (!managerStats[manager]) {
             managerStats[manager] = {
                 matches: 0,
@@ -646,28 +677,28 @@ function loadEgyptManagersStats() {
                 cleanSheetsAgainst: 0
             };
         }
-        
+
         const stats = managerStats[manager];
         stats.matches++;
-        
+
         if (record['W-D-L'] === 'W') stats.wins++;
         else if (record['W-D-L'] === 'D' || record['W-D-L'] === 'D.') stats.draws++;
         else if (record['W-D-L'] === 'L') stats.losses++;
-        
+
         stats.goalsFor += parseInt(record['GF']) || 0;
         stats.goalsAgainst += parseInt(record['GA']) || 0;
-        
+
         // Clean Sheet For: عدد المباريات اللي مصر ما تسجل عليها أهداف (GA = 0)
         if (parseInt(record['GA'] || 0) === 0) {
             stats.cleanSheetsFor++;
         }
-        
+
         // Clean Sheet Against: عدد المباريات اللي مصر ما تسجل فيها أهداف (GF = 0)  
         if (parseInt(record['GF'] || 0) === 0) {
             stats.cleanSheetsAgainst++;
         }
     });
-    
+
     renderManagersTable('egypt-managers-tbody', managerStats);
 }
 
@@ -680,13 +711,13 @@ function loadOpponentManagersStats() {
 function renderManagersTable(tbodyId, managerStats) {
     const tbody = document.getElementById(tbodyId);
     tbody.innerHTML = '';
-    
+
     const sortedManagers = Object.entries(managerStats)
         .sort((a, b) => b[1].matches - a[1].matches);
-    
+
     sortedManagers.forEach(([manager, stats]) => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td><a href="#" class="manager-link" onclick="showCoachSeasonStats('${manager}')">${manager}</a></td>
             <td>${stats.matches}</td>
@@ -699,7 +730,7 @@ function renderManagersTable(tbodyId, managerStats) {
             <td>${stats.cleanSheetsFor}</td>
             <td>${stats.cleanSheetsAgainst}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
@@ -713,13 +744,13 @@ function loadYouthPlayersStats() {
         setTimeout(loadYouthPlayersStats, 500);
         return;
     }
-    
+
     const playerStats = {};
-    
+
     // Get filtered match IDs from the current filters
     const filteredMatchIds = new Set();
-    
-    
+
+
     youthEgyptData.filteredRecords.forEach(record => {
         // Try different possible column names for MATCH_ID
         const matchId = record['MATCH_ID'] || record['Match ID'] || record['match_id'] || record['ID'];
@@ -727,27 +758,27 @@ function loadYouthPlayersStats() {
             filteredMatchIds.add(matchId);
         }
     });
-    
+
     // Process youth players data - only for filtered matches
     youthEgyptData.youthPlayers.forEach(record => {
         const playerName = record['PLAYER NAME'];
         const matchId = record['MATCH_ID'];
         const gaTotal = parseInt(record['GATOTAL']) || 0;
         const elnadyName = record['ELNADY'];
-        
+
         // Only include players from filtered matches
         if (!playerName || !filteredMatchIds.has(matchId)) return;
-        
+
         if (!playerStats[playerName]) {
             playerStats[playerName] = {
                 gaTotal: 0,
                 elnadyGoals: {} // Store goals per elnady
             };
         }
-        
+
         const stats = playerStats[playerName];
         stats.gaTotal += gaTotal;
-        
+
         // Track goals per elnady
         if (elnadyName && gaTotal > 0) {
             if (!stats.elnadyGoals[elnadyName]) {
@@ -756,21 +787,21 @@ function loadYouthPlayersStats() {
             stats.elnadyGoals[elnadyName] += gaTotal;
         }
     });
-    
+
     renderYouthPlayersTable(playerStats);
 }
 
 function switchPlayersTab(tabType) {
     // Remove active class from all sub-tab buttons
     document.querySelectorAll('#players-tab .modern-tab-button').forEach(btn => btn.classList.remove('active'));
-    
+
     // Hide all sub-tab contents
     document.querySelectorAll('#players-tab .tab-content').forEach(content => content.classList.remove('active'));
-    
+
     if (tabType === 'by-player') {
         document.getElementById('by-player-tab').classList.add('active');
         document.querySelector('#players-tab .modern-tab-button[onclick="switchPlayersTab(\'by-player\')"]').classList.add('active');
-        
+
         // Make sure data is loaded first
         if (youthEgyptData.youthPlayersLoaded) {
             loadYouthPlayersStats();
@@ -782,7 +813,7 @@ function switchPlayersTab(tabType) {
     } else if (tabType === 'by-elnady') {
         document.getElementById('by-elnady-tab').classList.add('active');
         document.querySelector('#players-tab .modern-tab-button[onclick="switchPlayersTab(\'by-elnady\')"]').classList.add('active');
-        
+
         // Make sure data is loaded first
         if (youthEgyptData.youthPlayersLoaded) {
             loadYouthElnadyStats();
@@ -797,15 +828,15 @@ function switchPlayersTab(tabType) {
 function renderYouthPlayersTable(playerStats) {
     const tbody = document.getElementById('players-tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     const sortedPlayers = Object.entries(playerStats)
         .sort((a, b) => b[1].gaTotal - a[1].gaTotal);
-    
+
     sortedPlayers.forEach(([playerName, stats]) => {
         const row = document.createElement('tr');
-        
+
         // Create elnady display with goals in parentheses
         let elnadyDisplay = '';
         if (stats.elnadyGoals && Object.keys(stats.elnadyGoals).length > 0) {
@@ -817,13 +848,13 @@ function renderYouthPlayersTable(playerStats) {
         } else {
             elnadyDisplay = '-';
         }
-        
+
         row.innerHTML = `
             <td><a href="#" class="player-link" onclick="showPlayerChampionStats('${playerName}')">${playerName}</a></td>
             <td>${elnadyDisplay}</td>
             <td>${stats.gaTotal}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
@@ -833,12 +864,12 @@ function loadYouthElnadyStats() {
         setTimeout(loadYouthElnadyStats, 500);
         return;
     }
-    
+
     const elnadyStats = {};
-    
+
     // Get filtered match IDs from the current filters
     const filteredMatchIds = new Set();
-    
+
     youthEgyptData.filteredRecords.forEach(record => {
         // Try different possible column names for MATCH_ID
         const matchId = record['MATCH_ID'] || record['Match ID'] || record['match_id'] || record['ID'];
@@ -846,46 +877,46 @@ function loadYouthElnadyStats() {
             filteredMatchIds.add(matchId);
         }
     });
-    
+
     // Process youth players data - only for filtered matches
     youthEgyptData.youthPlayers.forEach(record => {
         const elnadyName = record['ELNADY'];
         const matchId = record['MATCH_ID'];
         const gaTotal = parseInt(record['GATOTAL']) || 0;
-        
+
         // Only include elnady from filtered matches
         if (!elnadyName || !filteredMatchIds.has(matchId)) return;
-        
+
         if (!elnadyStats[elnadyName]) {
             elnadyStats[elnadyName] = {
                 goals: 0
             };
         }
-        
+
         const stats = elnadyStats[elnadyName];
         stats.goals += gaTotal;
     });
-    
+
     renderYouthElnadyTable(elnadyStats);
 }
 
 function renderYouthElnadyTable(elnadyStats) {
     const tbody = document.getElementById('elnady-tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     const sortedElnady = Object.entries(elnadyStats)
         .sort((a, b) => b[1].goals - a[1].goals);
-    
+
     sortedElnady.forEach(([elnadyName, stats]) => {
         const row = document.createElement('tr');
-        
+
         row.innerHTML = `
             <td><a href="#" class="elnady-link" onclick="showElnadyPlayers('${elnadyName}')">${elnadyName}</a></td>
             <td>${stats.goals}</td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
@@ -895,7 +926,7 @@ function showElnadyPlayers(elnadyName) {
         alert('البيانات لم يتم تحميلها بعد، يرجى المحاولة مرة أخرى');
         return;
     }
-    
+
     // Get filtered match IDs from current filters
     const filteredMatchIds = new Set();
     youthEgyptData.filteredRecords.forEach(record => {
@@ -904,7 +935,7 @@ function showElnadyPlayers(elnadyName) {
             filteredMatchIds.add(matchId);
         }
     });
-    
+
     // Get players from this elnady
     const elnadyPlayers = {};
     youthEgyptData.youthPlayers.forEach(record => {
@@ -912,7 +943,7 @@ function showElnadyPlayers(elnadyName) {
         const matchId = record['MATCH_ID'];
         const gaTotal = parseInt(record['GATOTAL']) || 0;
         const recordElnady = record['ELNADY'];
-        
+
         // Only include if it's the selected elnady and from filtered matches
         if (recordElnady === elnadyName && filteredMatchIds.has(matchId) && playerName && gaTotal > 0) {
             if (!elnadyPlayers[playerName]) {
@@ -921,16 +952,16 @@ function showElnadyPlayers(elnadyName) {
             elnadyPlayers[playerName] += gaTotal;
         }
     });
-    
+
     // Sort players by goals
     const sortedPlayers = Object.entries(elnadyPlayers)
         .sort((a, b) => b[1] - a[1]);
-    
+
     if (sortedPlayers.length === 0) {
         alert(`لا يوجد لاعبين سجلوا أهداف تحت نادي ${elnadyName}`);
         return;
     }
-    
+
     // Create modal content
     let modalContent = `
         <div class="modal-overlay" onclick="closeModal()">
@@ -949,7 +980,7 @@ function showElnadyPlayers(elnadyName) {
                         </thead>
                         <tbody>
     `;
-    
+
     sortedPlayers.forEach(([playerName, goals]) => {
         modalContent += `
             <tr>
@@ -958,7 +989,7 @@ function showElnadyPlayers(elnadyName) {
             </tr>
         `;
     });
-    
+
     modalContent += `
                         </tbody>
                     </table>
@@ -969,7 +1000,7 @@ function showElnadyPlayers(elnadyName) {
             </div>
         </div>
     `;
-    
+
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalContent);
 }
@@ -983,14 +1014,14 @@ function showOpponentAgeStats(opponentName) {
             filteredMatchIds.add(matchId);
         }
     });
-    
+
     // Get matches against this opponent grouped by AGE
     const ageStats = {};
     youthEgyptData.filteredRecords.forEach(record => {
         const opponent = record['OPPONENT TEAM'];
         const age = record['AGE'];
         const matchId = record['MATCH_ID'] || record['Match Id'] || record['match_id'] || record['ID'];
-        
+
         if (opponent === opponentName && filteredMatchIds.has(matchId)) {
             if (!ageStats[age]) {
                 ageStats[age] = {
@@ -1004,30 +1035,30 @@ function showOpponentAgeStats(opponentName) {
                     cleanSheetsAgainst: 0
                 };
             }
-            
+
             const stats = ageStats[age];
             stats.matches++;
             stats.goalsFor += parseInt(record['GF']) || 0;
             stats.goalsAgainst += parseInt(record['GA']) || 0;
-            
+
             // Count wins, draws, losses
             const result = record['W-D-L'];
             if (result === 'W') stats.wins++;
             else if (result === 'D' || result === 'D.') stats.draws++;
             else if (result === 'L') stats.losses++;
-            
+
             // Clean Sheet For: عندما مصر ما تسجل عليها أهداف (GA = 0)
             if (parseInt(record['GA'] || 0) === 0) stats.cleanSheetsFor++;
             // Clean Sheet Against: عندما مصر ما تسجل أهداف (GF = 0)
             if (parseInt(record['GF'] || 0) === 0) stats.cleanSheetsAgainst++;
         }
     });
-    
+
     if (Object.keys(ageStats).length === 0) {
         alert(`لا يوجد إحصائيات متاحة لفريق ${opponentName}`);
         return;
     }
-    
+
     // Sort ages
     const sortedAges = Object.entries(ageStats)
         .sort((a, b) => {
@@ -1038,7 +1069,7 @@ function showOpponentAgeStats(opponentName) {
             const numB = parseInt(ageB.replace('U', '')) || 0;
             return numA - numB;
         });
-    
+
     // Create modal content
     let modalContent = `
         <div class="modal-overlay" onclick="closeModal()">
@@ -1065,11 +1096,11 @@ function showOpponentAgeStats(opponentName) {
                         </thead>
                         <tbody>
     `;
-    
+
     // Calculate totals
     let totalMatches = 0, totalWins = 0, totalDraws = 0, totalLosses = 0;
     let totalGoalsFor = 0, totalGoalsAgainst = 0, totalCleanSheetsFor = 0, totalCleanSheetsAgainst = 0;
-    
+
     sortedAges.forEach(([age, stats]) => {
         totalMatches += stats.matches;
         totalWins += stats.wins;
@@ -1079,7 +1110,7 @@ function showOpponentAgeStats(opponentName) {
         totalGoalsAgainst += stats.goalsAgainst;
         totalCleanSheetsFor += stats.cleanSheetsFor;
         totalCleanSheetsAgainst += stats.cleanSheetsAgainst;
-        
+
         modalContent += `
             <tr>
                 <td><strong>${age}</strong></td>
@@ -1095,7 +1126,7 @@ function showOpponentAgeStats(opponentName) {
             </tr>
         `;
     });
-    
+
     // Add total row
     modalContent += `
         <tr class="total-row">
@@ -1111,7 +1142,7 @@ function showOpponentAgeStats(opponentName) {
             <td><strong>${totalCleanSheetsAgainst}</strong></td>
         </tr>
     `;
-    
+
     modalContent += `
                         </tbody>
                     </table>
@@ -1122,7 +1153,7 @@ function showOpponentAgeStats(opponentName) {
             </div>
         </div>
     `;
-    
+
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalContent);
 }
@@ -1136,40 +1167,40 @@ function showPlayerChampionStats(playerName) {
             filteredMatchIds.add(matchId);
         }
     });
-    
+
     // Get player goals grouped by SEASON and ELNADY
     const seasonStats = {};
-    
+
     if (!youthEgyptData.youthPlayers || youthEgyptData.youthPlayers.length === 0) {
         alert(`لا يوجد بيانات متاحة للاعب ${playerName}`);
         return;
     }
-    
+
     youthEgyptData.youthPlayers.forEach(player => {
         const name = player['PLAYER NAME'];
         const matchId = player['MATCH_ID'] || player['Match Id'] || player['match_id'] || player['ID'];
         const gaTotal = parseInt(player['GATOTAL']) || 0;
         const elnadyName = player['ELNADY'];
-        
+
         if (name === playerName && filteredMatchIds.has(matchId) && gaTotal > 0) {
             // Find the match record to get SEASON
             const matchRecord = youthEgyptData.filteredRecords.find(record => {
                 const recordMatchId = record['MATCH_ID'] || record['Match Id'] || record['match_id'] || record['ID'];
                 return recordMatchId === matchId;
             });
-            
+
             if (matchRecord) {
                 const season = matchRecord['SEASON'] || 'غير محدد';
-                
+
                 if (!seasonStats[season]) {
                     seasonStats[season] = {
                         goals: 0,
                         elnadyGoals: {}
                     };
                 }
-                
+
                 seasonStats[season].goals += gaTotal;
-                
+
                 // Track goals per elnady for this season
                 if (elnadyName) {
                     if (!seasonStats[season].elnadyGoals[elnadyName]) {
@@ -1180,25 +1211,25 @@ function showPlayerChampionStats(playerName) {
             }
         }
     });
-    
+
     if (Object.keys(seasonStats).length === 0) {
         alert(`لا يوجد إحصائيات متاحة للاعب ${playerName}`);
         return;
     }
-    
+
     // Sort by season (most recent first)
     const sortedSeasons = Object.entries(seasonStats)
         .sort((a, b) => {
             // Sort seasons in descending order (2024 before 2023)
             return b[0].localeCompare(a[0]);
         });
-    
+
     // Calculate total goals
     let totalGoals = 0;
     sortedSeasons.forEach(([season, stats]) => {
         totalGoals += stats.goals;
     });
-    
+
     // Create modal content
     let modalContent = `
         <div class="modal-overlay" onclick="closeModal()">
@@ -1218,7 +1249,7 @@ function showPlayerChampionStats(playerName) {
                         </thead>
                         <tbody>
     `;
-    
+
     sortedSeasons.forEach(([season, stats]) => {
         // Create elnady display with goals in parentheses
         let elnadyDisplay = '';
@@ -1231,7 +1262,7 @@ function showPlayerChampionStats(playerName) {
         } else {
             elnadyDisplay = '-';
         }
-        
+
         modalContent += `
             <tr>
                 <td><strong>${season}</strong></td>
@@ -1240,7 +1271,7 @@ function showPlayerChampionStats(playerName) {
             </tr>
         `;
     });
-    
+
     // Add total row
     modalContent += `
         <tr class="total-row">
@@ -1249,7 +1280,7 @@ function showPlayerChampionStats(playerName) {
             <td><strong>${totalGoals}</strong></td>
         </tr>
     `;
-    
+
     modalContent += `
                         </tbody>
                     </table>
@@ -1260,7 +1291,7 @@ function showPlayerChampionStats(playerName) {
             </div>
         </div>
     `;
-    
+
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalContent);
 }
@@ -1274,15 +1305,15 @@ function showCoachSeasonStats(coachName) {
             filteredMatchIds.add(matchId);
         }
     });
-    
+
     // Get coach stats grouped by SEASON
     const seasonStats = {};
-    
+
     youthEgyptData.filteredRecords.forEach(record => {
         const manager = record['MANAGER EGY'];
         const season = record['SEASON'] || 'غير محدد';
         const matchId = record['MATCH_ID'] || record['Match Id'] || record['match_id'] || record['ID'];
-        
+
         if (manager === coachName && filteredMatchIds.has(matchId)) {
             if (!seasonStats[season]) {
                 seasonStats[season] = {
@@ -1296,40 +1327,40 @@ function showCoachSeasonStats(coachName) {
                     cleanSheetsAgainst: 0
                 };
             }
-            
+
             const stats = seasonStats[season];
             stats.matches++;
-            
+
             if (record['W-D-L'] === 'W') stats.wins++;
             else if (record['W-D-L'] === 'D' || record['W-D-L'] === 'D.') stats.draws++;
             else if (record['W-D-L'] === 'L') stats.losses++;
-            
+
             stats.goalsFor += parseInt(record['GF']) || 0;
             stats.goalsAgainst += parseInt(record['GA']) || 0;
-            
+
             // Clean Sheet For: عندما مصر ما تسجل عليها أهداف (GA = 0)
             if (parseInt(record['GA'] || 0) === 0) stats.cleanSheetsFor++;
             // Clean Sheet Against: عندما مصر ما تسجل أهداف (GF = 0)
             if (parseInt(record['GF'] || 0) === 0) stats.cleanSheetsAgainst++;
         }
     });
-    
+
     if (Object.keys(seasonStats).length === 0) {
         alert(`لا يوجد إحصائيات متاحة للمدرب ${coachName}`);
         return;
     }
-    
+
     // Sort by season (most recent first)
     const sortedSeasons = Object.entries(seasonStats)
         .sort((a, b) => {
             // Sort seasons in descending order (2024 before 2023)
             return b[0].localeCompare(a[0]);
         });
-    
+
     // Calculate totals
     let totalMatches = 0, totalWins = 0, totalDraws = 0, totalLosses = 0;
     let totalGoalsFor = 0, totalGoalsAgainst = 0, totalCleanSheetsFor = 0, totalCleanSheetsAgainst = 0;
-    
+
     sortedSeasons.forEach(([season, stats]) => {
         totalMatches += stats.matches;
         totalWins += stats.wins;
@@ -1340,7 +1371,7 @@ function showCoachSeasonStats(coachName) {
         totalCleanSheetsFor += stats.cleanSheetsFor;
         totalCleanSheetsAgainst += stats.cleanSheetsAgainst;
     });
-    
+
     // Create modal content
     let modalContent = `
         <div class="modal-overlay" onclick="closeModal()">
@@ -1367,7 +1398,7 @@ function showCoachSeasonStats(coachName) {
                         </thead>
                         <tbody>
     `;
-    
+
     sortedSeasons.forEach(([season, stats]) => {
         modalContent += `
             <tr>
@@ -1384,7 +1415,7 @@ function showCoachSeasonStats(coachName) {
             </tr>
         `;
     });
-    
+
     // Add total row
     modalContent += `
         <tr class="total-row">
@@ -1400,7 +1431,7 @@ function showCoachSeasonStats(coachName) {
             <td><strong>${totalCleanSheetsAgainst}</strong></td>
         </tr>
     `;
-    
+
     modalContent += `
                         </tbody>
                     </table>
@@ -1411,7 +1442,7 @@ function showCoachSeasonStats(coachName) {
             </div>
         </div>
     `;
-    
+
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalContent);
 }
@@ -1430,11 +1461,11 @@ function closeModal() {
 function showLoading() {
     const loadingContainer = document.getElementById('loading-container');
     const contentTabs = document.getElementById('content-tabs');
-    
+
     if (loadingContainer) {
         loadingContainer.style.display = 'flex';
     }
-    
+
     if (contentTabs) {
         contentTabs.style.display = 'none';
     }
@@ -1443,11 +1474,11 @@ function showLoading() {
 function hideLoading() {
     const loadingContainer = document.getElementById('loading-container');
     const contentTabs = document.getElementById('content-tabs');
-    
+
     if (loadingContainer) {
         loadingContainer.style.display = 'none';
     }
-    
+
     if (contentTabs) {
         contentTabs.style.display = 'block';
     }
@@ -1458,27 +1489,27 @@ async function refreshYouthEgyptData() {
     const refreshBtn = event.target.closest('button');
     const refreshIcon = refreshBtn?.querySelector('svg');
     const originalText = refreshBtn.innerHTML;
-    
+
     // Show loading state on button only
     refreshBtn.disabled = true;
     if (refreshIcon) {
         refreshIcon.classList.add('spinning');
     }
     refreshBtn.innerHTML = '<svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
-    
+
     try {
         await loadYouthEgyptData(true, true); // true = force refresh, true = skip loading state
-        
+
         // Show success message
         refreshBtn.innerHTML = '<svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Synced!';
-        
+
         setTimeout(() => {
             refreshBtn.innerHTML = originalText;
             refreshBtn.disabled = false;
         }, 2000);
     } catch (error) {
         refreshBtn.innerHTML = '<svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>Error!';
-        
+
         setTimeout(() => {
             refreshBtn.innerHTML = originalText;
             refreshBtn.disabled = false;
@@ -1496,7 +1527,7 @@ function showError(message) {
 // INITIALIZATION
 // ============================================================================
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     console.log('🚀 Youth Egypt Teams page loaded');
     loadYouthEgyptData();
 });
