@@ -1180,7 +1180,11 @@ function calculatePlayersByRoundStats() {
         if (!playerName) return;
 
         const gaValue = (detail['GA'] || '').trim();
-        if (gaValue !== 'GOAL') return;
+        const isGoal = gaValue === 'GOAL';
+        const isAssist = gaValue === 'ASSIST';
+
+        // Only process GOAL or ASSIST
+        if (!isGoal && !isAssist) return;
 
         const matchId = (detail['MATCH_ID'] || '').trim();
         if (!filteredMatchIds.has(matchId)) return;
@@ -1201,24 +1205,40 @@ function calculatePlayersByRoundStats() {
             playerStats.set(playerName, {
                 playerName,
                 totalGoals: 0,
+                totalAssists: 0,
+                totalGA: 0,
                 roundGoals: {},
+                roundAssists: {},
+                roundGA: {},
                 team: team || ''
             });
         }
 
         const stats = playerStats.get(playerName);
-        stats.totalGoals += gatotal;
-        stats.roundGoals[round] = (stats.roundGoals[round] || 0) + gatotal;
+
         // Update team if not set
         if (!stats.team && team) {
             stats.team = team;
         }
+
+        if (isGoal) {
+            stats.totalGoals += gatotal;
+            stats.roundGoals[round] = (stats.roundGoals[round] || 0) + gatotal;
+        } else if (isAssist) {
+            stats.totalAssists += gatotal;
+            stats.roundAssists[round] = (stats.roundAssists[round] || 0) + gatotal;
+        }
+
+        // Combined G+A
+        stats.totalGA += gatotal;
+        stats.roundGA[round] = (stats.roundGA[round] || 0) + gatotal;
     });
 
     const finalRoundOrder = getRoundDisplayOrder(roundsFound);
 
+    // Initial sort by goals (legacy behavior, will be re-sorted in display function)
     const playersArray = Array.from(playerStats.values())
-        .filter(player => player.totalGoals > 0)
+        .filter(player => player.totalGA > 0)
         .sort((a, b) => {
             if (b.totalGoals !== a.totalGoals) {
                 return b.totalGoals - a.totalGoals;
@@ -1288,6 +1308,10 @@ function filterPlayersByRoundByTeam() {
 function filterAndDisplayPlayersByRound() {
     let playersToDisplay = [...afconEgyptTeamsData.playersByRoundData];
 
+    // Get selected metric
+    const metricElement = document.querySelector('input[name="players-round-metric"]:checked');
+    const metric = metricElement ? metricElement.value : 'goals'; // 'goals', 'assists', 'ga'
+
     // Apply team filter
     const teamFilter = afconEgyptTeamsData.playersByRoundTeamFilter || 'all';
     if (teamFilter === 'egypt') {
@@ -1302,6 +1326,26 @@ function filterAndDisplayPlayersByRound() {
         });
     }
 
+    // Filter by metric > 0
+    if (metric === 'goals') {
+        playersToDisplay = playersToDisplay.filter(p => p.totalGoals > 0);
+    } else if (metric === 'assists') {
+        playersToDisplay = playersToDisplay.filter(p => p.totalAssists > 0);
+    } else { // ga
+        playersToDisplay = playersToDisplay.filter(p => p.totalGA > 0);
+    }
+
+    // Sort by metric
+    playersToDisplay.sort((a, b) => {
+        let valA = 0, valB = 0;
+        if (metric === 'goals') { valA = a.totalGoals; valB = b.totalGoals; }
+        else if (metric === 'assists') { valA = a.totalAssists; valB = b.totalAssists; }
+        else { valA = a.totalGA; valB = b.totalGA; }
+
+        if (valB !== valA) return valB - valA;
+        return a.playerName.localeCompare(b.playerName);
+    });
+
     // Apply search filter
     const searchTerm = afconEgyptTeamsData.playersByRoundSearchTerm || '';
     if (searchTerm) {
@@ -1309,21 +1353,37 @@ function filterAndDisplayPlayersByRound() {
         playersToDisplay = playersToDisplay.filter(player => {
             const playerName = String(player.playerName || '').toLowerCase();
             const totalGoals = String(player.totalGoals || '').toLowerCase();
-            return playerName.includes(lowerSearchTerm) || totalGoals.includes(lowerSearchTerm);
+            const totalAssists = String(player.totalAssists || '').toLowerCase();
+            const totalGA = String(player.totalGA || '').toLowerCase();
+            return playerName.includes(lowerSearchTerm) ||
+                totalGoals.includes(lowerSearchTerm) ||
+                totalAssists.includes(lowerSearchTerm) ||
+                totalGA.includes(lowerSearchTerm);
         });
     }
 
     // Display filtered players
     const roundOrder = afconEgyptTeamsData.playersByRoundOrder || [];
-    displayPlayersByRoundTable(playersToDisplay, roundOrder);
+    displayPlayersByRoundTable(playersToDisplay, roundOrder, metric);
 }
 
-function displayPlayersByRoundTable(playersArray, roundOrder = []) {
+function displayPlayersByRoundTable(playersArray, roundOrder = [], metric = 'goals') {
     const thead = document.getElementById('players-by-round-thead');
     const tbody = document.getElementById('players-by-round-tbody');
     if (!thead || !tbody) return;
 
-    const headerCells = ['#', 'Player Name', 'Total Goals', ...roundOrder];
+    let headerTitle = 'Total Goals';
+    let headerColor = '#1d4ed8'; // Blue for goals
+
+    if (metric === 'assists') {
+        headerTitle = 'Total Assists';
+        headerColor = '#f59e0b'; // Amber for assists
+    } else if (metric === 'ga') {
+        headerTitle = 'Total G+A';
+        headerColor = '#667eea'; // Purple for G+A
+    }
+
+    const headerCells = ['#', 'Player Name', headerTitle, ...roundOrder];
     thead.innerHTML = `
         <tr>
             ${headerCells.map(title => `<th>${escapeHtml(title)}</th>`).join('')}
@@ -1331,23 +1391,33 @@ function displayPlayersByRoundTable(playersArray, roundOrder = []) {
     `;
 
     if (!playersArray || playersArray.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${headerCells.length}" style="text-align: center; padding: 2rem; color: #999;">No goal data available</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${headerCells.length}" style="text-align: center; padding: 2rem; color: #999;">No data available</td></tr>`;
         return;
     }
 
     let rank = 1;
     const rowsHtml = playersArray.map(player => {
+        let totalValue = player.totalGoals;
+        if (metric === 'assists') totalValue = player.totalAssists;
+        else if (metric === 'ga') totalValue = player.totalGA;
+
         const roundCells = roundOrder.map(round => {
-            const value = player.roundGoals[round] || 0;
+            let value = 0;
+            if (metric === 'goals') value = player.roundGoals[round] || 0;
+            else if (metric === 'assists') value = player.roundAssists[round] || 0;
+            else if (metric === 'ga') value = player.roundGA[round] || 0;
+
             const displayValue = value > 0 ? value : '-';
-            return `<td style="text-align: center; font-weight: ${value > 0 ? '600' : 'normal'}; font-size: ${value > 0 ? '1.1rem' : '1rem'};">${displayValue}</td>`;
+            // Use different filtering colors for cell values > 0
+            const cellColor = value > 0 ? '#1f2937' : 'inherit';
+            return `<td style="text-align: center; font-weight: ${value > 0 ? '600' : 'normal'}; font-size: ${value > 0 ? '1.1rem' : '1rem'}; color: ${cellColor};">${displayValue}</td>`;
         }).join('');
 
         return `
             <tr>
                 <td style="text-align: center;">${rank++}</td>
                 <td style="font-weight: 600;">${escapeHtml(player.playerName)}</td>
-                <td style="text-align: center; font-weight: 700; color: #1d4ed8; font-size: 1.1rem;">${player.totalGoals}</td>
+                <td style="text-align: center; font-weight: 700; color: ${headerColor}; font-size: 1.1rem;">${totalValue}</td>
                 ${roundCells}
             </tr>
         `;
@@ -3382,8 +3452,8 @@ function displayAllClubs(clubsArray) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><strong>${club.club}</strong></td>
-            <td style="text-align: center; font-weight: 600; font-size: 2em;">${club.players}</td>
-            <td style="text-align: center; font-weight: 600; font-size: 2em;">${club.goals}</td>
+            <td style="text-align: center; font-weight: 600; font-size: 1.2rem;">${club.players}</td>
+            <td style="text-align: center; font-weight: 600; font-size: 1.2rem;">${club.goals}</td>
         `;
         tbody.appendChild(row);
 
@@ -3399,8 +3469,8 @@ function displayAllClubs(clubsArray) {
     totalRow.style.borderTop = '3px solid #667eea';
     totalRow.innerHTML = `
         <td style="text-align: center; font-weight: 700; color: #667eea;">TOTAL</td>
-        <td style="text-align: center; font-weight: 700; color: #667eea; font-size: 2em;">${totalPlayers}</td>
-        <td style="text-align: center; font-weight: 700; color: #667eea; font-size: 2em;">${totalGoals}</td>
+        <td style="text-align: center; font-weight: 700; color: #667eea; font-size: 1.3rem;">${totalPlayers}</td>
+        <td style="text-align: center; font-weight: 700; color: #667eea; font-size: 1.3rem;">${totalGoals}</td>
     `;
     tbody.appendChild(totalRow);
 }
@@ -3563,8 +3633,8 @@ function displayAllClubsBySeason(dataArray) {
         row.innerHTML = `
             <td style="font-weight: 600;">${escapeHtml(item.season)}</td>
             <td><strong>${escapeHtml(item.club)}</strong></td>
-            <td style="text-align: center; font-weight: 600; font-size: 2em;">${item.players}</td>
-            <td style="text-align: center; font-weight: 600; font-size: 2em;">${item.goals}</td>
+            <td style="text-align: center; font-weight: 600; font-size: 1.2rem;">${item.players}</td>
+            <td style="text-align: center; font-weight: 600; font-size: 1.2rem;">${item.goals}</td>
         `;
         tbody.appendChild(row);
     });

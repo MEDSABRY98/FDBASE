@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PKS Egypt - Football Data Entry System</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
         .stats-container {
             min-height: 100vh;
             background: #ffffff;
         }
-        
+
         .main-tabs-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -44,13 +45,13 @@
             width: 20px;
             height: 20px;
         }
-        
+
         .stats-content {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             padding: 2rem;
             backdrop-filter: blur(10px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
 
         .page-header {
@@ -90,8 +91,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Stats Overview Cards */
@@ -107,13 +113,13 @@
             padding: 1.5rem;
             border-radius: 12px;
             border-left: 4px solid #667eea;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
         }
 
         .stat-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .stat-card.blue {
@@ -175,7 +181,7 @@
             border-radius: 16px;
             padding: 2rem;
             margin-bottom: 2rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .filters-title {
@@ -286,6 +292,11 @@
             cursor: not-allowed;
         }
 
+        .refresh-btn:disabled {
+            opacity: 1;
+            cursor: wait;
+        }
+
         /* Main Tabs */
         .main-tabs-header {
             display: flex;
@@ -373,7 +384,7 @@
             background: white;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .matches-table thead {
@@ -460,7 +471,7 @@
             border-top: none;
             border-radius: 0 0 8px 8px;
             z-index: 1000;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .dropdown-option {
@@ -479,6 +490,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="stats-container">
         <div class="main-tabs-container">
@@ -486,7 +498,8 @@
             <div class="back-to-main">
                 <a href="{{ url_for('index') }}" class="back-btn">
                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
                     Back to Main Dashboard
                 </a>
@@ -497,7 +510,8 @@
                 <!-- Filters Section - Visible immediately -->
                 <div class="filters-section">
                     <h3 class="filters-title">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                         </svg>
                         Filters
@@ -512,21 +526,24 @@
                         <div class="filter-item">
                             <label>PKS System</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-pks-system" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-pks-system" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
                         <div class="filter-item">
                             <label>Champion System</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-champion-system" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-champion-system" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
                         <div class="filter-item">
                             <label>Egypt Team</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-egypt-team" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-egypt-team" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
@@ -537,28 +554,32 @@
                         <div class="filter-item">
                             <label>Egypt Player</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-egypt-player" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-egypt-player" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
                         <div class="filter-item">
                             <label>Egypt Status</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-egypt-status" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-egypt-status" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
                         <div class="filter-item">
                             <label>Opponent Team</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-opponent-team" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-opponent-team" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
                         <div class="filter-item">
                             <label>Opponent Player</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-opponent-player" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-opponent-player" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
@@ -569,28 +590,32 @@
                         <div class="filter-item">
                             <label>Opponent Status</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-opponent-status" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-opponent-status" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
                         <div class="filter-item">
                             <label>Egypt Goalkeeper</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-egypt-gk" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-egypt-gk" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
                         <div class="filter-item">
                             <label>Opponent Goalkeeper</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-opponent-gk" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-opponent-gk" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
                         <div class="filter-item">
                             <label>Result (W-D-L PKS)</label>
                             <div class="searchable-select-container">
-                                <input type="text" id="filter-result" class="filter-control" placeholder="All" autocomplete="off">
+                                <input type="text" id="filter-result" class="filter-control" placeholder="All"
+                                    autocomplete="off">
                                 <div class="dropdown-options" style="display: none;"></div>
                             </div>
                         </div>
@@ -598,21 +623,26 @@
 
                     <div class="filter-actions">
                         <button class="action-btn apply-btn" onclick="applyPKSFilters()">
-                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="3">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                             Apply Filters
                         </button>
                         <button class="action-btn clear-btn" onclick="clearPKSFilters()">
-                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="3">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
                             Clear All
                         </button>
                         <button class="action-btn refresh-btn" onclick="refreshPKSData()">
-                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                </path>
                             </svg>
                             Sync Data
                         </button>
@@ -660,7 +690,7 @@
                                 <div class="stat-value" id="stat-losses">0</div>
                                 <div class="stat-description">Shootouts Lost</div>
                             </div>
-                            
+
                             <!-- Row 2 -->
                             <div class="stat-card purple">
                                 <div class="stat-label">Total Penalties</div>
@@ -689,8 +719,10 @@
                     <div id="players-tab" class="tab-content">
                         <!-- Sub Tabs -->
                         <div class="sub-tabs-header">
-                            <button class="sub-tab-btn active" onclick="switchPlayersSubTab('egypt')">Egypt Players</button>
-                            <button class="sub-tab-btn" onclick="switchPlayersSubTab('opponent')">Opponent Players</button>
+                            <button class="sub-tab-btn active" onclick="switchPlayersSubTab('egypt')">Egypt
+                                Players</button>
+                            <button class="sub-tab-btn" onclick="switchPlayersSubTab('opponent')">Opponent
+                                Players</button>
                         </div>
 
                         <!-- Egypt Players Sub Tab -->
@@ -756,8 +788,10 @@
                     <!-- Matches Tab -->
                     <div id="matches-tab" class="tab-content">
                         <div class="sub-tabs-header">
-                            <button class="sub-tab-btn active" data-tab="egypt-matches" onclick="switchPKSMatchesSubTab('egypt-matches', this)">Egypt</button>
-                            <button class="sub-tab-btn" data-tab="opponent-matches" onclick="switchPKSMatchesSubTab('opponent-matches', this)">Opponents</button>
+                            <button class="sub-tab-btn active" data-tab="egypt-matches"
+                                onclick="switchPKSMatchesSubTab('egypt-matches', this)">Egypt</button>
+                            <button class="sub-tab-btn" data-tab="opponent-matches"
+                                onclick="switchPKSMatchesSubTab('opponent-matches', this)">Opponents</button>
                         </div>
 
                         <div id="egypt-matches" class="sub-tab-content active">
@@ -813,8 +847,10 @@
                     <div id="goalkeepers-tab" class="tab-content">
                         <!-- Sub Tabs -->
                         <div class="sub-tabs-header">
-                            <button class="sub-tab-btn active" onclick="switchGKSubTab('egypt')">Egypt Goalkeepers</button>
-                            <button class="sub-tab-btn" onclick="switchGKSubTab('opponent')">Opponent Goalkeepers</button>
+                            <button class="sub-tab-btn active" onclick="switchGKSubTab('egypt')">Egypt
+                                Goalkeepers</button>
+                            <button class="sub-tab-btn" onclick="switchGKSubTab('opponent')">Opponent
+                                Goalkeepers</button>
                         </div>
 
                         <!-- Egypt Goalkeepers Sub Tab -->
@@ -866,4 +902,5 @@
 
     <script src="{{ url_for('static', filename='egypt_teams_pks/egypt_teams_pks.js') }}"></script>
 </body>
+
 </html>

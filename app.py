@@ -4026,7 +4026,7 @@ def api_finals_players_data():
 
 @app.route('/api/finals-lineup-data')
 def api_finals_lineup_data():
-    """API endpoint to get Finals Lineup data from LINEUP11 sheet"""
+    """API endpoint to get Finals Lineup data from LINEUPDETAILS sheet"""
     try:
         # Try cache first (permanent cache - no expiration)
         from cache_manager import get_cache_manager
@@ -4057,11 +4057,11 @@ def api_finals_lineup_data():
         sheet_id = '18lO8QMRqNUifGmFRZDTL58fwbb2k03HvkKyvzAq9HJc'
         spreadsheet = client.open_by_key(sheet_id)
         
-        # Get LINEUP11 worksheet
+        # Get LINEUPDETAILS worksheet
         try:
-            worksheet = spreadsheet.worksheet('LINEUP11')
+            worksheet = spreadsheet.worksheet('LINEUPDETAILS')
         except gspread.WorksheetNotFound:
-            return jsonify({'error': 'LINEUP11 worksheet not found'}), 404
+            return jsonify({'error': 'LINEUPDETAILS worksheet not found'}), 404
         
         # Get all records as list of dictionaries
         records = worksheet.get_all_records()
