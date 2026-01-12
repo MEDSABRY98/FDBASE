@@ -39,6 +39,13 @@ let youthEgyptData = {
 };
 
 // ============================================================================
+// PAGINATION STATE
+// ============================================================================
+let matchesCurrentPage = 1;
+let matchesRowsPerPage = 50;
+let currentSortedMatches = [];
+
+// ============================================================================
 // MAIN DATA LOADING FUNCTION
 // ============================================================================
 
@@ -483,33 +490,136 @@ function updateOverviewUI() {
 // ============================================================================
 
 function renderMatchesTable() {
+    // Initialize for pagination
+    currentSortedMatches = [...youthEgyptData.filteredRecords].reverse();
+    matchesCurrentPage = 1;
+    renderCurrentMatchesPage();
+}
+
+function renderCurrentMatchesPage() {
     const tbody = document.getElementById('matches-tbody');
-    tbody.innerHTML = '';
+    if (!tbody) return;
 
-    youthEgyptData.filteredRecords.forEach((record, index) => {
-        const row = document.createElement('tr');
+    if (currentSortedMatches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
+        renderPaginationControls(0);
+        return;
+    }
 
-        // Extract numeric values with proper defaults
+    // Apply pagination
+    let matchesToRender = currentSortedMatches;
+    if (matchesRowsPerPage !== 'all') {
+        const start = (matchesCurrentPage - 1) * matchesRowsPerPage;
+        const end = start + parseInt(matchesRowsPerPage);
+        matchesToRender = currentSortedMatches.slice(start, end);
+    }
+
+    const rowsHtml = matchesToRender.map(record => {
         const round = record['ROUND'] || 0;
         const gf = record['GF'] || 0;
         const ga = record['GA'] || 0;
 
-        row.innerHTML = `
-            <td>${record['DATE'] || ''}</td>
-            <td>${record['AGE'] || ''}</td>
-            <td>${record['MANAGER EGY'] || ''}</td>
-            <td>${record['SEASON'] || ''}</td>
-            <td>${round}</td>
-            <td>EGY</td>
-            <td>${gf}</td>
-            <td>${ga}</td>
-            <td>${record['OPPONENT TEAM'] || ''}</td>
-            <td><span class="badge ${getResultBadgeClass(record['W-D-L'])}">${record['W-D-L'] || ''}</span></td>
-            <td><span class="badge ${record['CLEAN SHEET'] === 'YES' ? 'badge-success' : 'badge-warning'}">${record['CLEAN SHEET'] || ''}</span></td>
+        return `
+            <tr>
+                <td>${record['DATE'] || ''}</td>
+                <td>${record['AGE'] || ''}</td>
+                <td>${record['MANAGER EGY'] || ''}</td>
+                <td>${record['SEASON'] || ''}</td>
+                <td>${round}</td>
+                <td>EGY</td>
+                <td>${gf}</td>
+                <td>${ga}</td>
+                <td>${record['OPPONENT TEAM'] || ''}</td>
+                <td><span class="badge ${getResultBadgeClass(record['W-D-L'])}">${record['W-D-L'] || ''}</span></td>
+                <td><span class="badge ${record['CLEAN SHEET'] === 'YES' ? 'badge-success' : 'badge-warning'}">${record['CLEAN SHEET'] || ''}</span></td>
+            </tr>
         `;
+    }).join('');
 
-        tbody.appendChild(row);
-    });
+    tbody.innerHTML = rowsHtml;
+    renderPaginationControls(currentSortedMatches.length);
+}
+
+function changeMatchesRowsPerPage(val) {
+    matchesRowsPerPage = val;
+    matchesCurrentPage = 1;
+    renderCurrentMatchesPage();
+}
+
+function changeMatchesPage(page) {
+    matchesCurrentPage = page;
+    renderCurrentMatchesPage();
+}
+
+function renderPaginationControls(totalRows) {
+    const container = document.getElementById('matches-pagination');
+    const info = document.getElementById('matches-pagination-info');
+
+    if (!container || !info) return;
+
+    if (matchesRowsPerPage === 'all') {
+        container.innerHTML = '';
+        info.textContent = `${totalRows} of ${totalRows}`;
+        return;
+    }
+
+    const start = (matchesCurrentPage - 1) * matchesRowsPerPage + 1;
+    const end = Math.min(matchesCurrentPage * matchesRowsPerPage, totalRows);
+    info.textContent = `${totalRows > 0 ? start : 0}-${end} of ${totalRows}`;
+
+    const totalPages = Math.ceil(totalRows / parseInt(matchesRowsPerPage));
+
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    html += `<button onclick="if(${matchesCurrentPage} > 1) changeMatchesPage(${matchesCurrentPage - 1})" 
+        ${matchesCurrentPage === 1 ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === 1 ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === 1 ? 'not-allowed' : 'pointer'}; margin-right: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>`;
+
+    // Page Numbers
+    const windowSize = 2;
+    let startPage = Math.max(1, matchesCurrentPage - windowSize);
+    let endPage = Math.min(totalPages, matchesCurrentPage + windowSize);
+
+    if (startPage > 1) {
+        html += `<button onclick="changeMatchesPage(1)" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">1</button>`;
+        if (startPage > 2) {
+            html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === matchesCurrentPage;
+        html += `<button onclick="changeMatchesPage(${i})" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid ${isActive ? '#dc2626' : '#d1d5db'}; border-radius: 0.375rem; background: ${isActive ? '#dc2626' : 'white'}; color: ${isActive ? 'white' : 'black'}; cursor: pointer; margin: 0 1px;">
+            ${i}
+        </button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
+        }
+        html += `<button onclick="changeMatchesPage(${totalPages})" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">${totalPages}</button>`;
+    }
+
+    // Next Button
+    html += `<button onclick="if(${matchesCurrentPage} < ${totalPages}) changeMatchesPage(${matchesCurrentPage + 1})" 
+        ${matchesCurrentPage === totalPages ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === totalPages ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === totalPages ? 'not-allowed' : 'pointer'}; margin-left: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>`;
+
+    container.innerHTML = html;
 }
 
 function getResultBadgeClass(result) {

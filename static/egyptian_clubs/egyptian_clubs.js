@@ -16,17 +16,10 @@ let egyptianClubsData = {
     }
 };
 
-// Virtual Scrolling state
-let virtualScrollState = {
-    allData: [],
-    currentViewData: [],
-    startIndex: 0,
-    endIndex: 25, // Render first 25 rows initially
-    bufferSize: 25, // Buffer rows above and below visible area
-    rowHeight: 50, // Estimated row height in pixels
-    tableContainer: null,
-    scrollHandler: null
-};
+// Pagination state
+let matchesCurrentPage = 1;
+let matchesRowsPerPage = 50;
+let currentSortedMatches = [];
 
 /**
  * Load Egyptian Clubs data from Google Apps Script
@@ -498,25 +491,119 @@ function renderTableRow(row, columns) {
     }).join('') + '</tr>';
 }
 
-// Virtual scrolling render function
-function renderVisibleTableRows() {
+// Pagination render function
+function renderCurrentMatchesPage() {
     const tbody = document.getElementById('table-body');
     if (!tbody) return;
 
-    const { allData, startIndex, endIndex } = virtualScrollState;
-    const visibleData = allData.slice(startIndex, endIndex);
+    if (currentSortedMatches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="100%" class="no-data">No data available</td></tr>';
+        renderPaginationControls(0);
+        return;
+    }
+
+    // Define columns
     const columns = ['DATE', 'SEASON', 'ROUND', 'H-A-N', 'EGYPT TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-L MATCH'];
 
-    // Create spacer row for top (only if startIndex > 0)
-    const topSpacer = startIndex > 0 ? `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="${columns.length}"></td></tr>` : '';
-    // Render visible rows
-    const rowsHtml = visibleData.map(row => renderTableRow(row, columns)).join('');
-    // Create spacer row for bottom
-    const bottomSpacer = `<tr style="height: ${Math.max(0, allData.length - endIndex) * virtualScrollState.rowHeight}px;"><td colspan="${columns.length}"></td></tr>`;
+    // Apply pagination
+    let matchesToRender = currentSortedMatches;
+    if (matchesRowsPerPage !== 'all') {
+        const start = (matchesCurrentPage - 1) * matchesRowsPerPage;
+        const end = start + parseInt(matchesRowsPerPage);
+        matchesToRender = currentSortedMatches.slice(start, end);
+    }
 
-    tbody.innerHTML = topSpacer + rowsHtml + bottomSpacer;
+    const rowsHtml = matchesToRender.map(row => renderTableRow(row, columns)).join('');
+    tbody.innerHTML = rowsHtml;
+
+    renderPaginationControls(currentSortedMatches.length);
 }
 
+function changeMatchesRowsPerPage(val) {
+    matchesRowsPerPage = val;
+    matchesCurrentPage = 1;
+    renderCurrentMatchesPage();
+}
+
+function changeMatchesPage(page) {
+    matchesCurrentPage = page;
+    renderCurrentMatchesPage();
+}
+
+function renderPaginationControls(totalRows) {
+    const container = document.getElementById('matches-pagination');
+    const info = document.getElementById('matches-pagination-info');
+
+    if (!container || !info) return;
+
+    if (matchesRowsPerPage === 'all') {
+        container.innerHTML = '';
+        info.textContent = `${totalRows} of ${totalRows}`;
+        return;
+    }
+
+    const start = (matchesCurrentPage - 1) * matchesRowsPerPage + 1;
+    const end = Math.min(matchesCurrentPage * matchesRowsPerPage, totalRows);
+    info.textContent = `${totalRows > 0 ? start : 0}-${end} of ${totalRows}`;
+
+    const totalPages = Math.ceil(totalRows / parseInt(matchesRowsPerPage));
+
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    html += `<button onclick="if(${matchesCurrentPage} > 1) changeMatchesPage(${matchesCurrentPage - 1})" 
+        ${matchesCurrentPage === 1 ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === 1 ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === 1 ? 'not-allowed' : 'pointer'}; margin-right: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>`;
+
+    // Page Numbers
+    const windowSize = 2;
+    let startPage = Math.max(1, matchesCurrentPage - windowSize);
+    let endPage = Math.min(totalPages, matchesCurrentPage + windowSize);
+
+    if (startPage > 1) {
+        html += `<button onclick="changeMatchesPage(1)" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">1</button>`;
+        if (startPage > 2) {
+            html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === matchesCurrentPage;
+        html += `<button onclick="changeMatchesPage(${i})" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid ${isActive ? '#dc2626' : '#d1d5db'}; border-radius: 0.375rem; background: ${isActive ? '#dc2626' : 'white'}; color: ${isActive ? 'white' : 'black'}; cursor: pointer; margin: 0 1px;">
+            ${i}
+        </button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
+        }
+        html += `<button onclick="changeMatchesPage(${totalPages})" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">${totalPages}</button>`;
+    }
+
+    // Next Button
+    html += `<button onclick="if(${matchesCurrentPage} < ${totalPages}) changeMatchesPage(${matchesCurrentPage + 1})" 
+        ${matchesCurrentPage === totalPages ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === totalPages ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === totalPages ? 'not-allowed' : 'pointer'}; margin-left: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>`;
+
+    container.innerHTML = html;
+}
+
+/**
+ * Render table with data
+ */
 /**
  * Render table with data
  */
@@ -526,19 +613,6 @@ function renderTable() {
     const tbody = document.getElementById('table-body');
 
     if (!thead || !tbody) return;
-
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="100%" class="no-data">No data available</td></tr>';
-        // Remove scroll handlers if they exist
-        if (virtualScrollState.scrollHandler) {
-            const container = document.querySelector('.matches-table-container');
-            if (container) {
-                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
-                virtualScrollState.scrollHandler = null;
-            }
-        }
-        return;
-    }
 
     // Define specific columns to display in order
     const columns = ['DATE', 'SEASON', 'ROUND', 'H-A-N', 'EGYPT TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-L MATCH'];
@@ -558,82 +632,13 @@ function renderTable() {
         });
     }
 
-    // For small datasets (< 1000 rows), render everything at once for better compatibility
-    if (sortedData.length <= 1000) {
-        tbody.innerHTML = sortedData.map(row => renderTableRow(row, columns)).join('');
-        // Remove scroll handlers if they exist
-        if (virtualScrollState.scrollHandler) {
-            const container = document.querySelector('.matches-table-container');
-            if (container) {
-                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
-                virtualScrollState.scrollHandler = null;
-            }
-        }
-        return;
-    }
-
-    // For large datasets, use virtual scrolling
-    virtualScrollState.allData = sortedData;
-    virtualScrollState.currentViewData = sortedData;
-
-    // Reset scroll state
-    virtualScrollState.startIndex = 0;
-    virtualScrollState.endIndex = Math.min(25, sortedData.length);
-
-    // Reset scroll position
-    const container = document.querySelector('.matches-table-container');
-    if (container) {
-        container.scrollTop = 0;
-    }
-
-    // Initial render
-    renderVisibleTableRows();
-
-    // Setup virtual scrolling
-    setupVirtualScrolling();
+    // Assign to global and render first page
+    currentSortedMatches = sortedData;
+    matchesCurrentPage = 1;
+    renderCurrentMatchesPage();
 }
 
-function setupVirtualScrolling() {
-    // Remove old scroll handler if exists
-    if (virtualScrollState.scrollHandler) {
-        const container = document.querySelector('.matches-table-container');
-        if (container) {
-            container.removeEventListener('scroll', virtualScrollState.scrollHandler);
-        }
-    }
 
-    // Create new scroll handler
-    virtualScrollState.scrollHandler = function handleScroll(e) {
-        const container = e.target;
-        if (!container) return;
-
-        const scrollTop = container.scrollTop || 0;
-        const containerHeight = container.clientHeight || 0;
-        const { allData, rowHeight, bufferSize } = virtualScrollState;
-
-        // Calculate which rows should be visible
-        const visibleStart = Math.floor(scrollTop / rowHeight);
-        const visibleEnd = Math.ceil((scrollTop + containerHeight) / rowHeight);
-
-        // Add buffer
-        const bufferStart = Math.max(0, visibleStart - bufferSize);
-        const bufferEnd = Math.min(allData.length, visibleEnd + bufferSize);
-
-        // Only re-render if the visible range has changed significantly
-        if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 ||
-            Math.abs(bufferEnd - virtualScrollState.endIndex) > 5) {
-            virtualScrollState.startIndex = bufferStart;
-            virtualScrollState.endIndex = bufferEnd;
-            renderVisibleTableRows();
-        }
-    };
-
-    // Attach scroll listener to the table container
-    const container = document.querySelector('.matches-table-container');
-    if (container) {
-        container.addEventListener('scroll', virtualScrollState.scrollHandler);
-    }
-}
 
 // Setup dynamic table search
 function setupDynamicTableSearch() {
@@ -646,72 +651,33 @@ function setupDynamicTableSearch() {
 
     newSearchInput.addEventListener('keyup', () => {
         const searchTerm = newSearchInput.value.toLowerCase().trim();
-
-        // Get current filtered records
-        const currentData = egyptianClubsData.filteredRecords;
         const columns = ['DATE', 'SEASON', 'ROUND', 'H-A-N', 'EGYPT TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-L MATCH'];
 
-        // Sort data by DATE (newest first) if no custom sort is applied
-        let sortedData = [...currentData];
+        // Get current filtered records
+        let currentData = [...egyptianClubsData.filteredRecords];
+
+        // Ensure sorting
         if (!egyptianClubsData.currentSort.column) {
-            sortedData.sort((a, b) => {
+            currentData.sort((a, b) => {
                 const dateA = new Date(a['DATE'] || '');
                 const dateB = new Date(b['DATE'] || '');
                 return dateB - dateA;
             });
         }
 
-        // If dataset is small, use regular filtering without virtual scroll
-        if (sortedData.length <= 1000) {
-            if (!searchTerm) {
-                // No search term, restore full data
-                renderTable();
-                return;
-            } else {
-                // Filter data based on search
-                const tbody = document.getElementById('table-body');
-                if (!tbody) return;
-
-                const filtered = sortedData.filter((row) => {
-                    const rowText = columns.map(c => String(row[c] || '')).join(' ').toLowerCase();
-                    return rowText.includes(searchTerm);
-                });
-
-                if (filtered.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="100%" class="no-data">No data available</td></tr>';
-                } else {
-                    tbody.innerHTML = filtered.map(row => renderTableRow(row, columns)).join('');
-                }
-                return;
-            }
-        }
-
-        // For large datasets with virtual scrolling
-        if (!searchTerm) {
-            // No search term, restore full data
-            virtualScrollState.allData = sortedData;
-            virtualScrollState.currentViewData = sortedData;
-        } else {
-            // Filter data based on search from current filtered records
-            const filtered = sortedData.filter((row) => {
+        // Filter based on search term
+        if (searchTerm) {
+            currentSortedMatches = currentData.filter((row) => {
                 const rowText = columns.map(c => String(row[c] || '')).join(' ').toLowerCase();
                 return rowText.includes(searchTerm);
             });
-            virtualScrollState.allData = filtered;
-            // Keep currentViewData as the original (before search) for when user clears search
-            virtualScrollState.currentViewData = sortedData;
+        } else {
+            currentSortedMatches = currentData;
         }
 
-        // Reset scroll position
-        const container = document.querySelector('.matches-table-container');
-        if (container) {
-            container.scrollTop = 0;
-        }
-
-        // Reset scroll and re-render
-        virtualScrollState.startIndex = 0;
-        virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
-        renderVisibleTableRows();
+        // Reset to first page and render
+        matchesCurrentPage = 1;
+        renderCurrentMatchesPage();
     });
 }
 

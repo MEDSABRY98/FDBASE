@@ -34,7 +34,9 @@ let alAhlyStatsData = {
     filterOptions: {},
     allRecords: [],
     originalRecords: [], // Store original unfiltered data
-    trophySeasons: [] // Store trophy-winning seasons
+    trophySeasons: [], // Store trophy-winning seasons
+    matchesCurrentPage: 1,
+    matchesRowsPerPage: 50
 };
 
 // Excel-driven mode flag and workbook cache
@@ -46,9 +48,9 @@ window.__ahlySheetsJson = {};
 function rebuildMainFilterOptionsFrom(records) {
     if (!Array.isArray(records) || records.length === 0) return;
     console.log('🔧 Rebuilding filters from', records.length, 'records');
-    
+
     const columnsForFilters = [
-        'CHAMPION SYSTEM','CHAMPION','SEASON','SY','AHLY MANAGER','OPPONENT MANAGER','REFREE','ROUND','H-A-N','STAD','AHLY TEAM','OPPONENT TEAM','W-D-L','CLEAN SHEET','ET','PEN'
+        'CHAMPION SYSTEM', 'CHAMPION', 'SEASON', 'SY', 'AHLY MANAGER', 'OPPONENT MANAGER', 'REFREE', 'ROUND', 'H-A-N', 'STAD', 'AHLY TEAM', 'OPPONENT TEAM', 'W-D-L', 'CLEAN SHEET', 'ET', 'PEN'
     ];
     const idMap = {
         'CHAMPION SYSTEM': 'champion-system-filter',
@@ -68,24 +70,24 @@ function rebuildMainFilterOptionsFrom(records) {
         'ET': 'extra-time-filter',
         'PEN': 'penalties-filter'
     };
-    
+
     columnsForFilters.forEach(col => {
         const uniqueValues = [...new Set(records.map(r => r[col]).filter(v => v && String(v).trim()))].sort();
         const selectId = idMap[col] || col.toLowerCase().replace(/\s+/g, '-') + '-filter';
-        
+
         const select = document.getElementById(selectId);
         if (select) {
             console.log(`  ✅ Filter ${col}: ${uniqueValues.length} options`);
             const prev = select.value || '';
             select.innerHTML = '<option value="">All</option>' + uniqueValues.map(v => `<option value="${v}">${v}</option>`).join('');
             select.value = prev;
-            
+
             // Trigger change event to update searchable wrappers if they exist
             const ev = new Event('change', { bubbles: true });
             select.dispatchEvent(ev);
         }
     });
-    
+
     // Reinitialize searchable filters after updating options
     console.log('🔄 Reinitializing searchable filters...');
     setTimeout(() => {
@@ -96,25 +98,25 @@ function rebuildMainFilterOptionsFrom(records) {
 // Helper: get rows from workbook by candidate sheet names (case-insensitive)
 function getSheetRowsByCandidates(candidates) {
     console.log('Getting sheet rows for candidates:', candidates);
-    
+
     // Always use session data (which is loaded from cache on page load)
     if (window.__ahlySheetsJson) {
-    const names = Object.keys(window.__ahlySheetsJson);
+        const names = Object.keys(window.__ahlySheetsJson);
         console.log('Available sheet names from session:', names);
-        
-    // Try exact case-insensitive
-    for (const cand of candidates) {
-        const found = names.find(n => n.toUpperCase() === cand.toUpperCase());
+
+        // Try exact case-insensitive
+        for (const cand of candidates) {
+            const found = names.find(n => n.toUpperCase() === cand.toUpperCase());
             if (found) {
                 const rows = window.__ahlySheetsJson[found] || [];
                 console.log(`Found sheet ${found} with ${rows.length} rows`);
                 return rows;
-    }
+            }
         }
-        
-    // Try contains match
-    for (const cand of candidates) {
-        const found = names.find(n => n.toUpperCase().includes(cand.toUpperCase()));
+
+        // Try contains match
+        for (const cand of candidates) {
+            const found = names.find(n => n.toUpperCase().includes(cand.toUpperCase()));
             if (found) {
                 const rows = window.__ahlySheetsJson[found] || [];
                 console.log(`Found sheet ${found} (contains match) with ${rows.length} rows`);
@@ -122,7 +124,7 @@ function getSheetRowsByCandidates(candidates) {
             }
         }
     }
-    
+
     console.warn(`⚠️ No sheet found for candidates: ${candidates.join(', ')}. Please upload Excel file first.`);
     return [];
 }
@@ -156,7 +158,7 @@ function teamMatchesFilter(rowTeamValue, selectedTeamFilter) {
     const rowKey = normalizeTeamKey(rowTeamValue);
     const filters = Array.isArray(selectedTeamFilter) ? selectedTeamFilter : [selectedTeamFilter];
     const normalized = filters.map(f => ({ raw: normalizeStr(f).toLowerCase(), key: normalizeTeamKey(f) }))
-                              .filter(f => f.raw || f.key);
+        .filter(f => f.raw || f.key);
     if (normalized.length === 0) return true;
     return normalized.some(f => {
         if (f.key && rowKey && f.key === rowKey) return true;
@@ -411,11 +413,11 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
-            
+
             // Map filter keys to record keys
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
@@ -433,12 +435,12 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
                 'opponentTeam': 'OPPONENT TEAM',
                 'result': 'W-D-L'
             };
-            
+
             const recordKey = recordKeyMap[key];
             if (!recordKey) return true; // Skip unmapped filters
-            
+
             const recordValue = match[recordKey] || '';
-            
+
             // Special handling for different filter types
             if (key === 'goalsFor') {
                 return parseInt(match['GF'] || 0) >= parseInt(filterValue);
@@ -509,7 +511,7 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
     // Build rows by joining filtered MATCHDETAILS and LINEUPDETAILS
     // Include ALL matches where player participated (from LINEUPDETAILS), not just those with goals/assists
     const result = [];
-    
+
     // Get all matches where player participated from LINEUPDETAILS
     const playerLineupMatches = lineup.filter(l => {
         const p = normalizeStr(l.PLAYER || l['PLAYER NAME']).toLowerCase();
@@ -521,15 +523,15 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
         const matchId = normalizeStr(l.MATCH_ID);
         return filteredMatchIds.has(matchId);
     });
-    
+
     console.log(`Found ${playerLineupMatches.length} matches for player ${playerName} in LINEUPDETAILS`);
-    
+
     // Create result for each match where player participated (regardless of goals/assists)
     playerLineupMatches.forEach(l => {
         const matchId = normalizeStr(l.MATCH_ID);
         const m = filteredMatches.find(x => normalizeStr(x.MATCH_ID) === matchId) || {};
         const agg = byMatchId.get(matchId) || { goals: 0, assists: 0 };
-        
+
         // Include ALL matches where player participated
         result.push({
             date: normalizeStr(m.DATE),
@@ -541,7 +543,7 @@ function getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters = {})
             minutes: safeInt(l.MINTOTAL || l['MIN TOTAL'] || l.MINUTES)
         });
     });
-    
+
     console.log(`Returning ${result.length} matches for player ${playerName} (all matches where player participated)`);
     return result;
 }
@@ -551,9 +553,9 @@ function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, p
     if (!playedMatches || playedMatches.length === 0) {
         return { played: [], nonPlayed: [] };
     }
-    
+
     // Date parsing function (same as in renderPlayerMatchesTable)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         // Try native parse first
@@ -563,7 +565,7 @@ function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, p
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -576,24 +578,24 @@ function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, p
         }
         return 0;
     }
-    
+
     // Get all match dates from played matches
     const playedDates = playedMatches.map(m => parseSheetDate(m.date)).filter(d => d > 0);
     if (playedDates.length === 0) {
         return { played: playedMatches, nonPlayed: [] };
     }
-    
+
     // Find first and last match dates
     const firstMatchDate = Math.min(...playedDates);
     const lastMatchDate = Math.max(...playedDates);
-    
+
     console.log(`Player ${playerName} date range: ${new Date(firstMatchDate).toISOString()} to ${new Date(lastMatchDate).toISOString()}`);
-    
+
     // Get all team matches
     const allMatches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const lineup = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const nameLower = playerName.toLowerCase();
-    
+
     // Apply filters to all matches
     const filteredMatches = allMatches.filter(match => {
         // Trophy filter - only show matches from trophy-winning seasons
@@ -603,11 +605,11 @@ function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, p
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
-            
+
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
                 'championSystem': 'CHAMPION SYSTEM',
@@ -624,12 +626,12 @@ function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, p
                 'opponentTeam': 'OPPONENT TEAM',
                 'result': 'W-D-L'
             };
-            
+
             const recordKey = recordKeyMap[key];
             if (!recordKey) return true;
-            
+
             const recordValue = match[recordKey] || '';
-            
+
             // Special handling for date filters
             if (key === 'dateFrom') {
                 const matchDate = parseSheetDate(match['DATE']);
@@ -646,7 +648,7 @@ function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, p
             }
         });
     });
-    
+
     // Get all match IDs where player participated
     const playerMatchIds = new Set();
     lineup.forEach(l => {
@@ -656,7 +658,7 @@ function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, p
             if (matchId) playerMatchIds.add(matchId);
         }
     });
-    
+
     // Find non-participated matches in the date range
     const nonPlayedMatches = [];
     filteredMatches.forEach(match => {
@@ -679,9 +681,9 @@ function getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, p
             }
         }
     });
-    
+
     console.log(`Found ${nonPlayedMatches.length} non-participated matches in date range`);
-    
+
     return {
         played: playedMatches,
         nonPlayed: nonPlayedMatches
@@ -704,14 +706,14 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
-            
+
             // Skip champion filter for championships tab - we want to show all championships player played in
             if (key === 'champion') return true;
-            
+
             // Map filter keys to record keys
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
@@ -729,12 +731,12 @@ function getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters
                 'opponentTeam': 'OPPONENT TEAM',
                 'result': 'W-D-L'
             };
-            
+
             const recordKey = recordKeyMap[key];
             if (!recordKey) return true; // Skip unmapped filters
-            
+
             const recordValue = match[recordKey] || '';
-            
+
             // Special handling for different filter types
             if (key === 'goalsFor') {
                 return parseInt(match['GF'] || 0) >= parseInt(filterValue);
@@ -876,11 +878,11 @@ function getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters = {})
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
-            
+
             // Map filter keys to record keys
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
@@ -898,12 +900,12 @@ function getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters = {})
                 'opponentTeam': 'OPPONENT TEAM',
                 'result': 'W-D-L'
             };
-            
+
             const recordKey = recordKeyMap[key];
             if (!recordKey) return true; // Skip unmapped filters
-            
+
             const recordValue = match[recordKey] || '';
-            
+
             // Special handling for different filter types
             if (key === 'goalsFor') {
                 return parseInt(match['GF'] || 0) >= parseInt(filterValue);
@@ -1044,11 +1046,11 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
-            
+
             // Map filter keys to record keys
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
@@ -1066,12 +1068,12 @@ function getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters = {})
                 'opponentTeam': 'OPPONENT TEAM',
                 'result': 'W-D-L'
             };
-            
+
             const recordKey = recordKeyMap[key];
             if (!recordKey) return true; // Skip unmapped filters
-            
+
             const recordValue = match[recordKey] || '';
-            
+
             // Special handling for different filter types
             if (key === 'goalsFor') {
                 return parseInt(match['GF'] || 0) >= parseInt(filterValue);
@@ -1208,11 +1210,11 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
-            
+
             // Map filter keys to record keys
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
@@ -1230,12 +1232,12 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
                 'opponentTeam': 'OPPONENT TEAM',
                 'result': 'W-D-L'
             };
-            
+
             const recordKey = recordKeyMap[key];
             if (!recordKey) return true; // Skip unmapped filters
-            
+
             const recordValue = match[recordKey] || '';
-            
+
             // Special handling for different filter types
             if (key === 'goalsFor') {
                 return parseInt(match['GF'] || 0) >= parseInt(filterValue);
@@ -1290,11 +1292,11 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
     details.forEach(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return;
-        
+
         // Get player's team in this match
         const playerTeamInMatch = normalizeStr(r.TEAM || '');
         if (!playerTeamInMatch) return; // Skip if no team data
-        
+
         if (teamLower) {
             if (!teamMatchesFilter(playerTeamInMatch, teamFilter)) return;
         }
@@ -1303,16 +1305,16 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
         const ga = normalizeStr(r.GA).toUpperCase();
         const typeNorm = normalizeStr(r.TYPE).toUpperCase().replace(/[^A-Z]/g, '');
         const minute = parseInt(r.MINUTE || 0) || 0;
-        
-        if (!perMatch.has(mid)) perMatch.set(mid, { 
-            goals: [], 
-            pen_goals: [], 
-            playerTeam: playerTeamInMatch 
+
+        if (!perMatch.has(mid)) perMatch.set(mid, {
+            goals: [],
+            pen_goals: [],
+            playerTeam: playerTeamInMatch
         });
         const agg = perMatch.get(mid);
         if (ga === 'GOAL') agg.goals.push({ minute: minute, type: 'GOAL' });
         // Penalty goal can be encoded in TYPE or GA; count once
-        if (typeNorm === 'PENGOAL' || ga.replace(/[^A-Z]/g,'') === 'PENGOAL') {
+        if (typeNorm === 'PENGOAL' || ga.replace(/[^A-Z]/g, '') === 'PENGOAL') {
             agg.pen_goals.push({ minute: minute, type: 'PENGOAL' });
         }
     });
@@ -1328,14 +1330,14 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
         const gkTeam = normalizeStr(g.TEAM || '');  // TEAM column only in GKDETAILS
         const elevenBackup = normalizeStr(g['11/BAKEUP'] || g.eleven_backup || '').toUpperCase();
         const submin = parseInt(g.SUBMIN || 0) || 0;
-        
+
         // Skip goalkeepers with no team data
         if (!gkTeam) return;
-        
+
         if (!gkPerMatch.has(mid)) gkPerMatch.set(mid, []);
-        gkPerMatch.get(mid).push({ 
-            name: gkName, 
-            team: gkTeam, 
+        gkPerMatch.get(mid).push({
+            name: gkName,
+            team: gkTeam,
             eleven_backup: elevenBackup,
             submin: submin
         });
@@ -1344,21 +1346,21 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
     const totalsByGK = new Map();
     perMatch.forEach((agg, mid) => {
         const opponentGKs = gkPerMatch.get(mid) || [];
-        
+
         // Filter to only opponent goalkeepers
         const oppTeam = matchIdToOpponent.get(mid) || '';
-        const opponentTeamGKs = opponentGKs.filter(gk => 
+        const opponentTeamGKs = opponentGKs.filter(gk =>
             normalizeStr(gk.team).toLowerCase() !== normalizeStr(agg.playerTeam).toLowerCase() ||
             normalizeStr(gk.team).toLowerCase() === oppTeam.toLowerCase()
         );
-        
+
         if (opponentTeamGKs.length === 0) return;
-        
+
         // Process each goal
         [...agg.goals, ...agg.pen_goals].forEach(goal => {
             const goalMinute = goal.minute;
             let responsibleGK = null;
-            
+
             if (opponentTeamGKs.length === 1) {
                 // Only one goalkeeper - assign goal to them
                 responsibleGK = opponentTeamGKs[0];
@@ -1369,28 +1371,28 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
                     const goalsConceded = parseInt(gk.goals_conceded || 0);
                     return goalsConceded > 0;
                 });
-                
+
                 if (gksWithGoals.length === 1) {
                     // Only one GK conceded goals - assign all goals to them
                     responsibleGK = gksWithGoals[0];
                 } else if (gksWithGoals.length > 1) {
                     // Both GKs conceded goals - match by minute
                     const goalMinuteStr = goalMinute.toString().trim();
-                    
+
                     for (const gk of opponentTeamGKs) {
                         const goalMinuteField = (gk.goal_minute || '').toString().trim();
                         if (!goalMinuteField) continue;
-                        
+
                         // Split by # to get all goal minutes for this GK
                         const goalMinutes = goalMinuteField.split('#').map(m => m.trim());
-                        
+
                         // Check if goal minute matches any of the GK's goal minutes
                         if (goalMinutes.includes(goalMinuteStr)) {
                             responsibleGK = gk;
                             break;
                         }
                     }
-                    
+
                     // If no match found, don't assign to anyone (wait for GOAL MINUTE to be filled)
                     // responsibleGK stays null
                 } else {
@@ -1399,7 +1401,7 @@ function getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters = {}) {
                     responsibleGK = opponentTeamGKs[0];
                 }
             }
-            
+
             if (responsibleGK) {
                 const key = responsibleGK.name;
                 if (!totalsByGK.has(key)) totalsByGK.set(key, { GOALKEEPER_NAME: key, goals: 0, pen_goals: 0 });
@@ -1475,7 +1477,7 @@ function getCurrentFilters() {
         dateFrom: document.getElementById('date-from-filter')?.value || '',
         dateTo: document.getElementById('date-to-filter')?.value || ''
     };
-    
+
     // Only return non-empty filters
     const activeFilters = {};
     Object.keys(filters).forEach(key => {
@@ -1483,7 +1485,7 @@ function getCurrentFilters() {
             activeFilters[key] = filters[key];
         }
     });
-    
+
     console.log('Active filters:', activeFilters);
     return activeFilters;
 }
@@ -1531,16 +1533,16 @@ async function loadFromGoogleSheetsSync(forceRefresh = false) {
         // Use browser cache with 24h TTL
         const fetchFunction = async () => {
             console.log('📡 Fetching data from Google Sheets Auto-Sync API...');
-            
+
             const response = await fetch('/api/ahly-stats/sheets-data');
-            
+
             if (!response.ok) {
                 console.warn('⚠️ Google Sheets Auto-Sync not available');
                 return null;
             }
-            
+
             const result = await response.json();
-            
+
             if (result.success && result.data) {
                 console.log('✅ Received data from Google Sheets Auto-Sync');
                 console.log('   Available sheets:', result.sheets);
@@ -1550,22 +1552,22 @@ async function loadFromGoogleSheetsSync(forceRefresh = false) {
                 return null;
             }
         };
-        
+
         // Fetch with browser cache (24h TTL)
         const data = await fetchWithBrowserCache('al_ahly_stats', fetchFunction, forceRefresh);
-        
+
         if (data) {
             // Store in global cache (same format as Excel upload)
             window.__ahlySheetsJson = data;
             window.__ahlyExcelMode = true;
-            
+
             console.log('💾 Data ready');
             return true;
         } else {
             console.warn('⚠️ No data available');
             return false;
         }
-        
+
     } catch (error) {
         console.error('❌ Error loading from Google Sheets Auto-Sync:', error);
         return false;
@@ -1580,42 +1582,42 @@ async function manualSyncNow() {
     const syncBtn = document.getElementById('sync-data-btn');
     const syncIcon = document.getElementById('sync-icon');
     const syncBtnText = document.getElementById('sync-btn-text');
-    
+
     try {
         console.log('🔄 Triggering manual sync (clearing cache)...');
-        
+
         // Show loading indicator on button
         if (syncBtn) {
             syncBtn.disabled = true;
             syncIcon.classList.add('spinning');
             syncBtnText.textContent = 'Syncing...';
         }
-        
+
         // Show loading indicator
         showLoadingState(true);
-        
+
         // Clear browser cache for this page
         const browserCache = new BrowserCache('al_ahly_stats');
         browserCache.clear();
-        
+
         // Clear global cache
         window.__ahlySheetsJson = null;
-        
+
         // Reload data with force refresh
         const success = await loadFromGoogleSheetsSync(true);
-        
+
         if (success) {
             console.log('✅ Manual sync completed successfully');
-            
+
             // Reload the page display
             await loadAlAhlyStatsData();
-            
+
             // Show success message on button
             if (syncBtn && syncBtnText) {
                 syncBtn.disabled = false;
                 syncIcon.classList.remove('spinning');
                 syncBtnText.textContent = 'Synced!';
-                
+
                 // Return to original text after 2 seconds
                 setTimeout(() => {
                     if (syncBtnText) {
@@ -1623,24 +1625,24 @@ async function manualSyncNow() {
                     }
                 }, 2000);
             }
-            
+
             showLoadingState(false);
             return true;
         } else {
             throw new Error('Sync failed');
         }
-        
+
     } catch (error) {
         console.error('❌ Manual sync failed:', error);
         alert('❌ Failed to sync data: ' + error.message);
-        
+
         // Reset button on error
         if (syncBtn) {
             syncBtn.disabled = false;
             syncIcon.classList.remove('spinning');
             syncBtnText.textContent = 'Sync Data';
         }
-        
+
         showLoadingState(false);
         return false;
     }
@@ -1652,13 +1654,13 @@ async function getSyncStatus() {
      */
     try {
         const response = await fetch('/api/ahly-stats/sync-status');
-        
+
         if (!response.ok) {
             return null;
         }
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             return {
                 sync: result.sync,
@@ -1666,9 +1668,9 @@ async function getSyncStatus() {
                 timestamp: result.timestamp
             };
         }
-        
+
         return null;
-        
+
     } catch (error) {
         console.error('Error getting sync status:', error);
         return null;
@@ -1680,35 +1682,35 @@ async function updateSyncStatusDisplay() {
      * Update the sync status display in the UI
      */
     const status = await getSyncStatus();
-    
+
     if (!status) {
         return;
     }
-    
+
     const statusEl = document.getElementById('sync-status-info');
     if (!statusEl) {
         return;
     }
-    
+
     const { sync, scheduler } = status;
-    
+
     let statusHtml = '<div style="font-size: 0.85em; color: #666;">';
-    
+
     if (sync.is_cached) {
         const ageMinutes = sync.age_minutes;
         const nextSyncHours = sync.next_sync_in_hours;
-        
+
         statusHtml += `📊 Data cached ${ageMinutes} minutes ago<br>`;
-        
+
         if (scheduler.running && nextSyncHours !== null) {
             statusHtml += `🔄 Next auto-sync in ${nextSyncHours} hours`;
         }
     } else {
         statusHtml += '⚠️ No cached data';
     }
-    
+
     statusHtml += '</div>';
-    
+
     statusEl.innerHTML = statusHtml;
 }
 
@@ -1719,7 +1721,7 @@ async function updateSyncStatusDisplay() {
 async function loadAlAhlyStatsData() {
     try {
         showLoadingState(true);
-        
+
         // Load from Google Sheets Auto-Sync
         if (!window.__ahlySheetsJson || Object.keys(window.__ahlySheetsJson).length === 0) {
             console.log('🔄 Attempting to load from Google Sheets Auto-Sync...');
@@ -1729,23 +1731,23 @@ async function loadAlAhlyStatsData() {
                 // Continue with the loaded data
             }
         }
-        
+
         // Check if we have cached data from Google Sheets
         console.log('Checking for cached Google Sheets data...');
         console.log('window.__ahlySheetsJson exists:', !!window.__ahlySheetsJson);
         console.log('window.__ahlySheetsJson keys:', window.__ahlySheetsJson ? Object.keys(window.__ahlySheetsJson) : 'none');
-        
+
         if (window.__ahlySheetsJson && Object.keys(window.__ahlySheetsJson).length > 0) {
             console.log('Loading data from cached Google Sheets...');
-            
+
             // Load data from cached Google Sheets
             await loadMatchDataFromSheets();
             await loadPlayerStatsFromSheets();
             await loadGoalkeeperStatsFromSheets();
-            
+
             // Load trophy seasons
             await loadTrophySeasons();
-            
+
             console.log('All Google Sheets data loaded, now updating displays...');
             console.log('Final alAhlyStatsData:', {
                 totalMatches: alAhlyStatsData.totalMatches,
@@ -1753,22 +1755,22 @@ async function loadAlAhlyStatsData() {
                 draws: alAhlyStatsData.draws,
                 losses: alAhlyStatsData.losses
             });
-            
+
             // Update all displays
             updateOverviewStats();
             updateCharts();
             updateTables();
             calculateHowWinStats();
-            
+
             // Load players data for search functionality
             await loadPlayersData();
             if (typeof initializeComparePlayerSearch === 'function') {
                 setTimeout(() => initializeComparePlayerSearch(), 0);
             }
-            
+
             // Load goalkeepers data for search functionality
             await loadGoalkeepersData();
-            
+
             // Force immediate update of overview cards
             setTimeout(() => {
                 console.log('🔄 Force immediate update of overview cards...');
@@ -1783,7 +1785,7 @@ async function loadAlAhlyStatsData() {
                     cleanSheets: alAhlyStatsData.cleanSheets || 0,
                     cleanSheetsAgainst: alAhlyStatsData.cleanSheetsAgainst || 0
                 };
-                
+
                 const elements = {
                     'total-matches': stats.totalMatches,
                     'total-wins': stats.totalWins,
@@ -1796,7 +1798,7 @@ async function loadAlAhlyStatsData() {
                     'clean-sheets': stats.cleanSheets,
                     'clean-sheets-against': stats.cleanSheetsAgainst
                 };
-                
+
                 Object.entries(elements).forEach(([id, value]) => {
                     const element = document.getElementById(id);
                     if (element) {
@@ -1805,38 +1807,38 @@ async function loadAlAhlyStatsData() {
                     }
                 });
             }, 50);
-            
+
         } else {
             console.log('No cached data from Google Sheets...');
-        
-        // Load match data
-        await loadMatchData();
-        
-        // Load player statistics
-        await loadPlayerStats();
-        
-        // Load goalkeeper statistics
-        await loadGoalkeeperStats();
-        
-        // Load trophy seasons
-        await loadTrophySeasons();
-        
-        // Update all displays
-        updateOverviewStats();
-        updateCharts();
-        updateTables();
-        calculateHowWinStats();
-        
-        // Load players data for search functionality
-        await loadPlayersData();
-        if (typeof initializeComparePlayerSearch === 'function') {
-            setTimeout(() => initializeComparePlayerSearch(), 0);
+
+            // Load match data
+            await loadMatchData();
+
+            // Load player statistics
+            await loadPlayerStats();
+
+            // Load goalkeeper statistics
+            await loadGoalkeeperStats();
+
+            // Load trophy seasons
+            await loadTrophySeasons();
+
+            // Update all displays
+            updateOverviewStats();
+            updateCharts();
+            updateTables();
+            calculateHowWinStats();
+
+            // Load players data for search functionality
+            await loadPlayersData();
+            if (typeof initializeComparePlayerSearch === 'function') {
+                setTimeout(() => initializeComparePlayerSearch(), 0);
+            }
+
+            // Load goalkeepers data for search functionality
+            await loadGoalkeepersData();
         }
-        
-        // Load goalkeepers data for search functionality
-        await loadGoalkeepersData();
-        }
-        
+
     } catch (error) {
         console.error('Error loading statistics data:', error);
     } finally {
@@ -1848,17 +1850,17 @@ async function loadAlAhlyStatsData() {
 async function loadMatchDataFromSheets() {
     try {
         console.log('Loading match data from Excel...');
-        
+
         // Get MATCHDETAILS from cached sheets
         const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
-        
+
         if (matchDetails && matchDetails.length > 0) {
             alAhlyStatsData.allRecords = matchDetails;
             alAhlyStatsData.originalRecords = matchDetails; // Store original unfiltered data
             alAhlyStatsData.matches = matchDetails;
-            
+
             console.log(`Loaded ${matchDetails.length} matches from Excel`);
-            
+
             // Update match statistics
             alAhlyStatsData.totalMatches = matchDetails.length;
             alAhlyStatsData.wins = matchDetails.filter(m => normalizeStr(m['W-D-L']) === 'W').length;
@@ -1868,7 +1870,7 @@ async function loadMatchDataFromSheets() {
             alAhlyStatsData.totalGoalsAgainst = matchDetails.reduce((sum, m) => sum + (parseInt(m.GA) || 0), 0);
             alAhlyStatsData.cleanSheets = matchDetails.filter(m => parseInt(m.GA || 0) === 0).length;
             alAhlyStatsData.cleanSheetsAgainst = matchDetails.filter(m => parseInt(m.GF || 0) === 0).length;
-            
+
             // Calculate draws with goals and draws without goals
             alAhlyStatsData.drawsWithGoals = matchDetails.filter(m => {
                 const wdl = normalizeStr(m['W-D-L'] || '');
@@ -1878,11 +1880,11 @@ async function loadMatchDataFromSheets() {
                 const wdl = normalizeStr(m['W-D-L'] || '');
                 return wdl === 'D.' || wdl === 'D WITHOUT G' || wdl === 'DWITHOUTG';
             }).length;
-            
+
             // Rebuild filter options from Google Sheets data
             console.log('🔧 Rebuilding filter options from match records...');
             rebuildMainFilterOptionsFrom(matchDetails);
-            
+
             console.log('Match statistics calculated:', {
                 totalMatches: alAhlyStatsData.totalMatches,
                 wins: alAhlyStatsData.wins,
@@ -1896,7 +1898,7 @@ async function loadMatchDataFromSheets() {
                 cleanSheetsAgainst: alAhlyStatsData.cleanSheetsAgainst
             });
         }
-        
+
     } catch (error) {
         console.error('Error loading match data from Excel:', error);
     }
@@ -1905,18 +1907,18 @@ async function loadMatchDataFromSheets() {
 async function loadPlayerStatsFromSheets() {
     try {
         console.log('Loading player stats from Excel...');
-        
+
         // Get PLAYERDETAILS from cached sheets
         const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
-        
+
         if (playerDetails && playerDetails.length > 0) {
             // Calculate player statistics
             const playerStats = new Map();
-            
+
             playerDetails.forEach(record => {
                 const playerName = normalizeStr(record['PLAYER NAME']);
                 const gaType = normalizeStr(record.GA).toUpperCase();
-                
+
                 if (!playerStats.has(playerName)) {
                     playerStats.set(playerName, {
                         name: playerName,
@@ -1925,17 +1927,17 @@ async function loadPlayerStatsFromSheets() {
                         matches: new Set()
                     });
                 }
-                
+
                 const stats = playerStats.get(playerName);
                 stats.matches.add(normalizeStr(record.MATCH_ID));
-                
+
                 if (gaType === 'GOAL') {
                     stats.goals += 1;
                 } else if (gaType === 'ASSIST') {
                     stats.assists += 1;
                 }
             });
-            
+
             // Convert to array and sort by goals
             alAhlyStatsData.topScorers = Array.from(playerStats.values())
                 .map(p => ({
@@ -1946,10 +1948,10 @@ async function loadPlayerStatsFromSheets() {
                 }))
                 .sort((a, b) => b.goals - a.goals)
                 .slice(0, 10);
-            
+
             console.log(`Loaded ${alAhlyStatsData.topScorers.length} player stats from Excel`);
         }
-        
+
     } catch (error) {
         console.error('Error loading player stats from Excel:', error);
     }
@@ -1958,31 +1960,31 @@ async function loadPlayerStatsFromSheets() {
 async function loadGoalkeeperStatsFromSheets() {
     try {
         console.log('Loading goalkeeper stats from Excel...');
-        
+
         // Get GKDETAILS from cached sheets
         const gkDetails = getSheetRowsByCandidates(['GKDETAILS']);
-        
+
         if (gkDetails && gkDetails.length > 0) {
             // Calculate goalkeeper statistics
             const gkStats = new Map();
-            
+
             gkDetails.forEach(record => {
                 const gkName = normalizeStr(record['PLAYER NAME']);
                 const matchId = normalizeStr(record.MATCH_ID);
-                
+
                 if (!gkStats.has(gkName)) {
                     gkStats.set(gkName, {
                         name: gkName,
                         matches: new Set(),
                         cleanSheets: alAhlyStatsData.cleanSheets || 0,
-                    cleanSheetsAgainst: alAhlyStatsData.cleanSheetsAgainst || 0
+                        cleanSheetsAgainst: alAhlyStatsData.cleanSheetsAgainst || 0
                     });
                 }
-                
+
                 const stats = gkStats.get(gkName);
                 stats.matches.add(matchId);
             });
-            
+
             // Convert to array and sort by matches played
             alAhlyStatsData.topGoalkeepers = Array.from(gkStats.values())
                 .map(gk => ({
@@ -1992,10 +1994,10 @@ async function loadGoalkeeperStatsFromSheets() {
                 }))
                 .sort((a, b) => b.matches - a.matches)
                 .slice(0, 5);
-            
+
             console.log(`Loaded ${alAhlyStatsData.topGoalkeepers.length} goalkeeper stats from Excel`);
         }
-        
+
     } catch (error) {
         console.error('Error loading goalkeeper stats from Excel:', error);
     }
@@ -2033,7 +2035,7 @@ async function loadGoalkeeperStats() {
 
 function loadAllPlayersFromSheets() {
     console.log('Loading all players from sheets...');
-    
+
     const playerTeams = new Map(); // Player Name -> Set of Teams
 
     // Process LINEUPDETAILS first (Ahly-only)
@@ -2072,11 +2074,11 @@ function loadAllPlayersFromSheets() {
     playerTeams.forEach((teams, name) => {
         playersWithTeams.push({ name: name, teams: Array.from(teams) });
     });
-    
+
     playersWithTeams.sort((a, b) => a.name.localeCompare(b.name));
-    
+
     playersData.players = playersWithTeams;
-    
+
     console.log(`Loaded ${playersData.players.length} players with their teams from sheets.`);
     const playersWithTeamsSample = playersWithTeams.slice(0, 5);
     console.log('Sample players with teams:', JSON.stringify(playersWithTeamsSample, null, 2));
@@ -2216,7 +2218,7 @@ function calculateOverviewStats() {
     const records = (alAhlyStatsData.filteredRecords && alAhlyStatsData.filteredRecords.length)
         ? alAhlyStatsData.filteredRecords
         : (alAhlyStatsData.allRecords || []);
-    
+
     if (!Array.isArray(records) || records.length === 0) {
         // Fallback to the parsed matches path if available
         const matches = getFilteredMatches();
@@ -2243,13 +2245,13 @@ function calculateOverviewStats() {
             winRate
         };
     }
-    
+
     const normalized = records.map(r => ({
         wdl: normalizeStr(r['W-D-L'] || ''),
         gf: parseInt(r['GF'] || 0) || 0,
         ga: parseInt(r['GA'] || 0) || 0
     }));
-    
+
     const totalMatches = normalized.length;
     const totalWins = normalized.filter(r => r.wdl === 'W').length;
     const totalLosses = normalized.filter(r => r.wdl === 'L').length;
@@ -2261,7 +2263,7 @@ function calculateOverviewStats() {
     const drawsWithGoals = normalized.filter(r => r.wdl === 'D' || r.wdl === 'D WITH G' || r.wdl === 'DWITHG').length;
     const drawsNoGoals = normalized.filter(r => r.wdl === 'D.' || r.wdl === 'D WITHOUT G' || r.wdl === 'DWITHOUTG').length;
     const winRate = totalMatches > 0 ? Math.round((totalWins / totalMatches) * 100) : 0;
-    
+
     return {
         totalMatches,
         totalWins,
@@ -2279,26 +2281,26 @@ function calculateOverviewStats() {
 
 function getFilteredMatches() {
     let matches = [...alAhlyStatsData.matches];
-    
+
     // Apply season filter
     if (currentFilters.season) {
         matches = matches.filter(m => m.season === currentFilters.season);
     }
-    
+
     // Apply competition filter
     if (currentFilters.competition) {
         matches = matches.filter(m => m.competition === currentFilters.competition);
     }
-    
+
     // Apply date range filter
     if (currentFilters.dateRange.start) {
         matches = matches.filter(m => m.date >= currentFilters.dateRange.start);
     }
-    
+
     if (currentFilters.dateRange.end) {
         matches = matches.filter(m => m.date <= currentFilters.dateRange.end);
     }
-    
+
     return matches;
 }
 
@@ -2308,7 +2310,7 @@ function getFilteredMatches() {
 
 function updateOverviewStats(providedStats = null) {
     console.log('Updating overview stats...');
-    
+
     // Use provided stats if available, otherwise use data from alAhlyStatsData or calculate
     const stats = providedStats || (alAhlyStatsData.totalMatches ? {
         totalMatches: alAhlyStatsData.totalMatches,
@@ -2323,9 +2325,9 @@ function updateOverviewStats(providedStats = null) {
         cleanSheets: alAhlyStatsData.cleanSheets || 0,
         cleanSheetsAgainst: alAhlyStatsData.cleanSheetsAgainst || 0
     } : calculateOverviewStats());
-    
+
     console.log('Overview stats:', stats);
-    
+
     // Safely update stats elements (using correct HTML IDs)
     const elements = {
         'total-matches': stats.totalMatches,
@@ -2339,7 +2341,7 @@ function updateOverviewStats(providedStats = null) {
         'clean-sheets': stats.cleanSheets,
         'clean-sheets-against': stats.cleanSheetsAgainst
     };
-    
+
     Object.entries(elements).forEach(([id, value]) => {
         const element = document.getElementById(id);
         if (element) {
@@ -2349,7 +2351,7 @@ function updateOverviewStats(providedStats = null) {
             console.warn(`❌ Element with id '${id}' not found`);
         }
     });
-    
+
     // Force update all overview cards
     console.log('Force updating overview cards...');
     setTimeout(() => {
@@ -2365,22 +2367,22 @@ function updateOverviewStats(providedStats = null) {
 
 function updateCharts() {
     const stats = calculateOverviewStats();
-    
+
     // Update results chart
     if (window.resultsChart) {
         window.resultsChart.data.datasets[0].data = [stats.totalWins, stats.totalDraws, stats.totalLosses];
         window.resultsChart.update();
     }
-    
+
     // Update goals chart
     if (window.goalsChart) {
         window.goalsChart.data.datasets[0].data = [stats.totalGoalsFor, stats.totalGoalsAgainst];
         window.goalsChart.update();
     }
-    
+
     // Update competition chart
     updateCompetitionChart();
-    
+
     // Update monthly chart
     updateMonthlyChart();
 }
@@ -2388,7 +2390,7 @@ function updateCharts() {
 function updateCompetitionChart() {
     const matches = getFilteredMatches();
     const competitionStats = {};
-    
+
     matches.forEach(match => {
         if (!competitionStats[match.competition]) {
             competitionStats[match.competition] = { wins: 0, total: 0 };
@@ -2398,10 +2400,10 @@ function updateCompetitionChart() {
             competitionStats[match.competition].wins++;
         }
     });
-    
+
     const labels = Object.keys(competitionStats);
     const data = labels.map(comp => competitionStats[comp].wins);
-    
+
     if (window.competitionChart) {
         window.competitionChart.data.labels = labels;
         window.competitionChart.data.datasets[0].data = data;
@@ -2412,7 +2414,7 @@ function updateCompetitionChart() {
 function updateMonthlyChart() {
     const matches = getFilteredMatches();
     const monthlyStats = {};
-    
+
     matches.forEach(match => {
         const month = new Date(match.date).toLocaleDateString('en-US', { month: 'short' });
         if (!monthlyStats[month]) {
@@ -2423,11 +2425,11 @@ function updateMonthlyChart() {
         }
         monthlyStats[month].goals += match.goalsFor;
     });
-    
+
     const labels = Object.keys(monthlyStats);
     const winsData = labels.map(month => monthlyStats[month].wins);
     const goalsData = labels.map(month => monthlyStats[month].goals);
-    
+
     if (window.monthlyChart) {
         window.monthlyChart.data.labels = labels;
         window.monthlyChart.data.datasets[0].data = winsData;
@@ -2441,7 +2443,7 @@ function updateTables() {
     updateRecentMatchesTable();
     updateTopScorersTable();
     updateGoalkeeperStatsTable();
-    
+
     // Update all matches table if we have data
     if (alAhlyStatsData.allRecords && alAhlyStatsData.allRecords.length > 0) {
         console.log('Updating all matches table with', alAhlyStatsData.allRecords.length, 'matches');
@@ -2453,14 +2455,14 @@ function updateRecentMatchesTable() {
     const matches = getFilteredMatches()
         .sort((a, b) => new Date(b.date) - new Date(a.date))
         .slice(0, 10);
-    
+
     const tbody = document.querySelector('#recent-matches-table tbody');
     if (!tbody) {
         console.warn('recent-matches-table tbody not found, skipping table update');
         return;
     }
     tbody.innerHTML = '';
-    
+
     matches.forEach(match => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -2480,14 +2482,14 @@ function updateTopScorersTable() {
     const players = alAhlyStatsData.players
         .sort((a, b) => b.goals - a.goals)
         .slice(0, 10);
-    
+
     const tbody = document.querySelector('#top-scorers-table tbody');
     if (!tbody) {
         console.warn('top-scorers-table tbody not found, skipping table update');
         return;
     }
     tbody.innerHTML = '';
-    
+
     players.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -2503,14 +2505,14 @@ function updateTopScorersTable() {
 function updateGoalkeeperStatsTable() {
     const goalkeepers = alAhlyStatsData.goalkeepers
         .sort((a, b) => b.matches - a.matches);
-    
+
     const tbody = document.querySelector('#goalkeeper-stats-table tbody');
     if (!tbody) {
         console.warn('goalkeeper-stats-table tbody not found, skipping table update');
         return;
     }
     tbody.innerHTML = '';
-    
+
     goalkeepers.forEach(gk => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -2540,14 +2542,14 @@ async function loadTrophySeasons(forceRefresh = false) {
             alAhlyStatsData.trophySeasons = [];
             return;
         }
-        
+
         const data = await response.json();
         if (data.error) {
             console.warn('⚠️ Error loading trophy seasons:', data.error);
             alAhlyStatsData.trophySeasons = [];
             return;
         }
-        
+
         alAhlyStatsData.trophySeasons = data.seasons || [];
         console.log(`✅ Loaded ${alAhlyStatsData.trophySeasons.length} trophy-winning seasons`);
     } catch (error) {
@@ -2561,7 +2563,7 @@ function applyFilters() {
     currentFilters.season = document.getElementById('season-filter').value;
     currentFilters.sy = document.getElementById('sy-filter').value;
     currentFilters.competition = document.getElementById('competition-filter').value;
-    
+
     // Update all displays with filtered data
     updateOverviewStats();
     updateCharts();
@@ -2581,16 +2583,16 @@ function clearFilters() {
     };
 
     const idsToClear = [
-        'match-id-filter','champion-system-filter','champion-filter','season-filter','sy-filter',
-        'ahly-manager-filter','opponent-manager-filter','referee-filter','round-filter','h-a-n-filter',
-        'stadium-filter','ahly-team-filter','opponent-team-filter','goals-for-filter','goals-against-filter',
-        'result-filter','clean-sheet-filter','extra-time-filter','penalties-filter','date-from-filter','date-to-filter'
+        'match-id-filter', 'champion-system-filter', 'champion-filter', 'season-filter', 'sy-filter',
+        'ahly-manager-filter', 'opponent-manager-filter', 'referee-filter', 'round-filter', 'h-a-n-filter',
+        'stadium-filter', 'ahly-team-filter', 'opponent-team-filter', 'goals-for-filter', 'goals-against-filter',
+        'result-filter', 'clean-sheet-filter', 'extra-time-filter', 'penalties-filter', 'date-from-filter', 'date-to-filter'
     ];
     idsToClear.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 
     // If we use custom searchable inputs, sync visuals
     if (typeof updateAllSearchableInputs === 'function') {
-        try { updateAllSearchableInputs(); } catch (_) {}
+        try { updateAllSearchableInputs(); } catch (_) { }
     }
 
     // Reset cached filtered records if used
@@ -2771,72 +2773,72 @@ function calculateHowWinStats() {
         comebackDrew: 0,
         behindLost: 0
     };
-    
+
     // Get filtered matches
     const filteredMatches = alAhlyStatsData.filteredRecords || alAhlyStatsData.allRecords || [];
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID || m['MATCH ID']));
-    
+
     // Get player details
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
-    
+
     if (!playerDetails || playerDetails.length === 0) {
         updateHowWinUI(stats, 0);
         return;
     }
-    
+
     // First pass: Check which matches have ANY unknown minutes
     const matchesWithUnknownMinutes = new Set();
-    
+
     playerDetails.forEach(detail => {
         const matchId = detail['MATCH_ID'] || detail['MATCH ID'];
         const minute = detail['MINUTE'];
-        
+
         // Skip if match is not in filtered matches
         if (!filteredMatchIds.has(matchId)) {
             return;
         }
-        
+
         // Mark match if it has unknown minute
         const minuteStr = String(minute || '').trim();
-        const isUnknown = !minute || 
-                          minute === '' || 
-                          minuteStr === '?' || 
-                          minuteStr === '؟' ||   // Arabic question mark
-                          minuteStr.includes('?') || 
-                          minuteStr.includes('؟') ||  // Arabic question mark
-                          minuteStr.toLowerCase() === 'unknown';
-        
+        const isUnknown = !minute ||
+            minute === '' ||
+            minuteStr === '?' ||
+            minuteStr === '؟' ||   // Arabic question mark
+            minuteStr.includes('?') ||
+            minuteStr.includes('؟') ||  // Arabic question mark
+            minuteStr.toLowerCase() === 'unknown';
+
         if (isUnknown) {
             matchesWithUnknownMinutes.add(matchId);
         }
     });
-    
+
     // Second pass: Group goals by match ID (ONLY for matches with ALL known minutes)
     const matchGoals = {};
-    
+
     playerDetails.forEach(detail => {
         const matchId = detail['MATCH_ID'] || detail['MATCH ID'];
         const minute = detail['MINUTE'];
         const ga = normalizeStr(detail.GA || '').toUpperCase();
         const playerTeam = normalizeStr(detail.TEAM || detail['AHLY TEAM'] || '');
-        
+
         // Skip if not a goal
         if (ga !== 'GOAL') return;
-        
+
         // Skip if match is not in filtered matches
         if (!filteredMatchIds.has(matchId)) return;
-        
+
         // Skip ENTIRE match if it has ANY unknown minutes
         if (matchesWithUnknownMinutes.has(matchId)) return;
-        
+
         // Skip if minute contains "?" or "؟"
         const minuteStr = String(minute || '');
         if (!minute || minuteStr.includes('?') || minuteStr.includes('؟')) return;
-        
+
         if (!matchGoals[matchId]) {
             matchGoals[matchId] = [];
         }
-        
+
         // Parse minute (handle 90+5 format)
         let minuteValue = 0;
         if (String(minute).includes('+')) {
@@ -2845,36 +2847,36 @@ function calculateHowWinStats() {
         } else {
             minuteValue = parseInt(minute);
         }
-        
+
         // Determine if it's Ahly or opponent
         const isAhly = playerTeam.trim() === 'الأهلي' || playerTeam.trim().toLowerCase() === 'ahly' || playerTeam.toLowerCase().includes('ahly');
-        
+
         matchGoals[matchId].push({
             minute: minuteValue,
             isAhly: isAhly,
             matchId: matchId
         });
     });
-    
+
     // Process each match
     Object.keys(matchGoals).forEach(matchId => {
         const goals = matchGoals[matchId];
-        
+
         // Sort goals by minute
         goals.sort((a, b) => a.minute - b.minute);
-        
+
         if (goals.length === 0) return;
-        
+
         // First goal determines who scored first
         const firstGoal = goals[0];
         const ahlyScoredFirst = firstGoal.isAhly;
-        
+
         // Get match result
         const match = filteredMatches.find(m => (m.MATCH_ID || m['MATCH ID']) === matchId);
         if (!match) return;
-        
+
         const result = normalizeStr(match['W-D-L'] || '');
-        
+
         // Determine stats based on first scorer and result
         if (ahlyScoredFirst) {
             // Ahly scored first
@@ -2896,10 +2898,10 @@ function calculateHowWinStats() {
             }
         }
     });
-    
+
     // Update UI
     updateHowWinUI(stats, matchesWithUnknownMinutes.size);
-    
+
     // Calculate and update opponents stats
     calculateOpponentsHowWinStats();
 }
@@ -2914,14 +2916,14 @@ function updateHowWinUI(stats, excludedCount) {
         'comeback-drew': stats.comebackDrew,
         'behind-lost': stats.behindLost
     };
-    
+
     Object.entries(elements).forEach(([id, value]) => {
         const element = document.getElementById(id);
         if (element) {
             element.textContent = value || 0;
         }
     });
-    
+
     const excludedElement = document.getElementById('how-win-excluded-count');
     if (excludedElement) {
         excludedElement.textContent = excludedCount || 0;
@@ -2938,72 +2940,72 @@ function calculateOpponentsHowWinStats() {
         comebackDrew: 0,
         behindLost: 0
     };
-    
+
     // Get filtered matches
     const filteredMatches = alAhlyStatsData.filteredRecords || alAhlyStatsData.allRecords || [];
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID || m['MATCH ID']));
-    
+
     // Get player details
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
-    
+
     if (!playerDetails || playerDetails.length === 0) {
         updateOpponentsHowWinUI(stats, 0);
         return;
     }
-    
+
     // First pass: Check which matches have ANY unknown minutes
     const matchesWithUnknownMinutes = new Set();
-    
+
     playerDetails.forEach(detail => {
         const matchId = detail['MATCH_ID'] || detail['MATCH ID'];
         const minute = detail['MINUTE'];
-        
+
         // Skip if match is not in filtered matches
         if (!filteredMatchIds.has(matchId)) {
             return;
         }
-        
+
         // Mark match if it has unknown minute
         const minuteStr = String(minute || '').trim();
-        const isUnknown = !minute || 
-                          minute === '' || 
-                          minuteStr === '?' || 
-                          minuteStr === '؟' ||
-                          minuteStr.includes('?') || 
-                          minuteStr.includes('؟') ||
-                          minuteStr.toLowerCase() === 'unknown';
-        
+        const isUnknown = !minute ||
+            minute === '' ||
+            minuteStr === '?' ||
+            minuteStr === '؟' ||
+            minuteStr.includes('?') ||
+            minuteStr.includes('؟') ||
+            minuteStr.toLowerCase() === 'unknown';
+
         if (isUnknown) {
             matchesWithUnknownMinutes.add(matchId);
         }
     });
-    
+
     // Second pass: Group goals by match ID (ONLY for matches with ALL known minutes)
     const matchGoals = {};
-    
+
     playerDetails.forEach(detail => {
         const matchId = detail['MATCH_ID'] || detail['MATCH ID'];
         const minute = detail['MINUTE'];
         const ga = normalizeStr(detail.GA || '').toUpperCase();
         const playerTeam = normalizeStr(detail.TEAM || detail['AHLY TEAM'] || '');
-        
+
         // Skip if not a goal
         if (ga !== 'GOAL') return;
-        
+
         // Skip if match is not in filtered matches
         if (!filteredMatchIds.has(matchId)) return;
-        
+
         // Skip ENTIRE match if it has ANY unknown minutes
         if (matchesWithUnknownMinutes.has(matchId)) return;
-        
+
         // Skip if minute contains "?" or "؟"
         const minuteStr = String(minute || '');
         if (!minute || minuteStr.includes('?') || minuteStr.includes('؟')) return;
-        
+
         if (!matchGoals[matchId]) {
             matchGoals[matchId] = [];
         }
-        
+
         // Parse minute (handle 90+5 format)
         let minuteValue = 0;
         if (String(minute).includes('+')) {
@@ -3012,42 +3014,42 @@ function calculateOpponentsHowWinStats() {
         } else {
             minuteValue = parseInt(minute);
         }
-        
+
         // Determine if it's Ahly or opponent
         const isAhly = playerTeam.trim() === 'الأهلي' || playerTeam.trim().toLowerCase() === 'ahly' || playerTeam.toLowerCase().includes('ahly');
-        
+
         matchGoals[matchId].push({
             minute: minuteValue,
             isAhly: isAhly,
             matchId: matchId
         });
     });
-    
+
     // Process each match (from opponent perspective)
     Object.keys(matchGoals).forEach(matchId => {
         const goals = matchGoals[matchId];
-        
+
         // Sort goals by minute
         goals.sort((a, b) => a.minute - b.minute);
-        
+
         if (goals.length === 0) return;
-        
+
         // First goal determines who scored first
         const firstGoal = goals[0];
         const opponentScoredFirst = !firstGoal.isAhly; // Opponent scored first if Ahly didn't
-        
+
         // Get match result
         const match = filteredMatches.find(m => (m.MATCH_ID || m['MATCH ID']) === matchId);
         if (!match) return;
-        
+
         const result = normalizeStr(match['W-D-L'] || '');
-        
+
         // Convert Al Ahly result to opponent result
         let opponentResult = result;
         if (result === 'W') opponentResult = 'L'; // Ahly won = Opponent lost
         else if (result === 'L') opponentResult = 'W'; // Ahly lost = Opponent won
         // Draw stays as 'D'
-        
+
         // Determine stats based on first scorer and result (from opponent perspective)
         if (opponentScoredFirst) {
             // Opponent scored first
@@ -3069,7 +3071,7 @@ function calculateOpponentsHowWinStats() {
             }
         }
     });
-    
+
     // Update UI
     updateOpponentsHowWinUI(stats, matchesWithUnknownMinutes.size);
 }
@@ -3083,14 +3085,14 @@ function updateOpponentsHowWinUI(stats, excludedCount) {
         'opp-comeback-drew': stats.comebackDrew,
         'opp-behind-lost': stats.behindLost
     };
-    
+
     Object.entries(elements).forEach(([id, value]) => {
         const element = document.getElementById(id);
         if (element) {
             element.textContent = value || 0;
         }
     });
-    
+
     const excludedElement = document.getElementById('opponents-how-win-excluded-count');
     if (excludedElement) {
         excludedElement.textContent = excludedCount || 0;
@@ -3104,19 +3106,19 @@ function showHowWinSubTab(event, subtabName) {
     subtabContents.forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Remove active class from all sub-tab buttons
     const subtabButtons = document.querySelectorAll('#how-win-tab .stats-subtab');
     subtabButtons.forEach(btn => {
         btn.classList.remove('active');
     });
-    
+
     // Show selected sub-tab content
     const selectedContent = document.getElementById(subtabName);
     if (selectedContent) {
         selectedContent.classList.add('active');
     }
-    
+
     // Add active class to clicked button
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
@@ -3125,39 +3127,39 @@ function showHowWinSubTab(event, subtabName) {
 
 function initializeAlAhlyStats() {
     console.log('Al Ahly Statistics Module Initialized');
-    
+
     // Load initial data
     loadAlAhlyStatsData();
-    
+
     // Initialize charts
     initializeCharts();
-    
+
     // Add event listeners
     const filterBtn = document.querySelector('.filter-btn');
     if (filterBtn) {
         filterBtn.addEventListener('click', applyFilters);
     }
-    
+
     const refreshBtn = document.querySelector('.refresh-btn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', refreshStats);
     }
-    
+
     // Add auto-filter event listeners to all filter inputs
     addAutoFilterListeners();
-    
+
     // Setup All Players team filter
     setupAllPlayersFilter();
-    
+
     // Setup Variety Goals team filter
     setupVarietyGoalsFilter();
-    
+
     // Setup Penalty Details team filter
     setupPenaltyDetailsFilter();
-    
+
     // Setup Coaches team filter
-        setupCoachesFilter();
-        setupAllGoalkeepersFilter();
+    setupCoachesFilter();
+    setupAllGoalkeepersFilter();
 }
 
 function addAutoFilterListeners() {
@@ -3173,7 +3175,7 @@ function getPlayersListFromSheets() {
     console.log('Getting players list from Excel (PLAYERDATABASE)...');
     const rows = getSheetRowsByCandidates(['PLAYERDATABASE']);
     console.log(`Found ${rows.length} player database rows`);
-    
+
     const playersMap = new Map();
     rows.forEach(r => {
         const name = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player);
@@ -3182,12 +3184,12 @@ function getPlayersListFromSheets() {
         if (!playersMap.has(name)) playersMap.set(name, new Set());
         if (team) playersMap.get(name).add(team);
     });
-    
+
     const playersList = Array.from(playersMap.entries()).map(([name, teamSet]) => ({
         name,
         teams: Array.from(teamSet).sort()
-    })).sort((a,b) => a.name.localeCompare(b.name));
-    
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
     console.log(`Built players list with ${playersList.length} unique players`);
     return playersList;
 }
@@ -3203,26 +3205,26 @@ async function loadPlayersData() {
 function initializePlayerSearch() {
     const searchInput = document.getElementById('player-search');
     const searchOptions = document.getElementById('player-search-options');
-    
+
     if (!searchInput || !searchOptions) return;
-    
+
     let isOpen = false;
-    
+
     // Input event for search
-    searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', function () {
         const query = this.value.toLowerCase().trim();
-        
+
         if (query.length === 0) {
             searchOptions.style.display = 'none';
             isOpen = false;
             return;
         }
-        
+
         // Filter players based on query
-        const filteredPlayers = playersData.players.filter(player => 
+        const filteredPlayers = playersData.players.filter(player =>
             player.name.toLowerCase().includes(query)
         );
-        
+
         if (filteredPlayers.length === 0) {
             searchOptions.innerHTML = '<div class="option-item no-results">No players found</div>';
         } else {
@@ -3232,24 +3234,24 @@ function initializePlayerSearch() {
                 return `<div class="option-item" data-player-index="${originalIndex}">${player.name}</div>`;
             }).join('');
         }
-        
+
         searchOptions.style.display = 'block';
         isOpen = true;
     });
-    
+
     // Click on options
-    searchOptions.addEventListener('click', function(e) {
+    searchOptions.addEventListener('click', function (e) {
         if (e.target.classList.contains('option-item') && !e.target.classList.contains('no-results')) {
             try {
                 const playerIndex = parseInt(e.target.getAttribute('data-player-index'));
                 if (!isNaN(playerIndex) && playersData.players[playerIndex]) {
                     const playerData = playersData.players[playerIndex];
-                    
+
                     // Update UI first before loading data
                     searchInput.value = playerData.name;
                     searchOptions.style.display = 'none';
                     isOpen = false;
-                    
+
                     // Then load player data
                     selectPlayer(playerData);
                 }
@@ -3260,17 +3262,17 @@ function initializePlayerSearch() {
             }
         }
     });
-    
+
     // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!searchInput.contains(e.target) && !searchOptions.contains(e.target)) {
             searchOptions.style.display = 'none';
             isOpen = false;
         }
     });
-    
+
     // Focus event
-    searchInput.addEventListener('focus', function() {
+    searchInput.addEventListener('focus', function () {
         if (this.value.length > 0) {
             searchOptions.style.display = 'block';
             isOpen = true;
@@ -3305,7 +3307,7 @@ function initializeComparePlayerSearch() {
         // Shared handler to bind a search input/options to select a player
         function bindSearch(inputEl, optionsEl, side) {
             let isOpen = false;
-            inputEl.addEventListener('input', function() {
+            inputEl.addEventListener('input', function () {
                 const q = this.value.toLowerCase().trim();
                 if (!q) { optionsEl.style.display = 'none'; isOpen = false; return; }
                 // Build flattened list of (player, team) pairs so the same اللاعب يظهر بأكثر من فريق
@@ -3320,15 +3322,15 @@ function initializeComparePlayerSearch() {
                 } else {
                     optionsEl.innerHTML = filtered.map(p => {
                         const teamLabel = p.team ? ` (${p.team})` : '';
-                        const safeName = p.name.replace(/"/g,'&quot;');
-                        const safeTeam = String(p.team || '').replace(/"/g,'&quot;');
+                        const safeName = p.name.replace(/"/g, '&quot;');
+                        const safeTeam = String(p.team || '').replace(/"/g, '&quot;');
                         return `<div class=\"option-item\" data-name=\"${safeName}\" data-team=\"${safeTeam}\">${p.name}${teamLabel}</div>`;
                     }).join('');
                 }
                 optionsEl.style.display = 'block';
                 isOpen = true;
             });
-            optionsEl.addEventListener('click', function(e){
+            optionsEl.addEventListener('click', function (e) {
                 const el = e.target;
                 if (!el.classList.contains('option-item') || el.classList.contains('no-results')) return;
                 const name = el.getAttribute('data-name');
@@ -3338,13 +3340,13 @@ function initializeComparePlayerSearch() {
                 isOpen = false;
                 selectComparePlayer(side, name, team);
             });
-            document.addEventListener('click', function(e){
+            document.addEventListener('click', function (e) {
                 if (!inputEl.contains(e.target) && !optionsEl.contains(e.target)) {
                     optionsEl.style.display = 'none';
                     isOpen = false;
                 }
             });
-            inputEl.addEventListener('focus', function(){ if (this.value) { optionsEl.style.display = 'block'; isOpen = true; } });
+            inputEl.addEventListener('focus', function () { if (this.value) { optionsEl.style.display = 'block'; isOpen = true; } });
         }
 
         window.compareData = window.compareData || { p1: null, p2: null };
@@ -3353,7 +3355,7 @@ function initializeComparePlayerSearch() {
 
         // Initialize metrics chooser once
         if (typeof initializeCompareMetricsFilter === 'function') {
-            try { initializeCompareMetricsFilter(); } catch (_) {}
+            try { initializeCompareMetricsFilter(); } catch (_) { }
         }
     } catch (e) { console.error('initializeComparePlayerSearch error', e); }
 }
@@ -3459,7 +3461,7 @@ function computeOverviewStatsForCompare(playerName, teamFilterValue) {
             const matchStats = perMatch.get(matchId) || { goals: 0, assists: 0 };
             return { date: match ? (match.DATE || 0) : 0, goals: matchStats.goals, assists: matchStats.assists };
         }).filter(m => m.date !== undefined);
-        lineupWithDates.sort((a,b) => (parseFloat(a.date)||0) - (parseFloat(b.date)||0));
+        lineupWithDates.sort((a, b) => (parseFloat(a.date) || 0) - (parseFloat(b.date) || 0));
         const gaStreak = (typeof findLongestConsecutiveGAStreak === 'function') ? findLongestConsecutiveGAStreak(lineupWithDates) : [];
         const noGAStreak = (typeof findLongestConsecutiveNoGAStreak === 'function') ? findLongestConsecutiveNoGAStreak(lineupWithDates) : [];
         const goalStreak = (typeof findLongestConsecutiveScoringStreak === 'function') ? findLongestConsecutiveScoringStreak(lineupWithDates) : [];
@@ -3631,10 +3633,10 @@ function selectPlayer(player) {
     console.log('🎯 Player selected:', player);
     console.log('📝 Player name:', player.name);
     console.log('🏟️ Player teams:', player.teams);
-    
+
     // Load data directly from API
     playersData.selectedPlayer = player;
-    
+
     // Update teams checkboxes (replaces old dropdown)
     const teamContainer = document.getElementById('player-team-filter');
     if (teamContainer) {
@@ -3643,12 +3645,12 @@ function selectPlayer(player) {
         if (player.teams && player.teams.length > 0) {
             const sortedTeams = [...player.teams].sort();
             sortedTeams.forEach(team => {
-                const id = `team-cb-${team.replace(/\s+/g,'-')}`;
+                const id = `team-cb-${team.replace(/\s+/g, '-')}`;
                 const label = document.createElement('label');
                 label.innerHTML = `<input type="checkbox" class="team-filter-checkbox" id="${id}" value="${team}"> <span>${team}</span>`;
                 teamContainer.appendChild(label);
             });
-            
+
             // Add event listeners to the new checkboxes
             teamContainer.querySelectorAll('input.team-filter-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', applyPlayerTeamFilter);
@@ -3660,16 +3662,16 @@ function selectPlayer(player) {
             teamContainer.setAttribute('disabled', '');
         }
     }
-    
+
     console.log(`✅ Selected player: ${player.name}, Teams: ${player.teams ? player.teams.join(', ') : 'No teams'}`);
-    
+
     // Load player overview statistics first
     console.log('🔄 Loading player overview stats...');
     loadPlayerOverviewStats(player.name);
-    
+
     // Load player trophies
     loadPlayerTrophies(player.name, '');
-    
+
     // Apply team filter (will show all teams initially)
     applyPlayerTeamFilter();
 }
@@ -3677,24 +3679,24 @@ function selectPlayer(player) {
 // Function to load ALL player data in one API call
 async function loadAllPlayerData(playerName) {
     console.log(`Loading ALL data for player: ${playerName}`);
-    
+
     try {
         const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
         const query = teamFilter ? `?team=${encodeURIComponent(teamFilter)}` : '';
-        
+
         const data = null; // API removed; using Excel instead
-        
+
         if (data.error) {
             console.error('Error loading all player data:', data.error);
             // Error loading player data
             return;
         }
-        
-        
+
+
         // Update all tabs with the data
         updateAllPlayerTabs(data);
         console.log('ALL player data loaded successfully');
-        
+
     } catch (error) {
         console.error('Error fetching all player data:', error);
         // Error loading player data
@@ -3707,31 +3709,31 @@ function updateAllPlayerTabs(data) {
     if (data.overview_stats && !data.overview_stats.error) {
         updatePlayerOverviewCards(data.overview_stats);
     }
-    
+
     // Update matches
     if (data.matches && data.matches.length > 0) {
         // Store matches data
         renderPlayerMatchesTable(data.matches);
     }
-    
+
     // Update championships
     if (data.championships && data.championships.length > 0) {
         // Store championships data
         renderPlayerChampionshipsTable(data.championships);
     }
-    
+
     // Update seasons
     if (data.seasons && data.seasons.length > 0) {
         // Store seasons data
         renderPlayerSeasonsTable(data.seasons);
     }
-    
+
     // Update vs teams
     if (data.vs_teams && data.vs_teams.length > 0) {
         // Store vs teams data
         renderPlayerVsTeamsTable(data.vs_teams);
     }
-    
+
     // Update vs goalkeepers
     if (data.vs_goalkeepers && data.vs_goalkeepers.length > 0) {
         // Store vs goalkeepers data
@@ -3744,10 +3746,10 @@ function initializeTeamFilter() {
     const container = document.getElementById('player-team-filter');
     if (!container) return;
     if (container.tagName && container.tagName.toUpperCase() === 'SELECT') {
-        container.addEventListener('change', function() { applyPlayerTeamFilter(); });
+        container.addEventListener('change', function () { applyPlayerTeamFilter(); });
         return;
     }
-    container.addEventListener('change', function(e) {
+    container.addEventListener('change', function (e) {
         if (e.target && e.target.classList && e.target.classList.contains('team-filter-checkbox')) {
             applyPlayerTeamFilter();
         }
@@ -3768,9 +3770,9 @@ function getSelectedPlayerTeams() {
 
 function applyPlayerTeamFilter() {
     const selectedTeams = getSelectedPlayerTeams();
-    
+
     // Load data directly from API when team filter changes
-    
+
     // Update all player statistics based on selected team
     updatePlayerStatisticsForTeam(selectedTeams);
     // Reload the overview cards with team filter applied
@@ -3778,7 +3780,7 @@ function applyPlayerTeamFilter() {
         loadPlayerOverviewWithFilter(selectedTeams);
         // Reload trophies with team filter
         loadPlayerTrophies(playersData.selectedPlayer.name, selectedTeams);
-        
+
         // Reload current active sub-tab with team filter
         const currentSubTab = getCurrentPlayerSubTab();
         if (currentSubTab) {
@@ -3786,7 +3788,7 @@ function applyPlayerTeamFilter() {
             loadPlayerSubTabData(currentSubTab, selectedTeams);
         }
     }
-    
+
     console.log(`Filtering player statistics for teams: ${selectedTeams.join(', ') || 'All Teams'}`);
 }
 
@@ -3797,7 +3799,7 @@ function updatePlayerStatisticsForTeam(selectedTeams) {
         loadPlayerOverview();
         return;
     }
-    
+
     // Here you would filter the actual data based on selectedTeam
     // For now, we'll just reload the current tab with filtered data
     const currentSubTab = getCurrentPlayerSubTab();
@@ -3819,8 +3821,8 @@ function getCurrentPlayerSubTab() {
 function loadPlayerSubTabData(subTabName, selectedTeams = null) {
     // This function will be called when team filter changes
     // It will reload the current sub-tab data with team filtering applied
-    
-    switch(subTabName) {
+
+    switch (subTabName) {
         case 'overview':
             loadPlayerOverviewWithFilter(selectedTeams);
             break;
@@ -3941,7 +3943,7 @@ function loadAlAhlyStats() {
         console.warn('🚫 Skipping loadAlAhlyStats - request throttled');
         return;
     }
-    
+
     console.log('🔄 Loading Al Ahly stats...');
     if (window.__ahlyExcelMode) {
         const data = {
@@ -3950,25 +3952,25 @@ function loadAlAhlyStats() {
             recent_matches: (alAhlyStatsData.allRecords || []).slice(-10),
             total_matches: (alAhlyStatsData.allRecords || []).length,
             total_wins: (alAhlyStatsData.allRecords || []).filter(r => r['W-D-L'] === 'W').length,
-            total_draws: (alAhlyStatsData.allRecords || []).filter(r => ['D','D WITH G','D.'].includes(r['W-D-L'])).length,
+            total_draws: (alAhlyStatsData.allRecords || []).filter(r => ['D', 'D WITH G', 'D.'].includes(r['W-D-L'])).length,
             total_losses: (alAhlyStatsData.allRecords || []).filter(r => r['W-D-L'] === 'L').length,
-            total_goals_for: (alAhlyStatsData.allRecords || []).reduce((s,r)=> s + (parseInt(r['GF']||0)), 0),
-            total_goals_against: (alAhlyStatsData.allRecords || []).reduce((s,r)=> s + (parseInt(r['GA']||0)), 0),
-            clean_sheets: (alAhlyStatsData.allRecords || []).filter(r => parseInt(r['GA']||0) === 0).length
+            total_goals_for: (alAhlyStatsData.allRecords || []).reduce((s, r) => s + (parseInt(r['GF'] || 0)), 0),
+            total_goals_against: (alAhlyStatsData.allRecords || []).reduce((s, r) => s + (parseInt(r['GA'] || 0)), 0),
+            clean_sheets: (alAhlyStatsData.allRecords || []).filter(r => parseInt(r['GA'] || 0) === 0).length
         };
-        
+
         // Store data globally
         alAhlyStatsData.filterOptions = data.filter_options || {};
         alAhlyStatsData.allRecords = data.all_records || [];
         alAhlyStatsData.matches = data.recent_matches || [];
-        
+
         // Rebuild filter options from Google Sheets data
         console.log('🔧 Rebuilding filter options from records...');
         rebuildMainFilterOptionsFrom(data.all_records);
-        
+
         // Update filter dropdowns
         updateFilterOptions();
-        
+
         const drawsWithGoals = data.all_records.filter(r => {
             const wdl = normalizeStr(r['W-D-L'] || '');
             return wdl === 'D' || wdl === 'D WITH G' || wdl === 'DWITHG';
@@ -3978,7 +3980,7 @@ function loadAlAhlyStats() {
             return wdl === 'D.' || wdl === 'D WITHOUT G' || wdl === 'DWITHOUTG';
         }).length;
         const winRate = data.total_matches > 0 ? parseFloat((data.total_wins / data.total_matches * 100).toFixed(1)) : 0;
-        
+
         updateOverviewStats({
             totalMatches: data.total_matches,
             totalWins: data.total_wins,
@@ -3989,24 +3991,24 @@ function loadAlAhlyStats() {
             totalGoalsFor: data.total_goals_for,
             totalGoalsAgainst: data.total_goals_against,
             cleanSheets: data.clean_sheets,
-            cleanSheetsAgainst: (data.all_records || []).filter(r => parseInt(r['GF']||0) === 0).length,
+            cleanSheetsAgainst: (data.all_records || []).filter(r => parseInt(r['GF'] || 0) === 0).length,
             winRate: winRate
         });
-        
+
         loadAllMatches(data.all_records);
         loadPlayerOverview();
         loadTopPerformers();
         loadGoalkeeperStats();
         if (typeof initializeComparePlayerSearch === 'function') initializeComparePlayerSearch();
         setTimeout(() => { addAutoFilterListeners(); }, 100);
-        
+
         return;
     }
-    
+
     // Not in Excel mode: do not fetch
     console.warn('Excel not loaded; skipping server fetch.');
     return;
-        
+
     // In Excel mode we avoid network calls for lists; keep as-is otherwise
     // In this page, players/gks lists must come from Excel-only mode; do nothing otherwise
 }
@@ -4020,67 +4022,67 @@ let filterUpdateThrottle = {
 
 function updateFilterOptions() {
     const now = Date.now();
-    
+
     // If an update is already pending or too soon, skip
     if (filterUpdateThrottle.pendingUpdate || now - filterUpdateThrottle.lastUpdate < filterUpdateThrottle.minInterval) {
         console.log('🚫 Skipping filter update - throttled');
         return;
     }
-    
+
     filterUpdateThrottle.pendingUpdate = true;
     filterUpdateThrottle.lastUpdate = now;
-    
+
     console.log('🔄 Updating filter options...');
-    
+
     const options = alAhlyStatsData.filterOptions;
-    
+
     // Update Champion System dropdown
     updateSelectOptions('champion-system-filter', options.champion_systems || []);
-    
+
     // Update Champion dropdown
     updateSelectOptions('champion-filter', options.champions || []);
-    
+
     // Update Season dropdown
     updateSelectOptions('season-filter', options.seasons || []);
-    
+
     filterUpdateThrottle.pendingUpdate = false;
-    
+
     // Update Ahly Manager dropdown
     updateSelectOptions('ahly-manager-filter', options.ahly_managers || []);
-    
+
     // Update Opponent Manager dropdown
     updateSelectOptions('opponent-manager-filter', options.opponent_managers || []);
-    
+
     // Update Referee dropdown
     updateSelectOptions('referee-filter', options.referees || []);
-    
+
     // Update Round dropdown
     updateSelectOptions('round-filter', options.rounds || []);
-    
+
     // Update H-A-N dropdown
     updateSelectOptions('h-a-n-filter', options.h_a_n_options || []);
-    
+
     // Update Stadium dropdown
     updateSelectOptions('stadium-filter', options.stadiums || []);
-    
+
     // Update Ahly Team dropdown
     updateSelectOptions('ahly-team-filter', options.ahly_teams || []);
-    
+
     // Update Opponent Team dropdown
     updateSelectOptions('opponent-team-filter', options.opponent_teams || []);
-    
+
     // Update Result dropdown
     updateSelectOptions('result-filter', options.results || []);
-    
+
     // Update Clean Sheet dropdown
     updateSelectOptions('clean-sheet-filter', options.clean_sheets || []);
-    
+
     // Update Extra Time dropdown
     updateSelectOptions('extra-time-filter', options.extra_time || []);
-    
+
     // Update Penalties dropdown
     updateSelectOptions('penalties-filter', options.penalties || []);
-    
+
     // Initialize custom searchable inputs on all dropdowns
     initializeSearchableFilters();
 }
@@ -4088,14 +4090,14 @@ function updateFilterOptions() {
 function updateSelectOptions(selectId, options) {
     const select = document.getElementById(selectId);
     if (!select) return;
-    
+
     // Keep the first option (All/Empty)
     const firstOption = select.options[0];
-    
+
     // Clear all options except the first
     select.innerHTML = '';
     select.appendChild(firstOption);
-    
+
     // Add new options
     options.forEach(option => {
         const optionElement = document.createElement('option');
@@ -4115,33 +4117,33 @@ function makeSelectSearchable(select) {
     if (!select || select.dataset.searchable === 'true') return;
     select.style.display = 'none';
     select.dataset.searchable = 'true';
-    
+
     const container = document.createElement('div');
     container.className = 'searchable-select-container';
-    
+
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = select.options[0]?.text || 'Search...';
     input.value = '';
-    
+
     const dropdown = document.createElement('div');
     dropdown.className = 'dropdown-options';
     dropdown.style.display = 'none';
-    
+
     select.parentElement.insertBefore(container, select);
     container.appendChild(input);
     container.appendChild(dropdown);
     container.appendChild(select);
-    
+
     function renderOptions(filterText = '') {
         dropdown.innerHTML = '';
         const text = filterText.toLowerCase();
-        
+
         // Add "All" option at the beginning (always visible)
         const allOption = document.createElement('div');
         allOption.className = 'dropdown-option';
         allOption.textContent = select.options[0]?.text || 'All';
-        allOption.addEventListener('mousedown', function(e) {
+        allOption.addEventListener('mousedown', function (e) {
             e.preventDefault();
             select.value = '';
             input.value = '';
@@ -4150,7 +4152,7 @@ function makeSelectSearchable(select) {
             // Filters only apply when "Apply Filters" button is clicked
         });
         dropdown.appendChild(allOption);
-        
+
         // Add other options
         Array.from(select.options).forEach((opt, idx) => {
             if (idx === 0) return; // skip placeholder (already added as "All")
@@ -4161,7 +4163,7 @@ function makeSelectSearchable(select) {
                 div.className = 'dropdown-option';
                 div.textContent = label;
                 div.dataset.value = value;
-                div.addEventListener('mousedown', function(e) {
+                div.addEventListener('mousedown', function (e) {
                     e.preventDefault();
                     select.value = value;
                     input.value = label;
@@ -4174,17 +4176,17 @@ function makeSelectSearchable(select) {
         });
         dropdown.style.display = dropdown.children.length ? 'block' : 'none';
     }
-    
+
     input.addEventListener('focus', () => renderOptions(input.value));
     input.addEventListener('input', () => renderOptions(input.value));
     input.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
-    
+
     // Sync input when select changes programmatically
     select.addEventListener('change', () => {
         const opt = select.options[select.selectedIndex];
         input.value = opt && opt.value ? opt.text : '';
     });
-    
+
     // Set initial value if select has a selection
     const initialOpt = select.options[select.selectedIndex];
     if (initialOpt && initialOpt.value) {
@@ -4233,7 +4235,7 @@ function updateFilterOptionsFromFilteredData(filteredRecords) {
         });
         return Array.from(values).sort();
     }
-    
+
     // Update each filter dropdown based on filtered data
     const filteredOptions = {
         'champion-system-filter': getUniqueValuesFromFiltered('CHAMPION SYSTEM'),
@@ -4250,28 +4252,28 @@ function updateFilterOptionsFromFilteredData(filteredRecords) {
         'opponent-team-filter': getUniqueValuesFromFiltered('OPPONENT TEAM'),
         'result-filter': getUniqueValuesFromFiltered('W-D-L')
     };
-    
+
     // Update each dropdown while preserving current selections
     Object.keys(filteredOptions).forEach(selectId => {
         const select = document.getElementById(selectId);
         if (!select) return;
-        
+
         const currentValue = select.value;
         const options = filteredOptions[selectId];
-        
+
         // Only update if there are new options and current selection is still valid
         if (currentValue && options.includes(currentValue)) {
             // Current selection is still valid, no need to update this dropdown
             return;
         }
-        
+
         // Keep the first option (All/Empty)
         const firstOption = select.options[0];
-        
+
         // Clear all options except the first
         select.innerHTML = '';
         select.appendChild(firstOption);
-        
+
         // Add new options
         options.forEach(option => {
             const optionElement = document.createElement('option');
@@ -4279,7 +4281,7 @@ function updateFilterOptionsFromFilteredData(filteredRecords) {
             optionElement.textContent = option;
             select.appendChild(optionElement);
         });
-        
+
         // Restore previous selection if it still exists
         if (currentValue && options.includes(currentValue)) {
             select.value = currentValue;
@@ -4292,7 +4294,7 @@ function updateFilterOptionsFromFilteredData(filteredRecords) {
             optionElement.selected = true;
             select.appendChild(optionElement);
         }
-        
+
         // Refresh custom searchable wrapper
         refreshSearchableForSelect(select.id);
     });
@@ -4310,7 +4312,7 @@ function updateFilterOptionsWithPreservedSelections(filteredRecords, preservedFi
         });
         return Array.from(values).sort();
     }
-    
+
     // Update each filter dropdown based on filtered data
     const filteredOptions = {
         'champion-system-filter': getUniqueValuesFromFiltered('CHAMPION SYSTEM'),
@@ -4327,22 +4329,22 @@ function updateFilterOptionsWithPreservedSelections(filteredRecords, preservedFi
         'opponent-team-filter': getUniqueValuesFromFiltered('OPPONENT TEAM'),
         'result-filter': getUniqueValuesFromFiltered('W-D-L')
     };
-    
+
     // Update each dropdown while preserving user selections
     Object.keys(filteredOptions).forEach(selectId => {
         const select = document.getElementById(selectId);
         if (!select) return;
-        
+
         const preservedValue = preservedFilters[selectId];
         const options = filteredOptions[selectId];
-        
+
         // Keep the first option (All/Empty)
         const firstOption = select.options[0];
-        
+
         // Clear all options except the first
         select.innerHTML = '';
         select.appendChild(firstOption);
-        
+
         // Add new options
         options.forEach(option => {
             const optionElement = document.createElement('option');
@@ -4350,7 +4352,7 @@ function updateFilterOptionsWithPreservedSelections(filteredRecords, preservedFi
             optionElement.textContent = option;
             select.appendChild(optionElement);
         });
-        
+
         // Always restore the preserved selection
         if (preservedValue && preservedValue !== '') {
             // Check if the preserved value exists in current options
@@ -4365,14 +4367,14 @@ function updateFilterOptionsWithPreservedSelections(filteredRecords, preservedFi
                 select.appendChild(optionElement);
             }
         }
-        
+
         // Refresh custom searchable wrapper
         refreshSearchableForSelect(select.id);
     });
 }
 
 // Debounced version of applyFilters to prevent excessive calls
-const debouncedApplyFilters = debounce(function() {
+const debouncedApplyFilters = debounce(function () {
     // Get all filter values
     const filters = {
         trophy: document.getElementById('trophy-filter')?.value || '',
@@ -4398,14 +4400,14 @@ const debouncedApplyFilters = debounce(function() {
         extraTime: document.getElementById('extra-time-filter')?.value || '',
         penalties: document.getElementById('penalties-filter')?.value || ''
     };
-    
+
     // Update applied filters to enable filtering for other tabs
     appliedFilters = filters;
-    
+
     // Load data directly from API when filters change
-    
+
     applyFiltersWithData(filters);
-    
+
     // Update H2H T Details if it's currently active
     const currentActiveTab = document.querySelector('.stats-tab.active');
     if (currentActiveTab && currentActiveTab.getAttribute('onclick') && currentActiveTab.getAttribute('onclick').includes('h2h-t-details')) {
@@ -4430,18 +4432,18 @@ function getCurrentFilteredRecords() {
     if (!appliedFilters) {
         return null;
     }
-    
+
     // Use the applied filters instead of reading from DOM
     const filters = appliedFilters;
-    
+
     // Check if any filters are active
     const hasActiveFilters = Object.values(filters).some(value => value !== '');
-    
+
     // If no filters active, return null (use all records)
     if (!hasActiveFilters) {
         return null;
     }
-    
+
     // Filter records based on current filter values
     const filteredRecords = alAhlyStatsData.allRecords.filter(record => {
         // Trophy filter - only show matches from trophy-winning seasons
@@ -4451,11 +4453,11 @@ function getCurrentFilteredRecords() {
                 return false;
             }
         }
-        
+
         return Object.keys(filters).every(key => {
             const filterValue = filters[key];
             if (!filterValue) return true;
-            
+
             // Special handling for date filters (before recordKeyMap check)
             if (key === 'dateFrom') {
                 const recordDate = new Date(record['DATE'] || '');
@@ -4466,7 +4468,7 @@ function getCurrentFilteredRecords() {
                 const filterDate = new Date(filterValue);
                 return !isNaN(recordDate.getTime()) && !isNaN(filterDate.getTime()) && recordDate <= filterDate;
             }
-            
+
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
                 'championSystem': 'CHAMPION SYSTEM',
@@ -4486,12 +4488,12 @@ function getCurrentFilteredRecords() {
                 'extraTime': 'ET',
                 'penalties': 'PEN'
             };
-            
+
             const recordKey = recordKeyMap[key];
             if (!recordKey) return true;
-            
+
             const recordValue = record[recordKey] || '';
-            
+
             if (key === 'result') {
                 if (filterValue === 'D WITH G') {
                     return recordValue === 'D WITH G';
@@ -4507,7 +4509,7 @@ function getCurrentFilteredRecords() {
             }
         });
     });
-    
+
     return filteredRecords;
 }
 
@@ -4517,13 +4519,13 @@ function applyFilters() {
         console.warn('🚫 Skipping applyFilters - request throttled');
         return;
     }
-    
+
     console.log('🔄 Applying filters...');
     debouncedApplyFilters();
     if (typeof renderComparePlayers === 'function') {
         try { renderComparePlayers(); } catch (e) { console.warn('Compare render after debounced filters failed', e); }
     }
-    
+
     // Update H2H T Details if it's currently active
     const currentActiveTab = document.querySelector('.stats-tab.active');
     if (currentActiveTab && currentActiveTab.getAttribute('onclick') && currentActiveTab.getAttribute('onclick').includes('h2h-t-details')) {
@@ -4563,7 +4565,7 @@ function applyFiltersWithPreservedSelections(preservedFilters) {
         extraTime: document.getElementById('extra-time-filter')?.value || '',
         penalties: document.getElementById('penalties-filter')?.value || ''
     };
-    
+
     applyFiltersWithData(filters, preservedFilters);
 }
 
@@ -4577,11 +4579,11 @@ function applyFiltersWithData(filters, preservedFilters = null) {
                 return false;
             }
         }
-        
+
         return Object.keys(filters).every(key => {
             const filterValue = filters[key];
             if (!filterValue) return true; // Skip empty filters
-            
+
             // Special handling for date and numeric filters (before recordKeyMap check)
             if (key === 'dateFrom') {
                 const recordDate = new Date(record['DATE'] || '');
@@ -4596,7 +4598,7 @@ function applyFiltersWithData(filters, preservedFilters = null) {
             } else if (key === 'goalsAgainst') {
                 return parseInt(record['GA'] || 0) <= parseInt(filterValue);
             }
-            
+
             // Map filter keys to record keys
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
@@ -4617,12 +4619,12 @@ function applyFiltersWithData(filters, preservedFilters = null) {
                 'extraTime': 'ET',
                 'penalties': 'PEN'
             };
-            
+
             const recordKey = recordKeyMap[key];
             if (!recordKey) return true; // Skip unmapped filters
-            
+
             const recordValue = record[recordKey] || '';
-            
+
             // Special handling for different filter types
             if (key === 'cleanSheet') {
                 // Use actual CLEAN SHEET column from Excel
@@ -4658,24 +4660,24 @@ function applyFiltersWithData(filters, preservedFilters = null) {
             }
         });
     });
-    
+
     // Store filtered records for HOW WIN and other features
     alAhlyStatsData.filteredRecords = filteredRecords;
-    
+
     // Update displays with filtered data
     updateFilteredStats(filteredRecords);
     loadRecentMatches(filteredRecords.slice(-10)); // Show last 10 filtered matches
-    
+
     // Update filter options based on filtered data (but preserve user selections)
     if (preservedFilters) {
         updateFilterOptionsWithPreservedSelections(filteredRecords, preservedFilters);
     } else {
         updateFilterOptionsFromFilteredData(filteredRecords);
     }
-    
+
     // Update player and goalkeeper stats based on filtered data
     updatePlayerStatsFromFilteredData(filteredRecords);
-    
+
     // Update player statistics with current filters
     if (playersData.selectedPlayer && playersData.selectedPlayer.name) {
         loadPlayerMatches();
@@ -4688,10 +4690,10 @@ function applyFiltersWithData(filters, preservedFilters = null) {
             try {
                 const currentSubTab = getCurrentPlayerSubTab();
                 if (currentSubTab) loadPlayerSubTabData(currentSubTab);
-            } catch (_) {}
+            } catch (_) { }
         }
     }
-    
+
     // Update goalkeeper statistics with current filters
     if (goalkeepersData.selectedGoalkeeper && goalkeepersData.selectedGoalkeeper.name) {
         const teamFilter = document.getElementById('gk-team-filter') ? document.getElementById('gk-team-filter').value : '';
@@ -4702,56 +4704,56 @@ function applyFiltersWithData(filters, preservedFilters = null) {
         loadGKVsTeams(teamFilter);
         loadGKVsPlayers(teamFilter);
     }
-    
+
     // Update H2H Teams data with current filters
     loadH2HTeamsData(filteredRecords);
-    
+
     // Update Coaches data with current filters
-        loadCoachesData(filteredRecords);
-    
+    loadCoachesData(filteredRecords);
+
     // Update All Referees data with current filters
     loadAllRefereesData(filteredRecords);
-    
+
     // Update All Goalkeepers data with current filters
     loadAllGoalkeepersData(filteredRecords);
-    
+
     // Update All Players data with current filters
     loadAllPlayersData(filteredRecords);
-    
+
     // Update Main Stats data with current filters
     const mainStatsTab = document.getElementById('main-stats-tab');
     if (mainStatsTab && mainStatsTab.classList.contains('active')) {
         loadChampionshipsStats();
         loadSeasonsStats();
     }
-    
+
     // Update H2H T Details data with current filters
     const h2hTDetailsTab = document.querySelector('.stats-tab.active');
     if (h2hTDetailsTab && h2hTDetailsTab.getAttribute('onclick') && h2hTDetailsTab.getAttribute('onclick').includes('h2h-t-details')) {
         loadH2HTDetailsTeamsWithFilteredData(filteredRecords);
     }
-    
+
     // Update Variety Goals data if the tab is active
     const varietyGoalsSubtab = document.getElementById('variety-goals-subtab');
     if (varietyGoalsSubtab && varietyGoalsSubtab.classList.contains('active')) {
         loadVarietyGoalsData(filteredRecords);
     }
-    
+
     // Update Penalty Details data if the tab is active
     const penaltyDetailsSubtab = document.getElementById('penalty-details-subtab');
     if (penaltyDetailsSubtab && penaltyDetailsSubtab.classList.contains('active')) {
         loadPenaltyDetailsData(filteredRecords);
     }
-    
+
     // Update tab content to show filtered results
     updateAllTabsWithFilteredData(filteredRecords);
-    
+
     // Update all searchable inputs to show current selections
     updateAllSearchableInputs();
-    
+
     // Update HOW WIN stats
     calculateHowWinStats();
-    
+
     showSuccess(`Filtered ${filteredRecords.length} matches`);
 }
 
@@ -4763,7 +4765,7 @@ function updateFilteredStats(filteredRecords) {
         const wdl = normalizeStr(r['W-D-L'] || '');
         return wdl === 'D' || wdl === 'D WITH G' || wdl === 'DWITHG' || wdl === 'D.' || wdl === 'D WITHOUT G' || wdl === 'DWITHOUTG';
     }).length;
-    
+
     // Calculate draws with goals and draws without goals - exact count from W-D-L column
     const drawsWithGoals = filteredRecords.filter(r => {
         const wdl = normalizeStr(r['W-D-L'] || '');
@@ -4773,16 +4775,16 @@ function updateFilteredStats(filteredRecords) {
         const wdl = normalizeStr(r['W-D-L'] || '');
         return wdl === 'D.' || wdl === 'D WITHOUT G' || wdl === 'DWITHOUTG';
     }).length;
-    
+
     const totalLosses = filteredRecords.filter(r => normalizeStr(r['W-D-L'] || '') === 'L').length;
-    
+
     const totalGoalsFor = filteredRecords.reduce((sum, r) => sum + (parseInt(r['GF'] || 0)), 0);
     const totalGoalsAgainst = filteredRecords.reduce((sum, r) => sum + (parseInt(r['GA'] || 0)), 0);
-    
+
     const cleanSheets = filteredRecords.filter(r => parseInt(r['GA'] || 0) === 0).length;
     const cleanSheetsAgainst = filteredRecords.filter(r => parseInt(r['GF'] || 0) === 0).length;
     const winRate = totalMatches > 0 ? parseFloat((totalWins / totalMatches * 100).toFixed(1)) : 0;
-    
+
     updateOverviewStats({
         totalMatches,
         totalWins,
@@ -4802,9 +4804,9 @@ function updatePlayerStatsFromFilteredData(filteredRecords) {
     // This function would analyze filtered matches to calculate player statistics
     // For now, we'll use the sample data but in a real implementation,
     // you would analyze the filtered matches to get actual player stats
-    
+
     console.log(`Updating player stats for ${filteredRecords.length} filtered matches`);
-    
+
     // Example: Calculate top scorers from filtered matches
     // This is a simplified example - in reality you'd need player data from another sheet
     const filteredTopScorers = [
@@ -4827,7 +4829,7 @@ function updatePlayerStatsFromFilteredData(filteredRecords) {
             tbody.appendChild(row);
         });
     }
-    
+
     // Update goalkeeper stats similarly
     const filteredGKStats = [
         ['GK A', filteredRecords.length, Math.floor(Math.random() * 5), Math.floor(Math.random() * 3)],
@@ -4856,27 +4858,27 @@ function updateAllTabsWithFilteredData(filteredRecords) {
     const matchHistoryTab = document.querySelector('[onclick*="matches"]');
     const playerStatsTab = document.querySelector('[onclick*="players"]');
     const gkStatsTab = document.querySelector('[onclick*="gk"]');
-    
+
     // Don't update tab names with counts - keep original tab names
-    
+
     // Update Match History table with filtered data
     loadAllMatches(filteredRecords);
-    
+
     // Update any other tab-specific content based on filtered data
     console.log(`Updated all tabs with ${filteredRecords.length} filtered matches`);
 }
 function clearFilters() {
     console.log('Clearing all filters...');
-    
+
     // Clear applied filters
     appliedFilters = null;
-    
+
     // Clear all filter inputs
     const filterInputs = document.querySelectorAll('.filter-field input, .filter-field select');
     filterInputs.forEach(input => {
         input.value = '';
     });
-    
+
     // Also clear specific filter elements by ID
     const specificFilters = [
         'trophy-filter', 'match-id-filter', 'champion-system-filter', 'champion-filter', 'season-filter', 'sy-filter',
@@ -4885,7 +4887,7 @@ function clearFilters() {
         'goals-for-filter', 'goals-against-filter', 'result-filter', 'clean-sheet-filter',
         'extra-time-filter', 'penalties-filter', 'date-from-filter', 'date-to-filter'
     ];
-    
+
     specificFilters.forEach(filterId => {
         const element = document.getElementById(filterId);
         if (element) {
@@ -4893,7 +4895,7 @@ function clearFilters() {
             console.log(`✅ Cleared filter: ${filterId}`);
         }
     });
-    
+
     // Reset current filters object
     currentFilters = {
         season: '',
@@ -4903,28 +4905,28 @@ function clearFilters() {
             end: ''
         }
     };
-    
+
     console.log('Filters cleared, reloading data...');
-    
+
     // Reload original data without filters
     loadAlAhlyStats();
-    
+
     // Force reload all data from cache to show unfiltered results
     if (window.__ahlySheetsJson && Object.keys(window.__ahlySheetsJson).length > 0) {
         console.log('Reloading unfiltered data from cache...');
-        
+
         // Use original unfiltered data if available, otherwise get fresh from cache
-        const matchDetails = alAhlyStatsData.originalRecords.length > 0 ? 
-            alAhlyStatsData.originalRecords : 
+        const matchDetails = alAhlyStatsData.originalRecords.length > 0 ?
+            alAhlyStatsData.originalRecords :
             getSheetRowsByCandidates(['MATCHDETAILS']);
-        
+
         if (matchDetails && matchDetails.length > 0) {
             console.log(`Restoring ${matchDetails.length} original unfiltered matches`);
-            
+
             // Update alAhlyStatsData with original unfiltered data
             alAhlyStatsData.allRecords = matchDetails;
             alAhlyStatsData.matches = matchDetails;
-            
+
             // Recalculate statistics with fresh data
             alAhlyStatsData.totalMatches = matchDetails.length;
             alAhlyStatsData.wins = matchDetails.filter(m => normalizeStr(m['W-D-L']) === 'W').length;
@@ -4934,7 +4936,7 @@ function clearFilters() {
             alAhlyStatsData.totalGoalsAgainst = matchDetails.reduce((sum, m) => sum + (parseInt(m.GA) || 0), 0);
             alAhlyStatsData.cleanSheets = matchDetails.filter(m => parseInt(m.GA || 0) === 0).length;
             alAhlyStatsData.cleanSheetsAgainst = matchDetails.filter(m => parseInt(m.GF || 0) === 0).length;
-            
+
             console.log('Fresh unfiltered statistics:', {
                 totalMatches: alAhlyStatsData.totalMatches,
                 wins: alAhlyStatsData.wins,
@@ -4945,7 +4947,7 @@ function clearFilters() {
                 cleanSheets: alAhlyStatsData.cleanSheets,
                 cleanSheetsAgainst: alAhlyStatsData.cleanSheetsAgainst
             });
-            
+
             // Force immediate update of overview cards with fresh unfiltered data
             setTimeout(() => {
                 console.log('🔄 Force updating overview cards with fresh unfiltered data...');
@@ -4960,7 +4962,7 @@ function clearFilters() {
                     cleanSheets: alAhlyStatsData.cleanSheets || 0,
                     cleanSheetsAgainst: alAhlyStatsData.cleanSheetsAgainst || 0
                 };
-                
+
                 // Update H2H T Details if it's currently active
                 const currentActiveTab = document.querySelector('.stats-tab.active');
                 if (currentActiveTab && currentActiveTab.getAttribute('onclick') && currentActiveTab.getAttribute('onclick').includes('h2h-t-details')) {
@@ -4975,7 +4977,7 @@ function clearFilters() {
                         loadH2HTDetailsData(selectedTeam);
                     }
                 }
-                
+
                 const elements = {
                     'total-matches': stats.totalMatches,
                     'total-wins': stats.totalWins,
@@ -4988,7 +4990,7 @@ function clearFilters() {
                     'clean-sheets': stats.cleanSheets,
                     'clean-sheets-against': stats.cleanSheetsAgainst
                 };
-                
+
                 Object.entries(elements).forEach(([id, value]) => {
                     const element = document.getElementById(id);
                     if (element) {
@@ -4999,12 +5001,12 @@ function clearFilters() {
                     }
                 });
             }, 50);
-            
+
             // Update all displays with fresh unfiltered data
             updateOverviewStats();
             updateCharts();
             updateTables();
-            
+
             // Rebuild main filter options from unfiltered data
             rebuildMainFilterOptionsFrom(matchDetails);
 
@@ -5013,27 +5015,27 @@ function clearFilters() {
             if (matchCountBadge && alAhlyStatsData.totalMatches) {
                 matchCountBadge.textContent = `${alAhlyStatsData.totalMatches} matches`;
             }
-            
+
             // Update all matches table with fresh unfiltered data
             loadAllMatches(matchDetails);
         }
     }
-    
+
     // Reload players data from cached sheets
     console.log('Reloading players data from cached sheets...');
     loadPlayersData();
-    
+
     // Reload goalkeepers data from cached sheets
     console.log('Reloading goalkeepers data from cached sheets...');
     loadGoalkeepersData();
-    
+
     // Update goalkeeper statistics with cleared filters
     if (goalkeepersData.selectedGoalkeeper && goalkeepersData.selectedGoalkeeper.name) {
         console.log('Updating goalkeeper stats with cleared filters...');
         loadGKOverviewStats(goalkeepersData.selectedGoalkeeper.name);
         loadGKChampionships();
     }
-    
+
     // Update player statistics with cleared filters
     if (playersData.selectedPlayer && playersData.selectedPlayer.name) {
         console.log('Updating player stats with cleared filters...');
@@ -5043,23 +5045,23 @@ function clearFilters() {
         loadPlayerVsTeamsStats();
         loadPlayerVsGKsStats();
     }
-    
+
     // Update H2H Teams data with unfiltered data
     loadH2HTeamsData();
-    
+
     // Update Coaches data with unfiltered data
     loadCoachesData();
-    
+
     // Update All Goalkeepers data with unfiltered data
     loadAllGoalkeepersData();
-    
+
     // Update All Players data with unfiltered data
     loadAllPlayersData();
-    
+
     // Final force update after everything is cleared
     setTimeout(() => {
         console.log('🔄 Final force update of all displays...');
-        
+
         // Force update overview stats one more time
         if (alAhlyStatsData.totalMatches > 0) {
             const stats = {
@@ -5072,7 +5074,7 @@ function clearFilters() {
                 winRate: alAhlyStatsData.totalMatches > 0 ? ((alAhlyStatsData.wins / alAhlyStatsData.totalMatches) * 100) : 0,
                 cleanSheets: (alAhlyStatsData.allRecords || []).filter(r => parseInt(r['GA'] || 0) === 0).length
             };
-            
+
             const elements = {
                 'total-matches': stats.totalMatches,
                 'total-wins': stats.totalWins,
@@ -5084,7 +5086,7 @@ function clearFilters() {
                 'win-rate': parseFloat(stats.winRate.toFixed(1)) + '%',
                 'clean-sheets': stats.cleanSheets
             };
-            
+
             Object.entries(elements).forEach(([id, value]) => {
                 const element = document.getElementById(id);
                 if (element) {
@@ -5094,18 +5096,18 @@ function clearFilters() {
             });
         }
     }, 200);
-    
+
     console.log('All filters cleared and data reloaded');
 }
 // loadAllData removed per product decision; intentionally no-op if referenced
 
 function refreshStats() {
     // Load data directly from API when refreshing
-    
+
     // Get the refresh button
     const refreshButton = document.querySelector('.refresh-btn');
     if (!refreshButton) return;
-    
+
     // Disable button and show loading state
     refreshButton.disabled = true;
     const originalText = refreshButton.innerHTML;
@@ -5116,11 +5118,11 @@ function refreshStats() {
         </svg>
         Syncing...
     `;
-    
+
     // Add spinning animation
     refreshButton.style.opacity = '0.7';
     refreshButton.style.cursor = 'not-allowed';
-    
+
     if (window.__ahlyExcelMode) {
         loadAlAhlyStats();
         refreshButton.disabled = false;
@@ -5129,7 +5131,7 @@ function refreshStats() {
         refreshButton.style.cursor = 'pointer';
         return;
     }
-    
+
     // In non-Excel mode do nothing
     refreshButton.disabled = false;
     refreshButton.innerHTML = originalText;
@@ -5145,7 +5147,7 @@ function checkDataStatus() {
 function loadRecentMatches(matches = []) {
     const tbody = document.querySelector('#recent-matches-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
 
     if (!matches || matches.length === 0) {
@@ -5207,7 +5209,7 @@ function loadAllMatches(allRecords) {
     tableBody.innerHTML = '';
 
     // Sort matches by date (newest first) with robust Excel/date parsing
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseAnyDate(val) {
         const s = String(val || '').trim();
         const d1 = Date.parse(s);
@@ -5215,7 +5217,7 @@ function loadAllMatches(allRecords) {
         const m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) return new Date(yr, mon, day).getTime();
         }
@@ -5224,11 +5226,34 @@ function loadAllMatches(allRecords) {
         return 0;
     }
 
+    // Store sorted matches for pagination
     const sortedMatches = [...allRecords].sort((a, b) => parseAnyDate(b.DATE) - parseAnyDate(a.DATE));
+    alAhlyStatsData.currentSortedMatches = sortedMatches;
 
-    sortedMatches.forEach(match => {
+    renderMatchesTableWithType(sortedMatches);
+}
+
+function renderMatchesTableWithType(sortedMatches) {
+    const tableBody = document.querySelector('#all-matches-table tbody');
+    const matchCountBadge = document.getElementById('match-count-badge');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+
+    // Pagination Logic
+    const currentPage = alAhlyStatsData.matchesCurrentPage || 1;
+    const rowsPerPage = alAhlyStatsData.matchesRowsPerPage || 50;
+
+    let matchesToRender = sortedMatches;
+    if (rowsPerPage !== 'all') {
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + parseInt(rowsPerPage);
+        matchesToRender = sortedMatches.slice(start, end);
+    }
+
+    matchesToRender.forEach(match => {
         const row = document.createElement('tr');
-        
+
         // Format date for display (keep sheet string or format Excel serial)
         let formattedDate = String(match.DATE || '').trim();
         if (/^\d+(\.\d+)?$/.test(formattedDate)) {
@@ -5240,7 +5265,7 @@ function loadAllMatches(allRecords) {
         } else if (!formattedDate) {
             formattedDate = 'N/A';
         }
-        
+
         row.innerHTML = `
             <td><strong>${match.MATCH_ID || 'N/A'}</strong></td>
             <td>${formattedDate}</td>
@@ -5254,14 +5279,122 @@ function loadAllMatches(allRecords) {
             <td>${match.GA || 0}</td>
             <td>${match['OPPONENT TEAM'] || 'N/A'}</td>
         `;
-        
+
         tableBody.appendChild(row);
     });
+
+    // Render pagination controls
+    renderPaginationControls(sortedMatches.length);
 
     // Update match count badge
     if (matchCountBadge) {
         matchCountBadge.textContent = `${sortedMatches.length} matches`;
     }
+}
+
+// ============================================================================
+// PAGINATION FUNCTIONS
+// ============================================================================
+
+function changeMatchesRowsPerPage(val) {
+    alAhlyStatsData.matchesRowsPerPage = val;
+    alAhlyStatsData.matchesCurrentPage = 1; // Reset to first page
+
+    // Re-render matches (using currently available sorted data)
+    if (alAhlyStatsData.currentSortedMatches) {
+        renderMatchesTableWithType(alAhlyStatsData.currentSortedMatches);
+    } else {
+        // Fallback: reload all matches if no cache
+        loadAllMatches(alAhlyStatsData.allRecords || []);
+    }
+}
+
+function changeMatchesPage(page) {
+    alAhlyStatsData.matchesCurrentPage = page;
+
+    // Re-render matches (using currently available sorted data)
+    if (alAhlyStatsData.currentSortedMatches) {
+        renderMatchesTableWithType(alAhlyStatsData.currentSortedMatches);
+    } else {
+        // Fallback
+        loadAllMatches(alAhlyStatsData.allRecords || []);
+    }
+}
+
+function renderPaginationControls(totalRows) {
+    const container = document.getElementById('matches-pagination');
+    if (!container) return;
+
+    const rowsPerPage = alAhlyStatsData.matchesRowsPerPage;
+    const currentPage = alAhlyStatsData.matchesCurrentPage;
+
+    if (rowsPerPage === 'all') {
+        container.innerHTML = '';
+        const info = document.getElementById('matches-pagination-info');
+        if (info) info.textContent = `${totalRows} of ${totalRows}`;
+        return;
+    }
+
+    const start = (currentPage - 1) * rowsPerPage + 1;
+    const end = Math.min(currentPage * rowsPerPage, totalRows);
+    const info = document.getElementById('matches-pagination-info');
+    if (info) info.textContent = `${start}-${end} of ${totalRows}`;
+
+    const totalPages = Math.ceil(totalRows / parseInt(rowsPerPage));
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    html += `<button class="pagination-btn ${currentPage === 1 ? 'disabled' : ''}" 
+        onclick="if(${currentPage} > 1) changeMatchesPage(${currentPage - 1})" 
+        ${currentPage === 1 ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${currentPage === 1 ? '#f3f4f6' : 'white'}; cursor: ${currentPage === 1 ? 'not-allowed' : 'pointer'};">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>`;
+
+    // Page Numbers (Show window around current page)
+    const windowSize = 2;
+    let startPage = Math.max(1, currentPage - windowSize);
+    let endPage = Math.min(totalPages, currentPage + windowSize);
+
+    // Adjust window if close to boundaries
+    if (currentPage <= windowSize) {
+        endPage = Math.min(totalPages, 1 + (windowSize * 2));
+    }
+    if (currentPage >= totalPages - windowSize) {
+        startPage = Math.max(1, totalPages - (windowSize * 2));
+    }
+
+    if (startPage > 1) {
+        html += `<button class="pagination-btn" onclick="changeMatchesPage(1)" style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">1</button>`;
+        if (startPage > 2) html += `<span class="pagination-ellipsis" style="padding: 0 0.25rem;">...</span>`;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        html += `<button class="pagination-btn" 
+            onclick="changeMatchesPage(${i})"
+            style="padding: 0.25rem 0.75rem; border: 1px solid ${isActive ? '#2563eb' : '#d1d5db'}; border-radius: 0.375rem; background: ${isActive ? '#2563eb' : 'white'}; color: ${isActive ? 'white' : 'black'}; cursor: pointer;">${i}</button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis" style="padding: 0 0.25rem;">...</span>`;
+        html += `<button class="pagination-btn" onclick="changeMatchesPage(${totalPages})" style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">${totalPages}</button>`;
+    }
+
+    // Next Button
+    html += `<button class="pagination-btn ${currentPage === totalPages ? 'disabled' : ''}" 
+        onclick="if(${currentPage} < ${totalPages}) changeMatchesPage(${currentPage + 1})" 
+        ${currentPage === totalPages ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${currentPage === totalPages ? '#f3f4f6' : 'white'}; cursor: ${currentPage === totalPages ? 'not-allowed' : 'pointer'};">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>`;
+
+    container.innerHTML = html;
 }
 
 function loadTopPerformers() {
@@ -5276,7 +5409,7 @@ function loadTopPerformers() {
 
     const tbody = document.querySelector('#top-scorers-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
 
     sampleScorers.forEach(player => {
@@ -5296,11 +5429,11 @@ function loadTopPerformers() {
 async function loadPlayerOverviewStats(playerName) {
     console.log(`🔄 Loading stats for player (Excel): ${playerName}`);
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log(`🔄 Loading Overview stats for player: ${playerName}, team filter: ${teamFilter}, applied filters:`, appliedFilters);
-    
+
     const details = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
@@ -5314,15 +5447,15 @@ async function loadPlayerOverviewStats(playerName) {
             const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
             if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
-        
+
         // Apply main filters to match data
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
-        const matchDetail = matchDetails.find(match => 
+        const matchDetail = matchDetails.find(match =>
             normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
         );
-        
+
         const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
-        
+
         return filtersMatch;
     });
 
@@ -5369,33 +5502,33 @@ async function loadPlayerOverviewStats(playerName) {
         if (teamLower) {
             if (normalizeTeamKey(teamFilter) !== 'ahly') return false;
         }
-        
+
         // Apply main filters to match data
         const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || '');
-        const matchDetail = matchDetails.find(match => 
+        const matchDetail = matchDetails.find(match =>
             normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
         );
-        
+
         const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
-        
+
         return filtersMatch;
     });
     const totalMatches = lineupRows.length;
     let totalMinutes = 0;
     let starterMatches = 0;
     let substituteMatches = 0;
-    
+
     // Count unique matches by status (STATUS column in LINEUPDETAILS)
     const starterMatchIds = new Set();
     const substituteMatchIds = new Set();
-    
+
     lineupRows.forEach(l => {
         totalMinutes += safeInt(l.MINTOTAL || l['MIN TOTAL'] || l.MINUTES || 0);
-        
+
         // Get STATUS from LINEUPDETAILS (can be "اساسي" or "احتياطي")
         const status = normalizeStr(l.STATUS || l.STATU || '').toLowerCase();
         const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || '');
-        
+
         if (matchId) {
             if (status === 'اساسي' || status === 'starter') {
                 starterMatchIds.add(matchId);
@@ -5404,7 +5537,7 @@ async function loadPlayerOverviewStats(playerName) {
             }
         }
     });
-    
+
     starterMatches = starterMatchIds.size;
     substituteMatches = substituteMatchIds.size;
 
@@ -5428,7 +5561,7 @@ async function loadPlayerOverviewStats(playerName) {
     lineupRows.forEach(l => {
         const matchId = normalizeStr(l.MATCH_ID || l['MATCH ID'] || l.match_id);
         if (!matchId) return;
-        
+
         const matchStats = perMatch.get(matchId);
         if (matchStats && matchStats.goals > 0) {
             matchesWithGoals += 1;
@@ -5445,7 +5578,7 @@ async function loadPlayerOverviewStats(playerName) {
         const matchStats = perMatch.get(matchId);
         const goals = (matchStats && matchStats.goals) || 0;
         const assists = (matchStats && matchStats.assists) || 0;
-        
+
         return {
             matchId: matchId,
             date: match ? (match.DATE || 0) : 0,
@@ -5468,14 +5601,14 @@ async function loadPlayerOverviewStats(playerName) {
     const noGoalStreak = (typeof findLongestConsecutiveNoGoalStreak === 'function') ? findLongestConsecutiveNoGoalStreak(lineupWithDates) : [];
     const assistStreak = (typeof findLongestConsecutiveAssistStreak === 'function') ? findLongestConsecutiveAssistStreak(lineupWithDates) : [];
     const noAssistStreak = (typeof findLongestConsecutiveNoAssistStreak === 'function') ? findLongestConsecutiveNoAssistStreak(lineupWithDates) : [];
-    
+
     const maxGAStreak = gaStreak.length;
     const maxNoGAStreak = noGAStreak.length;
     const maxGoalStreak = goalStreak.length;
     const maxNoGoalStreak = noGoalStreak.length;
     const maxAssistStreak = assistStreak.length;
     const maxNoAssistStreak = noAssistStreak.length;
-    
+
     // Get date ranges from the actual streak matches
     const maxGAStreakStart = gaStreak.length > 0 ? gaStreak[0].date : null;
     const maxGAStreakEnd = gaStreak.length > 0 ? gaStreak[gaStreak.length - 1].date : null;
@@ -5493,15 +5626,15 @@ async function loadPlayerOverviewStats(playerName) {
     // Format dates for display
     function formatDateForDisplay(dateVal) {
         if (!dateVal) return '';
-        const monthMap = { 0:'Jan', 1:'Feb', 2:'Mar', 3:'Apr', 4:'May', 5:'Jun', 6:'Jul', 7:'Aug', 8:'Sep', 9:'Oct', 10:'Nov', 11:'Dec' };
-        
+        const monthMap = { 0: 'Jan', 1: 'Feb', 2: 'Mar', 3: 'Apr', 4: 'May', 5: 'Jun', 6: 'Jul', 7: 'Aug', 8: 'Sep', 9: 'Oct', 10: 'Nov', 11: 'Dec' };
+
         const str = String(dateVal).trim();
-        
+
         // If already in dd-MMM-yyyy format, return as is
         if (/^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(str)) {
             return str;
         }
-        
+
         // Try to parse Excel serial number (should be > 25569 for dates after 1970)
         const num = parseFloat(str);
         if (!isNaN(num) && num > 100) { // Excel serial numbers for real dates are usually > 100
@@ -5510,7 +5643,7 @@ async function loadPlayerOverviewStats(playerName) {
             const adjustedNum = num > 60 ? num - 1 : num;
             const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
             const t = new Date(excelEpoch.getTime() + (adjustedNum * 86400 * 1000));
-            
+
             if (!isNaN(t.getTime()) && t.getFullYear() > 1900) {
                 const dd = String(t.getDate()).padStart(2, '0');
                 const MMM = monthMap[t.getMonth()];
@@ -5518,7 +5651,7 @@ async function loadPlayerOverviewStats(playerName) {
                 return `${dd}-${MMM}-${yyyy}`;
             }
         }
-        
+
         // Try to parse as regular date string
         const d = new Date(dateVal);
         if (!isNaN(d.getTime()) && d.getFullYear() > 1900) {
@@ -5527,30 +5660,30 @@ async function loadPlayerOverviewStats(playerName) {
             const yyyy = d.getFullYear();
             return `${dd}-${MMM}-${yyyy}`;
         }
-        
+
         return str;
     }
 
-    const gaStreakPeriod = (maxGAStreakStart && maxGAStreakEnd) 
+    const gaStreakPeriod = (maxGAStreakStart && maxGAStreakEnd)
         ? `${formatDateForDisplay(maxGAStreakStart)} to ${formatDateForDisplay(maxGAStreakEnd)}`
         : '';
-    
+
     const noGAStreakPeriod = (maxNoGAStreakStart && maxNoGAStreakEnd)
         ? `${formatDateForDisplay(maxNoGAStreakStart)} to ${formatDateForDisplay(maxNoGAStreakEnd)}`
         : '';
-    
-    const goalStreakPeriod = (maxGoalStreakStart && maxGoalStreakEnd) 
+
+    const goalStreakPeriod = (maxGoalStreakStart && maxGoalStreakEnd)
         ? `${formatDateForDisplay(maxGoalStreakStart)} to ${formatDateForDisplay(maxGoalStreakEnd)}`
         : '';
-    
+
     const noGoalStreakPeriod = (maxNoGoalStreakStart && maxNoGoalStreakEnd)
         ? `${formatDateForDisplay(maxNoGoalStreakStart)} to ${formatDateForDisplay(maxNoGoalStreakEnd)}`
         : '';
-    
-    const assistStreakPeriod = (maxAssistStreakStart && maxAssistStreakEnd) 
+
+    const assistStreakPeriod = (maxAssistStreakStart && maxAssistStreakEnd)
         ? `${formatDateForDisplay(maxAssistStreakStart)} to ${formatDateForDisplay(maxAssistStreakEnd)}`
         : '';
-    
+
     const noAssistStreakPeriod = (maxNoAssistStreakStart && maxNoAssistStreakEnd)
         ? `${formatDateForDisplay(maxNoAssistStreakStart)} to ${formatDateForDisplay(maxNoAssistStreakEnd)}`
         : '';
@@ -5595,7 +5728,7 @@ async function loadPlayerOverviewStats(playerName) {
 // Function to update player overview cards
 function updatePlayerOverviewCards(stats) {
     console.log('Updating cards with stats:', stats);
-    
+
     // Update each card with the corresponding stat
     const elements = [
         'player-total-matches', 'player-total-minutes', 'player-matches-with-goals', 'player-matches-without-goals',
@@ -5609,7 +5742,7 @@ function updatePlayerOverviewCards(stats) {
         // Own Goal
         'player-own-goal'
     ];
-    
+
     const values = [
         stats.total_matches, stats.total_minutes, stats.matches_with_goals, stats.matches_without_goals,
         stats.consecutive_ga, stats.consecutive_no_ga, stats.consecutive_goals, stats.consecutive_no_goals, stats.consecutive_assists, stats.consecutive_no_assists,
@@ -5622,7 +5755,7 @@ function updatePlayerOverviewCards(stats) {
         // Own Goal
         stats.own_goal
     ];
-    
+
     for (let i = 0; i < elements.length; i++) {
         const element = document.getElementById(elements[i]);
         if (element) {
@@ -5632,50 +5765,50 @@ function updatePlayerOverviewCards(stats) {
             console.error(`Element not found: ${elements[i]}`);
         }
     }
-    
+
     // Update starter and substitute matches counts
     const starterMatchesEl = document.getElementById('player-starter-matches');
     const substituteMatchesEl = document.getElementById('player-substitute-matches');
-    
+
     if (starterMatchesEl) {
         starterMatchesEl.textContent = stats.starter_matches || 0;
     }
-    
+
     if (substituteMatchesEl) {
         substituteMatchesEl.textContent = stats.substitute_matches || 0;
     }
-    
+
     // Update period details for consecutive streaks
     const consecutiveGAPeriod = document.getElementById('player-consecutive-ga-period');
     if (consecutiveGAPeriod) {
         consecutiveGAPeriod.textContent = stats.consecutive_ga_period || '';
         consecutiveGAPeriod.style.display = stats.consecutive_ga_period ? 'block' : 'none';
     }
-    
+
     const consecutiveNoGAPeriod = document.getElementById('player-consecutive-no-ga-period');
     if (consecutiveNoGAPeriod) {
         consecutiveNoGAPeriod.textContent = stats.consecutive_no_ga_period || '';
         consecutiveNoGAPeriod.style.display = stats.consecutive_no_ga_period ? 'block' : 'none';
     }
-    
+
     const consecutiveGoalsPeriod = document.getElementById('player-consecutive-goals-period');
     if (consecutiveGoalsPeriod) {
         consecutiveGoalsPeriod.textContent = stats.consecutive_goals_period || '';
         consecutiveGoalsPeriod.style.display = stats.consecutive_goals_period ? 'block' : 'none';
     }
-    
+
     const consecutiveNoGoalsPeriod = document.getElementById('player-consecutive-no-goals-period');
     if (consecutiveNoGoalsPeriod) {
         consecutiveNoGoalsPeriod.textContent = stats.consecutive_no_goals_period || '';
         consecutiveNoGoalsPeriod.style.display = stats.consecutive_no_goals_period ? 'block' : 'none';
     }
-    
+
     const consecutiveAssistsPeriod = document.getElementById('player-consecutive-assists-period');
     if (consecutiveAssistsPeriod) {
         consecutiveAssistsPeriod.textContent = stats.consecutive_assists_period || '';
         consecutiveAssistsPeriod.style.display = stats.consecutive_assists_period ? 'block' : 'none';
     }
-    
+
     const consecutiveNoAssistsPeriod = document.getElementById('player-consecutive-no-assists-period');
     if (consecutiveNoAssistsPeriod) {
         consecutiveNoAssistsPeriod.textContent = stats.consecutive_no_assists_period || '';
@@ -5689,20 +5822,20 @@ function loadPlayerOverviewWithFilter(selectedTeams) {
         loadPlayerOverview();
         return;
     }
-    
+
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
-    
+
     // Temporarily set the team filter in the DOM element for loadPlayerOverviewStats to use
     const teamFilterElement = document.getElementById('player-team-filter');
     const originalValue = teamFilterElement ? teamFilterElement.value : '';
     if (teamFilterElement) {
         teamFilterElement.value = teamFilter;
     }
-    
+
     // Load the overview stats with the team filter
     loadPlayerOverviewStats(playerName);
-    
+
     // Restore original value
     if (teamFilterElement) {
         teamFilterElement.value = originalValue;
@@ -5756,16 +5889,16 @@ function loadPlayerMatchesWithFilter(selectedTeams) {
         return;
     }
     const playerName = playersData.selectedPlayer.name;
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for player matches:', appliedFilters);
-    
+
     if (window.__ahlySheetsJson) {
         const rows = getPlayerMatchesFromSheets(playerName, selectedTeams, appliedFilters);
         console.log('Player matches rows:', rows.length);
         console.log('Player matches data:', rows);
-        
+
         // Get all team matches in the date range and find non-participated matches
         const allMatchesWithNonPlayed = getPlayerMatchesWithNonPlayed(playerName, selectedTeams, appliedFilters, rows);
         // Store matches data globally for filtering
@@ -5786,7 +5919,7 @@ function loadPlayerMatches() {
     console.log('Loading player matches');
     console.log('Selected player:', playersData.selectedPlayer);
     console.log('Excel data available:', !!window.__ahlySheetsJson);
-    
+
     if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
         const tbody = document.querySelector('#player-matches-table tbody');
         if (tbody) {
@@ -5796,17 +5929,17 @@ function loadPlayerMatches() {
     }
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Loading player matches with filters:', appliedFilters);
-    
+
     // Try Excel first, fallback to API
     let rows = [];
     if (window.__ahlySheetsJson) {
         rows = getPlayerMatchesFromSheets(playerName, teamFilter, appliedFilters);
         console.log('Excel data - player matches rows:', rows.length);
-        
+
         // Get all team matches in the date range and find non-participated matches
         const allMatchesWithNonPlayed = getPlayerMatchesWithNonPlayed(playerName, teamFilter, appliedFilters, rows);
         // Store matches data globally for filtering
@@ -5850,25 +5983,25 @@ function updatePlayerMatchesCounts() {
     const matchesWithGoalsEl = document.getElementById('matches-with-goals-count');
     const matchesWithAssistsEl = document.getElementById('matches-with-assists-count');
     const matchesWithGoalsAssistsEl = document.getElementById('matches-with-goals-assists-count');
-    
+
     if (playedCountEl) {
         playedCountEl.textContent = playerMatchesData.played.length || 0;
     }
-    
+
     if (nonPlayedCountEl) {
         nonPlayedCountEl.textContent = playerMatchesData.nonPlayed.length || 0;
     }
-    
+
     // Calculate matches with goals, assists, and both
     let matchesWithGoals = 0;
     let matchesWithAssists = 0;
     let matchesWithGoalsAssists = 0;
-    
+
     if (playerMatchesData.played && playerMatchesData.played.length > 0) {
         playerMatchesData.played.forEach(match => {
             const goals = typeof match.goals === 'number' ? match.goals : (match.ga === 'GOAL' ? 1 : 0);
             const assists = typeof match.assists === 'number' ? match.assists : (match.ga === 'ASSIST' ? 1 : 0);
-            
+
             if (goals > 0 && assists > 0) {
                 matchesWithGoalsAssists++;
                 matchesWithGoals++;
@@ -5880,15 +6013,15 @@ function updatePlayerMatchesCounts() {
             }
         });
     }
-    
+
     if (matchesWithGoalsEl) {
         matchesWithGoalsEl.textContent = matchesWithGoals || 0;
     }
-    
+
     if (matchesWithAssistsEl) {
         matchesWithAssistsEl.textContent = matchesWithAssists || 0;
     }
-    
+
     if (matchesWithGoalsAssistsEl) {
         matchesWithGoalsAssistsEl.textContent = matchesWithGoalsAssists || 0;
     }
@@ -5898,10 +6031,10 @@ function updatePlayerMatchesCounts() {
 function filterPlayerMatches() {
     const filterSelect = document.getElementById('player-matches-filter');
     if (!filterSelect) return;
-    
+
     const filterType = filterSelect.value || 'all';
     console.log('Filtering player matches:', filterType);
-    
+
     // Use stored matches data to re-render with filter
     renderPlayerMatchesTable(playerMatchesData.played, playerMatchesData.nonPlayed, filterType);
 }
@@ -5910,7 +6043,7 @@ function renderPlayerMatchesTable(playedMatches, nonPlayedMatches = [], filterTy
     const tbody = document.querySelector('#player-matches-table tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     // Get filter type from dropdown if not provided
     if (filterType === 'all' || filterType === undefined || filterType === null) {
         const filterSelect = document.getElementById('player-matches-filter');
@@ -5920,19 +6053,19 @@ function renderPlayerMatchesTable(playedMatches, nonPlayedMatches = [], filterTy
             filterType = 'all';
         }
     }
-    
+
     // Filter matches based on selection
     let matchesToDisplay = [];
-    
+
     // For goals/assists filters, only use played matches (non-played matches don't have goals/assists)
     if (filterType === 'with-goals' || filterType === 'with-assists' || filterType === 'with-goals-assists') {
         matchesToDisplay = [...(playedMatches || [])];
-        
+
         // Apply goals/assists filtering
         matchesToDisplay = matchesToDisplay.filter(m => {
             const goals = typeof m.goals === 'number' ? m.goals : (m.ga === 'GOAL' ? 1 : 0);
             const assists = typeof m.assists === 'number' ? m.assists : (m.ga === 'ASSIST' ? 1 : 0);
-            
+
             if (filterType === 'with-goals') {
                 return goals > 0;
             } else if (filterType === 'with-assists') {
@@ -5950,14 +6083,14 @@ function renderPlayerMatchesTable(playedMatches, nonPlayedMatches = [], filterTy
         // 'all' - combine both arrays
         matchesToDisplay = [...(playedMatches || []), ...(nonPlayedMatches || [])];
     }
-    
+
     if (matchesToDisplay.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7">No matches data available</td></tr>';
         return;
     }
-    
+
     // Sort by date (newest first) while displaying the sheet value (string) or a formatted Excel serial
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         // Try native parse first
@@ -5967,7 +6100,7 @@ function renderPlayerMatchesTable(playedMatches, nonPlayedMatches = [], filterTy
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -6005,27 +6138,27 @@ function renderPlayerMatchesTable(playedMatches, nonPlayedMatches = [], filterTy
         const opponent = m.opponent || 'N/A';
         const goals = typeof m.goals === 'number' ? m.goals : (m.ga === 'GOAL' ? 1 : 0);
         const assists = typeof m.assists === 'number' ? m.assists : (m.ga === 'ASSIST' ? 1 : 0);
-        
+
         // Check if this is a non-participated match
         const isNonPlayed = m.nonPlayed === true;
-        
+
         // Add highlighting for values > 0 (only for played matches)
         const goalsClass = (!isNonPlayed && goals > 0) ? 'highlight-value' : '';
         const assistsClass = (!isNonPlayed && assists > 0) ? 'highlight-value' : '';
-        
+
         // Style for non-participated matches
         const rowClass = isNonPlayed ? 'non-played-match' : '';
         const rowStyle = isNonPlayed ? 'background-color: #f5f5f5; opacity: 0.7; color: #999;' : '';
-        
+
         const tr = document.createElement('tr');
         if (rowClass) tr.className = rowClass;
         if (rowStyle) tr.style.cssText = rowStyle;
-        
+
         // Add visual indicator for non-played matches (dash or special text)
         const minutesDisplay = isNonPlayed ? '-' : (m.minutes || 0);
         const goalsDisplay = isNonPlayed ? '-' : goals;
         const assistsDisplay = isNonPlayed ? '-' : assists;
-        
+
         tr.innerHTML = `
             <td>${date}</td>
             <td>${season}</td>
@@ -6055,7 +6188,7 @@ function loadPlayerChampionships() {
 
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
-    
+
     const items = getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters);
     renderPlayerChampionshipsTable(items);
 }
@@ -6076,7 +6209,7 @@ function renderPlayerChampionshipsTable(items) {
     let totalGA = 0;
 
     // Sort by G+A descending
-    const sorted = [...items].sort((a, b) => ((b.ga_sum || ((b.goals||0)+(b.assists||0))) - (a.ga_sum || ((a.goals||0)+(a.assists||0)))));
+    const sorted = [...items].sort((a, b) => ((b.ga_sum || ((b.goals || 0) + (b.assists || 0))) - (a.ga_sum || ((a.goals || 0) + (a.assists || 0)))));
     sorted.forEach(it => {
         const gaSum = it.ga_sum || ((it.goals || 0) + (it.assists || 0));
         totalMatches += it.matches || 0;
@@ -6462,7 +6595,7 @@ function loadPlayerVsTeams() {
 
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
-    
+
     const items = getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters);
     renderPlayerVsTeamsTable(items);
 }
@@ -6484,7 +6617,7 @@ function renderPlayerVsTeamsTable(items) {
     let totalGA = 0;
 
     // Sort by G+A descending
-    const sorted = [...items].sort((a, b) => ((b.ga_sum || ((b.goals||0)+(b.assists||0))) - (a.ga_sum || ((a.goals||0)+(a.assists||0)))));
+    const sorted = [...items].sort((a, b) => ((b.ga_sum || ((b.goals || 0) + (b.assists || 0))) - (a.ga_sum || ((a.goals || 0) + (a.assists || 0)))));
     sorted.forEach(it => {
         const gaSum = it.ga_sum || ((it.goals || 0) + (it.assists || 0));
         totalMatches += it.matches || 0;
@@ -6537,7 +6670,7 @@ function loadPlayerVsGKs() {
 
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
-    
+
     const items = getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters);
     renderPlayerVsGKsTable(items);
 }
@@ -6682,29 +6815,29 @@ function searchTable(tableId, searchValue) {
         console.warn(`Table with ID '${tableId}' not found`);
         return;
     }
-    
+
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-    
+
     const searchTerm = searchValue.toLowerCase().trim();
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    
+
     let visibleCount = 0;
     let totalRow = null;
     let visibleRows = [];
-    
+
     rows.forEach(row => {
         // Check if this is the total row
         if (row.style.fontWeight === 'bold' && row.style.backgroundColor === 'rgb(240, 240, 240)') {
             totalRow = row;
             return;
         }
-        
+
         // Get all cell text content
         const rowText = Array.from(row.cells)
             .map(cell => cell.textContent.toLowerCase())
             .join(' ');
-        
+
         // Show/hide row based on search term
         if (searchTerm === '' || rowText.includes(searchTerm)) {
             row.style.display = '';
@@ -6714,7 +6847,7 @@ function searchTable(tableId, searchValue) {
             row.style.display = 'none';
         }
     });
-    
+
     // Update total row if it exists
     if (totalRow) {
         if (visibleRows.length > 0) {
@@ -6729,7 +6862,7 @@ function searchTable(tableId, searchValue) {
             totalRow.style.display = 'none';
         }
     }
-    
+
     // Log search results
     if (searchTerm !== '') {
         console.log(`Search in ${tableId}: "${searchValue}" - ${visibleCount} results found`);
@@ -6748,7 +6881,7 @@ function updateTotalRow(totalRow, visibleRows) {
         cleanSheetsFor: 0,
         cleanSheetsAgainst: 0
     };
-    
+
     visibleRows.forEach(row => {
         const cells = row.cells;
         if (cells.length >= 9) {
@@ -6762,7 +6895,7 @@ function updateTotalRow(totalRow, visibleRows) {
             totals.cleanSheetsAgainst += parseInt(cells[8].textContent) || 0;
         }
     });
-    
+
     // Update total row cells
     const totalCells = totalRow.cells;
     if (totalCells.length >= 9) {
@@ -6817,7 +6950,7 @@ function loadPlayerSeasonsStats() {
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for seasons:', appliedFilters);
-    
+
     const items = getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Seasons items:', items.length);
     renderPlayerSeasonsTable(items);
@@ -6839,7 +6972,7 @@ function loadPlayerChampionshipsStats() {
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for championships:', appliedFilters);
-    
+
     const items = getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Championships items:', items.length);
     renderPlayerChampionshipsTable(items);
@@ -6861,7 +6994,7 @@ function loadPlayerVsTeamsStats() {
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for vs teams:', appliedFilters);
-    
+
     const items = getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Vs teams items:', items.length);
     renderPlayerVsTeamsTable(items);
@@ -6883,7 +7016,7 @@ function loadPlayerVsGKsStats() {
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for vs goalkeepers:', appliedFilters);
-    
+
     const items = getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Vs goalkeepers items:', items.length);
     renderPlayerVsGKsTable(items);
@@ -6899,14 +7032,14 @@ function loadPlayerChampionshipsWithFilter(selectedTeams) {
         }
         return;
     }
-    
+
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for championships:', appliedFilters);
-    
+
     const items = getPlayerChampionshipsFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Championships items with filter:', items.length);
     renderPlayerChampionshipsTable(items);
@@ -6921,14 +7054,14 @@ function loadPlayerSeasonsWithFilter(selectedTeams) {
         }
         return;
     }
-    
+
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for seasons:', appliedFilters);
-    
+
     const items = getPlayerSeasonsFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Seasons items with filter:', items.length);
     renderPlayerSeasonsTable(items);
@@ -7030,32 +7163,32 @@ function computeOverviewStatsForFilters(playerName, teamFilterValue, overrideFil
             if (!goalsByMatch.has(matchId)) goalsByMatch.set(matchId, []);
             goalsByMatch.get(matchId).push(g);
         });
-        
+
         goalsByMatch.forEach((playerGoalsInMatch, matchId) => {
             const matchDetail = matchDetails.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID']) === matchId);
             if (!matchDetail) return;
             const gf = parseInt(matchDetail.GF || 0);
             const ga = parseInt(matchDetail.GA || 0);
-            
+
             // Get all goals in this match sorted by minute
             const allGoals = details.filter(r => {
                 const mid = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
                 if (mid !== matchId) return false;
                 return normalizeStr(r.GA || '').toUpperCase() === 'GOAL';
             });
-            
+
             // Helper to parse minute
             function parseMinuteForSort(minStr) {
                 const num = parseInt(String(minStr).replace(/[^0-9]/g, '') || '0');
                 return isNaN(num) ? 999 : num;
             }
-            
+
             allGoals.sort((a, b) => {
                 const minA = parseMinuteForSort(normalizeStr(a.MINUTE || a.minute || '0'));
                 const minB = parseMinuteForSort(normalizeStr(b.MINUTE || b.minute || '0'));
                 return minA - minB;
             });
-            
+
             // Find last Al Ahly goal
             let lastAhlyGoal = null;
             for (let i = allGoals.length - 1; i >= 0; i--) {
@@ -7066,11 +7199,11 @@ function computeOverviewStatsForFilters(playerName, teamFilterValue, overrideFil
                     break;
                 }
             }
-            
+
             if (!lastAhlyGoal) return;
             const lastGoalPlayer = normalizeStr(lastAhlyGoal['PLAYER NAME'] || lastAhlyGoal.PLAYER || '').toLowerCase();
             if (lastGoalPlayer !== nameLower) return;
-            
+
             // Winning: won by exactly 1 goal
             if (gf > ga && (gf - ga) === 1) {
                 winningMatches++;
@@ -7087,7 +7220,7 @@ function computeOverviewStatsForFilters(playerName, teamFilterValue, overrideFil
             const matchStats = perMatch.get(matchId) || { goals: 0, assists: 0 };
             return { date: match ? (match.DATE || 0) : 0, goals: matchStats.goals, assists: matchStats.assists };
         }).filter(m => m.date !== undefined);
-        lineupWithDates.sort((a,b) => (parseFloat(a.date)||0) - (parseFloat(b.date)||0));
+        lineupWithDates.sort((a, b) => (parseFloat(a.date) || 0) - (parseFloat(b.date) || 0));
         const gaStreak = (typeof findLongestConsecutiveGAStreak === 'function') ? findLongestConsecutiveGAStreak(lineupWithDates) : [];
         const noGAStreak = (typeof findLongestConsecutiveNoGAStreak === 'function') ? findLongestConsecutiveNoGAStreak(lineupWithDates) : [];
         const goalStreak = (typeof findLongestConsecutiveScoringStreak === 'function') ? findLongestConsecutiveScoringStreak(lineupWithDates) : [];
@@ -7173,7 +7306,7 @@ function loadPlayerSYWithFilter(selectedTeams) {
     });
 
     // Render checklist controls
-    try { renderPlayerSYChecklist(syValues, playerName); } catch (_) {}
+    try { renderPlayerSYChecklist(syValues, playerName); } catch (_) { }
 
     // Determine visible SYs based on user selection (default = all)
     const selectedForPlayer = (window.playerSYPrefs && window.playerSYPrefs[playerName]) ? window.playerSYPrefs[playerName] : null;
@@ -7319,7 +7452,7 @@ function initializeSYStatsUI() {
 }
 
 // init UI on DOM ready (safe re-run)
-document.addEventListener('DOMContentLoaded', () => { try { initializeSYStatsUI(); } catch (_) {} });
+document.addEventListener('DOMContentLoaded', () => { try { initializeSYStatsUI(); } catch (_) { } });
 function loadPlayerVsTeamsWithFilter(selectedTeams) {
     console.log('Loading vs teams with team filter:', selectedTeams);
     if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
@@ -7329,14 +7462,14 @@ function loadPlayerVsTeamsWithFilter(selectedTeams) {
         }
         return;
     }
-    
+
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for vs teams:', appliedFilters);
-    
+
     const items = getPlayerVsTeamsFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Vs teams items with filter:', items.length);
     renderPlayerVsTeamsTable(items);
@@ -7351,14 +7484,14 @@ function loadPlayerVsGKsWithFilter(selectedTeams) {
         }
         return;
     }
-    
+
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for vs goalkeepers:', appliedFilters);
-    
+
     const items = getPlayerVsGKsFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Vs goalkeepers items with filter:', items.length);
     renderPlayerVsGKsTable(items);
@@ -7370,17 +7503,17 @@ function loadPlayerGoalDetailsWithFilter(selectedTeams) {
     if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
         return;
     }
-    
+
     // Temporarily set the team filter in the DOM element for loadPlayerGoalDetailsStats to use
     const teamFilterElement = document.getElementById('player-team-filter');
     const originalValue = teamFilterElement ? teamFilterElement.value : '';
     if (teamFilterElement) {
         teamFilterElement.value = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
     }
-    
+
     // Load the goal details stats with the team filter
     loadPlayerGoalDetailsStats();
-    
+
     // Restore original value
     if (teamFilterElement) {
         teamFilterElement.value = originalValue;
@@ -7392,17 +7525,17 @@ function loadPlayerAssistDetailsWithFilter(selectedTeams) {
     if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
         return;
     }
-    
+
     // Temporarily set the team filter in the DOM element for loadPlayerAssistDetails to use
     const teamFilterElement = document.getElementById('player-team-filter');
     const originalValue = teamFilterElement ? teamFilterElement.value : '';
     if (teamFilterElement) {
         teamFilterElement.value = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
     }
-    
+
     // Load the assist details stats with the team filter
     loadPlayerAssistDetails();
-    
+
     // Restore original value
     if (teamFilterElement) {
         teamFilterElement.value = originalValue;
@@ -7414,17 +7547,17 @@ function loadPlayerWithCoachesWithFilter(selectedTeams) {
     if (!playersData.selectedPlayer || !playersData.selectedPlayer.name) {
         return;
     }
-    
+
     // Temporarily set the team filter in the DOM element for loadPlayerWithCoachesStats to use
     const teamFilterElement = document.getElementById('player-team-filter');
     const originalValue = teamFilterElement ? teamFilterElement.value : '';
     if (teamFilterElement) {
         teamFilterElement.value = Array.isArray(selectedTeams) ? selectedTeams.join(',') : (selectedTeams || '');
     }
-    
+
     // Load the with coaches stats with the team filter
     loadPlayerWithCoachesStats();
-    
+
     // Restore original value
     if (teamFilterElement) {
         teamFilterElement.value = originalValue;
@@ -7441,14 +7574,14 @@ function loadPlayerGoalMinuteStats() {
         }
         return;
     }
-    
+
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for goal minutes:', appliedFilters);
-    
+
     const goalMinutes = getPlayerGoalMinutesFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Goal minutes data:', goalMinutes);
     renderGoalMinuteCards(goalMinutes);
@@ -7460,54 +7593,54 @@ function getPlayerGoalMinutesFromSheets(playerName, teamFilter, appliedFilters =
     const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
     const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
-    
+
     if (!details.length) return {};
-    
+
     // Filter PLAYERDETAILS by player, team, and goals only (GA = 'GOAL')
     const goalRecords = details.filter(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
-        
+
         if (teamLower) {
             const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
             if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
-        
+
         // Apply main filters to match data
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
-        const matchDetail = matchDetails.find(match => 
+        const matchDetail = matchDetails.find(match =>
             normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
         );
-        
+
         const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
         if (!filtersMatch) return false;
-        
+
         // Only get goals where GA = 'GOAL'
         const gaVal = normalizeStr(r.GA || '').toUpperCase();
         return gaVal === 'GOAL';
     });
-    
+
     console.log('Goal records found:', goalRecords.length);
-    
+
     // Count goals per minute
     const minuteCounts = {};
     goalRecords.forEach(r => {
         let minute = normalizeStr(r.MINUTE || r.minute || '');
         if (!minute) return;
-        
+
         console.log('Found goal at minute:', minute);
-        
+
         // Keep the original format for display
         minuteCounts[minute] = (minuteCounts[minute] || 0) + 1;
     });
-    
+
     return minuteCounts;
 }
 
 // Helper function to parse minute for sorting (handles 45+5, 90+3 etc)
 function parseMinuteForSort(minuteStr) {
     const str = String(minuteStr).trim();
-    
+
     // Handle formats like "45+5" or "90+3"
     if (str.includes('+')) {
         const parts = str.split('+');
@@ -7516,7 +7649,7 @@ function parseMinuteForSort(minuteStr) {
         // Return a fractional value: 45+5 becomes 45.5, so it sorts between 45 and 46
         return base + (extra / 100);
     }
-    
+
     // Regular minute
     return parseInt(str) || 0;
 }
@@ -7525,17 +7658,17 @@ function parseMinuteForSort(minuteStr) {
 function renderGoalMinuteCards(minuteCounts) {
     const container = document.getElementById('goal-minute-cards-container');
     const timelineContainer = document.getElementById('goal-timeline-container');
-    
+
     if (!container) return;
-    
+
     const minutes = Object.keys(minuteCounts);
-    
+
     if (minutes.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No goals found for this player</p>';
         if (timelineContainer) timelineContainer.innerHTML = '';
         return;
     }
-    
+
     // Calculate timeline distribution
     const timeline = {
         '1-15': 0,
@@ -7546,11 +7679,11 @@ function renderGoalMinuteCards(minuteCounts) {
         '76-89': 0,
         '90+': 0
     };
-    
+
     minutes.forEach(minute => {
         const count = minuteCounts[minute];
         const minuteNum = parseMinuteForSort(minute);
-        
+
         if (minuteNum >= 1 && minuteNum < 16) {
             timeline['1-15'] += count;
         } else if (minuteNum >= 16 && minuteNum < 31) {
@@ -7567,14 +7700,14 @@ function renderGoalMinuteCards(minuteCounts) {
             timeline['90+'] += count;
         }
     });
-    
+
     // Render timeline cards
     if (timelineContainer) {
         let timelineHtml = '';
         Object.keys(timeline).forEach(period => {
             const count = timeline[period];
             const plural = count === 1 ? 'Goal' : 'Goals';
-            
+
             timelineHtml += `
                 <div class="timeline-card">
                     <h4>${period}'</h4>
@@ -7585,16 +7718,16 @@ function renderGoalMinuteCards(minuteCounts) {
         });
         timelineContainer.innerHTML = timelineHtml;
     }
-    
+
     // Sort minutes chronologically (handles 45+5 < 46)
     minutes.sort((a, b) => parseMinuteForSort(a) - parseMinuteForSort(b));
-    
+
     // Build individual minute cards HTML
     let html = '';
     minutes.forEach(minute => {
         const count = minuteCounts[minute];
         const plural = count === 1 ? 'Goal' : 'Goals';
-        
+
         html += `
             <div class="player-stat-card">
                 <div class="stat-icon">
@@ -7611,7 +7744,7 @@ function renderGoalMinuteCards(minuteCounts) {
             </div>
         `;
     });
-    
+
     container.innerHTML = html;
 }
 
@@ -7625,14 +7758,14 @@ function loadPlayerGoalByRoundStats() {
         }
         return;
     }
-    
+
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for goal rounds:', appliedFilters);
-    
+
     const goalRounds = getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Goal rounds data:', goalRounds);
     renderGoalRoundCards(goalRounds);
@@ -7643,9 +7776,9 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
     const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
-    
+
     if (!details.length || !matches.length) return {};
-    
+
     // Apply main filters to matches first
     const filteredMatches = matches.filter(match => {
         // Trophy filter - only show matches from trophy-winning seasons
@@ -7655,11 +7788,11 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
-            
+
             const recordKeyMap = {
                 'matchId': 'MATCH_ID',
                 'championSystem': 'CHAMPION SYSTEM',
@@ -7676,46 +7809,46 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
                 'opponentTeam': 'OPPONENT TEAM',
                 'result': 'W-D-L'
             };
-            
+
             const recordKey = recordKeyMap[key];
             if (!recordKey) return true;
-            
+
             const recordValue = match[recordKey] || '';
             return normalizeStr(recordValue).toLowerCase() === normalizeStr(filterValue).toLowerCase();
         });
     });
-    
+
     const filteredMatchIds = new Set(filteredMatches.map(m => normalizeStr(m.MATCH_ID || m['MATCH ID'] || m.match_id)));
-    
+
     // Get all player goals AND assists
     const allRecords = details.filter(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
-        
+
         if (teamLower) {
             const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
             if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
-        
+
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!filteredMatchIds.has(matchId)) return false;
-        
+
         const gaVal = normalizeStr(r.GA || '').toUpperCase();
         return gaVal === 'GOAL' || gaVal === 'ASSIST';
     });
-    
+
     // Group goals and assists by champion and then by round
     const championData = {};
     allRecords.forEach(r => {
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         const match = filteredMatches.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID'] || m.match_id) === matchId);
-        
+
         if (match) {
             // Don't normalize champion and round to preserve exact text
             const champion = String(match.CHAMPION || match.champion || 'Unknown').trim();
             const round = String(match.ROUND || match.round || 'Unknown').trim();
             const gaVal = normalizeStr(r.GA || '').toUpperCase();
-            
+
             if (!championData[champion]) {
                 championData[champion] = {
                     totalGoals: 0,
@@ -7723,14 +7856,14 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
                     rounds: {}
                 };
             }
-            
+
             if (!championData[champion].rounds[round]) {
                 championData[champion].rounds[round] = {
                     goals: 0,
                     assists: 0
                 };
             }
-            
+
             if (gaVal === 'GOAL') {
                 championData[champion].totalGoals += 1;
                 championData[champion].rounds[round].goals += 1;
@@ -7740,26 +7873,26 @@ function getPlayerGoalRoundsFromSheets(playerName, teamFilter, appliedFilters = 
             }
         }
     });
-    
+
     return championData;
 }
 
 // Render goal round cards (grouped by champion)
 function renderGoalRoundCards(championData) {
     const container = document.getElementById('goal-round-cards-container');
-    
+
     if (!container) return;
-    
+
     const champions = Object.keys(championData);
-    
+
     if (champions.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No goals found for this player</p>';
         return;
     }
-    
+
     // Sort champions alphabetically
     champions.sort((a, b) => a.localeCompare(b));
-    
+
     // Color palette for champions
     const colors = [
         { bg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', icon: 'rgba(255, 255, 255, 0.2)' },
@@ -7770,7 +7903,7 @@ function renderGoalRoundCards(championData) {
         { bg: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', icon: 'rgba(255, 255, 255, 0.2)' },
         { bg: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', icon: 'rgba(255, 255, 255, 0.2)' }
     ];
-    
+
     // Build champion cards HTML
     let html = '';
     champions.forEach((champion, index) => {
@@ -7781,7 +7914,7 @@ function renderGoalRoundCards(championData) {
         const color = colors[index % colors.length];
         // Use index to create unique IDs instead of relying on champion name
         const championId = `champion-round-${index}`;
-        
+
         html += `
             <div style="width: 100%;">
                 <div class="player-stat-card goal-effect-clickable" style="background: ${color.bg}; color: white; cursor: pointer;" onclick="toggleGoalRoundTable('${championId}')">
@@ -7825,9 +7958,9 @@ function renderGoalRoundCards(championData) {
             </div>
         `;
     });
-    
+
     container.innerHTML = html;
-    
+
     // Render tables data for each champion
     champions.forEach((champion, index) => {
         const championId = `champion-round-${index}`;
@@ -7847,7 +7980,7 @@ function toggleGoalRoundTable(championId) {
 // Get round sort order for tournament rounds
 function getRoundSortOrder(roundName) {
     const roundLower = String(roundName).toLowerCase().trim();
-    
+
     // Define the logical order of tournament rounds
     const roundOrder = {
         'التمهيدي': 1,
@@ -7885,25 +8018,25 @@ function getRoundSortOrder(roundName) {
         'final': 10,
         'finals': 10
     };
-    
+
     // Check if exact match exists
     if (roundOrder[roundLower] !== undefined) {
         return roundOrder[roundLower];
     }
-    
+
     // Check for partial matches
     for (const [key, value] of Object.entries(roundOrder)) {
         if (roundLower.includes(key) || key.includes(roundLower)) {
             return value;
         }
     }
-    
+
     // Try to parse as number for league rounds
     const num = parseInt(roundName);
     if (!isNaN(num)) {
         return 1000 + num; // Put numbered rounds at the end
     }
-    
+
     // Default: alphabetical order (use large number + alphabetical)
     return 2000;
 }
@@ -7913,54 +8046,54 @@ function renderGoalRoundTable(championId, roundsData, championName = '') {
     const tbodyId = `${championId}-tbody`;
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
-    
+
     const rounds = Object.keys(roundsData);
-    
+
     if (rounds.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align: center;">No rounds found</td></tr>';
         return;
     }
-    
+
     // Check if this is Egyptian League (use numeric sorting)
     const isEgyptianLeague = championName && (
-        championName.includes('الدوري المصري') || 
+        championName.includes('الدوري المصري') ||
         championName.toLowerCase().includes('egyptian league') ||
         championName.toLowerCase().includes('egyptian premier league')
     );
-    
+
     // Sort rounds based on tournament logic or numeric for league
     rounds.sort((a, b) => {
         if (isEgyptianLeague) {
             // For Egyptian League, sort numerically
             const numA = parseInt(a);
             const numB = parseInt(b);
-            
+
             if (!isNaN(numA) && !isNaN(numB)) {
                 return numA - numB;
             }
-            
+
             return a.localeCompare(b);
         } else {
             // For tournaments, use logical round order
             const orderA = getRoundSortOrder(a);
             const orderB = getRoundSortOrder(b);
-            
+
             if (orderA !== orderB) {
                 return orderA - orderB;
             }
-            
+
             // If same order, sort alphabetically
             return a.localeCompare(b);
         }
     });
-    
+
     let html = '';
     rounds.forEach(round => {
         const data = roundsData[round];
         const goals = data.goals || 0;
         const assists = data.assists || 0;
         const total = goals + assists;
-        
+
         html += `
             <tr>
                 <td><strong>${round}</strong></td>
@@ -7970,7 +8103,7 @@ function renderGoalRoundTable(championId, roundsData, championName = '') {
             </tr>
         `;
     });
-    
+
     tbody.innerHTML = html;
 }
 
@@ -7983,7 +8116,7 @@ function getGoalkeepersListFromSheets() {
     console.log('Getting goalkeepers list from Excel (GKDETAILS)...');
     const rows = getSheetRowsByCandidates(['GKDETAILS']);
     console.log(`Found ${rows.length} goalkeeper detail rows`);
-    
+
     const goalkeepersMap = new Map();
     rows.forEach(r => {
         const name = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player);
@@ -7992,12 +8125,12 @@ function getGoalkeepersListFromSheets() {
         if (!goalkeepersMap.has(name)) goalkeepersMap.set(name, new Set());
         if (team) goalkeepersMap.get(name).add(team);
     });
-    
+
     const goalkeepersList = Array.from(goalkeepersMap.entries()).map(([name, teamSet]) => ({
         name,
         teams: Array.from(teamSet).sort()
-    })).sort((a,b) => a.name.localeCompare(b.name));
-    
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
     console.log(`Built goalkeepers list with ${goalkeepersList.length} unique goalkeepers`);
     return goalkeepersList;
 }
@@ -8007,25 +8140,25 @@ async function loadGoalkeepersData(filteredRecords = null) {
     try {
         console.log('🔄 Loading goalkeepers from Excel (GKDETAILS)...');
         goalkeepersData.goalkeepers = getGoalkeepersListFromSheets();
-        
+
         console.log(`✅ Loaded ${goalkeepersData.goalkeepers.length} goalkeepers`);
-        
+
         if (goalkeepersData.goalkeepers.length > 0) {
             console.log('📋 Sample goalkeepers:');
             goalkeepersData.goalkeepers.slice(0, 5).forEach((gk, index) => {
                 console.log(`  ${index + 1}. ${gk.name} - Teams: ${gk.teams ? gk.teams.join(', ') : 'No teams'}`);
             });
         }
-        
+
         // Initialize goalkeeper search
         initializeGoalkeeperSearch();
-        
+
         // Initialize goalkeeper team filter
         initializeGoalkeeperTeamFilter();
-        
+
         // Load goalkeeper stats from Excel
         loadGoalkeeperStatsFromSheets();
-        
+
     } catch (error) {
         console.error('Error loading goalkeepers data:', error);
     }
@@ -8035,26 +8168,26 @@ async function loadGoalkeepersData(filteredRecords = null) {
 function initializeGoalkeeperSearch() {
     const searchInput = document.getElementById('gk-search');
     const searchOptions = document.getElementById('gk-search-options');
-    
+
     if (!searchInput || !searchOptions) return;
-    
+
     let isOpen = false;
-    
+
     // Input event for search
-    searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', function () {
         const query = this.value.toLowerCase().trim();
-        
+
         if (query.length === 0) {
             searchOptions.style.display = 'none';
             isOpen = false;
             return;
         }
-        
+
         // Filter goalkeepers based on query
-        const filteredGoalkeepers = goalkeepersData.goalkeepers.filter(gk => 
+        const filteredGoalkeepers = goalkeepersData.goalkeepers.filter(gk =>
             gk.name.toLowerCase().includes(query)
         );
-        
+
         if (filteredGoalkeepers.length === 0) {
             searchOptions.innerHTML = '<div class="option-item no-results">No goalkeepers found</div>';
         } else {
@@ -8064,24 +8197,24 @@ function initializeGoalkeeperSearch() {
                 return `<div class="option-item" data-gk-index="${originalIndex}">${gk.name}</div>`;
             }).join('');
         }
-        
+
         searchOptions.style.display = 'block';
         isOpen = true;
     });
-    
+
     // Click on options
-    searchOptions.addEventListener('click', function(e) {
+    searchOptions.addEventListener('click', function (e) {
         if (e.target.classList.contains('option-item') && !e.target.classList.contains('no-results')) {
             try {
                 const gkIndex = parseInt(e.target.getAttribute('data-gk-index'));
                 if (!isNaN(gkIndex) && goalkeepersData.goalkeepers[gkIndex]) {
                     const goalkeeperData = goalkeepersData.goalkeepers[gkIndex];
-                    
+
                     // Update UI first before loading data
                     searchInput.value = goalkeeperData.name;
                     searchOptions.style.display = 'none';
                     isOpen = false;
-                    
+
                     // Then load goalkeeper data
                     selectGoalkeeper(goalkeeperData);
                 }
@@ -8092,17 +8225,17 @@ function initializeGoalkeeperSearch() {
             }
         }
     });
-    
+
     // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!searchInput.contains(e.target) && !searchOptions.contains(e.target)) {
             searchOptions.style.display = 'none';
             isOpen = false;
         }
     });
-    
+
     // Focus event
-    searchInput.addEventListener('focus', function() {
+    searchInput.addEventListener('focus', function () {
         if (this.value.length > 0) {
             searchOptions.style.display = 'block';
             isOpen = true;
@@ -8113,7 +8246,7 @@ function initializeGoalkeeperSearch() {
 // Function to select a goalkeeper and populate teams checkboxes
 function selectGoalkeeper(goalkeeper) {
     goalkeepersData.selectedGoalkeeper = goalkeeper;
-    
+
     // Update teams checkboxes
     const teamContainer = document.getElementById('gk-team-filter');
     if (teamContainer) {
@@ -8122,13 +8255,13 @@ function selectGoalkeeper(goalkeeper) {
         if (goalkeeper.teams && goalkeeper.teams.length > 0) {
             const sortedTeams = [...goalkeeper.teams].sort();
             sortedTeams.forEach(team => {
-                const id = `gk-team-cb-${team.replace(/\s+/g,'-')}`;
+                const id = `gk-team-cb-${team.replace(/\s+/g, '-')}`;
                 const label = document.createElement('label');
                 label.className = 'checkbox-label';
                 label.innerHTML = `<input type="checkbox" class="gk-team-filter-checkbox" id="${id}" value="${team}"> <span class="checkmark"></span><span>${team}</span>`;
                 teamContainer.appendChild(label);
             });
-            
+
             // Add event listeners to the new checkboxes
             teamContainer.querySelectorAll('input.gk-team-filter-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', applyGoalkeeperTeamFilter);
@@ -8140,27 +8273,27 @@ function selectGoalkeeper(goalkeeper) {
             teamContainer.setAttribute('disabled', 'true');
         }
     }
-    
+
     console.log(`Selected goalkeeper: ${goalkeeper.name}, Teams: ${goalkeeper.teams ? goalkeeper.teams.join(', ') : 'No teams'}`);
-    
+
     // Load goalkeeper statistics and overview (without team filter - show all teams)
     loadGoalkeeperStatistics(goalkeeper.name, '');
-    
+
     // Load overview statistics
     loadGKOverviewStats(goalkeeper.name, '');
-    
+
     // Load goalkeeper matches
     loadGKMatches('');
-    
+
     // Load goalkeeper championships
     loadGKChampionships('');
-    
+
     // Load goalkeeper seasons
     loadGKSeasons('');
-    
+
     // Load goalkeeper vs teams
     loadGKVsTeams('');
-    
+
     // Load goalkeeper vs players
     loadGKVsPlayers('');
 }
@@ -8169,9 +8302,9 @@ function selectGoalkeeper(goalkeeper) {
 function initializeGoalkeeperTeamFilter() {
     const teamContainer = document.getElementById('gk-team-filter');
     if (!teamContainer) return;
-    
+
     // Add event listener for team filter changes
-    teamContainer.addEventListener('change', function(e) {
+    teamContainer.addEventListener('change', function (e) {
         if (e.target && e.target.classList && e.target.classList.contains('gk-team-filter-checkbox')) {
             applyGoalkeeperTeamFilter();
         }
@@ -8189,10 +8322,10 @@ function getSelectedGoalkeeperTeams() {
 // Apply goalkeeper team filter
 function applyGoalkeeperTeamFilter() {
     const selectedTeams = getSelectedGoalkeeperTeams();
-    
+
     // Update goalkeeper statistics based on selected teams
     updateGoalkeeperStatisticsForTeams(selectedTeams);
-    
+
     console.log(`Filtering goalkeeper statistics for teams: ${selectedTeams.length > 0 ? selectedTeams.join(', ') : 'All Teams'}`);
 }
 
@@ -8203,39 +8336,39 @@ function updateGoalkeeperStatisticsForTeams(selectedTeams) {
         loadGoalkeeperStats();
         return;
     }
-    
+
     // If no teams selected, show all teams
     const teamFilter = selectedTeams.length > 0 ? selectedTeams.join(',') : '';
-    
+
     // Load goalkeeper statistics with team filter
     loadGoalkeeperStatistics(goalkeepersData.selectedGoalkeeper.name, teamFilter);
-    
+
     // Load overview statistics with team filter
     loadGKOverviewStats(goalkeepersData.selectedGoalkeeper.name, teamFilter);
-    
+
     // Load goalkeeper matches with team filter
     loadGKMatches(teamFilter);
-    
+
     // Load goalkeeper championships with team filter
     loadGKChampionships(teamFilter);
-    
+
     // Load goalkeeper seasons with team filter
     loadGKSeasons(teamFilter);
-    
+
     // Load goalkeeper vs teams with team filter
     loadGKVsTeams(teamFilter);
-    
+
     // Load goalkeeper vs players with team filter
     loadGKVsPlayers(teamFilter);
 }
 // Load goalkeeper statistics
 async function loadGoalkeeperStatistics(goalkeeperName, selectedTeam = '') {
     console.log(`Loading statistics for goalkeeper: ${goalkeeperName}, Team: ${selectedTeam}`);
-    
+
     try {
         // Use cached data for goalkeeper statistics
         const data = null; // API removed; using Excel instead
-        
+
         if (data.error) {
             console.error('Error loading goalkeeper statistics:', data.error);
             // Show empty table on error
@@ -8252,10 +8385,10 @@ async function loadGoalkeeperStatistics(goalkeeperName, selectedTeam = '') {
             });
             return;
         }
-        
+
         // Update the table with real data
         updateGoalkeeperStatsTable(data.goalkeepers || []);
-        
+
     } catch (error) {
         console.error('Error loading goalkeeper statistics:', error);
         // Show empty table on error
@@ -8277,7 +8410,7 @@ async function loadGoalkeeperStatistics(goalkeeperName, selectedTeam = '') {
 function updateGoalkeeperStatsTable(goalkeepers) {
     const tbody = document.querySelector('#goalkeeper-stats-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
 
     goalkeepers.forEach(gk => {
@@ -8306,13 +8439,13 @@ function loadGKMatches(teamFilter = '') {
         renderGKMatchesTable([]);
         return;
     }
-    
+
     console.log(`Loading matches for goalkeeper: ${goalkeepersData.selectedGoalkeeper.name}, Team filter: ${teamFilter}`);
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for GK matches:', appliedFilters);
-    
+
     const matches = getGKMatchesFromSheets(goalkeepersData.selectedGoalkeeper.name, teamFilter, appliedFilters);
     console.log(`Found ${matches.length} matches, rendering table...`);
     renderGKMatchesTable(matches);
@@ -8320,16 +8453,16 @@ function loadGKMatches(teamFilter = '') {
 // Excel: get goalkeeper matches from GKDETAILS and MATCHDETAILS
 function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters = {}) {
     console.log(`Getting matches for goalkeeper: ${goalkeeperName}, team filter: ${teamFilter}, applied filters:`, appliedFilters);
-    
+
     const gkDetails = getSheetRowsByCandidates(['GKDETAILS']);
     const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
     const howPenMissed = getSheetRowsByCandidates(['HOWPENMISSED']);
-    
+
     if (!gkDetails.length || !matchDetails.length) {
         console.log('No goalkeeper or match details found');
         return [];
     }
-    
+
     // Apply main filters to matches first
     const filteredMatches = matchDetails.filter(match => {
         // Trophy filter - only show matches from trophy-winning seasons
@@ -8339,11 +8472,11 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
-            
+
             const fieldMapping = {
                 'matchId': 'MATCH_ID',
                 'championSystem': 'CHAMPION SYSTEM',
@@ -8363,13 +8496,13 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 'penalties': 'PEN',
                 'sy': 'SY'
             };
-            
+
             const field = fieldMapping[key];
             if (!field) return true;
-            
+
             const matchValue = normalizeStr(match[field] || '');
             const normalizedFilter = normalizeStr(filterValue);
-            
+
             // Handle date filters
             if (key === 'dateFrom') {
                 const matchDate = new Date(match.DATE);
@@ -8381,7 +8514,7 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 const filterDate = new Date(filterValue);
                 return matchDate <= filterDate;
             }
-            
+
             // Handle numeric filters
             if (key === 'goalsFor') {
                 return parseInt(match['GOALS FOR'] || 0) >= parseInt(filterValue);
@@ -8389,17 +8522,17 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
             if (key === 'goalsAgainst') {
                 return parseInt(match['GOALS AGAINST'] || 0) <= parseInt(filterValue);
             }
-            
+
             return matchValue === normalizedFilter;
         });
     });
-    
+
     // Get match IDs for filtered matches
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID));
-    
+
     // Filter goalkeeper records for the selected goalkeeper
     let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
-    
+
     // Apply team filter if specified (filter by exact team names)
     if (teamFilter) {
         const teamFilters = teamFilter.split(',').map(t => normalizeStr(t.trim())).filter(t => t);
@@ -8410,37 +8543,37 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
             });
         }
     }
-    
+
     // Filter by matches that passed the main filters
     gkRecords = gkRecords.filter(r => filteredMatchIds.has(r.MATCH_ID));
-    
+
     if (gkRecords.length === 0) {
         console.log(`No records found for goalkeeper: ${goalkeeperName}`);
         return [];
     }
-    
+
     // Get match IDs for this goalkeeper
     const matchIds = new Set(gkRecords.map(r => r.MATCH_ID).filter(id => id));
-    
+
     // Get match details for these matches from filtered matches
     const matches = filteredMatches.filter(m => matchIds.has(m.MATCH_ID));
-    
+
     // Build matches data
     const matchesData = [];
-    
+
     matches.forEach(match => {
         const gkRecord = gkRecords.find(r => r.MATCH_ID === match.MATCH_ID);
         if (!gkRecord) return;
-        
+
         const elevenBackup = normalizeStr(gkRecord['11/BAKEUP'] || '').toUpperCase();
         const submin = gkRecord.SUBMIN || '';
-        
+
         // Include ALL matches where goalkeeper played (starting or substitute)
         const isStarting = elevenBackup === '11' || elevenBackup === '' || submin === '';
-        
+
         const goalsConceded = parseInt(gkRecord['GOALS CONCEDED'] || 0);
         const cleanSheet = goalsConceded === 0 ? 'Yes' : 'No';
-        
+
         // Count penalty goals from PLAYERDETAILS
         let penaltyGoals = 0;
         const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
@@ -8448,18 +8581,18 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
             if (normalizeStr(playerRecord.MATCH_ID) === normalizeStr(match.MATCH_ID)) {
                 const typeNorm = normalizeStr(playerRecord.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
                 const gaNorm = normalizeStr(playerRecord.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
-                
+
                 if (typeNorm === 'PENGOAL' || gaNorm === 'PENGOAL') {
                     const gkTeam = normalizeStr(gkRecord.TEAM || '');
                     const playerTeam = normalizeStr(playerRecord.TEAM || '');
-                    
+
                     if (gkTeam !== playerTeam) {
                         penaltyGoals++;
                     }
                 }
             }
         });
-        
+
         // Count penalty saves from HOWPENMISSED for this match
         let penaltySaves = 0;
         howPenMissed.forEach(penRecord => {
@@ -8470,17 +8603,17 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 }
             }
         });
-        
+
         // Format date properly
         let formattedDate = match.DATE || '';
         console.log('Raw date value:', formattedDate, 'Type:', typeof formattedDate);
-        
+
         if (formattedDate) {
             try {
                 // Check if it's an Excel serial number
                 const numericDate = parseFloat(formattedDate);
                 console.log('Numeric date:', numericDate);
-                
+
                 if (!isNaN(numericDate) && numericDate > 25000) {
                     // Convert Excel date serial number to readable date
                     console.log('Converting Excel serial number:', numericDate);
@@ -8514,7 +8647,7 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 console.log('Error formatting date:', formattedDate, e);
             }
         }
-        
+
         // Parse date for sorting
         let dateForSorting = null;
         const rawDate = match.DATE || '';
@@ -8549,7 +8682,7 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 console.log('Error parsing date for sorting:', rawDate, e);
             }
         }
-        
+
         matchesData.push({
             date: formattedDate,
             dateRaw: match.DATE || '', // Keep original for sorting
@@ -8563,27 +8696,27 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
             matchId: match.MATCH_ID
         });
     });
-    
+
     // Sort by date (newest first) - using Date objects for accurate sorting
     matchesData.sort((a, b) => {
         const dateA = a.dateForSorting;
         const dateB = b.dateForSorting;
-        
+
         // If both dates are valid, compare them
         if (dateA && dateB && !isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
             return dateB.getTime() - dateA.getTime(); // Newest first (descending)
         }
-        
+
         // Fallback: if one is valid, prioritize it
         if (dateA && !isNaN(dateA.getTime())) return -1;
         if (dateB && !isNaN(dateB.getTime())) return 1;
-        
+
         // Fallback: use raw date values (Excel serial numbers)
         const rawA = parseFloat(a.dateRaw) || 0;
         const rawB = parseFloat(b.dateRaw) || 0;
         return rawB - rawA; // Newest first (higher Excel serial number = newer date)
     });
-    
+
     console.log(`Found ${matchesData.length} matches for goalkeeper ${goalkeeperName}`);
     return matchesData;
 }
@@ -8592,16 +8725,16 @@ function getGKMatchesFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
 function renderGKMatchesTable(matches) {
     console.log('=== RENDERING GK MATCHES TABLE ===');
     console.log(`Matches to render: ${matches.length}`);
-    
+
     const tbody = document.querySelector('#gk-matches-table tbody');
     if (!tbody) {
         console.error('GK matches table tbody not found');
         return;
     }
-    
+
     console.log('Found tbody element, clearing content...');
     tbody.innerHTML = '';
-    
+
     if (matches.length === 0) {
         console.log('No matches found, showing empty message');
         const row = document.createElement('tr');
@@ -8609,7 +8742,7 @@ function renderGKMatchesTable(matches) {
         tbody.appendChild(row);
         return;
     }
-    
+
     console.log(`Rendering ${matches.length} matches...`);
     matches.forEach((match, index) => {
         console.log(`Rendering match ${index + 1}:`, match);
@@ -8625,7 +8758,7 @@ function renderGKMatchesTable(matches) {
         `;
         tbody.appendChild(row);
     });
-    
+
     console.log('GK matches table rendered successfully');
 }
 
@@ -8634,27 +8767,27 @@ function loadGKChampionships(teamFilter = '') {
     console.log('=== LOADING GK CHAMPIONSHIPS ===');
     console.log('goalkeepersData:', goalkeepersData);
     console.log('selectedGoalkeeper:', goalkeepersData.selectedGoalkeeper);
-    
+
     if (!goalkeepersData.selectedGoalkeeper || !goalkeepersData.selectedGoalkeeper.name) {
         console.log('No goalkeeper selected for championships');
         renderGKChampionshipsTable([]);
         return;
     }
-    
+
     console.log(`Loading championships for goalkeeper: ${goalkeepersData.selectedGoalkeeper.name}, Team filter: ${teamFilter}`);
-    
+
     // Check if we have Excel data
     const hasExcelData = window.cachedExcelData && Object.keys(window.cachedExcelData).length > 0;
     console.log('Has Excel data:', hasExcelData);
     console.log('Cached Excel data keys:', hasExcelData ? Object.keys(window.cachedExcelData) : 'No data');
-    
+
     // Debug: Check what goalkeepers are available
     debugAvailableGoalkeepers(goalkeepersData.selectedGoalkeeper.name);
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for GK championships:', appliedFilters);
-    
+
     const championships = getGKChampionshipsFromSheets(goalkeepersData.selectedGoalkeeper.name, teamFilter, appliedFilters);
     console.log(`Found ${championships.length} championships:`, championships);
     console.log('Rendering table...');
@@ -8666,22 +8799,22 @@ function debugAvailableGoalkeepers(selectedGoalkeeperName) {
     console.log('=== DEBUGGING AVAILABLE GOALKEEPERS ===');
     const gkDetails = getSheetRowsByCandidates(['GKDETAILS']);
     console.log(`Total GKDETAILS records: ${gkDetails.length}`);
-    
+
     if (gkDetails.length > 0) {
         console.log('First 10 goalkeeper names in GKDETAILS:');
         gkDetails.slice(0, 10).forEach((record, index) => {
             console.log(`  ${index + 1}. "${record['PLAYER NAME']}"`);
         });
-        
+
         console.log(`Looking for: "${selectedGoalkeeperName}"`);
         const exactMatch = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(selectedGoalkeeperName));
         console.log(`Exact matches: ${exactMatch.length}`);
-        
-        const caseInsensitiveMatch = gkDetails.filter(r => 
+
+        const caseInsensitiveMatch = gkDetails.filter(r =>
             normalizeStr(r['PLAYER NAME']).toLowerCase() === normalizeStr(selectedGoalkeeperName).toLowerCase()
         );
         console.log(`Case-insensitive matches: ${caseInsensitiveMatch.length}`);
-        
+
         if (caseInsensitiveMatch.length > 0) {
             console.log('Sample matching record:', caseInsensitiveMatch[0]);
         }
@@ -8693,23 +8826,23 @@ function debugAvailableGoalkeepers(selectedGoalkeeperName) {
 // Excel: get goalkeeper championships from GKDETAILS and MATCHDETAILS
 function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFilters = {}) {
     console.log(`Getting championships for goalkeeper: ${goalkeeperName}, team filter: ${teamFilter}, applied filters:`, appliedFilters);
-    
+
     const gkDetails = getSheetRowsByCandidates(['GKDETAILS']);
     const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
     const howPenMissed = getSheetRowsByCandidates(['HOWPENMISSED']);
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
-    
+
     console.log('Data found:');
     console.log('- GKDETAILS records:', gkDetails.length);
     console.log('- MATCHDETAILS records:', matchDetails.length);
     console.log('- HOWPENMISSED records:', howPenMissed.length);
     console.log('- PLAYERDETAILS records:', playerDetails.length);
-    
+
     if (!gkDetails.length || !matchDetails.length) {
         console.log('No goalkeeper or match details found');
         return [];
     }
-    
+
     // Apply main filters to matches first (but exclude champion filter for championships tab)
     const filteredMatches = matchDetails.filter(match => {
         // Trophy filter - only show matches from trophy-winning seasons
@@ -8719,12 +8852,12 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true; // Skip empty filters
             if (key === 'champion') return true; // Don't filter by champion in championships tab
-            
+
             const fieldMapping = {
                 'matchId': 'MATCH_ID',
                 'championSystem': 'CHAMPION SYSTEM',
@@ -8743,13 +8876,13 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
                 'penalties': 'PEN',
                 'sy': 'SY'
             };
-            
+
             const field = fieldMapping[key];
             if (!field) return true;
-            
+
             const matchValue = normalizeStr(match[field] || '');
             const normalizedFilter = normalizeStr(filterValue);
-            
+
             // Handle date filters
             if (key === 'dateFrom') {
                 const matchDate = new Date(match.DATE);
@@ -8761,7 +8894,7 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
                 const filterDate = new Date(filterValue);
                 return matchDate <= filterDate;
             }
-            
+
             // Handle numeric filters
             if (key === 'goalsFor') {
                 return parseInt(match['GOALS FOR'] || 0) >= parseInt(filterValue);
@@ -8769,14 +8902,14 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             if (key === 'goalsAgainst') {
                 return parseInt(match['GOALS AGAINST'] || 0) <= parseInt(filterValue);
             }
-            
+
             return matchValue === normalizedFilter;
         });
     });
-    
+
     // Get match IDs for filtered matches
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID));
-    
+
     // Filter goalkeeper records for the selected goalkeeper and optional teams
     let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
     if (teamFilter) {
@@ -8788,52 +8921,52 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             });
         }
     }
-    
+
     // Filter by matches that passed the main filters
     gkRecords = gkRecords.filter(r => filteredMatchIds.has(r.MATCH_ID));
-    
+
     if (gkRecords.length === 0) {
         console.log(`No records found for goalkeeper: ${goalkeeperName}`);
         return [];
     }
-    
+
     // Get match IDs for this goalkeeper
     const matchIds = new Set(gkRecords.map(r => r.MATCH_ID).filter(id => id));
-    
+
     // Get match details for these matches from filtered matches
     const matches = filteredMatches.filter(m => matchIds.has(m.MATCH_ID));
-    
+
     // Group ALL goalkeepers by match and team to check if there were multiple GKs
     const allGKsByMatch = new Map();
     gkDetails.forEach(record => {
         const matchId = record.MATCH_ID;
         const gkTeam = normalizeStr(record.TEAM || '');
         const key = `${matchId}_${gkTeam}`;
-        
+
         if (!allGKsByMatch.has(key)) {
             allGKsByMatch.set(key, []);
         }
         allGKsByMatch.get(key).push(record);
     });
-    
+
     // Group by championship only
     const championshipStats = new Map();
-    
+
     matches.forEach(match => {
         const gkRecord = gkRecords.find(r => r.MATCH_ID === match.MATCH_ID);
         if (!gkRecord) return;
-        
+
         const elevenBackup = normalizeStr(gkRecord['11/BAKEUP'] || '');
         const matchId = gkRecord.MATCH_ID;
         const gkTeam = normalizeStr(gkRecord.TEAM || '');
-        
+
         // Count ALL matches where goalkeeper played (starting or substitute)
         // const isStarting = elevenBackup === 'اساسي' || elevenBackup === '11';
         // if (!isStarting) return;
-        
+
         const championship = match.CHAMPION || 'Unknown';
         const key = `${championship}`;
-        
+
         if (!championshipStats.has(key)) {
             championshipStats.set(key, {
                 championship: championship,
@@ -8845,33 +8978,33 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
                 matchIds: new Set()
             });
         }
-        
+
         const stats = championshipStats.get(key);
         stats.matches++;
         stats.matchIds.add(match.MATCH_ID);
-        
+
         const goalsConceded = parseInt(gkRecord['GOALS CONCEDED'] || 0);
         stats.goalsConceded += goalsConceded;
-        
+
         // Clean sheet only if goalkeeper was THE ONLY ONE from his team in this match
         const matchKey = `${matchId}_${gkTeam}`;
         const allGKsInMatch = allGKsByMatch.get(matchKey) || [];
         const onlyOneGK = allGKsInMatch.length === 1;
-        
+
         if (goalsConceded === 0 && onlyOneGK) {
             stats.cleanSheets++;
         }
-        
+
         // Count penalty goals from PLAYERDETAILS for this match
         playerDetails.forEach(playerRecord => {
             if (normalizeStr(playerRecord.MATCH_ID) === normalizeStr(match.MATCH_ID)) {
                 const typeNorm = normalizeStr(playerRecord.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
                 const gaNorm = normalizeStr(playerRecord.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
-                
+
                 if (typeNorm === 'PENGOAL' || gaNorm === 'PENGOAL') {
                     const gkTeam = normalizeStr(gkRecord.TEAM || '');
                     const playerTeam = normalizeStr(playerRecord.TEAM || '');
-                    
+
                     if (gkTeam !== playerTeam) {
                         stats.penaltyGoals++;
                     }
@@ -8879,7 +9012,7 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             }
         });
     });
-    
+
     // Count penalty saves from HOWPENMISSED for this goalkeeper
     const goalkeeperNameNorm = normalizeStr(goalkeeperName);
     howPenMissed.forEach(record => {
@@ -8901,11 +9034,11 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             }
         }
     });
-    
+
     // Convert to array and sort by matches descending
     const championshipsData = Array.from(championshipStats.values())
         .sort((a, b) => (b.matches || 0) - (a.matches || 0));
-    
+
     console.log(`Found ${championshipsData.length} championships for goalkeeper ${goalkeeperName}`);
     return championshipsData;
 }
@@ -8914,15 +9047,15 @@ function getGKChampionshipsFromSheets(goalkeeperName, teamFilter = '', appliedFi
 function renderGKChampionshipsTable(championships) {
     console.log('=== RENDERING GK CHAMPIONSHIPS TABLE ===');
     console.log(`Championships to render: ${championships.length}`);
-    
+
     const tbody = document.querySelector('#gk-championships-table tbody');
     if (!tbody) {
         console.error('GK championships table tbody not found');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     if (championships.length === 0) {
         console.log('No championships found, showing empty message');
         const row = document.createElement('tr');
@@ -8930,7 +9063,7 @@ function renderGKChampionshipsTable(championships) {
         tbody.appendChild(row);
         return;
     }
-    
+
     championships.forEach((championship, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -8943,7 +9076,7 @@ function renderGKChampionshipsTable(championships) {
         `;
         tbody.appendChild(row);
     });
-    
+
     // Add totals row
     const totals = championships.reduce((acc, item) => {
         acc.matches += parseInt(item.matches || 0);
@@ -8965,7 +9098,7 @@ function renderGKChampionshipsTable(championships) {
         <td>${totals.penaltySaves}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log('GK championships table rendered successfully');
 }
 
@@ -9145,24 +9278,24 @@ function loadGKSeasons(teamFilter = '') {
     console.log('=== LOADING GK SEASONS ===');
     console.log('goalkeepersData:', goalkeepersData);
     console.log('selectedGoalkeeper:', goalkeepersData.selectedGoalkeeper);
-    
+
     if (!goalkeepersData.selectedGoalkeeper || !goalkeepersData.selectedGoalkeeper.name) {
         console.log('No goalkeeper selected for seasons');
         renderGKSeasonsTable([]);
         return;
     }
-    
+
     console.log(`Loading seasons for goalkeeper: ${goalkeepersData.selectedGoalkeeper.name}, Team filter: ${teamFilter}`);
-    
+
     // Check if we have Excel data
     const hasExcelData = window.cachedExcelData && Object.keys(window.cachedExcelData).length > 0;
     console.log('Has Excel data:', hasExcelData);
     console.log('Cached Excel data keys:', hasExcelData ? Object.keys(window.cachedExcelData) : 'No data');
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for GK seasons:', appliedFilters);
-    
+
     const seasons = getGKSeasonsFromSheets(goalkeepersData.selectedGoalkeeper.name, teamFilter, appliedFilters);
     console.log(`Found ${seasons.length} seasons:`, seasons);
     console.log('Rendering table...');
@@ -9171,23 +9304,23 @@ function loadGKSeasons(teamFilter = '') {
 // Excel: get goalkeeper seasons from GKDETAILS and MATCHDETAILS
 function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters = {}) {
     console.log(`Getting seasons for goalkeeper: ${goalkeeperName}, team filter: ${teamFilter}, applied filters:`, appliedFilters);
-    
+
     const gkDetails = getSheetRowsByCandidates(['GKDETAILS']);
     const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
     const howPenMissed = getSheetRowsByCandidates(['HOWPENMISSED']);
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
-    
+
     console.log('Data found:');
     console.log('- GKDETAILS records:', gkDetails.length);
     console.log('- MATCHDETAILS records:', matchDetails.length);
     console.log('- HOWPENMISSED records:', howPenMissed.length);
     console.log('- PLAYERDETAILS records:', playerDetails.length);
-    
+
     if (!gkDetails.length || !matchDetails.length) {
         console.log('No goalkeeper or match details found');
         return [];
     }
-    
+
     // Apply main filters to matches first (but exclude season filter for seasons tab)
     const filteredMatches = matchDetails.filter(match => {
         // Trophy filter - only show matches from trophy-winning seasons
@@ -9197,12 +9330,12 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
             if (key === 'season') return true; // Don't filter by season in seasons tab
-            
+
             const fieldMapping = {
                 'matchId': 'MATCH_ID', 'championSystem': 'CHAMPION SYSTEM', 'champion': 'CHAMPION',
                 'ahlyManager': 'MANAGER AHLY', 'opponentManager': 'MANAGER OPPONENT', 'referee': 'REFREE',
@@ -9210,21 +9343,21 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 'opponentTeam': 'OPPONENT TEAM', 'result': 'W-D-L', 'cleanSheet': 'CLEAN SHEET',
                 'extraTime': 'ET', 'penalties': 'PEN', 'sy': 'SY'
             };
-            
+
             const field = fieldMapping[key];
             if (!field) return true;
-            
+
             if (key === 'dateFrom') return new Date(match.DATE) >= new Date(filterValue);
             if (key === 'dateTo') return new Date(match.DATE) <= new Date(filterValue);
             if (key === 'goalsFor') return parseInt(match['GOALS FOR'] || 0) >= parseInt(filterValue);
             if (key === 'goalsAgainst') return parseInt(match['GOALS AGAINST'] || 0) <= parseInt(filterValue);
-            
+
             return normalizeStr(match[field] || '') === normalizeStr(filterValue);
         });
     });
-    
+
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID));
-    
+
     // Filter goalkeeper records for the selected goalkeeper and optional teams
     let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
     if (teamFilter) {
@@ -9237,49 +9370,49 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
         }
     }
     gkRecords = gkRecords.filter(r => filteredMatchIds.has(r.MATCH_ID));
-    
+
     if (gkRecords.length === 0) {
         console.log(`No records found for goalkeeper: ${goalkeeperName}`);
         return [];
     }
-    
+
     // Get match IDs for this goalkeeper
     const matchIds = new Set(gkRecords.map(r => r.MATCH_ID).filter(id => id));
-    
+
     // Get match details for these matches from filtered matches
     const matches = filteredMatches.filter(m => matchIds.has(m.MATCH_ID));
-    
+
     // Group ALL goalkeepers by match and team to check if there were multiple GKs
     const allGKsByMatch = new Map();
     gkDetails.forEach(record => {
         const matchId = record.MATCH_ID;
         const gkTeam = normalizeStr(record.TEAM || '');
         const key = `${matchId}_${gkTeam}`;
-        
+
         if (!allGKsByMatch.has(key)) {
             allGKsByMatch.set(key, []);
         }
         allGKsByMatch.get(key).push(record);
     });
-    
+
     // Group by season only
     const seasonStats = new Map();
-    
+
     matches.forEach(match => {
         const gkRecord = gkRecords.find(r => r.MATCH_ID === match.MATCH_ID);
         if (!gkRecord) return;
-        
+
         const elevenBackup = normalizeStr(gkRecord['11/BAKEUP'] || '');
         const matchId = gkRecord.MATCH_ID;
         const gkTeam = normalizeStr(gkRecord.TEAM || '');
-        
+
         // Count ALL matches where goalkeeper played (starting or substitute)
         // const isStarting = elevenBackup === 'اساسي' || elevenBackup === '11';
         // if (!isStarting) return;
-        
+
         const season = match.SEASON || 'Unknown';
         const key = `${season}`;
-        
+
         if (!seasonStats.has(key)) {
             seasonStats.set(key, {
                 season: season,
@@ -9291,33 +9424,33 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 matchIds: new Set()
             });
         }
-        
+
         const stats = seasonStats.get(key);
         stats.matches++;
         stats.matchIds.add(match.MATCH_ID);
-        
+
         const goalsConceded = parseInt(gkRecord['GOALS CONCEDED'] || 0);
         stats.goalsConceded += goalsConceded;
-        
+
         // Clean sheet only if goalkeeper was THE ONLY ONE from his team in this match
         const matchKey = `${matchId}_${gkTeam}`;
         const allGKsInMatch = allGKsByMatch.get(matchKey) || [];
         const onlyOneGK = allGKsInMatch.length === 1;
-        
+
         if (goalsConceded === 0 && onlyOneGK) {
             stats.cleanSheets++;
         }
-        
+
         // Count penalty goals from PLAYERDETAILS for this match
         playerDetails.forEach(playerRecord => {
             if (normalizeStr(playerRecord.MATCH_ID) === normalizeStr(match.MATCH_ID)) {
                 const typeNorm = normalizeStr(playerRecord.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
                 const gaNorm = normalizeStr(playerRecord.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
-                
+
                 if (typeNorm === 'PENGOAL' || gaNorm === 'PENGOAL') {
                     const gkTeam = normalizeStr(gkRecord.TEAM || '');
                     const playerTeam = normalizeStr(playerRecord.TEAM || '');
-                    
+
                     if (gkTeam !== playerTeam) {
                         stats.penaltyGoals++;
                     }
@@ -9325,7 +9458,7 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
             }
         });
     });
-    
+
     // Count penalty saves from HOWPENMISSED for this goalkeeper
     const goalkeeperNameNorm = normalizeStr(goalkeeperName);
     howPenMissed.forEach(record => {
@@ -9347,7 +9480,7 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
             }
         }
     });
-    
+
     // Convert to array and sort by season (same logic as player seasons)
     const seasonsData = Array.from(seasonStats.values())
         .sort((a, b) => {
@@ -9359,7 +9492,7 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 const end = m[2].length === 2 ? (Math.floor(start / 100) * 100 + parseInt(m[2], 10)) : parseInt(m[2], 10);
                 return { start, end };
             }
-            
+
             const nameA = String(a.season || '').toLowerCase();
             const nameB = String(b.season || '').toLowerCase();
             if (nameA !== nameB) return nameA.localeCompare(nameB);
@@ -9369,7 +9502,7 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
             if (yb.start !== ya.start) return yb.start - ya.start;
             return yb.end - ya.end;
         });
-    
+
     console.log(`Found ${seasonsData.length} seasons for goalkeeper ${goalkeeperName}`);
     return seasonsData;
 }
@@ -9377,15 +9510,15 @@ function getGKSeasonsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
 function renderGKSeasonsTable(seasons) {
     console.log('=== RENDERING GK SEASONS TABLE ===');
     console.log(`Seasons to render: ${seasons.length}`);
-    
+
     const tbody = document.querySelector('#gk-seasons-table tbody');
     if (!tbody) {
         console.error('GK seasons table tbody not found');
         return;
     }
-    
+
     tbody.innerHTML = '';
-    
+
     if (seasons.length === 0) {
         console.log('No seasons found, showing empty message');
         const row = document.createElement('tr');
@@ -9393,7 +9526,7 @@ function renderGKSeasonsTable(seasons) {
         tbody.appendChild(row);
         return;
     }
-    
+
     seasons.forEach((season, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -9406,7 +9539,7 @@ function renderGKSeasonsTable(seasons) {
         `;
         tbody.appendChild(row);
     });
-    
+
     // Add totals row
     const totals = seasons.reduce((acc, item) => {
         acc.matches += parseInt(item.matches || 0);
@@ -9428,7 +9561,7 @@ function renderGKSeasonsTable(seasons) {
         <td>${totals.penaltySaves}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log('GK seasons table rendered successfully');
 }
 
@@ -9439,13 +9572,13 @@ function loadGKVsTeams(teamFilter = '') {
         renderGKVsTeamsTable([]);
         return;
     }
-    
+
     console.log(`Loading vs teams for goalkeeper: ${goalkeepersData.selectedGoalkeeper.name}, Team filter: ${teamFilter}`);
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for GK vs teams:', appliedFilters);
-    
+
     const items = getGKVsTeamsFromSheets(goalkeepersData.selectedGoalkeeper.name, teamFilter, appliedFilters);
     renderGKVsTeamsTable(items);
 }
@@ -9469,12 +9602,12 @@ function getGKVsTeamsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
             if (key === 'opponentTeam') return true; // Don't filter by opponent team in vs teams tab
-            
+
             const fieldMapping = {
                 'matchId': 'MATCH_ID', 'championSystem': 'CHAMPION SYSTEM', 'champion': 'CHAMPION',
                 'season': 'SEASON', 'ahlyManager': 'MANAGER AHLY', 'opponentManager': 'MANAGER OPPONENT',
@@ -9482,7 +9615,7 @@ function getGKVsTeamsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
                 'ahlyTeam': 'AHLY TEAM', 'result': 'W-D-L', 'cleanSheet': 'CLEAN SHEET',
                 'extraTime': 'ET', 'penalties': 'PEN', 'sy': 'SY'
             };
-            
+
             const field = fieldMapping[key];
             if (!field) return true;
             if (key === 'dateFrom') return new Date(match.DATE) >= new Date(filterValue);
@@ -9492,7 +9625,7 @@ function getGKVsTeamsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
             return normalizeStr(match[field] || '') === normalizeStr(filterValue);
         });
     });
-    
+
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID));
 
     let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
@@ -9521,7 +9654,7 @@ function getGKVsTeamsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
         const matchId = record.MATCH_ID;
         const gkTeam = normalizeStr(record.TEAM || '');
         const key = `${matchId}_${gkTeam}`;
-        
+
         if (!allGKsByMatch.has(key)) {
             allGKsByMatch.set(key, []);
         }
@@ -9537,7 +9670,7 @@ function getGKVsTeamsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
 
         const elevenBackup = normalizeStr(gk['11/BAKEUP'] || '');
         const gkTeam = normalizeStr(gk.TEAM || '');
-        
+
         // Count ALL matches where goalkeeper played (starting or substitute)
         // const isStarting = elevenBackup === 'اساسي' || elevenBackup === '11';
         // if (!isStarting) return;
@@ -9557,12 +9690,12 @@ function getGKVsTeamsFromSheets(goalkeeperName, teamFilter = '', appliedFilters 
 
         const goalsConceded = parseInt(gk['GOALS CONCEDED'] || 0);
         stats.goalsConceded += goalsConceded;
-        
+
         // Clean sheet only if goalkeeper was THE ONLY ONE from his team in this match
         const matchKey = `${mid}_${gkTeam}`;
         const allGKsInMatch = allGKsByMatch.get(matchKey) || [];
         const onlyOneGK = allGKsInMatch.length === 1;
-        
+
         if (goalsConceded === 0 && onlyOneGK) {
             stats.cleanSheets++;
         }
@@ -9655,13 +9788,13 @@ function loadGKVsPlayers(teamFilter = '') {
         renderGKVsPlayersTable([]);
         return;
     }
-    
+
     console.log(`Loading vs players for goalkeeper: ${goalkeepersData.selectedGoalkeeper.name}, Team filter: ${teamFilter}`);
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for GK vs players:', appliedFilters);
-    
+
     const items = getGKVsPlayersFromSheets(goalkeepersData.selectedGoalkeeper.name, teamFilter, appliedFilters);
     renderGKVsPlayersTable(items);
 }
@@ -9685,11 +9818,11 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
-            
+
             const fieldMapping = {
                 'matchId': 'MATCH_ID', 'championSystem': 'CHAMPION SYSTEM', 'champion': 'CHAMPION',
                 'season': 'SEASON', 'ahlyManager': 'MANAGER AHLY', 'opponentManager': 'MANAGER OPPONENT',
@@ -9698,7 +9831,7 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
                 'cleanSheet': 'CLEAN SHEET', 'extraTime': 'EXTRA TIME', 'penalties': 'PKS',
                 'sy': 'SY'
             };
-            
+
             const field = fieldMapping[key];
             if (!field) return true;
             if (key === 'dateFrom') return new Date(match.DATE) >= new Date(filterValue);
@@ -9708,11 +9841,11 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
             return normalizeStr(match[field] || '') === normalizeStr(filterValue);
         });
     });
-    
+
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID));
 
     const targetGKNorm = normalizeStr(goalkeeperName);
-    
+
     // Filter gkRows by team if teamFilter is provided - but keep ALL GKs for proper substitution logic
     let filteredGKRows = gkRows.filter(r => {
         const gkName = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player);
@@ -9762,7 +9895,7 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
 
         // Get target GK's team
         const gkTeam = normalizeStr(targetGKInMatch.TEAM || targetGKInMatch['AHLYTEAM'] || targetGKInMatch.team);
-        
+
         // Skip goals by same team as the target GK
         if (gkTeam === playerTeam) return;
 
@@ -9785,7 +9918,7 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
                 const goalsConceded = parseInt(g['GOALS CONCEDED'] || 0);
                 return goalsConceded > 0;
             });
-            
+
             if (gksWithGoals.length === 1) {
                 // Only one GK conceded goals - assign all goals to them
                 responsibleGK = gksWithGoals[0];
@@ -9793,23 +9926,23 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
                 // Both GKs conceded goals - match by minute
                 // Compare MINUTE from PLAYERDETAILS with GOAL MINUTE from GKDETAILS
                 // Note: GOAL MINUTE can have multiple minutes separated by #
-                
+
                 const goalMinuteStr = minute.toString().trim();
-                
+
                 for (const gk of sameTeamGKs) {
                     const goalMinuteField = (gk['GOAL MINUTE'] || '').toString().trim();
                     if (!goalMinuteField) continue;
-                    
+
                     // Split by # to get all goal minutes for this GK
                     const goalMinutes = goalMinuteField.split('#').map(m => m.trim());
-                    
+
                     // Check if goal minute matches any of the GK's goal minutes
                     if (goalMinutes.includes(goalMinuteStr)) {
                         responsibleGK = gk;
                         break;
                     }
                 }
-                
+
                 // If no match found, don't assign to anyone (wait for GOAL MINUTE to be filled)
                 // responsibleGK stays null
             } else {
@@ -9823,10 +9956,10 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
         if (!responsibleGK || normalizeStr(responsibleGK['PLAYER NAME'] || responsibleGK.PLAYER || responsibleGK.player) !== targetGKNorm) return;
 
         // Count the goal
-        if (goalsType === 'GOAL' || typeNorm === 'PENGOAL' || goalsType.replace(/[^A-Z]/g,'') === 'PENGOAL') {
+        if (goalsType === 'GOAL' || typeNorm === 'PENGOAL' || goalsType.replace(/[^A-Z]/g, '') === 'PENGOAL') {
             if (!perPlayer.has(playerName)) perPlayer.set(playerName, { player: playerName, goals: 0, pen_goals: 0, pen_saved: 0 });
             const agg = perPlayer.get(playerName);
-            if (typeNorm === 'PENGOAL' || goalsType.replace(/[^A-Z]/g,'') === 'PENGOAL') {
+            if (typeNorm === 'PENGOAL' || goalsType.replace(/[^A-Z]/g, '') === 'PENGOAL') {
                 agg.pen_goals += 1;
                 agg.goals += 1;
             } else if (goalsType === 'GOAL') {
@@ -9876,7 +10009,7 @@ function getGKVsPlayersFromSheets(goalkeeperName, teamFilter = '', appliedFilter
     });
 
     // Sort by total goals desc, then pen goals desc
-    return Array.from(perPlayer.values()).sort((a,b) => (b.goals - a.goals) || (b.pen_goals - a.pen_goals));
+    return Array.from(perPlayer.values()).sort((a, b) => (b.goals - a.goals) || (b.pen_goals - a.pen_goals));
 }
 
 function renderGKVsPlayersTable(items) {
@@ -9918,7 +10051,7 @@ function showGKSubTab(evt, subTabName) {
     console.log('=== SHOWING GK SUB TAB ===');
     console.log('Sub-tab name:', subTabName);
     console.log('Event:', evt);
-    
+
     // Hide all GK sub-tab contents
     const subTabContents = document.querySelectorAll('#gk-tab .player-sub-tab-content');
     console.log('Found sub-tab contents:', subTabContents.length);
@@ -9926,18 +10059,18 @@ function showGKSubTab(evt, subTabName) {
         console.log('Hiding:', content.id);
         content.classList.remove('active');
     });
-    
+
     // Remove active class from all GK sub-tabs within GK section
     const subTabs = document.querySelectorAll('#gk-tab .stats-sub-tab');
     console.log('Found sub-tabs:', subTabs.length);
     subTabs.forEach(tab => tab.classList.remove('active'));
-    
+
     // Show selected GK sub-tab content
     const targetElement = document.getElementById('gk-' + subTabName + '-sub');
     console.log('Looking for element with ID: gk-' + subTabName + '-sub');
     console.log('Target element found:', targetElement);
     console.log('Target element classes before:', targetElement ? targetElement.className : 'N/A');
-    
+
     if (targetElement) {
         targetElement.classList.add('active');
         console.log('Added active class to:', targetElement.id);
@@ -9949,13 +10082,13 @@ function showGKSubTab(evt, subTabName) {
         const allGKSubTabs = document.querySelectorAll('#gk-tab [id$="-sub"]');
         allGKSubTabs.forEach(el => console.log('- ' + el.id));
     }
-    
+
     // Add active class to clicked GK sub-tab
     if (evt && evt.target) {
         evt.target.classList.add('active');
         console.log('Added active class to clicked tab');
     }
-    
+
     // Load data for the selected sub-tab
     console.log('Checking if loadGKSubTabData function exists:', typeof loadGKSubTabData);
     if (typeof loadGKSubTabData === 'function') {
@@ -9974,13 +10107,13 @@ function loadGKSubTabData(subTabName) {
         console.log('No goalkeeper selected for sub-tab data');
         return;
     }
-    
+
     // Get team filter from checkboxes
     const selectedTeams = getSelectedGoalkeeperTeams();
     const teamFilter = selectedTeams.length > 0 ? selectedTeams.join(',') : '';
     console.log(`Team filter for sub-tab: ${teamFilter}`);
-    
-    switch(subTabName) {
+
+    switch (subTabName) {
         case 'overview':
             console.log('Loading GK overview stats...');
             loadGKOverviewStats(selectedGoalkeeper.name, teamFilter);
@@ -10029,7 +10162,7 @@ function loadGKOverview() {
         });
         return;
     }
-    
+
     // Load goalkeeper overview statistics
     loadGKOverviewStats(goalkeepersData.selectedGoalkeeper.name);
 }
@@ -10037,14 +10170,14 @@ function loadGKOverview() {
 // Function to load goalkeeper overview statistics
 async function loadGKOverviewStats(goalkeeperName, teamFilter = '') {
     console.log(`Loading overview stats for goalkeeper: ${goalkeeperName}, Team filter: ${teamFilter}`);
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for GK overview:', appliedFilters);
-    
+
     // Get goalkeeper stats from Excel
     const stats = getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter, appliedFilters);
-    
+
     updateGKOverviewCards({
         total_matches: stats.totalMatches,
         clean_sheets: stats.cleanSheets,
@@ -10068,13 +10201,13 @@ function calculateGKStreaks(gkRecords, filteredMatches, goalkeeperName) {
             cleanSheetStreakMatches: []
         };
     }
-    
+
     // Sort matches by date
     const matchesMap = new Map();
     filteredMatches.forEach(match => {
         matchesMap.set(match.MATCH_ID, match);
     });
-    
+
     // Sort GK records by match date
     const sortedRecords = [...gkRecords]
         .map(record => ({
@@ -10084,21 +10217,21 @@ function calculateGKStreaks(gkRecords, filteredMatches, goalkeeperName) {
         }))
         .filter(record => record.matchDate)
         .sort((a, b) => new Date(a.matchDate) - new Date(b.matchDate));
-    
+
     let longestConcedingStreak = 0;
     let currentConcedingStreak = 0;
     let currentConcedingMatches = [];
     let longestConcedingMatches = [];
-    
+
     let longestCleanSheetStreak = 0;
     let currentCleanSheetStreak = 0;
     let currentCleanSheetMatches = [];
     let longestCleanSheetMatches = [];
-    
+
     // Get LINEUPDETAILS to fetch accurate MINTOTAL
     const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const lineupMap = new Map();
-    
+
     // Build map of match_id + player_name -> minutes from LINEUPDETAILS
     const goalkeeperNameNorm = normalizeStr(goalkeeperName);
     lineupDetails.forEach(lineup => {
@@ -10108,15 +10241,15 @@ function calculateGKStreaks(gkRecords, filteredMatches, goalkeeperName) {
         const key = `${matchId}_${playerName}`;
         lineupMap.set(key, minutes);
     });
-    
+
     sortedRecords.forEach(record => {
         const goalsConceded = parseInt(record['GOALS CONCEDED'] || 0);
-        
+
         // Get minutes from LINEUPDETAILS using match ID and goalkeeper name
         const matchId = record.MATCH_ID;
         const key = `${matchId}_${goalkeeperNameNorm}`;
         const minutesPlayed = lineupMap.get(key) || 0;
-        
+
         if (goalsConceded > 0) {
             // Conceding streak
             currentConcedingStreak++;
@@ -10127,12 +10260,12 @@ function calculateGKStreaks(gkRecords, filteredMatches, goalkeeperName) {
                 minutesPlayed: minutesPlayed,
                 goalsConceded: goalsConceded
             });
-            
+
             if (currentConcedingStreak > longestConcedingStreak) {
                 longestConcedingStreak = currentConcedingStreak;
                 longestConcedingMatches = [...currentConcedingMatches];
             }
-            
+
             // Reset clean sheet streak
             currentCleanSheetStreak = 0;
             currentCleanSheetMatches = [];
@@ -10146,18 +10279,18 @@ function calculateGKStreaks(gkRecords, filteredMatches, goalkeeperName) {
                 minutesPlayed: minutesPlayed,
                 goalsConceded: goalsConceded
             });
-            
+
             if (currentCleanSheetStreak > longestCleanSheetStreak) {
                 longestCleanSheetStreak = currentCleanSheetStreak;
                 longestCleanSheetMatches = [...currentCleanSheetMatches];
             }
-            
+
             // Reset conceding streak
             currentConcedingStreak = 0;
             currentConcedingMatches = [];
         }
     });
-    
+
     return {
         longestConcedingStreak,
         longestCleanSheetStreak,
@@ -10168,10 +10301,10 @@ function calculateGKStreaks(gkRecords, filteredMatches, goalkeeperName) {
 
 // Excel: calculate goalkeeper statistics from GKDETAILS and MATCHDETAILS
 function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFilters = {}) {
-    
+
     const gkDetails = getSheetRowsByCandidates(['GKDETAILS']);
     const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
-    
+
     if (!gkDetails.length || !matchDetails.length) {
         return {
             totalMatches: 0,
@@ -10183,7 +10316,7 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             penaltiesMissed: 0
         };
     }
-    
+
     // Apply main filters to matches
     const filteredMatches = matchDetails.filter(match => {
         // Trophy filter - only show matches from trophy-winning seasons
@@ -10193,11 +10326,11 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
                 return false;
             }
         }
-        
+
         return Object.keys(appliedFilters).every(key => {
             const filterValue = appliedFilters[key];
             if (!filterValue) return true;
-            
+
             const fieldMapping = {
                 'matchId': 'MATCH_ID', 'championSystem': 'CHAMPION SYSTEM', 'champion': 'CHAMPION',
                 'season': 'SEASON', 'ahlyManager': 'MANAGER AHLY', 'opponentManager': 'MANAGER OPPONENT',
@@ -10206,7 +10339,7 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
                 'cleanSheet': 'CLEAN SHEET', 'extraTime': 'EXTRA TIME', 'penalties': 'PKS',
                 'sy': 'SY'
             };
-            
+
             const field = fieldMapping[key];
             if (!field) return true;
             if (key === 'dateFrom') return new Date(match.DATE) >= new Date(filterValue);
@@ -10216,12 +10349,12 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             return normalizeStr(match[field] || '') === normalizeStr(filterValue);
         });
     });
-    
+
     const filteredMatchIds = new Set(filteredMatches.map(m => m.MATCH_ID));
-    
+
     // Filter goalkeeper records for the selected goalkeeper
     let gkRecords = gkDetails.filter(r => normalizeStr(r['PLAYER NAME']) === normalizeStr(goalkeeperName));
-    
+
     // Apply team filter if specified
     if (teamFilter) {
         if (teamFilter === 'WITH_AHLY') {
@@ -10241,10 +10374,10 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             }
         }
     }
-    
+
     // Filter by matches that passed the main filters
     gkRecords = gkRecords.filter(r => filteredMatchIds.has(r.MATCH_ID));
-    
+
     if (gkRecords.length === 0) {
         return {
             totalMatches: 0,
@@ -10256,7 +10389,7 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             penaltiesMissed: 0
         };
     }
-    
+
     // Calculate statistics
     let totalMatches = 0;
     let goalsConceded = 0;
@@ -10264,20 +10397,20 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
     let penaltyGoals = 0;
     let penaltySaves = 0;
     let penaltiesMissed = 0;
-    
+
     // Group ALL goalkeepers by match and team to check if there were multiple GKs
     const allGKsByMatch = new Map();
     gkDetails.forEach(record => {
         const matchId = record.MATCH_ID;
         const gkTeam = normalizeStr(record.TEAM || '');
         const key = `${matchId}_${gkTeam}`;
-        
+
         if (!allGKsByMatch.has(key)) {
             allGKsByMatch.set(key, []);
         }
         allGKsByMatch.get(key).push(record);
     });
-    
+
     // Calculate statistics directly from GKDETAILS
     gkRecords.forEach(record => {
         const goalsConcededValue = parseInt(record['GOALS CONCEDED'] || 0);
@@ -10285,33 +10418,33 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
         const matchId = record.MATCH_ID;
         const gkTeam = normalizeStr(record.TEAM || '');
         const key = `${matchId}_${gkTeam}`;
-        
+
         // Count ALL matches where goalkeeper played (starting or substitute)
         // const isStarting = elevenBackup === 'اساسي' || elevenBackup === '11';
-        
+
         // if (isStarting) {
-            totalMatches++;
-            goalsConceded += goalsConcededValue;
-            
-            // Clean sheet only if goalkeeper was THE ONLY ONE from his team in this match
-            const allGKsInMatch = allGKsByMatch.get(key) || [];
-            const onlyOneGK = allGKsInMatch.length === 1;
-            
-            if (goalsConcededValue === 0 && onlyOneGK) {
-                cleanSheets++;
-            }
+        totalMatches++;
+        goalsConceded += goalsConcededValue;
+
+        // Clean sheet only if goalkeeper was THE ONLY ONE from his team in this match
+        const allGKsInMatch = allGKsByMatch.get(key) || [];
+        const onlyOneGK = allGKsInMatch.length === 1;
+
+        if (goalsConcededValue === 0 && onlyOneGK) {
+            cleanSheets++;
+        }
         // }
     });
-    
+
     // Calculate penalty goals from PLAYERDETAILS for this goalkeeper's matches
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const gkMatchIds = new Set(gkRecords.map(r => r.MATCH_ID).filter(id => id));
-    
+
     playerDetails.forEach(playerRecord => {
         const matchId = normalizeStr(playerRecord.MATCH_ID);
         const typeNorm = normalizeStr(playerRecord.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
         const gaNorm = normalizeStr(playerRecord.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
-        
+
         // Check if this is a penalty goal in a match where our goalkeeper played
         if (gkMatchIds.has(matchId) && (typeNorm === 'PENGOAL' || gaNorm === 'PENGOAL')) {
             // Check if this penalty goal was scored against our goalkeeper
@@ -10319,7 +10452,7 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             if (gkRecord) {
                 const gkTeam = normalizeStr(gkRecord.TEAM || '');
                 const playerTeam = normalizeStr(playerRecord.TEAM || '');
-                
+
                 // Penalty goal is against our goalkeeper if teams are different
                 if (gkTeam !== playerTeam) {
                     penaltyGoals++;
@@ -10327,11 +10460,11 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             }
         }
     });
-    
+
     // Calculate penalty saves from HOWPENMISSED sheet
     const howPenMissed = getSheetRowsByCandidates(['HOWPENMISSED']);
     const goalkeeperNameNorm = normalizeStr(goalkeeperName);
-    
+
     howPenMissed.forEach(record => {
         const playerName = normalizeStr(record['PLAYER NAME'] || '');
         if (playerName === goalkeeperNameNorm) {
@@ -10345,13 +10478,13 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             }
         }
     });
-    
+
     // Calculate penalties missed in goalkeeper's presence (from PLAYERDETAILS)
     playerDetails.forEach(playerRecord => {
         const matchId = normalizeStr(playerRecord.MATCH_ID);
         const typeNorm = normalizeStr(playerRecord.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
         const gaNorm = normalizeStr(playerRecord.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
-        
+
         // Check if this is a missed penalty in a match where our goalkeeper played
         if (gkMatchIds.has(matchId) && (typeNorm === 'PENMISSED' || gaNorm === 'PENMISSED')) {
             // Check if this missed penalty was against our goalkeeper's team
@@ -10359,7 +10492,7 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             if (gkRecord) {
                 const gkTeam = normalizeStr(gkRecord.TEAM || '');
                 const playerTeam = normalizeStr(playerRecord.TEAM || '');
-                
+
                 // Penalty missed against our goalkeeper if teams are different
                 if (gkTeam !== playerTeam) {
                     penaltiesMissed++;
@@ -10367,22 +10500,22 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
             }
         }
     });
-    
+
     // Calculate clean sheet percentage
     const cleanSheetPercentage = totalMatches > 0 ? Math.round((cleanSheets / totalMatches) * 100) : 0;
-    
+
     // Calculate average goals conceded per match
     const avgGoalsConceded = totalMatches > 0 ? (goalsConceded / totalMatches).toFixed(2) : 0;
-    
+
     // Calculate longest streaks
     const streaks = calculateGKStreaks(gkRecords, filteredMatches, goalkeeperName);
-    
+
     // Store streak details globally for modal display
     window.currentGKStreaks = {
         concedingMatches: streaks.concedingStreakMatches,
         cleanSheetMatches: streaks.cleanSheetStreakMatches
     };
-    
+
     const stats = {
         totalMatches,
         cleanSheets,
@@ -10395,13 +10528,13 @@ function getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter = '', appliedFi
         longestConcedingStreak: streaks.longestConcedingStreak,
         longestCleanSheetStreak: streaks.longestCleanSheetStreak
     };
-    
+
     return stats;
 }
 
 // Load all goalkeepers data
 function loadAllGoalkeepersData(filteredRecords = null) {
-    
+
     if (!alAhlyStatsData || !alAhlyStatsData.allRecords) {
         renderAllGoalkeepersTable([]);
         return;
@@ -10409,7 +10542,7 @@ function loadAllGoalkeepersData(filteredRecords = null) {
 
     const teamFilterElement = document.getElementById('all-gk-team-filter');
     const teamFilter = teamFilterElement ? teamFilterElement.value : '';
-    
+
     // Get unique goalkeepers from GKDETAILS
     const gkDetails = getSheetRowsByCandidates(['GKDETAILS']);
     if (!gkDetails.length) {
@@ -10420,16 +10553,16 @@ function loadAllGoalkeepersData(filteredRecords = null) {
     // Apply main filters to matches - use appliedFilters which is null until "Apply Filters" is clicked
     const currentFilteredRecords = getCurrentFilteredRecords();
     let gkRecords = gkDetails;
-    
+
     if (currentFilteredRecords && currentFilteredRecords.length > 0) {
         const filteredMatchIds = new Set(currentFilteredRecords.map(m => m.MATCH_ID));
         // Filter GK records by matches that passed the main filters
         gkRecords = gkDetails.filter(r => filteredMatchIds.has(r.MATCH_ID));
     }
-    
+
     // Get unique goalkeepers
     const goalkeeperMap = new Map();
-    
+
     gkRecords.forEach(record => {
         const goalkeeperName = normalizeStr(record['PLAYER NAME'] || record.GK_NAME || record.PLAYER);
         if (!goalkeeperName || goalkeeperName === '-' || goalkeeperName === '?' || goalkeeperName === 'unknown') {
@@ -10439,7 +10572,7 @@ function loadAllGoalkeepersData(filteredRecords = null) {
         // Determine team filter with exact match
         const teamName = normalizeStr(record.TEAM);
         const isAhlyTeam = teamName === 'الأهلي';
-        
+
         // Apply team filter - skip if doesn't match
         if (teamFilter === 'WITH_AHLY' && !isAhlyTeam) {
             return; // Skip goalkeepers not with Al Ahly
@@ -10464,11 +10597,11 @@ function loadAllGoalkeepersData(filteredRecords = null) {
     // Calculate statistics for each goalkeeper using the same logic as GK Statistics
     // Use appliedFilters (null until button is clicked) instead of getCurrentFilters()
     const currentFilters = appliedFilters || {};
-    
+
     goalkeeperMap.forEach((goalkeeper, goalkeeperName) => {
         // Use the same calculation logic as GK Statistics page
         const stats = getGoalkeeperStatsFromSheets(goalkeeperName, teamFilter, currentFilters);
-        
+
         // Update goalkeeper object with calculated stats
         goalkeeper.matches = stats.totalMatches;
         goalkeeper.goalsConceded = stats.goalsConceded;
@@ -10483,7 +10616,7 @@ function loadAllGoalkeepersData(filteredRecords = null) {
         .sort((a, b) => b.matches - a.matches);
 
     allGoalkeepersData.goalkeepers = goalkeepersArray;
-    
+
     renderAllGoalkeepersTable(goalkeepersArray);
 }
 
@@ -10519,14 +10652,14 @@ function renderAllGoalkeepersTable(goalkeepersData) {
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
     totalRow.style.backgroundColor = '#f8f9fa';
-    
+
     const totalMatches = goalkeepersData.reduce((sum, gk) => sum + gk.matches, 0);
     const totalGoalsConceded = goalkeepersData.reduce((sum, gk) => sum + gk.goalsConceded, 0);
     const totalCleanSheets = goalkeepersData.reduce((sum, gk) => sum + gk.cleanSheets, 0);
     const totalPenaltyGoals = goalkeepersData.reduce((sum, gk) => sum + gk.penaltyGoals, 0);
     const totalPenaltySaves = goalkeepersData.reduce((sum, gk) => sum + gk.penaltySaves, 0);
     const totalPenaltiesMissed = goalkeepersData.reduce((sum, gk) => sum + gk.penaltiesMissed, 0);
-    
+
     totalRow.innerHTML = `
         <td style="text-align: center;">TOTAL</td>
         <td>${totalMatches}</td>
@@ -10543,7 +10676,7 @@ function renderAllGoalkeepersTable(goalkeepersData) {
 function setupAllGoalkeepersFilter() {
     const filterSelect = document.getElementById('all-gk-team-filter');
     if (filterSelect) {
-        filterSelect.addEventListener('change', function() {
+        filterSelect.addEventListener('change', function () {
             console.log('All goalkeepers filter changed:', this.value);
             loadAllGoalkeepersData();
         });
@@ -10553,7 +10686,7 @@ function setupAllGoalkeepersFilter() {
 // Show streak details popup
 async function showStreakDetails(streakType) {
     console.log('Showing streak details for:', streakType);
-    
+
     // Recompute streaks using current filters and selected GK context before showing
     try {
         const selectedGKName = (goalkeepersData && goalkeepersData.selectedGoalkeeper && goalkeepersData.selectedGoalkeeper.name) ? goalkeepersData.selectedGoalkeeper.name : '';
@@ -10565,27 +10698,27 @@ async function showStreakDetails(streakType) {
     } catch (e) {
         console.warn('Could not recompute GK streaks before showing modal:', e);
     }
-    
+
     if (!window.currentGKStreaks) {
         console.error('No streak data available');
         alert('No streak data available');
         return;
     }
-    
+
     // Get the appropriate matches based on streak type
-    const matches = streakType === 'conceding' 
-        ? window.currentGKStreaks.concedingMatches 
+    const matches = streakType === 'conceding'
+        ? window.currentGKStreaks.concedingMatches
         : window.currentGKStreaks.cleanSheetMatches;
-    
+
     if (!matches || matches.length === 0) {
         alert('No streak data available');
         return;
     }
-    
-    const title = streakType === 'conceding' 
+
+    const title = streakType === 'conceding'
         ? `Longest Conceding Streak (${matches.length} Matches)`
         : `Longest Clean Sheet Streak (${matches.length} Matches)`;
-    
+
     // Create popup overlay
     const overlay = document.createElement('div');
     overlay.id = 'gk-streak-popup-overlay';
@@ -10603,7 +10736,7 @@ async function showStreakDetails(streakType) {
         padding: 20px;
         box-sizing: border-box;
     `;
-    
+
     // Create popup content
     const popup = document.createElement('div');
     popup.style.cssText = `
@@ -10617,7 +10750,7 @@ async function showStreakDetails(streakType) {
         position: relative;
         overflow: auto;
     `;
-    
+
     // Create close button
     const closeBtn = document.createElement('button');
     closeBtn.textContent = '×';
@@ -10641,7 +10774,7 @@ async function showStreakDetails(streakType) {
     closeBtn.onclick = () => {
         document.body.removeChild(overlay);
     };
-    
+
     // Create title
     const titleEl = document.createElement('h2');
     titleEl.textContent = title;
@@ -10651,11 +10784,11 @@ async function showStreakDetails(streakType) {
         color: #333;
         font-size: 1.5rem;
     `;
-    
+
     // Create table
     const tableContainer = document.createElement('div');
     tableContainer.className = 'stats-table-container';
-    
+
     const table = document.createElement('table');
     table.className = 'stats-table';
     table.innerHTML = `
@@ -10671,7 +10804,7 @@ async function showStreakDetails(streakType) {
         </thead>
         <tbody></tbody>
     `;
-    
+
     const tbody = table.querySelector('tbody');
     matches.forEach((match, index) => {
         const row = document.createElement('tr');
@@ -10685,16 +10818,16 @@ async function showStreakDetails(streakType) {
         `;
         tbody.appendChild(row);
     });
-    
+
     tableContainer.appendChild(table);
     popup.appendChild(closeBtn);
     popup.appendChild(titleEl);
     popup.appendChild(tableContainer);
     overlay.appendChild(popup);
-    
+
     // Add to document
     document.body.appendChild(overlay);
-    
+
     // Close on overlay click
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
@@ -10724,20 +10857,20 @@ function updateGKOverviewCards(stats) {
         penalty_saves: stats.penalty_saves,
         penalties_missed: stats.penalties_missed
     });
-    
+
     // Update each card with the corresponding stat
     const elements = [
         'gk-total-matches', 'gk-clean-sheets', 'gk-goals-conceded', 'gk-avg-goals-conceded',
         'gk-clean-sheet-percentage', 'gk-longest-conceding-streak', 'gk-longest-clean-sheet-streak',
         'gk-penalty-goals', 'gk-penalty-saves', 'gk-penalties-missed'
     ];
-    
+
     const values = [
         stats.total_matches, stats.clean_sheets, stats.goals_conceded, stats.avg_goals_conceded,
         stats.clean_sheet_percentage + '%', stats.longest_conceding_streak || 0, stats.longest_clean_sheet_streak || 0,
         stats.penalty_goals, stats.penalty_saves, stats.penalties_missed
     ];
-    
+
     for (let i = 0; i < elements.length; i++) {
         const element = document.getElementById(elements[i]);
         if (element) {
@@ -10753,7 +10886,7 @@ function showStatsTab(arg1, arg2) {
     const isEvent = arg1 && typeof arg1 === 'object' && typeof arg1.preventDefault === 'function';
     const evt = isEvent ? arg1 : null;
     if (evt) {
-        try { evt.preventDefault(); } catch (e) {}
+        try { evt.preventDefault(); } catch (e) { }
     }
     const tabName = typeof arg1 === 'string' ? arg1 : (typeof arg2 === 'string' ? arg2 : 'overview');
 
@@ -10761,18 +10894,18 @@ function showStatsTab(arg1, arg2) {
     document.querySelectorAll('.stats-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Remove active class from all tabs
     document.querySelectorAll('.stats-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Show selected tab content (fallback to overview if missing)
     const selectedTab = document.getElementById(`${tabName}-tab`) || document.getElementById('overview-tab');
     if (selectedTab) {
         selectedTab.classList.add('active');
     }
-    
+
     // Add active class to clicked tab (support clicks on nested SVG)
     const clickedBtn = evt && evt.target && evt.target.closest ? evt.target.closest('button.stats-tab') : null;
     if (clickedBtn) {
@@ -10781,25 +10914,25 @@ function showStatsTab(arg1, arg2) {
         const btn = document.querySelector(`.stats-tab[onclick*="'${tabName}'"]`) || document.querySelector(`.stats-tab[onclick*="'overview'"]`);
         if (btn) btn.classList.add('active');
     }
-    
+
     // Load H2H data when H2H tab is selected (with current filters applied)
     if (tabName === 'h2h') {
         // Get current filtered records if filters are applied
         const currentFilteredRecords = getCurrentFilteredRecords();
         loadH2HTeamsData(currentFilteredRecords);
-        
+
         // Also load countries data if countries tab is visible
         const countriesTab = document.getElementById('h2h-countries-subtab');
         if (countriesTab && countriesTab.style.display !== 'none') {
             loadH2HCountriesData();
         }
     }
-    
+
     // Load H2H T Details data when H2H T Details tab is selected
     if (tabName === 'h2h-t-details') {
         console.log('🎯 H2H T Details tab selected, loading teams...');
         loadH2HTDetailsTeams();
-        
+
         // Apply current filters to H2H T Details
         const currentFilteredRecords = getCurrentFilteredRecords();
         if (currentFilteredRecords && currentFilteredRecords.length > 0) {
@@ -10808,23 +10941,23 @@ function showStatsTab(arg1, arg2) {
             loadH2HTDetailsTeamsWithFilteredData(currentFilteredRecords);
         }
     }
-    
+
     // Load Coaches data when Coaches tab is selected (with current filters applied)
     if (tabName === 'coaches') {
         // Get current filtered records if filters are applied
         const currentFilteredRecords = getCurrentFilteredRecords();
         loadCoachesData(currentFilteredRecords);
     }
-    
+
     if (tabName === 'by-coach') {
         initializeCoachTab();
     }
-    
+
     // Load Main Stats data when Main Stats tab is selected
     if (tabName === 'main-stats') {
         loadChampionshipsStats();
     }
-    
+
     // Load Referees data when Referees tab is selected
     if (tabName === 'referees') {
         loadRefereesData();
@@ -10848,20 +10981,20 @@ function showStatsTab(arg1, arg2) {
             console.warn('Auto-load All Referees failed', e);
         }
     }
-    
+
     // Load All Goalkeepers data when All Goalkeepers tab is selected
     if (tabName === 'all-goalkeepers') {
         // Load data immediately when tab is opened
         loadAllGoalkeepersData();
     }
-    
+
     // Load All Players data when All Players tab is selected (with current filters applied)
     if (tabName === 'all-players') {
         // Get current filtered records if filters are applied
         const currentFilteredRecords = getCurrentFilteredRecords();
         loadAllPlayersData(currentFilteredRecords);
     }
-    
+
     // Load Trophy Players data when Trophy Players tab is selected
     if (tabName === 'trophy-players') {
         loadTrophyPlayersData();
@@ -10914,18 +11047,18 @@ function showPlayerSubTab(arg1, arg2) {
     document.querySelectorAll('.player-sub-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Remove active class from all player sub-tabs
     document.querySelectorAll('.stats-sub-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Show selected sub-tab content (fallback)
     const selectedSubTab = document.getElementById(`player-${subTabName}-sub`) || document.getElementById('player-overview-sub');
     if (selectedSubTab) {
         selectedSubTab.classList.add('active');
     }
-    
+
     // Add active class to clicked sub-tab
     const clickedBtn = evt && evt.target && evt.target.closest ? evt.target.closest('button.stats-sub-tab') : null;
     if (clickedBtn) {
@@ -10934,7 +11067,7 @@ function showPlayerSubTab(arg1, arg2) {
         const btn = document.querySelector(`.stats-sub-tab[onclick*="'${subTabName}'"]`) || document.querySelector(`.stats-sub-tab[onclick*="'overview'"]`);
         if (btn) btn.classList.add('active');
     }
-    
+
     // Load data for the selected sub-tab if player is selected
     const searchEl = document.getElementById('player-search');
     const selectedPlayer = (searchEl && searchEl.value && searchEl.value.trim()) || (playersData && playersData.selectedPlayer && playersData.selectedPlayer.name) || '';
@@ -11044,23 +11177,23 @@ function showGoalDetailsTab(event, tabName) {
     document.querySelectorAll('.goal-details-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Remove active class from all goal details contents
     document.querySelectorAll('.goal-details-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Add active class to selected tab
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
-    
+
     // Show selected content
     const selectedContent = document.getElementById(`goal-${tabName}-content`);
     if (selectedContent) {
         selectedContent.classList.add('active');
     }
-    
+
     // Load data for the selected tab
     if (tabName === 'minute') {
         loadPlayerGoalMinuteStats();
@@ -11077,7 +11210,7 @@ function loadPlayerGoalDetailsStats() {
     const goalMinuteContent = document.getElementById('goal-minute-content');
     const goalEffectContent = document.getElementById('goal-effect-content');
     const goalRoundContent = document.getElementById('goal-round-content');
-    
+
     if (goalEffectContent && goalEffectContent.classList.contains('active')) {
         // If Goal Effect is active, load it
         loadPlayerGoalEffectStats();
@@ -11100,14 +11233,14 @@ function loadPlayerGoalEffectStats() {
         }
         return;
     }
-    
+
     const playerName = playersData.selectedPlayer.name;
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     // Get applied filters from the main filter section
     const appliedFilters = getCurrentFilters();
     console.log('Applied filters for goal effect:', appliedFilters);
-    
+
     const goalEffect = getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters);
     console.log('Goal effect data:', goalEffect);
     renderGoalEffectCards(goalEffect);
@@ -11119,89 +11252,89 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = 
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const nameLower = (playerName || '').toLowerCase();
     const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
-    
+
     if (!details.length || !matches.length) {
-        return { 
-            winningMatchesCount: 0, 
+        return {
+            winningMatchesCount: 0,
             equalizingMatchesCount: 0,
             winningMatchesData: [],
             equalizingMatchesData: []
         };
     }
-    
+
     // Get all player goals
     const playerGoals = details.filter(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
-        
+
         if (teamLower) {
             const teamVal = r.TEAM || r['AHLY TEAM'] || r.team;
             if (!teamMatchesFilter(teamVal, teamFilter)) return false;
         }
-        
+
         // Apply main filters to match data
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
-        const matchDetail = matches.find(match => 
+        const matchDetail = matches.find(match =>
             normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
         );
-        
+
         const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
         if (!filtersMatch) return false;
-        
+
         // Only goals (GA = 'GOAL')
         const gaVal = normalizeStr(r.GA || '').toUpperCase();
         return gaVal === 'GOAL';
     });
-    
+
     console.log('Player goals found:', playerGoals.length);
-    
+
     // Group goals by match
     const matchGoalsMap = new Map();
     playerGoals.forEach(goal => {
         const matchId = normalizeStr(goal.MATCH_ID || goal['MATCH ID'] || goal.match_id);
         if (!matchId) return;
-        
+
         if (!matchGoalsMap.has(matchId)) {
             matchGoalsMap.set(matchId, []);
         }
         matchGoalsMap.get(matchId).push(goal);
     });
-    
+
     console.log('Matches with player goals:', matchGoalsMap.size);
-    
+
     const winningMatchesData = [];
     const equalizingMatchesData = [];
-    
+
     // For each match, check if player scored the last Al Ahly goal
     matchGoalsMap.forEach((playerGoalsInMatch, matchId) => {
         // Find the match details
         const matchDetail = matches.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID']) === matchId);
         if (!matchDetail) return;
-        
+
         const gf = parseInt(matchDetail.GF || 0);
         const ga = parseInt(matchDetail.GA || 0);
-        
+
         // Get all goals in this match (Al Ahly + opponent)
         const allGoalsInMatch = details.filter(r => {
             const mid = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
             if (mid !== matchId) return false;
-            
+
             const gaVal = normalizeStr(r.GA || '').toUpperCase();
             return gaVal === 'GOAL';
         });
-        
+
         // Sort goals by minute
         allGoalsInMatch.sort((a, b) => {
             const minA = parseMinuteForSort(normalizeStr(a.MINUTE || a.minute || '0'));
             const minB = parseMinuteForSort(normalizeStr(b.MINUTE || b.minute || '0'));
             return minA - minB;
         });
-        
+
         // Find last Al Ahly goal and its number
         let lastAhlyGoal = null;
         let goalNumber = 0;
         let ahlyGoalCount = 0;
-        
+
         for (let i = 0; i < allGoalsInMatch.length; i++) {
             const goal = allGoalsInMatch[i];
             const team = normalizeStr(goal.TEAM || goal['AHLY TEAM'] || '').toLowerCase();
@@ -11212,18 +11345,18 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = 
                 goalNumber = ahlyGoalCount;
             }
         }
-        
+
         if (!lastAhlyGoal) return;
-        
+
         // Check if this player scored the last Al Ahly goal
         const lastGoalPlayer = normalizeStr(lastAhlyGoal['PLAYER NAME'] || lastAhlyGoal.PLAYER || '').toLowerCase();
         if (lastGoalPlayer !== nameLower) return;
-        
+
         console.log(`Match ${matchId}: Player scored last Al Ahly goal. Result: ${gf}-${ga}`);
-        
+
         // Count player goals in this match
         const playerGoalCount = playerGoalsInMatch.length;
-        
+
         // Prepare match data
         const matchData = {
             date: matchDetail.DATE || '',
@@ -11234,7 +11367,7 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = 
             playerGoals: playerGoalCount,
             goalNumber: goalNumber
         };
-        
+
         // Check if it's a winning goal (won by 1 goal)
         if (gf > ga && (gf - ga) === 1) {
             winningMatchesData.push(matchData);
@@ -11246,21 +11379,21 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = 
             console.log(`  -> Equalizing goal! (${gf}-${ga})`);
         }
     });
-    
+
     // Sort by date (most recent first)
     winningMatchesData.sort((a, b) => {
         const dateA = parseExcelDate(a.date);
         const dateB = parseExcelDate(b.date);
         return dateB - dateA; // Descending order (newest first)
     });
-    
+
     equalizingMatchesData.sort((a, b) => {
         const dateA = parseExcelDate(a.date);
         const dateB = parseExcelDate(b.date);
         return dateB - dateA; // Descending order (newest first)
     });
-    
-    return { 
+
+    return {
         winningMatchesCount: winningMatchesData.length,
         equalizingMatchesCount: equalizingMatchesData.length,
         winningMatchesData,
@@ -11270,12 +11403,12 @@ function getPlayerGoalEffectFromSheets(playerName, teamFilter, appliedFilters = 
 // Helper function to parse Excel date serial number
 function parseExcelDate(excelDate) {
     if (!excelDate) return new Date(0);
-    
+
     // If it's already a valid date string, parse it
     if (typeof excelDate === 'string' && excelDate.includes('-')) {
         return new Date(excelDate);
     }
-    
+
     // If it's an Excel serial number
     const serial = parseFloat(excelDate);
     if (!isNaN(serial)) {
@@ -11284,21 +11417,21 @@ function parseExcelDate(excelDate) {
         const daysOffset = serial - 2; // Excel has a bug where it counts 1900 as a leap year
         return new Date(excelEpoch.getTime() + daysOffset * 24 * 60 * 60 * 1000);
     }
-    
+
     return new Date(0);
 }
 
 // Helper function to format Excel date for display
 function formatExcelDate(excelDate) {
     if (!excelDate) return '';
-    
+
     const date = parseExcelDate(excelDate);
-    
+
     // Format as DD/MM/YYYY
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    
+
     return `${day}/${month}/${year}`;
 }
 
@@ -11306,9 +11439,9 @@ function formatExcelDate(excelDate) {
 function renderGoalEffectCards(goalEffect) {
     const container = document.getElementById('goal-effect-cards-container');
     if (!container) return;
-    
+
     const { winningMatchesCount, equalizingMatchesCount, winningMatchesData, equalizingMatchesData } = goalEffect;
-    
+
     const html = `
         <div style="width: 100%;">
             <div class="player-stat-card goal-effect-clickable" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; cursor: pointer;" onclick="toggleGoalEffectTable('winning')">
@@ -11387,9 +11520,9 @@ function renderGoalEffectCards(goalEffect) {
             </div>
         </div>
     `;
-    
+
     container.innerHTML = html;
-    
+
     // Render tables data
     renderGoalEffectTable('winning', winningMatchesData);
     renderGoalEffectTable('equalizing', equalizingMatchesData);
@@ -11409,12 +11542,12 @@ function renderGoalEffectTable(type, matchesData) {
     const tbodyId = `${type}-matches-tbody`;
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
-    
+
     if (!matchesData || matchesData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No matches found</td></tr>';
         return;
     }
-    
+
     let html = '';
     matchesData.forEach(match => {
         html += `
@@ -11428,7 +11561,7 @@ function renderGoalEffectTable(type, matchesData) {
             </tr>
         `;
     });
-    
+
     tbody.innerHTML = html;
 }
 
@@ -11439,16 +11572,16 @@ async function autoLoadCachedExcelData() {
     if (cachedData) {
         console.log('Auto-loading cached Excel data...');
         window.__ahlySheetsJson = cachedData;
-        
+
         // Load MATCHDETAILS data
         const matchDetailsSheetName = Object.keys(cachedData).find(n => n.toUpperCase() === 'MATCHDETAILS') || 'MATCHDETAILS';
         const allRecords = cachedData[matchDetailsSheetName] || [];
         alAhlyStatsData.allRecords = allRecords;
-        
+
         // Calculate and store stats immediately from cached data
         const totalMatches = allRecords.length;
         const totalWins = allRecords.filter(r => r['W-D-L'] === 'W').length;
-        const totalDraws = allRecords.filter(r => ['D','D WITH G','D.'].includes(r['W-D-L'])).length;
+        const totalDraws = allRecords.filter(r => ['D', 'D WITH G', 'D.'].includes(r['W-D-L'])).length;
         const drawsWithGoals = allRecords.filter(r => r['W-D-L'] === 'D').length;
         const drawsNoGoals = allRecords.filter(r => r['W-D-L'] === 'D.').length;
         const totalLosses = allRecords.filter(r => r['W-D-L'] === 'L').length;
@@ -11456,7 +11589,7 @@ async function autoLoadCachedExcelData() {
         const totalGoalsAgainst = allRecords.reduce((s, r) => s + (parseInt(r['GA'] || 0)), 0);
         const cleanSheets = allRecords.filter(r => parseInt(r['GA'] || 0) === 0).length;
         const cleanSheetsAgainst = allRecords.filter(r => parseInt(r['GF'] || 0) === 0).length;
-        
+
         // Store in alAhlyStatsData for later use
         alAhlyStatsData.drawsWithGoals = drawsWithGoals;
         alAhlyStatsData.drawsNoGoals = drawsNoGoals;
@@ -11468,17 +11601,17 @@ async function autoLoadCachedExcelData() {
         alAhlyStatsData.totalGoalsAgainst = totalGoalsAgainst;
         alAhlyStatsData.cleanSheets = cleanSheets;
         alAhlyStatsData.cleanSheetsAgainst = cleanSheetsAgainst;
-        
+
         // Build filter options from cached data
         const columnsForFilters = [
-            'CHAMPION SYSTEM','CHAMPION','SEASON','AHLY MANAGER','OPPONENT MANAGER','REFREE','ROUND','H-A-N','STAD','AHLY TEAM','OPPONENT TEAM','W-D-L','CLEAN SHEET','ET','PEN'
+            'CHAMPION SYSTEM', 'CHAMPION', 'SEASON', 'AHLY MANAGER', 'OPPONENT MANAGER', 'REFREE', 'ROUND', 'H-A-N', 'STAD', 'AHLY TEAM', 'OPPONENT TEAM', 'W-D-L', 'CLEAN SHEET', 'ET', 'PEN'
         ];
-        
+
         const idMap = {
             'ET': 'extra-time-filter',
             'PEN': 'penalties-filter'
         };
-        
+
         columnsForFilters.forEach(col => {
             const uniqueValues = [...new Set(allRecords.map(r => r[col]).filter(v => v && String(v).trim()))].sort();
             if (uniqueValues.length > 0) {
@@ -11491,15 +11624,15 @@ async function autoLoadCachedExcelData() {
                 }
             }
         });
-        
+
         // Load stats with cached data
         loadAlAhlyStats();
-        
+
         // Force refresh all tabs with cached data
         setTimeout(() => {
             console.log('Forcing refresh of all tabs with cached data...');
             loadAlAhlyStatsData();
-            
+
             // Update player stats if player is selected
             if (playersData.selectedPlayer && playersData.selectedPlayer.name) {
                 console.log('Refreshing player stats with cached data...');
@@ -11509,7 +11642,7 @@ async function autoLoadCachedExcelData() {
                 loadPlayerVsTeamsStats();
                 loadPlayerVsGKsStats();
             }
-            
+
             // Force update all displays after data is loaded
             setTimeout(() => {
                 console.log('Force updating all displays...');
@@ -11521,14 +11654,14 @@ async function autoLoadCachedExcelData() {
                     totalGoalsFor: alAhlyStatsData.totalGoalsFor,
                     totalGoalsAgainst: alAhlyStatsData.totalGoalsAgainst
                 });
-                
+
                 // Force update overview stats
                 updateOverviewStats();
-                
+
                 // Update charts and tables
                 updateCharts();
                 updateTables();
-                
+
                 // Update match count badge
                 const matchCountBadge = document.getElementById('match-count-badge');
                 if (matchCountBadge && alAhlyStatsData.totalMatches) {
@@ -11537,34 +11670,34 @@ async function autoLoadCachedExcelData() {
                 }
             }, 500); // Increased timeout to ensure data is loaded
         }, 100);
-        
+
         // Load players data from cached sheets
         console.log('Loading players data from cached sheets...');
         loadPlayersData();
-        
+
         // Load goalkeepers data from cached sheets
         console.log('Loading goalkeepers data from cached sheets...');
         loadGoalkeepersData();
-        
+
         // Load H2H Teams data from cached sheets
         console.log('Loading H2H Teams data from cached sheets...');
         loadH2HTeamsData();
-        
+
         // Load Coaches data from cached sheets
         console.log('Loading Coaches data from cached sheets...');
         loadCoachesData();
-        
+
         // Load Referees data from cached sheets
         console.log('Loading Referees data from cached sheets...');
         loadRefereesData();
-        
+
         // Load All Players data from cached sheets
         console.log('Loading All Players data from cached sheets...');
         loadAllPlayersData();
-        
+
         // Update cache status
         updateCacheStatus();
-        
+
         console.log('Cached Excel data loaded successfully');
         return true;
     } else {
@@ -11592,59 +11725,59 @@ function clearCacheAndReload() {
         clearExcelCache();
         window.__ahlySheetsJson = {};
         alAhlyStatsData.allRecords = [];
-        
+
         // Clear all filter selects
         const filterSelects = document.querySelectorAll('select[id$="-filter"]');
         filterSelects.forEach(select => {
             select.innerHTML = '<option value="">All</option>';
         });
-        
+
         // Clear stats
         const tbodyElements = document.querySelectorAll('tbody');
         tbodyElements.forEach(tbody => {
             tbody.innerHTML = '<tr><td colspan="10">No data available</td></tr>';
         });
-        
+
         // Update status
         const statusEl = document.querySelector('#excel-status');
         if (statusEl) {
             statusEl.textContent = 'Cache cleared.';
             statusEl.style.color = '#6c757d';
         }
-        
+
         console.log('Cache cleared and page reset');
     }
 }
 // Load and display All Players data
 function loadAllPlayersData(filteredRecords = null) {
     console.log('Loading All Players data...');
-    
+
     const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matchDetails = filteredRecords || alAhlyStatsData.allRecords || [];
-    
+
     if (!lineupDetails.length || !playerDetails.length || !matchDetails.length) {
         console.log('No data available for All Players');
         renderAllPlayersTable([]);
         return;
     }
-    
+
     console.log(`Processing data from ${matchDetails.length} matches`);
-    
+
     // Get filtered match IDs
     const filteredMatchIds = new Set(matchDetails.map(m => m.MATCH_ID));
-    
+
     // Get team filter value
     const teamFilter = document.getElementById('all-players-team-filter')?.value || '';
-    
+
     // Calculate stats for each player from LINEUPDETAILS
     const playersStats = {};
-    
+
     // Helper function to parse minute for 90+ calculation
     function parseMinuteFor90Plus(minuteStr) {
         const str = String(minuteStr || '').trim();
         if (!str) return 0;
-        
+
         // Handle formats like "90+5" or "90+3"
         if (str.includes('+')) {
             const parts = str.split('+');
@@ -11653,23 +11786,23 @@ function loadAllPlayersData(filteredRecords = null) {
             // Return a fractional value: 90+5 becomes 90.5, so it sorts between 90 and 91
             return base + (extra / 100);
         }
-        
+
         // Regular minute
         return parseInt(str) || 0;
     }
-    
+
     // LINEUPDETAILS contains ONLY Al Ahly players
     // So we only use it if teamFilter is not 'AGAINST_AHLY'
     if (teamFilter !== 'AGAINST_AHLY') {
         lineupDetails.forEach(record => {
             // Skip if match not in filtered matches
             if (!filteredMatchIds.has(record.MATCH_ID)) return;
-            
+
             const playerName = record['PLAYER NAME'] || record.PLAYER || '';
             const minutes = parseInt(record.MINTOTAL || 0);
-            
+
             if (!playerName) return;
-            
+
             if (!playersStats[playerName]) {
                 playersStats[playerName] = {
                     name: playerName,
@@ -11683,30 +11816,30 @@ function loadAllPlayersData(filteredRecords = null) {
                     equalizingMatches: new Set()
                 };
             }
-            
+
             playersStats[playerName].matches.add(record.MATCH_ID);
             playersStats[playerName].minutes += minutes;
         });
     }
-    
+
     // Add goals and assists from PLAYERDETAILS
     playerDetails.forEach(record => {
         // Skip if match not in filtered matches
         if (!filteredMatchIds.has(record.MATCH_ID)) return;
-        
+
         const playerName = record['PLAYER NAME'] || record.PLAYER || '';
         const playerTeam = normalizeStr(record.TEAM || record['AHLY TEAM'] || '');
         const ga = normalizeStr(record.GA || '').toUpperCase();
-        
+
         if (!playerName) return;
-        
+
         // Apply team filter
         if (teamFilter === 'WITH_AHLY') {
             if (playerTeam.trim() !== 'الأهلي' && playerTeam.trim().toLowerCase() !== 'ahly') return;
         } else if (teamFilter === 'AGAINST_AHLY') {
             if (playerTeam.trim() === 'الأهلي' || playerTeam.trim().toLowerCase() === 'ahly') return;
         }
-        
+
         // Initialize player if not exists (for players who scored but weren't in lineup)
         if (!playersStats[playerName]) {
             playersStats[playerName] = {
@@ -11721,7 +11854,7 @@ function loadAllPlayersData(filteredRecords = null) {
                 equalizingMatches: new Set()
             };
         }
-        
+
         // Check for penalty goals in TYPE or GA field
         const typeVal = normalizeStr(record.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
         const gaNorm = normalizeStr(record.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
@@ -11746,14 +11879,14 @@ function loadAllPlayersData(filteredRecords = null) {
             playersStats[playerName].assists++;
         }
     });
-    
+
     // Calculate winning and equalizing matches for each player
     Object.keys(playersStats).forEach(playerName => {
         const playerGoalEffect = calculatePlayerGoalEffect(playerName, playerDetails, matchDetails, filteredMatchIds, teamFilter);
         playersStats[playerName].winningMatches = new Set(playerGoalEffect.winningMatches);
         playersStats[playerName].equalizingMatches = new Set(playerGoalEffect.equalizingMatches);
     });
-    
+
     // Convert to array and calculate G+A
     const playersArray = Object.values(playersStats).map(player => ({
         name: player.name,
@@ -11767,19 +11900,19 @@ function loadAllPlayersData(filteredRecords = null) {
         winningMatches: player.winningMatches.size,
         equalizingMatches: player.equalizingMatches.size
     }));
-    
+
     // Sort by G+A descending (highest first) - default sort
     playersArray.sort((a, b) => b.goalsAssists - a.goalsAssists);
-    
+
     // Reset sort state to default
     allPlayersSortState = {
         column: 'goalsAssists',
         direction: 'desc'
     };
-    
+
     // Render table
     renderAllPlayersTable(playersArray);
-    
+
     // Update header styling for default sort
     setTimeout(() => {
         document.querySelectorAll('#all-players-table th.sortable').forEach(th => {
@@ -11801,15 +11934,15 @@ function calculatePlayerGoalEffect(playerName, playerDetails, matchDetails, filt
     const nameLower = (playerName || '').toLowerCase();
     const winningMatches = [];
     const equalizingMatches = [];
-    
+
     // Get all goals for this player
     const playerGoals = playerDetails.filter(r => {
         const p = normalizeStr(r['PLAYER NAME'] || r.PLAYER || r.player).toLowerCase();
         if (p !== nameLower) return false;
-        
+
         const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
         if (!filteredMatchIds.has(matchId)) return false;
-        
+
         // Apply team filter
         const playerTeam = normalizeStr(r.TEAM || r['AHLY TEAM'] || '');
         if (teamFilter === 'WITH_AHLY') {
@@ -11817,52 +11950,52 @@ function calculatePlayerGoalEffect(playerName, playerDetails, matchDetails, filt
         } else if (teamFilter === 'AGAINST_AHLY') {
             if (playerTeam.trim() === 'الأهلي' || playerTeam.trim().toLowerCase() === 'ahly') return false;
         }
-        
+
         const gaVal = normalizeStr(r.GA || '').toUpperCase();
         return gaVal === 'GOAL';
     });
-    
+
     if (playerGoals.length === 0) {
         return { winningMatches, equalizingMatches };
     }
-    
+
     // Group goals by match
     const matchGoalsMap = new Map();
     playerGoals.forEach(goal => {
         const matchId = normalizeStr(goal.MATCH_ID || goal['MATCH ID'] || goal.match_id);
         if (!matchId) return;
-        
+
         if (!matchGoalsMap.has(matchId)) {
             matchGoalsMap.set(matchId, []);
         }
         matchGoalsMap.get(matchId).push(goal);
     });
-    
+
     // For each match, check if player scored the last Al Ahly goal
     matchGoalsMap.forEach((playerGoalsInMatch, matchId) => {
         // Find the match details
         const matchDetail = matchDetails.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID']) === matchId);
         if (!matchDetail) return;
-        
+
         const gf = parseInt(matchDetail.GF || 0);
         const ga = parseInt(matchDetail.GA || 0);
-        
+
         // Get all goals in this match (Al Ahly + opponent)
         const allGoalsInMatch = playerDetails.filter(r => {
             const mid = normalizeStr(r.MATCH_ID || r['MATCH ID'] || r.match_id);
             if (mid !== matchId) return false;
-            
+
             const gaVal = normalizeStr(r.GA || '').toUpperCase();
             return gaVal === 'GOAL';
         });
-        
+
         // Sort goals by minute
         allGoalsInMatch.sort((a, b) => {
             const minA = parseMinuteForSort(normalizeStr(a.MINUTE || a.minute || '0'));
             const minB = parseMinuteForSort(normalizeStr(b.MINUTE || b.minute || '0'));
             return minA - minB;
         });
-        
+
         // Find last Al Ahly goal
         let lastAhlyGoal = null;
         for (let i = allGoalsInMatch.length - 1; i >= 0; i--) {
@@ -11874,13 +12007,13 @@ function calculatePlayerGoalEffect(playerName, playerDetails, matchDetails, filt
                 break;
             }
         }
-        
+
         if (!lastAhlyGoal) return;
-        
+
         // Check if this player scored the last Al Ahly goal
         const lastGoalPlayer = normalizeStr(lastAhlyGoal['PLAYER NAME'] || lastAhlyGoal.PLAYER || '').toLowerCase();
         if (lastGoalPlayer !== nameLower) return;
-        
+
         // Check if it's a winning goal (won by 1 goal)
         if (gf > ga && (gf - ga) === 1) {
             winningMatches.push(matchId);
@@ -11890,7 +12023,7 @@ function calculatePlayerGoalEffect(playerName, playerDetails, matchDetails, filt
             equalizingMatches.push(matchId);
         }
     });
-    
+
     return { winningMatches, equalizingMatches };
 }
 
@@ -11898,17 +12031,17 @@ function calculatePlayerGoalEffect(playerName, playerDetails, matchDetails, filt
 function renderAllPlayersTable(playersData) {
     const tbody = document.querySelector('#all-players-table tbody');
     if (!tbody) return;
-    
+
     // Store current data for sorting
     allPlayersCurrentData = playersData;
-    
+
     tbody.innerHTML = '';
-    
+
     if (playersData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">No data available</td></tr>';
         return;
     }
-    
+
     // Calculate totals
     const totals = {
         matches: 0,
@@ -11921,7 +12054,7 @@ function renderAllPlayersTable(playersData) {
         winningMatches: 0,
         equalizingMatches: 0
     };
-    
+
     playersData.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -11937,7 +12070,7 @@ function renderAllPlayersTable(playersData) {
             <td>${player.equalizingMatches || 0}</td>
         `;
         tbody.appendChild(row);
-        
+
         // Note: matches count per player, so we don't sum them
         totals.minutes += player.minutes;
         totals.goalsAssists += player.goalsAssists;
@@ -11948,7 +12081,7 @@ function renderAllPlayersTable(playersData) {
         totals.winningMatches += (player.winningMatches || 0);
         totals.equalizingMatches += (player.equalizingMatches || 0);
     });
-    
+
     // Add total row
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
@@ -11967,7 +12100,7 @@ function renderAllPlayersTable(playersData) {
         <td>${totals.equalizingMatches}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log(`All Players table rendered with ${playersData.length} players`);
 }
 
@@ -11981,7 +12114,7 @@ let allPlayersSortState = {
 // Sort All Players table
 function sortAllPlayersTable(column) {
     console.log('Sorting All Players table by:', column);
-    
+
     // Update sort direction
     if (allPlayersSortState.column === column) {
         allPlayersSortState.direction = allPlayersSortState.direction === 'desc' ? 'asc' : 'desc';
@@ -11989,12 +12122,12 @@ function sortAllPlayersTable(column) {
         allPlayersSortState.column = column;
         allPlayersSortState.direction = 'desc';
     }
-    
+
     // Sort the data
     const sortedData = [...allPlayersCurrentData].sort((a, b) => {
         let valA = a[column];
         let valB = b[column];
-        
+
         // Handle string comparison for player name
         if (column === 'name') {
             valA = String(valA).toLowerCase();
@@ -12005,18 +12138,18 @@ function sortAllPlayersTable(column) {
                 return valA.localeCompare(valB);
             }
         }
-        
+
         // Handle numeric comparison
         valA = Number(valA) || 0;
         valB = Number(valB) || 0;
-        
+
         if (allPlayersSortState.direction === 'desc') {
             return valB - valA;
         } else {
             return valA - valB;
         }
     });
-    
+
     // Update active header styling
     document.querySelectorAll('#all-players-table th.sortable').forEach(th => {
         th.classList.remove('active');
@@ -12025,7 +12158,7 @@ function sortAllPlayersTable(column) {
             icon.textContent = '⇅';
         }
     });
-    
+
     // Find and mark active header
     const headers = document.querySelectorAll('#all-players-table th.sortable');
     const columnMap = {
@@ -12040,7 +12173,7 @@ function sortAllPlayersTable(column) {
         'winningMatches': 8,
         'equalizingMatches': 9
     };
-    
+
     const headerIndex = columnMap[column];
     if (headerIndex !== undefined && headers[headerIndex]) {
         headers[headerIndex].classList.add('active');
@@ -12049,7 +12182,7 @@ function sortAllPlayersTable(column) {
             icon.textContent = allPlayersSortState.direction === 'desc' ? '↓' : '↑';
         }
     }
-    
+
     // Re-render table
     renderAllPlayersTable(sortedData);
 }
@@ -12058,8 +12191,8 @@ function sortAllPlayersTable(column) {
 function setupAllPlayersFilter() {
     const teamFilter = document.getElementById('all-players-team-filter');
     if (!teamFilter) return;
-    
-    teamFilter.addEventListener('change', function() {
+
+    teamFilter.addEventListener('change', function () {
         console.log('All Players team filter changed:', this.value);
         // Use current filtered records if filters are applied
         const currentFilteredRecords = getCurrentFilteredRecords();
@@ -12082,7 +12215,7 @@ let trophyScorersSortState = {
 function getTrophySeasons() {
     const trophyData = getSheetRowsByCandidates(['TROPHY']);
     const seasons = new Set();
-    
+
     trophyData.forEach(record => {
         // Read from Champions column only
         const season = record['Champions'];
@@ -12090,7 +12223,7 @@ function getTrophySeasons() {
             seasons.add(String(season).trim());
         }
     });
-    
+
     console.log(`Found ${seasons.size} trophy-winning seasons (Champions):`, Array.from(seasons));
     return seasons;
 }
@@ -12098,17 +12231,17 @@ function getTrophySeasons() {
 // Load and display Trophy Scorers data
 function loadTrophyScorersData(filteredRecords = null) {
     console.log('Loading Trophy Scorers data...');
-    
+
     const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matchDetails = filteredRecords || alAhlyStatsData.allRecords || [];
-    
+
     if (!lineupDetails.length || !playerDetails.length || !matchDetails.length) {
         console.log('No data available for Trophy Scorers');
         renderTrophyScorersTable([]);
         return;
     }
-    
+
     // Get trophy-winning seasons
     const trophySeasons = getTrophySeasons();
     if (trophySeasons.size === 0) {
@@ -12116,36 +12249,36 @@ function loadTrophyScorersData(filteredRecords = null) {
         renderTrophyScorersTable([]);
         return;
     }
-    
+
     // Filter matches to only trophy-winning seasons
     const trophyMatches = matchDetails.filter(match => {
         const season = match.SEASON || match.season;
         return trophySeasons.has(season);
     });
-    
+
     console.log(`Processing data from ${trophyMatches.length} matches in trophy-winning seasons`);
-    
+
     // Get filtered match IDs
     const filteredMatchIds = new Set(trophyMatches.map(m => m.MATCH_ID));
-    
+
     // Get team filter value
     const teamFilter = document.getElementById('trophy-scorers-team-filter')?.value || '';
-    
+
     // Calculate stats for each player from LINEUPDETAILS
     const playersStats = {};
-    
+
     // LINEUPDETAILS contains ONLY Al Ahly players
     // So we only use it if teamFilter is not 'AGAINST_AHLY'
     if (teamFilter !== 'AGAINST_AHLY') {
         lineupDetails.forEach(record => {
             // Skip if match not in filtered matches
             if (!filteredMatchIds.has(record.MATCH_ID)) return;
-            
+
             const playerName = record['PLAYER NAME'] || record.PLAYER || '';
             const minutes = parseInt(record.MINTOTAL || 0);
-            
+
             if (!playerName) return;
-            
+
             if (!playersStats[playerName]) {
                 playersStats[playerName] = {
                     name: playerName,
@@ -12158,30 +12291,30 @@ function loadTrophyScorersData(filteredRecords = null) {
                     equalizingMatches: new Set()
                 };
             }
-            
+
             playersStats[playerName].matches.add(record.MATCH_ID);
             playersStats[playerName].minutes += minutes;
         });
     }
-    
+
     // Add goals and assists from PLAYERDETAILS
     playerDetails.forEach(record => {
         // Skip if match not in filtered matches
         if (!filteredMatchIds.has(record.MATCH_ID)) return;
-        
+
         const playerName = record['PLAYER NAME'] || record.PLAYER || '';
         const playerTeam = normalizeStr(record.TEAM || record['AHLY TEAM'] || '');
         const ga = normalizeStr(record.GA || '').toUpperCase();
-        
+
         if (!playerName) return;
-        
+
         // Apply team filter
         if (teamFilter === 'WITH_AHLY') {
             if (playerTeam.trim() !== 'الأهلي' && playerTeam.trim().toLowerCase() !== 'ahly') return;
         } else if (teamFilter === 'AGAINST_AHLY') {
             if (playerTeam.trim() === 'الأهلي' || playerTeam.trim().toLowerCase() === 'ahly') return;
         }
-        
+
         // Initialize player if not exists (for players who scored but weren't in lineup)
         if (!playersStats[playerName]) {
             playersStats[playerName] = {
@@ -12195,7 +12328,7 @@ function loadTrophyScorersData(filteredRecords = null) {
                 equalizingMatches: new Set()
             };
         }
-        
+
         // Check for penalty goals in TYPE or GA field
         const typeVal = normalizeStr(record.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
         const gaNorm = normalizeStr(record.GA || '').toUpperCase().replace(/[^A-Z]/g, '');
@@ -12214,14 +12347,14 @@ function loadTrophyScorersData(filteredRecords = null) {
             playersStats[playerName].assists++;
         }
     });
-    
+
     // Calculate winning and equalizing matches for each player
     Object.keys(playersStats).forEach(playerName => {
         const playerGoalEffect = calculatePlayerGoalEffect(playerName, playerDetails, trophyMatches, filteredMatchIds, teamFilter);
         playersStats[playerName].winningMatches = new Set(playerGoalEffect.winningMatches);
         playersStats[playerName].equalizingMatches = new Set(playerGoalEffect.equalizingMatches);
     });
-    
+
     // Convert to array and calculate G+A
     const playersArray = Object.values(playersStats).map(player => ({
         name: player.name,
@@ -12234,19 +12367,19 @@ function loadTrophyScorersData(filteredRecords = null) {
         winningMatches: player.winningMatches.size,
         equalizingMatches: player.equalizingMatches.size
     }));
-    
+
     // Sort by G+A descending (highest first) - default sort
     playersArray.sort((a, b) => b.goalsAssists - a.goalsAssists);
-    
+
     // Reset sort state to default
     trophyScorersSortState = {
         column: 'goalsAssists',
         direction: 'desc'
     };
-    
+
     // Render table
     renderTrophyScorersTable(playersArray);
-    
+
     // Update header styling for default sort
     setTimeout(() => {
         document.querySelectorAll('#trophy-scorers-table th.sortable').forEach(th => {
@@ -12267,17 +12400,17 @@ function loadTrophyScorersData(filteredRecords = null) {
 function renderTrophyScorersTable(playersData) {
     const tbody = document.querySelector('#trophy-scorers-table tbody');
     if (!tbody) return;
-    
+
     // Store current data for sorting
     trophyScorersCurrentData = playersData;
-    
+
     tbody.innerHTML = '';
-    
+
     if (playersData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No data available</td></tr>';
         return;
     }
-    
+
     // Calculate totals
     const totals = {
         matches: 0,
@@ -12289,7 +12422,7 @@ function renderTrophyScorersTable(playersData) {
         winningMatches: 0,
         equalizingMatches: 0
     };
-    
+
     playersData.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -12304,7 +12437,7 @@ function renderTrophyScorersTable(playersData) {
             <td>${player.equalizingMatches || 0}</td>
         `;
         tbody.appendChild(row);
-        
+
         // Note: matches count per player, so we don't sum them
         totals.minutes += player.minutes;
         totals.goalsAssists += player.goalsAssists;
@@ -12314,7 +12447,7 @@ function renderTrophyScorersTable(playersData) {
         totals.winningMatches += (player.winningMatches || 0);
         totals.equalizingMatches += (player.equalizingMatches || 0);
     });
-    
+
     // Add total row
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
@@ -12332,14 +12465,14 @@ function renderTrophyScorersTable(playersData) {
         <td>${totals.equalizingMatches}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log(`Trophy Scorers table rendered with ${playersData.length} players`);
 }
 
 // Sort Trophy Scorers table
 function sortTrophyScorersTable(column) {
     console.log('Sorting Trophy Scorers table by:', column);
-    
+
     // Update sort direction
     if (trophyScorersSortState.column === column) {
         trophyScorersSortState.direction = trophyScorersSortState.direction === 'desc' ? 'asc' : 'desc';
@@ -12347,12 +12480,12 @@ function sortTrophyScorersTable(column) {
         trophyScorersSortState.column = column;
         trophyScorersSortState.direction = 'desc';
     }
-    
+
     // Sort the data
     const sortedData = [...trophyScorersCurrentData].sort((a, b) => {
         let valA = a[column];
         let valB = b[column];
-        
+
         // Handle string comparison for player name
         if (column === 'name') {
             valA = String(valA).toLowerCase();
@@ -12363,18 +12496,18 @@ function sortTrophyScorersTable(column) {
                 return valA.localeCompare(valB);
             }
         }
-        
+
         // Handle numeric comparison
         valA = Number(valA) || 0;
         valB = Number(valB) || 0;
-        
+
         if (trophyScorersSortState.direction === 'desc') {
             return valB - valA;
         } else {
             return valA - valB;
         }
     });
-    
+
     // Update active header styling
     document.querySelectorAll('#trophy-scorers-table th.sortable').forEach(th => {
         th.classList.remove('active');
@@ -12383,7 +12516,7 @@ function sortTrophyScorersTable(column) {
             icon.textContent = '⇅';
         }
     });
-    
+
     // Find and mark active header
     const headers = document.querySelectorAll('#trophy-scorers-table th.sortable');
     const columnMap = {
@@ -12397,7 +12530,7 @@ function sortTrophyScorersTable(column) {
         'winningMatches': 7,
         'equalizingMatches': 8
     };
-    
+
     const headerIndex = columnMap[column];
     if (headerIndex !== undefined && headers[headerIndex]) {
         headers[headerIndex].classList.add('active');
@@ -12406,7 +12539,7 @@ function sortTrophyScorersTable(column) {
             icon.textContent = trophyScorersSortState.direction === 'desc' ? '↓' : '↑';
         }
     }
-    
+
     // Re-render table
     renderTrophyScorersTable(sortedData);
 }
@@ -12415,8 +12548,8 @@ function sortTrophyScorersTable(column) {
 function setupTrophyScorersFilter() {
     const teamFilter = document.getElementById('trophy-scorers-team-filter');
     if (!teamFilter) return;
-    
-    teamFilter.addEventListener('change', function() {
+
+    teamFilter.addEventListener('change', function () {
         console.log('Trophy Scorers team filter changed:', this.value);
         // Use current filtered records if filters are applied
         const currentFilteredRecords = getCurrentFilteredRecords();
@@ -12433,23 +12566,23 @@ function showAllPlayersSubTab(event, subtabName) {
     // Remove active class from all sub-tabs
     const subtabs = event.target.closest('.stats-sub-tabs').querySelectorAll('.stats-sub-tab');
     subtabs.forEach(tab => tab.classList.remove('active'));
-    
+
     // Add active class to clicked sub-tab
     event.target.closest('.stats-sub-tab').classList.add('active');
-    
+
     // Hide all subtab contents
     document.querySelectorAll('#all-players-tab .stats-subtab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Show selected subtab content
     const targetSubtab = document.getElementById(subtabName + '-subtab');
     if (targetSubtab) {
         targetSubtab.classList.add('active');
-        
+
         // Load data based on which subtab is opened
         const currentFilteredRecords = getCurrentFilteredRecords();
-        
+
         if (subtabName === 'trophy-scorers') {
             loadTrophyScorersData(currentFilteredRecords);
             setupTrophyScorersFilter();
@@ -12463,45 +12596,45 @@ function showAllPlayersSubTab(event, subtabName) {
 // Load Variety Goals data
 function loadVarietyGoalsData(filteredRecords = null) {
     console.log('Loading Variety Goals data...');
-    
+
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matchDetails = filteredRecords || alAhlyStatsData.allRecords || [];
-    
+
     if (!playerDetails.length || !matchDetails.length) {
         console.log('No data available for Variety Goals');
         renderVarietyGoalsTable([]);
         return;
     }
-    
+
     console.log(`Processing data from ${matchDetails.length} matches`);
-    
+
     // Get filtered match IDs
     const filteredMatchIds = new Set(matchDetails.map(m => m.MATCH_ID));
-    
+
     // Get team filter value
     const teamFilter = document.getElementById('variety-goals-team-filter')?.value || '';
-    
+
     // Calculate variety stats for each player
     const playersVarietyStats = {};
-    
+
     playerDetails.forEach(record => {
         // Skip if match not in filtered matches
         if (!filteredMatchIds.has(record.MATCH_ID)) return;
-        
+
         const playerName = record['PLAYER NAME'] || record.PLAYER || '';
         const playerTeam = normalizeStr(record.TEAM || record['AHLY TEAM'] || '');
         const ga = normalizeStr(record.GA || '').toUpperCase();
         const matchId = record.MATCH_ID;
-        
+
         if (!playerName) return;
-        
+
         // Apply team filter
         if (teamFilter === 'WITH_AHLY') {
             if (playerTeam.trim() !== 'الأهلي' && playerTeam.trim().toLowerCase() !== 'ahly') return;
         } else if (teamFilter === 'AGAINST_AHLY') {
             if (playerTeam.trim() === 'الأهلي' || playerTeam.trim().toLowerCase() === 'ahly') return;
         }
-        
+
         // Initialize player if not exists
         if (!playersVarietyStats[playerName]) {
             playersVarietyStats[playerName] = {
@@ -12511,13 +12644,13 @@ function loadVarietyGoalsData(filteredRecords = null) {
                 ownGoals: 0 // Total OG count
             };
         }
-        
+
         // Count OWN GOALS from TYPE column (exact match)
         const typeVal = normalizeStr(record.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
         if (typeVal === 'OG') {
             playersVarietyStats[playerName].ownGoals++;
         }
-        
+
         // Count goals per match
         if (ga === 'GOAL') {
             if (!playersVarietyStats[playerName].matchGoals[matchId]) {
@@ -12533,12 +12666,12 @@ function loadVarietyGoalsData(filteredRecords = null) {
             playersVarietyStats[playerName].matchAssists[matchId]++;
         }
     });
-    
+
     // Calculate braces, hat-tricks, and 4+ for each player
     const playersArray = Object.values(playersVarietyStats).map(player => {
         const goalCounts = Object.values(player.matchGoals);
         const assistCounts = Object.values(player.matchAssists);
-        
+
         return {
             name: player.name,
             goalBraces: goalCounts.filter(count => count === 2).length,
@@ -12552,23 +12685,23 @@ function loadVarietyGoalsData(filteredRecords = null) {
     }).filter(player => {
         // Only include players with at least one variety achievement or own goals
         return player.goalBraces > 0 || player.goalHattricks > 0 || player.goal4Plus > 0 ||
-               player.assistBraces > 0 || player.assistHattricks > 0 || player.assist4Plus > 0 ||
-               player.ownGoals > 0;
+            player.assistBraces > 0 || player.assistHattricks > 0 || player.assist4Plus > 0 ||
+            player.ownGoals > 0;
     });
-    
+
     // Sort by total variety achievements descending
     playersArray.sort((a, b) => {
         const totalA = a.goalBraces + a.goalHattricks + a.goal4Plus + a.assistBraces + a.assistHattricks + a.assist4Plus;
         const totalB = b.goalBraces + b.goalHattricks + b.goal4Plus + b.assistBraces + b.assistHattricks + b.assist4Plus;
         return totalB - totalA;
     });
-    
+
     // Reset sort state
     varietyGoalsSortState = {
         column: 'total',
         direction: 'desc'
     };
-    
+
     // Render table
     renderVarietyGoalsTable(playersArray);
 }
@@ -12577,16 +12710,16 @@ function loadVarietyGoalsData(filteredRecords = null) {
 function renderVarietyGoalsTable(playersData) {
     const tbody = document.querySelector('#variety-goals-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     if (playersData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem;">No data available</td></tr>';
         return;
     }
-    
+
     varietyGoalsCurrentData = playersData;
-    
+
     const totals = {
         goalBraces: 0,
         goalHattricks: 0,
@@ -12596,7 +12729,7 @@ function renderVarietyGoalsTable(playersData) {
         assist4Plus: 0,
         ownGoals: 0
     };
-    
+
     playersData.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -12610,7 +12743,7 @@ function renderVarietyGoalsTable(playersData) {
             <td>${player.ownGoals}</td>
         `;
         tbody.appendChild(row);
-        
+
         totals.goalBraces += player.goalBraces;
         totals.goalHattricks += player.goalHattricks;
         totals.goal4Plus += player.goal4Plus;
@@ -12619,7 +12752,7 @@ function renderVarietyGoalsTable(playersData) {
         totals.assist4Plus += player.assist4Plus;
         totals.ownGoals += player.ownGoals;
     });
-    
+
     // Add total row
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
@@ -12636,7 +12769,7 @@ function renderVarietyGoalsTable(playersData) {
         <td>${totals.ownGoals}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log(`Variety Goals table rendered with ${playersData.length} players`);
 }
 
@@ -12650,7 +12783,7 @@ let varietyGoalsSortState = {
 // Sort Variety Goals table
 function sortVarietyGoalsTable(column) {
     console.log('Sorting Variety Goals table by:', column);
-    
+
     // Update sort direction
     if (varietyGoalsSortState.column === column) {
         varietyGoalsSortState.direction = varietyGoalsSortState.direction === 'desc' ? 'asc' : 'desc';
@@ -12658,18 +12791,18 @@ function sortVarietyGoalsTable(column) {
         varietyGoalsSortState.column = column;
         varietyGoalsSortState.direction = 'desc';
     }
-    
+
     // Sort data
     const sortedData = [...varietyGoalsCurrentData];
     sortedData.sort((a, b) => {
         let aVal, bVal;
-        
+
         switch (column) {
             case 'name':
                 aVal = a.name.toLowerCase();
                 bVal = b.name.toLowerCase();
-                return varietyGoalsSortState.direction === 'desc' 
-                    ? bVal.localeCompare(aVal) 
+                return varietyGoalsSortState.direction === 'desc'
+                    ? bVal.localeCompare(aVal)
                     : aVal.localeCompare(bVal);
             case 'goalBraces':
                 aVal = a.goalBraces;
@@ -12702,17 +12835,17 @@ function sortVarietyGoalsTable(column) {
             default:
                 return 0;
         }
-        
+
         return varietyGoalsSortState.direction === 'desc' ? bVal - aVal : aVal - bVal;
     });
-    
+
     // Update sort icons
     document.querySelectorAll('#variety-goals-table th.sortable').forEach(th => {
         th.classList.remove('active');
         const icon = th.querySelector('.sort-icon');
         if (icon) icon.textContent = '⇅';
     });
-    
+
     const headers = document.querySelectorAll('#variety-goals-table th.sortable');
     const columnMap = {
         'name': 0,
@@ -12723,7 +12856,7 @@ function sortVarietyGoalsTable(column) {
         'assistHattricks': 5,
         'assist4Plus': 6
     };
-    
+
     const headerIndex = columnMap[column];
     if (headerIndex !== undefined && headers[headerIndex]) {
         headers[headerIndex].classList.add('active');
@@ -12732,7 +12865,7 @@ function sortVarietyGoalsTable(column) {
             icon.textContent = varietyGoalsSortState.direction === 'desc' ? '↓' : '↑';
         }
     }
-    
+
     // Re-render table
     renderVarietyGoalsTable(sortedData);
 }
@@ -12741,8 +12874,8 @@ function sortVarietyGoalsTable(column) {
 function setupVarietyGoalsFilter() {
     const teamFilter = document.getElementById('variety-goals-team-filter');
     if (!teamFilter) return;
-    
-    teamFilter.addEventListener('change', function() {
+
+    teamFilter.addEventListener('change', function () {
         console.log('Variety Goals team filter changed:', this.value);
         const currentFilteredRecords = getCurrentFilteredRecords();
         loadVarietyGoalsData(currentFilteredRecords);
@@ -12756,45 +12889,45 @@ function setupVarietyGoalsFilter() {
 // Load Penalty Details data
 function loadPenaltyDetailsData(filteredRecords = null) {
     console.log('Loading Penalty Details data...');
-    
+
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
     const matchDetails = filteredRecords || alAhlyStatsData.allRecords || [];
-    
+
     if (!playerDetails.length || !matchDetails.length) {
         console.log('No data available for Penalty Details');
         renderPenaltyDetailsTable([]);
         return;
     }
-    
+
     console.log(`Processing data from ${matchDetails.length} matches`);
-    
+
     // Get filtered match IDs
     const filteredMatchIds = new Set(matchDetails.map(m => m.MATCH_ID));
-    
+
     // Get team filter value
     const teamFilter = document.getElementById('penalty-details-team-filter')?.value || '';
-    
+
     // Calculate penalty stats for each player
     const playersPenaltyStats = {};
-    
+
     playerDetails.forEach(record => {
         // Skip if match not in filtered matches
         if (!filteredMatchIds.has(record.MATCH_ID)) return;
-        
+
         const playerName = record['PLAYER NAME'] || record.PLAYER || '';
         const playerTeam = normalizeStr(record.TEAM || record['AHLY TEAM'] || '');
         const gaVal = normalizeStr(record.GA || '').toUpperCase();
         const typeVal = normalizeStr(record.TYPE || '').toUpperCase().replace(/[^A-Z]/g, '');
-        
+
         if (!playerName) return;
-        
+
         // Apply team filter
         if (teamFilter === 'WITH_AHLY') {
             if (playerTeam.trim() !== 'الأهلي' && playerTeam.trim().toLowerCase() !== 'ahly') return;
         } else if (teamFilter === 'AGAINST_AHLY') {
             if (playerTeam.trim() === 'الأهلي' || playerTeam.trim().toLowerCase() === 'ahly') return;
         }
-        
+
         // Initialize player if not exists
         if (!playersPenaltyStats[playerName]) {
             playersPenaltyStats[playerName] = {
@@ -12807,7 +12940,7 @@ function loadPenaltyDetailsData(filteredRecords = null) {
                 makeMissed: 0
             };
         }
-        
+
         // Count penalty-related actions from TYPE (same logic as Player Overview)
         if (typeVal === 'PENGOAL') {
             playersPenaltyStats[playerName].penaltyGoals++;
@@ -12827,7 +12960,7 @@ function loadPenaltyDetailsData(filteredRecords = null) {
         if (typeVal === 'PENMAKEMISSED') {
             playersPenaltyStats[playerName].makeMissed++;
         }
-        
+
         // Also check GA as fallback (same as Player Overview)
         const gaNorm = gaVal.replace(/[^A-Z]/g, '');
         if (gaNorm === 'PENGOAL') {
@@ -12849,30 +12982,30 @@ function loadPenaltyDetailsData(filteredRecords = null) {
             playersPenaltyStats[playerName].makeMissed++;
         }
     });
-    
+
     // Convert to array and filter out players with no penalty actions
     const playersArray = Object.values(playersPenaltyStats).filter(player => {
-        return player.penaltyGoals > 0 || player.penaltyMissed > 0 || 
-               player.assistGoals > 0 || player.assistMissed > 0 ||
-               player.makeGoal > 0 || player.makeMissed > 0;
+        return player.penaltyGoals > 0 || player.penaltyMissed > 0 ||
+            player.assistGoals > 0 || player.assistMissed > 0 ||
+            player.makeGoal > 0 || player.makeMissed > 0;
     });
-    
+
     // Calculate totals for each player
     playersArray.forEach(player => {
         player.totalPenalty = player.penaltyGoals + player.penaltyMissed;
         player.totalAssist = player.assistGoals + player.assistMissed;
         player.totalMake = player.makeGoal + player.makeMissed;
     });
-    
+
     // Sort by total penalty descending
     playersArray.sort((a, b) => b.totalPenalty - a.totalPenalty);
-    
+
     // Reset sort state
     penaltyDetailsSortState = {
         column: 'totalPenalty',
         direction: 'desc'
     };
-    
+
     // Render table
     renderPenaltyDetailsTable(playersArray);
 }
@@ -12881,16 +13014,16 @@ function loadPenaltyDetailsData(filteredRecords = null) {
 function renderPenaltyDetailsTable(playersData) {
     const tbody = document.querySelector('#penalty-details-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     if (playersData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem;">No data available</td></tr>';
         return;
     }
-    
+
     penaltyDetailsCurrentData = playersData;
-    
+
     const totals = {
         totalPenalty: 0,
         penaltyGoals: 0,
@@ -12902,7 +13035,7 @@ function renderPenaltyDetailsTable(playersData) {
         makeGoal: 0,
         makeMissed: 0
     };
-    
+
     playersData.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -12918,7 +13051,7 @@ function renderPenaltyDetailsTable(playersData) {
             <td>${player.makeMissed}</td>
         `;
         tbody.appendChild(row);
-        
+
         totals.totalPenalty += player.totalPenalty;
         totals.penaltyGoals += player.penaltyGoals;
         totals.penaltyMissed += player.penaltyMissed;
@@ -12929,7 +13062,7 @@ function renderPenaltyDetailsTable(playersData) {
         totals.makeGoal += player.makeGoal;
         totals.makeMissed += player.makeMissed;
     });
-    
+
     // Add total row
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
@@ -12948,7 +13081,7 @@ function renderPenaltyDetailsTable(playersData) {
         <td>${totals.makeMissed}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log(`Penalty Details table rendered with ${playersData.length} players`);
 }
 
@@ -12962,7 +13095,7 @@ let penaltyDetailsSortState = {
 // Sort Penalty Details table
 function sortPenaltyDetailsTable(column) {
     console.log('Sorting Penalty Details table by:', column);
-    
+
     // Update sort direction
     if (penaltyDetailsSortState.column === column) {
         penaltyDetailsSortState.direction = penaltyDetailsSortState.direction === 'desc' ? 'asc' : 'desc';
@@ -12970,18 +13103,18 @@ function sortPenaltyDetailsTable(column) {
         penaltyDetailsSortState.column = column;
         penaltyDetailsSortState.direction = 'desc';
     }
-    
+
     // Sort data
     const sortedData = [...penaltyDetailsCurrentData];
     sortedData.sort((a, b) => {
         let aVal, bVal;
-        
+
         switch (column) {
             case 'name':
                 aVal = a.name.toLowerCase();
                 bVal = b.name.toLowerCase();
-                return penaltyDetailsSortState.direction === 'desc' 
-                    ? bVal.localeCompare(aVal) 
+                return penaltyDetailsSortState.direction === 'desc'
+                    ? bVal.localeCompare(aVal)
                     : aVal.localeCompare(bVal);
             case 'totalPenalty':
                 aVal = a.totalPenalty;
@@ -13022,17 +13155,17 @@ function sortPenaltyDetailsTable(column) {
             default:
                 return 0;
         }
-        
+
         return penaltyDetailsSortState.direction === 'desc' ? bVal - aVal : aVal - bVal;
     });
-    
+
     // Update sort icons
     document.querySelectorAll('#penalty-details-table th.sortable').forEach(th => {
         th.classList.remove('active');
         const icon = th.querySelector('.sort-icon');
         if (icon) icon.textContent = '⇅';
     });
-    
+
     const headers = document.querySelectorAll('#penalty-details-table th.sortable');
     const columnMap = {
         'name': 0,
@@ -13043,7 +13176,7 @@ function sortPenaltyDetailsTable(column) {
         'makeGoal': 5,
         'makeMissed': 6
     };
-    
+
     const headerIndex = columnMap[column];
     if (headerIndex !== undefined && headers[headerIndex]) {
         headers[headerIndex].classList.add('active');
@@ -13052,7 +13185,7 @@ function sortPenaltyDetailsTable(column) {
             icon.textContent = penaltyDetailsSortState.direction === 'desc' ? '↓' : '↑';
         }
     }
-    
+
     // Re-render table
     renderPenaltyDetailsTable(sortedData);
 }
@@ -13061,8 +13194,8 @@ function sortPenaltyDetailsTable(column) {
 function setupPenaltyDetailsFilter() {
     const teamFilter = document.getElementById('penalty-details-team-filter');
     if (!teamFilter) return;
-    
-    teamFilter.addEventListener('change', function() {
+
+    teamFilter.addEventListener('change', function () {
         console.log('Penalty Details team filter changed:', this.value);
         const currentFilteredRecords = getCurrentFilteredRecords();
         loadPenaltyDetailsData(currentFilteredRecords);
@@ -13076,7 +13209,7 @@ function setupPenaltyDetailsFilter() {
 // Load and display H2H Teams data
 function loadH2HTeamsData(filteredRecords = null) {
     console.log('Loading H2H Teams data...');
-    
+
     // Use filtered records if provided, otherwise use all records
     const records = filteredRecords || alAhlyStatsData.allRecords || [];
     if (records.length === 0) {
@@ -13084,15 +13217,15 @@ function loadH2HTeamsData(filteredRecords = null) {
         renderH2HTeamsTable([]);
         return;
     }
-    
+
     console.log(`Processing ${records.length} records for H2H Teams`);
-    
+
     // Calculate stats for each opponent team
     const teamsStats = {};
-    
+
     records.forEach(match => {
         const opponentTeam = match['OPPONENT TEAM'] || match['OPPONENT'] || 'Unknown';
-        
+
         if (!teamsStats[opponentTeam]) {
             teamsStats[opponentTeam] = {
                 team: opponentTeam,
@@ -13106,10 +13239,10 @@ function loadH2HTeamsData(filteredRecords = null) {
                 cleanSheetsAgainst: 0
             };
         }
-        
+
         const stats = teamsStats[opponentTeam];
         stats.matches++;
-        
+
         // Count results (D WITH G and D. both count as draws)
         const result = match['W-D-L'] || '';
         if (result === 'W') {
@@ -13119,27 +13252,27 @@ function loadH2HTeamsData(filteredRecords = null) {
         } else if (result === 'L') {
             stats.losses++;
         }
-        
+
         // Goals
         const goalsFor = parseInt(match['GOALS FOR'] || match['GF'] || 0);
         const goalsAgainst = parseInt(match['GOALS AGAINST'] || match['GA'] || 0);
         stats.goalsFor += goalsFor;
         stats.goalsAgainst += goalsAgainst;
-        
+
         // Clean sheets
         if (goalsAgainst === 0) stats.cleanSheetsFor++;
         if (goalsFor === 0) stats.cleanSheetsAgainst++;
     });
-    
+
     // Convert to array and sort by matches (descending)
     const teamsArray = Object.values(teamsStats).sort((a, b) => b.matches - a.matches);
-    
+
     // Render table
     renderH2HTeamsTable(teamsArray);
-    
+
     // Setup search functionality
     setupH2HSearch(teamsArray);
-    
+
     // Update Countries tab if it's currently visible
     const countriesTab = document.getElementById('h2h-countries-subtab');
     if (countriesTab && countriesTab.style.display !== 'none') {
@@ -13151,14 +13284,14 @@ function loadH2HTeamsData(filteredRecords = null) {
 function renderH2HTeamsTable(teamsData) {
     const tbody = document.querySelector('#h2h-teams-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     if (teamsData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No data available</td></tr>';
         return;
     }
-    
+
     // Calculate totals
     const totals = {
         matches: 0,
@@ -13170,7 +13303,7 @@ function renderH2HTeamsTable(teamsData) {
         cleanSheetsFor: 0,
         cleanSheetsAgainst: 0
     };
-    
+
     teamsData.forEach(team => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -13185,7 +13318,7 @@ function renderH2HTeamsTable(teamsData) {
             <td>${team.cleanSheetsAgainst}</td>
         `;
         tbody.appendChild(row);
-        
+
         // Sum up totals
         totals.matches += team.matches;
         totals.wins += team.wins;
@@ -13196,7 +13329,7 @@ function renderH2HTeamsTable(teamsData) {
         totals.cleanSheetsFor += team.cleanSheetsFor;
         totals.cleanSheetsAgainst += team.cleanSheetsAgainst;
     });
-    
+
     // Add total row
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
@@ -13214,7 +13347,7 @@ function renderH2HTeamsTable(teamsData) {
         <td>${totals.cleanSheetsAgainst}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log(`H2H Teams table rendered with ${teamsData.length} teams`);
 }
 
@@ -13222,32 +13355,32 @@ function renderH2HTeamsTable(teamsData) {
 function setupH2HSearch(teamsData) {
     const searchInput = document.getElementById('h2h-teams-search');
     if (!searchInput) return;
-    
+
     // Store teams data for search
     searchInput._teamsData = teamsData;
-    
+
     // Remove existing listener if any
     const newSearchInput = searchInput.cloneNode(true);
     newSearchInput._teamsData = teamsData;
     searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-    
+
     // Add input event listener for real-time search
-    newSearchInput.addEventListener('input', function() {
+    newSearchInput.addEventListener('input', function () {
         const searchTerm = this.value.toLowerCase().trim();
         const currentTeamsData = this._teamsData || teamsData;
-        
+
         if (searchTerm === '') {
             // Show all teams (filtered by main filters)
             renderH2HTeamsTable(currentTeamsData);
         } else {
             // Filter teams by search term
-            const filteredTeams = currentTeamsData.filter(team => 
+            const filteredTeams = currentTeamsData.filter(team =>
                 team.team.toLowerCase().includes(searchTerm)
             );
             renderH2HTeamsTable(filteredTeams);
         }
     });
-    
+
     console.log('H2H search functionality initialized');
 }
 // Show H2H Teams sub-tab
@@ -13257,13 +13390,13 @@ function showH2HTeamsSubTab(evt, tabName) {
     subTabContents.forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Remove active class from all sub-tab buttons
     const subTabButtons = document.querySelectorAll('#h2h-tab .stats-subtab');
     subTabButtons.forEach(button => {
         button.classList.remove('active');
     });
-    
+
     // Show the selected sub-tab content by adding active class
     const selectedContent = document.getElementById(tabName);
     if (selectedContent) {
@@ -13277,10 +13410,10 @@ function showH2HTeamsSubTab(evt, tabName) {
     } else {
         console.error('Could not find tab element:', tabName);
     }
-    
+
     // Add active class to the clicked button
     evt.currentTarget.classList.add('active');
-    
+
     // Load countries data if Countries tab is selected
     if (tabName === 'h2h-countries-subtab') {
         // Wait a bit for the tab to be visible, then load data
@@ -13295,7 +13428,7 @@ function showH2HTeamsSubTab(evt, tabName) {
 function loadH2HCountriesData() {
     try {
         console.log('Loading H2H Countries data...');
-        
+
         // Check if data is available
         if (!alAhlyStatsData || !alAhlyStatsData.allRecords) {
             console.error('No data available for H2H Countries');
@@ -13304,7 +13437,7 @@ function loadH2HCountriesData() {
             if (tbody) {
                 tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6c757d;">Loading data...</td></tr>';
             }
-            
+
             // Try to load data if not available
             if (typeof loadAlAhlyStatsData === 'function') {
                 console.log('Attempting to load data...');
@@ -13314,23 +13447,23 @@ function loadH2HCountriesData() {
             }
             return;
         }
-        
+
         console.log(`Processing ${alAhlyStatsData.allRecords.length} records for H2H Countries`);
-        
+
         // Get current filtered records
         const currentFilteredRecords = getCurrentFilteredRecords();
         const recordsToUse = currentFilteredRecords || alAhlyStatsData.allRecords;
-        
+
         console.log(`Using ${recordsToUse.length} records for country calculations`);
-        
+
         // Calculate country statistics
         const countryStats = calculateCountryStats(recordsToUse);
-        
+
         console.log(`Calculated stats for ${countryStats.length} countries`);
-        
+
         // Render the countries table
         renderH2HCountriesTable(countryStats);
-        
+
     } catch (error) {
         console.error('Error loading H2H Countries data:', error);
         // Show error message
@@ -13344,18 +13477,18 @@ function loadH2HCountriesData() {
 // Calculate country statistics from match records
 function calculateCountryStats(records) {
     const countryMap = new Map();
-    
+
     records.forEach(match => {
         const opponentTeam = (match['OPPONENT TEAM'] || '').toString().trim();
         if (!opponentTeam) return;
-        
+
         // Extract country name (after the last " - ")
         const parts = opponentTeam.split(' - ');
         if (parts.length < 2) return;
-        
+
         const country = parts[parts.length - 1].trim();
         if (!country) return;
-        
+
         // Initialize country stats if not exists
         if (!countryMap.has(country)) {
             countryMap.set(country, {
@@ -13371,26 +13504,26 @@ function calculateCountryStats(records) {
                 clean_sheets_against: 0
             });
         }
-        
+
         const countryStats = countryMap.get(country);
-        
+
         // Add team to country's teams set
         countryStats.teams.add(opponentTeam);
-        
+
         // Parse match result
         const result = (match['W-D-L'] || '').toString().trim();
         const gf = parseInt(match['GF'] || 0) || 0;
         const ga = parseInt(match['GA'] || 0) || 0;
-        
+
         // Update statistics
         countryStats.matches += 1;
         countryStats.goals_for += gf;
         countryStats.goals_against += ga;
-        
+
         // Clean sheets
         if (ga === 0) countryStats.clean_sheets_for += 1;
         if (gf === 0) countryStats.clean_sheets_against += 1;
-        
+
         // W-D-L
         if (result === 'W') {
             countryStats.wins += 1;
@@ -13400,37 +13533,37 @@ function calculateCountryStats(records) {
             countryStats.losses += 1;
         }
     });
-    
+
     // Convert to array and sort by matches (descending)
     const countries = Array.from(countryMap.values()).map(country => ({
         ...country,
         teams_count: country.teams.size
     })).sort((a, b) => b.matches - a.matches);
-    
+
     return countries;
 }
 
 // Render H2H Countries table
 function renderH2HCountriesTable(countries) {
     console.log('Rendering H2H Countries table with', countries.length, 'countries');
-    
+
     const tbody = document.querySelector('#h2h-countries-table tbody');
     if (!tbody) {
         console.error('Could not find #h2h-countries-table tbody element');
         return;
     }
-    
+
     if (countries.length === 0) {
         console.log('No countries data to display');
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6c757d;">No country data available</td></tr>';
         return;
     }
-    
+
     let tableHTML = '';
-    
+
     countries.forEach((country, index) => {
         console.log(`Country ${index + 1}:`, country.country, '- Teams:', country.teams_count, '- Matches:', country.matches);
-        
+
         tableHTML += `
             <tr>
                 <td style="color: #007bff; font-weight: 600;">${country.teams_count}</td>
@@ -13446,11 +13579,11 @@ function renderH2HCountriesTable(countries) {
             </tr>
         `;
     });
-    
+
     console.log('Setting table HTML with', countries.length, 'rows');
     tbody.innerHTML = tableHTML;
     console.log('Table HTML set successfully');
-    
+
     // Debug: Check if table is visible
     const table = document.getElementById('h2h-countries-table');
     const subtab = document.getElementById('h2h-countries-subtab');
@@ -13470,13 +13603,13 @@ async function loadH2HTDetailsTeams() {
     try {
         console.log('Loading opponent teams for H2H T Details...');
         const response = await fetch('/api/opponent-teams');
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.teams && data.teams.length > 0) {
             console.log(`✅ Loaded ${data.teams.length} teams from API`);
             setupH2HTDetailsSearch(data.teams);
@@ -13495,11 +13628,11 @@ async function loadH2HTDetailsTeams() {
 function loadH2HTDetailsTeamsFallback() {
     try {
         console.log('🔄 Loading teams from existing data as fallback...');
-        
+
         // Check if we have alAhlyStatsData available
         if (alAhlyStatsData && alAhlyStatsData.allRecords) {
             console.log(`📊 Using ${alAhlyStatsData.allRecords.length} records for fallback`);
-            
+
             // Extract unique opponent teams from existing data
             const opponentTeams = new Set();
             alAhlyStatsData.allRecords.forEach(match => {
@@ -13508,10 +13641,10 @@ function loadH2HTDetailsTeamsFallback() {
                     opponentTeams.add(opponentTeam.trim());
                 }
             });
-            
+
             const teamsList = Array.from(opponentTeams).sort();
             console.log(`✅ Fallback loaded ${teamsList.length} teams: ${teamsList.slice(0, 5).join(', ')}...`);
-            
+
             setupH2HTDetailsSearch(teamsList);
         } else {
             console.error('❌ No fallback data available - alAhlyStatsData not loaded');
@@ -13531,7 +13664,7 @@ function loadH2HTDetailsTeamsFallback() {
 function loadH2HTDetailsTeamsWithFilteredData(filteredRecords) {
     try {
         console.log('Loading opponent teams from filtered data...');
-        
+
         // Extract unique opponent teams from filtered records
         const opponentTeams = new Set();
         filteredRecords.forEach(match => {
@@ -13540,12 +13673,12 @@ function loadH2HTDetailsTeamsWithFilteredData(filteredRecords) {
                 opponentTeams.add(opponentTeam.trim());
             }
         });
-        
+
         const teamsList = Array.from(opponentTeams).sort();
         console.log(`Found ${teamsList.length} unique teams in filtered data`);
-        
+
         setupH2HTDetailsSearch(teamsList);
-        
+
         // Update currently selected team stats with filtered data
         updateCurrentH2HTDetailsWithFilters(filteredRecords);
     } catch (error) {
@@ -13557,22 +13690,22 @@ function loadH2HTDetailsTeamsWithFilteredData(filteredRecords) {
 function searchH2HTDetailsTeams(searchTerm) {
     const searchInput = document.getElementById('h2h-t-details-team-search');
     const dropdown = document.getElementById('h2h-t-details-team-dropdown');
-    
+
     if (!searchInput || !dropdown) return;
-    
+
     const teams = searchInput._teamsData || [];
     const term = searchTerm.toLowerCase().trim();
-    
+
     if (term === '') {
         dropdown.style.display = 'none';
         return;
     }
-    
+
     // Filter teams
-    const filteredTeams = teams.filter(team => 
+    const filteredTeams = teams.filter(team =>
         team.toLowerCase().includes(term)
     );
-    
+
     // Show dropdown with filtered teams
     if (filteredTeams.length > 0) {
         dropdown.innerHTML = '';
@@ -13581,21 +13714,21 @@ function searchH2HTDetailsTeams(searchTerm) {
             teamItem.className = 'team-item';
             teamItem.style.cssText = 'padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;';
             teamItem.textContent = team;
-            
-            teamItem.addEventListener('mouseenter', function() {
+
+            teamItem.addEventListener('mouseenter', function () {
                 this.style.backgroundColor = '#f8f9fa';
             });
-            
-            teamItem.addEventListener('mouseleave', function() {
+
+            teamItem.addEventListener('mouseleave', function () {
                 this.style.backgroundColor = 'white';
             });
-            
-            teamItem.addEventListener('click', function() {
+
+            teamItem.addEventListener('click', function () {
                 searchInput.value = team;
                 dropdown.style.display = 'none';
                 loadH2HTDetailsData(team);
             });
-            
+
             dropdown.appendChild(teamItem);
         });
         dropdown.style.display = 'block';
@@ -13608,29 +13741,29 @@ function searchH2HTDetailsTeams(searchTerm) {
 function setupH2HTDetailsSearch(teams) {
     const searchInput = document.getElementById('h2h-t-details-team-search');
     const dropdown = document.getElementById('h2h-t-details-team-dropdown');
-    
+
     if (searchInput && dropdown) {
         // Store teams data
         searchInput._teamsData = teams;
-        
+
         // Clear existing event listeners
         searchInput.removeEventListener('input', searchInput._inputHandler);
-        
+
         // Add event listener for search input
-        searchInput._inputHandler = function() {
+        searchInput._inputHandler = function () {
             const searchTerm = this.value.toLowerCase().trim();
             const teams = this._teamsData || [];
-            
+
             if (searchTerm === '') {
                 dropdown.style.display = 'none';
                 return;
             }
-            
+
             // Filter teams
-            const filteredTeams = teams.filter(team => 
+            const filteredTeams = teams.filter(team =>
                 team.toLowerCase().includes(searchTerm)
             );
-            
+
             // Show dropdown with filtered teams
             if (filteredTeams.length > 0) {
                 dropdown.innerHTML = '';
@@ -13639,21 +13772,21 @@ function setupH2HTDetailsSearch(teams) {
                     teamItem.className = 'team-item';
                     teamItem.style.cssText = 'padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;';
                     teamItem.textContent = team;
-                    
-                    teamItem.addEventListener('mouseenter', function() {
+
+                    teamItem.addEventListener('mouseenter', function () {
                         this.style.backgroundColor = '#f8f9fa';
                     });
-                    
-                    teamItem.addEventListener('mouseleave', function() {
+
+                    teamItem.addEventListener('mouseleave', function () {
                         this.style.backgroundColor = 'white';
                     });
-                    
-                    teamItem.addEventListener('click', function() {
+
+                    teamItem.addEventListener('click', function () {
                         searchInput.value = team;
                         dropdown.style.display = 'none';
                         loadH2HTDetailsData(team);
                     });
-                    
+
                     dropdown.appendChild(teamItem);
                 });
                 dropdown.style.display = 'block';
@@ -13661,16 +13794,16 @@ function setupH2HTDetailsSearch(teams) {
                 dropdown.style.display = 'none';
             }
         };
-        
+
         searchInput.addEventListener('input', searchInput._inputHandler);
-        
+
         // Hide dropdown when clicking outside
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
                 dropdown.style.display = 'none';
             }
         });
-        
+
         console.log(`Setup H2H T Details search with ${teams.length} teams`);
     }
 }
@@ -13681,7 +13814,7 @@ function updateCurrentH2HTDetailsWithFilters(filteredRecords) {
     if (searchInput && searchInput.value.trim()) {
         const selectedTeam = searchInput.value.trim();
         console.log(`Updating H2H stats for currently selected team: ${selectedTeam}`);
-        
+
         // Recalculate stats for the selected team with new filters
         const h2hStats = calculateH2HTDetailsFromFilteredData(selectedTeam, filteredRecords);
         if (h2hStats) {
@@ -13699,7 +13832,7 @@ function updateCurrentH2HTDetailsWithFilters(filteredRecords) {
                     </p>
                 `;
             }
-            
+
             const championshipsContent = document.getElementById('h2h-t-championships-content');
             if (championshipsContent) {
                 championshipsContent.innerHTML = `
@@ -13709,7 +13842,7 @@ function updateCurrentH2HTDetailsWithFilters(filteredRecords) {
                     </p>
                 `;
             }
-            
+
             const seasonsContent = document.getElementById('h2h-t-seasons-content');
             if (seasonsContent) {
                 seasonsContent.innerHTML = `
@@ -13727,12 +13860,12 @@ function updateCurrentH2HTDetailsWithFilters(filteredRecords) {
 async function loadH2HTDetailsData(teamName) {
     try {
         console.log(`🎯 Loading H2H T Details for team: ${teamName}`);
-        
+
         // Show loading state
         const overviewContent = document.getElementById('h2h-t-overview-content');
         const championshipsContent = document.getElementById('h2h-t-championships-content');
         const seasonsContent = document.getElementById('h2h-t-seasons-content');
-        
+
         if (overviewContent) {
             overviewContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6c757d;">Loading data...</div>';
         }
@@ -13742,10 +13875,10 @@ async function loadH2HTDetailsData(teamName) {
         if (seasonsContent) {
             seasonsContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6c757d;">Loading data...</div>';
         }
-        
+
         // Get current filtered records to apply filters to H2H data
         const currentFilteredRecords = getCurrentFilteredRecords();
-        
+
         if (currentFilteredRecords && currentFilteredRecords.length > 0) {
             console.log(`🔄 Applying filters to H2H T Details: ${currentFilteredRecords.length} filtered records`);
             // Calculate H2H stats from filtered data
@@ -13760,20 +13893,20 @@ async function loadH2HTDetailsData(teamName) {
                 console.warn('⚠️ Failed to calculate H2H stats from filtered data, trying API...');
             }
         }
-        
+
         // Fallback to API call if no filtered data or calculation fails
         console.log(`🌐 Making API call to /api/h2h-t-details/${encodeURIComponent(teamName)}`);
-        
+
         try {
             const response = await fetch(`/api/h2h-t-details/${encodeURIComponent(teamName)}`);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const data = await response.json();
             console.log('📊 API response received:', data);
-            
+
             if (data.overview && data.championships) {
                 console.log('✅ Valid data received, rendering...');
                 renderH2HTDetailsOverview(data.overview, teamName);
@@ -13787,7 +13920,7 @@ async function loadH2HTDetailsData(teamName) {
             }
         } catch (apiError) {
             console.warn('⚠️ API call failed, trying fallback calculation:', apiError);
-            
+
             // Fallback: Calculate from existing data
             if (alAhlyStatsData && alAhlyStatsData.allRecords) {
                 console.log('🔄 Using fallback calculation from existing data...');
@@ -13818,19 +13951,19 @@ async function loadH2HTDetailsData(teamName) {
 function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
     try {
         console.log(`Calculating H2H stats for ${teamName} from ${filteredRecords.length} filtered records`);
-        
+
         // Filter records for the specific team
         const teamMatches = filteredRecords.filter(record => {
             const opponentTeam = record['OPPONENT TEAM'] || record['OPPONENT'] || '';
             return opponentTeam.trim().toLowerCase() === teamName.trim().toLowerCase();
         });
-        
+
         console.log(`Found ${teamMatches.length} matches against ${teamName}`);
-        
+
         if (teamMatches.length === 0) {
             return null;
         }
-        
+
         // Calculate overview stats
         const overview = {
             total_matches: teamMatches.length,
@@ -13842,11 +13975,11 @@ function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
             clean_sheets_for: 0,
             clean_sheets_against: 0
         };
-        
+
         // Aggregate championship and season stats in maps first
         const championshipNameToStats = new Map();
         const seasonNameToStats = new Map();
-        
+
         teamMatches.forEach(match => {
             const gf = parseInt(match['GF'] || 0);
             const ga = parseInt(match['GA'] || 0);
@@ -13854,13 +13987,13 @@ function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
             const champion = (match['CHAMPION'] || 'Unknown').toString();
             const cleanSheetFor = String(match['CLEAN SHEET'] || '').toUpperCase() === 'YES' || ga === 0 ? 1 : 0;
             const cleanSheetAgainst = gf === 0 ? 1 : 0;
-            
+
             // Update overview stats
             overview.goals_for += gf;
             overview.goals_against += ga;
             overview.clean_sheets_for += cleanSheetFor;
             overview.clean_sheets_against += cleanSheetAgainst;
-            
+
             // Count wins/draws/losses
             if (result === 'W') {
                 overview.wins++;
@@ -13869,7 +14002,7 @@ function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
             } else if (result === 'L') {
                 overview.losses++;
             }
-            
+
             // Update championship stats
             if (!championshipNameToStats.has(champion)) {
                 championshipNameToStats.set(champion, {
@@ -13897,7 +14030,7 @@ function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
             } else if (result === 'L') {
                 champStats.losses += 1;
             }
-            
+
             // Update season stats
             const season = (match['SEASON'] || 'Unknown').toString();
             if (!seasonNameToStats.has(season)) {
@@ -13927,10 +14060,10 @@ function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
                 seasonStats.losses += 1;
             }
         });
-        
+
         // Convert championships map to the array structure expected by renderer
         const championships = Array.from(championshipNameToStats.values());
-        
+
         // Convert seasons map to array and sort alphabetically and numerically
         const seasons = Array.from(seasonNameToStats.values()).sort((a, b) => {
             // Extract year numbers for sorting (e.g., "الدوري المصري 2025-26" -> [2025, 26])
@@ -13943,17 +14076,17 @@ function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
                 }
                 return [0, 0];
             };
-            
+
             const yearsA = getYears(a.season);
             const yearsB = getYears(b.season);
-            
+
             // Sort by first year (descending), then by second year (descending)
             if (yearsA[0] !== yearsB[0]) {
                 return yearsB[0] - yearsA[0];
             }
             return yearsB[1] - yearsA[1];
         });
-        
+
         return { overview, championships, seasons };
     } catch (error) {
         console.error('Error calculating H2H stats from filtered data:', error);
@@ -13964,13 +14097,13 @@ function calculateH2HTDetailsFromFilteredData(teamName, filteredRecords) {
 function calculateH2HStreaks(teamName, records) {
     try {
         console.log(`Calculating streaks for ${teamName} from ${records.length} records`);
-        
+
         // Filter records for the specific team and sort by date
         const teamMatches = records.filter(record => {
             const opponentTeam = (record['OPPONENT TEAM'] || '').toString().trim();
             return opponentTeam === teamName;
         }).sort((a, b) => new Date(a.DATE) - new Date(b.DATE));
-        
+
         if (teamMatches.length === 0) {
             return {
                 ahlyWinningStreak: 0,
@@ -13985,7 +14118,7 @@ function calculateH2HStreaks(teamName, records) {
                 opponentUnbeatenStreak: 0
             };
         }
-        
+
         // Calculate streaks
         const streaks = {
             ahlyWinningStreak: 0,
@@ -13999,7 +14132,7 @@ function calculateH2HStreaks(teamName, records) {
             ahlyUnbeatenStreak: 0,
             opponentUnbeatenStreak: 0
         };
-        
+
         // Current streak counters
         let currentAhlyWin = 0, maxAhlyWin = 0;
         let currentOpponentWin = 0, maxOpponentWin = 0;
@@ -14011,16 +14144,16 @@ function calculateH2HStreaks(teamName, records) {
         let currentOpponentWinless = 0, maxOpponentWinless = 0;
         let currentAhlyUnbeaten = 0, maxAhlyUnbeaten = 0;
         let currentOpponentUnbeaten = 0, maxOpponentUnbeaten = 0;
-        
+
         teamMatches.forEach(match => {
             const result = (match['W-D-L'] || '').toString().trim();
             const gf = parseInt(match['GF'] || 0) || 0;
             const ga = parseInt(match['GA'] || 0) || 0;
-            
+
             // Determine match result for Al Ahly
             let ahlyResult = '';
             let opponentResult = '';
-            
+
             if (result === 'W') {
                 ahlyResult = 'W';
                 opponentResult = 'L';
@@ -14031,7 +14164,7 @@ function calculateH2HStreaks(teamName, records) {
                 ahlyResult = 'D';
                 opponentResult = 'D';
             }
-            
+
             // Al Ahly streaks
             if (ahlyResult === 'W') {
                 currentAhlyWin++;
@@ -14059,7 +14192,7 @@ function calculateH2HStreaks(teamName, records) {
                 maxAhlyWinless = Math.max(maxAhlyWinless, currentAhlyWinless);
                 maxAhlyUnbeaten = Math.max(maxAhlyUnbeaten, currentAhlyUnbeaten);
             }
-            
+
             // Opponent streaks
             if (opponentResult === 'W') {
                 currentOpponentWin++;
@@ -14088,7 +14221,7 @@ function calculateH2HStreaks(teamName, records) {
                 maxOpponentUnbeaten = Math.max(maxOpponentUnbeaten, currentOpponentUnbeaten);
             }
         });
-        
+
         return {
             ahlyWinningStreak: maxAhlyWin,
             opponentWinningStreak: maxOpponentWin,
@@ -14101,7 +14234,7 @@ function calculateH2HStreaks(teamName, records) {
             ahlyUnbeatenStreak: maxAhlyUnbeaten,
             opponentUnbeatenStreak: maxOpponentUnbeaten
         };
-        
+
     } catch (error) {
         console.error('Error calculating H2H streaks:', error);
         return {
@@ -14123,16 +14256,16 @@ function calculateH2HStreaks(teamName, records) {
 function renderH2HTDetailsOverview(overview, teamName) {
     const content = document.getElementById('h2h-t-overview-content');
     if (!content) return;
-    
+
     const winRate = overview.total_matches > 0 ? ((overview.wins / overview.total_matches) * 100).toFixed(1) : 0;
     const drawRate = overview.total_matches > 0 ? ((overview.draws / overview.total_matches) * 100).toFixed(1) : 0;
     const lossRate = overview.total_matches > 0 ? ((overview.losses / overview.total_matches) * 100).toFixed(1) : 0;
-    
+
     // Calculate streaks
     const currentFilteredRecords = getCurrentFilteredRecords();
     const recordsToUse = currentFilteredRecords || (alAhlyStatsData ? alAhlyStatsData.allRecords : []);
     const streaks = calculateH2HStreaks(teamName, recordsToUse);
-    
+
     content.innerHTML = `
         <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">H2H T Details vs ${teamName} - Overview</h3>
         
@@ -14305,7 +14438,7 @@ function renderH2HTDetailsOverview(overview, teamName) {
 function renderH2HTDetailsChampionships(championships, teamName) {
     const content = document.getElementById('h2h-t-championships-content');
     if (!content) return;
-    
+
     if (championships.length === 0) {
         content.innerHTML = `
             <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Championships Statistics vs ${teamName}</h3>
@@ -14315,7 +14448,7 @@ function renderH2HTDetailsChampionships(championships, teamName) {
         `;
         return;
     }
-    
+
     let tableHTML = `
         <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Championships Statistics vs ${teamName}</h3>
         <div class="stats-table-container">
@@ -14335,10 +14468,10 @@ function renderH2HTDetailsChampionships(championships, teamName) {
                 </thead>
                 <tbody>
     `;
-    
+
     // Sort championships by matches (descending)
     championships.sort((a, b) => b.matches - a.matches);
-    
+
     // Calculate totals
     const totals = {
         matches: 0,
@@ -14350,7 +14483,7 @@ function renderH2HTDetailsChampionships(championships, teamName) {
         clean_sheets_for: 0,
         clean_sheets_against: 0
     };
-    
+
     championships.forEach(champ => {
         totals.matches += champ.matches;
         totals.wins += champ.wins;
@@ -14361,7 +14494,7 @@ function renderH2HTDetailsChampionships(championships, teamName) {
         totals.clean_sheets_for += champ.clean_sheets_for;
         totals.clean_sheets_against += champ.clean_sheets_against;
     });
-    
+
     championships.forEach(champ => {
         const winRate = champ.matches > 0 ? ((champ.wins / champ.matches) * 100).toFixed(1) : 0;
         tableHTML += `
@@ -14378,7 +14511,7 @@ function renderH2HTDetailsChampionships(championships, teamName) {
             </tr>
         `;
     });
-    
+
     // Add totals row
     const totalWinRate = totals.matches > 0 ? ((totals.wins / totals.matches) * 100).toFixed(1) : 0;
     tableHTML += `
@@ -14394,13 +14527,13 @@ function renderH2HTDetailsChampionships(championships, teamName) {
             <td style="color: #fd7e14; font-weight: 700;"><strong>${totals.clean_sheets_against}</strong></td>
         </tr>
     `;
-    
+
     tableHTML += `
                 </tbody>
             </table>
         </div>
     `;
-    
+
     content.innerHTML = tableHTML;
 }
 
@@ -14408,7 +14541,7 @@ function renderH2HTDetailsChampionships(championships, teamName) {
 function renderH2HTDetailsSeasons(seasons, teamName) {
     const content = document.getElementById('h2h-t-seasons-content');
     if (!content) return;
-    
+
     if (seasons.length === 0) {
         content.innerHTML = `
             <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Seasons Statistics vs ${teamName}</h3>
@@ -14418,7 +14551,7 @@ function renderH2HTDetailsSeasons(seasons, teamName) {
         `;
         return;
     }
-    
+
     let tableHTML = `
         <h3 class="section-title" style="font-size: 1.4rem; margin-top: 1.5rem;">Seasons Statistics vs ${teamName}</h3>
         <div class="stats-table-container">
@@ -14438,7 +14571,7 @@ function renderH2HTDetailsSeasons(seasons, teamName) {
                 </thead>
                 <tbody>
     `;
-    
+
     // Calculate totals
     const totals = {
         matches: 0,
@@ -14450,7 +14583,7 @@ function renderH2HTDetailsSeasons(seasons, teamName) {
         clean_sheets_for: 0,
         clean_sheets_against: 0
     };
-    
+
     seasons.forEach(season => {
         totals.matches += season.matches;
         totals.wins += season.wins;
@@ -14461,7 +14594,7 @@ function renderH2HTDetailsSeasons(seasons, teamName) {
         totals.clean_sheets_for += season.clean_sheets_for;
         totals.clean_sheets_against += season.clean_sheets_against;
     });
-    
+
     seasons.forEach(season => {
         const winRate = season.matches > 0 ? ((season.wins / season.matches) * 100).toFixed(1) : 0;
         tableHTML += `
@@ -14478,7 +14611,7 @@ function renderH2HTDetailsSeasons(seasons, teamName) {
             </tr>
         `;
     });
-    
+
     // Add totals row
     const totalWinRate = totals.matches > 0 ? ((totals.wins / totals.matches) * 100).toFixed(1) : 0;
     tableHTML += `
@@ -14494,13 +14627,13 @@ function renderH2HTDetailsSeasons(seasons, teamName) {
             <td style="color: #fd7e14; font-weight: 700;"><strong>${totals.clean_sheets_against}</strong></td>
         </tr>
     `;
-    
+
     tableHTML += `
                 </tbody>
             </table>
         </div>
     `;
-    
+
     content.innerHTML = tableHTML;
 }
 
@@ -14509,7 +14642,7 @@ function clearH2HTDetailsContent() {
     const overviewContent = document.getElementById('h2h-t-overview-content');
     const championshipsContent = document.getElementById('h2h-t-championships-content');
     const seasonsContent = document.getElementById('h2h-t-seasons-content');
-    
+
     if (overviewContent) {
         overviewContent.innerHTML = `
             <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
@@ -14517,7 +14650,7 @@ function clearH2HTDetailsContent() {
             </p>
         `;
     }
-    
+
     if (championshipsContent) {
         championshipsContent.innerHTML = `
             <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
@@ -14525,7 +14658,7 @@ function clearH2HTDetailsContent() {
             </p>
         `;
     }
-    
+
     if (seasonsContent) {
         seasonsContent.innerHTML = `
             <p style="text-align: center; color: #6c757d; font-size: 1rem; margin: 2rem 0;">
@@ -14541,15 +14674,15 @@ function showH2HTDetailsSubTab(event, subTabName) {
     document.querySelectorAll('#h2h-t-details-tab .stats-subtab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Remove active class from all sub-tab contents
     document.querySelectorAll('#h2h-t-details-tab .stats-subtab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Add active class to clicked tab
     event.target.classList.add('active');
-    
+
     // Show selected sub-tab content
     const targetContent = document.getElementById(subTabName);
     if (targetContent) {
@@ -14575,7 +14708,7 @@ let coachTeamFilterState = {
 // Load and display Coaches data
 function loadCoachesData(filteredRecords = null) {
     console.log('Loading Coaches data...');
-    
+
     // Use filtered records if provided, otherwise use all records
     const records = filteredRecords || alAhlyStatsData.allRecords || [];
     if (records.length === 0) {
@@ -14583,15 +14716,15 @@ function loadCoachesData(filteredRecords = null) {
         renderCoachesTable([]);
         return;
     }
-    
+
     console.log(`Processing ${records.length} records for Coaches`);
-    
+
     // Get team filter value
     const teamFilter = document.getElementById('coaches-team-filter')?.value || '';
-    
+
     // Calculate stats for each coach
     const coachesStats = {};
-    
+
     records.forEach(match => {
         const ahlyManager = match['AHLY MANAGER'] || '';
         const opponentManager = match['OPPONENT MANAGER'] || '';
@@ -14599,7 +14732,7 @@ function loadCoachesData(filteredRecords = null) {
         const goalsFor = parseInt(match['GF'] || 0);
         const goalsAgainst = parseInt(match['GA'] || 0);
         const cleanSheet = match['CLEAN SHEET'] || '';
-        
+
         // Process Ahly Manager (if not filtered out)
         // Skip empty, -, ?, and Unknown names
         if (teamFilter !== 'AGAINST_AHLY' && ahlyManager && ahlyManager.trim() !== '' && ahlyManager !== '-' && ahlyManager !== '?' && ahlyManager !== 'Unknown') {
@@ -14617,16 +14750,16 @@ function loadCoachesData(filteredRecords = null) {
                     roles: { ahly: false, opponent: false }
                 };
             }
-            
+
             if (!coachesStats[ahlyManager].roles) {
                 coachesStats[ahlyManager].roles = { ahly: false, opponent: false };
             }
             coachesStats[ahlyManager].roles.ahly = true;
-            
+
             coachesStats[ahlyManager].matches++;
             coachesStats[ahlyManager].goalsFor += goalsFor;
             coachesStats[ahlyManager].goalsAgainst += goalsAgainst;
-            
+
             // Count results
             if (result === 'W') {
                 coachesStats[ahlyManager].wins++;
@@ -14635,7 +14768,7 @@ function loadCoachesData(filteredRecords = null) {
             } else if (result === 'L') {
                 coachesStats[ahlyManager].losses++;
             }
-            
+
             // Clean sheets
             if (cleanSheet === 'Yes' || cleanSheet === 'YES' || goalsAgainst === 0) {
                 coachesStats[ahlyManager].cleanSheetsFor++;
@@ -14644,7 +14777,7 @@ function loadCoachesData(filteredRecords = null) {
                 coachesStats[ahlyManager].cleanSheetsAgainst++;
             }
         }
-        
+
         // Process Opponent Manager (if not filtered out)
         // Skip empty, -, ?, and Unknown names
         if (teamFilter !== 'WITH_AHLY' && opponentManager && opponentManager.trim() !== '' && opponentManager !== '-' && opponentManager !== '?' && opponentManager !== 'Unknown') {
@@ -14662,17 +14795,17 @@ function loadCoachesData(filteredRecords = null) {
                     roles: { ahly: false, opponent: false }
                 };
             }
-            
+
             if (!coachesStats[opponentManager].roles) {
                 coachesStats[opponentManager].roles = { ahly: false, opponent: false };
             }
             coachesStats[opponentManager].roles.opponent = true;
-            
+
             coachesStats[opponentManager].matches++;
             // For opponent: goals are reversed
             coachesStats[opponentManager].goalsFor += goalsAgainst;
             coachesStats[opponentManager].goalsAgainst += goalsFor;
-            
+
             // Count results (reversed for opponent)
             if (result === 'L') {
                 coachesStats[opponentManager].wins++;
@@ -14681,7 +14814,7 @@ function loadCoachesData(filteredRecords = null) {
             } else if (result === 'W') {
                 coachesStats[opponentManager].losses++;
             }
-            
+
             // Clean sheets (reversed for opponent)
             if (goalsFor === 0) {
                 coachesStats[opponentManager].cleanSheetsFor++;
@@ -14691,7 +14824,7 @@ function loadCoachesData(filteredRecords = null) {
             }
         }
     });
-    
+
     // Convert to array and sort by matches descending
     const coachesArray = Object.values(coachesStats)
         .map(entry => ({
@@ -14703,14 +14836,14 @@ function loadCoachesData(filteredRecords = null) {
                     : 'BOTH')
         }))
         .sort((a, b) => b.matches - a.matches);
-    
+
     // Render table
     renderCoachesTable(coachesArray);
-    
+
     // Setup search functionality
     setupCoachesSearch(coachesArray);
     updateByCoachSearchData(coachesArray);
-    
+
     console.log(`Loaded ${coachesArray.length} coaches`);
 }
 
@@ -14718,14 +14851,14 @@ function loadCoachesData(filteredRecords = null) {
 function renderCoachesTable(coachesData) {
     const tbody = document.querySelector('#coaches-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     if (coachesData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No data available</td></tr>';
         return;
     }
-    
+
     // Calculate totals
     const totals = {
         matches: 0,
@@ -14737,7 +14870,7 @@ function renderCoachesTable(coachesData) {
         cleanSheetsFor: 0,
         cleanSheetsAgainst: 0
     };
-    
+
     coachesData.forEach(coach => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -14752,7 +14885,7 @@ function renderCoachesTable(coachesData) {
             <td>${coach.cleanSheetsAgainst}</td>
         `;
         tbody.appendChild(row);
-        
+
         // Add to totals
         totals.matches += coach.matches;
         totals.wins += coach.wins;
@@ -14763,7 +14896,7 @@ function renderCoachesTable(coachesData) {
         totals.cleanSheetsFor += coach.cleanSheetsFor;
         totals.cleanSheetsAgainst += coach.cleanSheetsAgainst;
     });
-    
+
     // Add totals row
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
@@ -14780,15 +14913,15 @@ function renderCoachesTable(coachesData) {
         <td>${totals.cleanSheetsAgainst}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log(`Coaches table rendered with ${coachesData.length} coaches`);
 }
 // Setup Coaches team filter
 function setupCoachesFilter() {
     const teamFilter = document.getElementById('coaches-team-filter');
     if (!teamFilter) return;
-    
-    teamFilter.addEventListener('change', function() {
+
+    teamFilter.addEventListener('change', function () {
         console.log('Coaches team filter changed:', this.value);
         // Use current filtered records if filters are applied
         const currentFilteredRecords = getCurrentFilteredRecords();
@@ -14800,41 +14933,41 @@ function setupCoachesFilter() {
 function setupCoachesSearch(coachesData) {
     const searchInput = document.getElementById('coaches-search');
     if (!searchInput) return;
-    
+
     // Store coaches data for search
     searchInput._coachesData = coachesData;
-    
+
     // Remove existing listener if any
     const newSearchInput = searchInput.cloneNode(true);
     newSearchInput._coachesData = coachesData;
     searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-    
+
     // Add input event listener for real-time search
-    newSearchInput.addEventListener('input', function() {
+    newSearchInput.addEventListener('input', function () {
         const searchTerm = this.value.toLowerCase().trim();
         const currentCoachesData = this._coachesData || coachesData;
-        
+
         if (searchTerm === '') {
             // Show all coaches (filtered by main filters)
             renderCoachesTable(currentCoachesData);
         } else {
             // Filter coaches by search term
-            const filteredCoaches = currentCoachesData.filter(coach => 
+            const filteredCoaches = currentCoachesData.filter(coach =>
                 coach.name.toLowerCase().includes(searchTerm)
             );
             renderCoachesTable(filteredCoaches);
         }
     });
-    
+
     console.log('Coaches search functionality initialized');
 }
 
 function updateByCoachSearchData(coachesData) {
     if (!Array.isArray(coachesData)) coachesData = [];
-    
+
     const uniqueNames = new Set();
     const statsMap = new Map();
-    
+
     coachesData.forEach(coach => {
         if (!coach || !coach.name) return;
         const name = coach.name.trim();
@@ -14842,10 +14975,10 @@ function updateByCoachSearchData(coachesData) {
         uniqueNames.add(name);
         statsMap.set(name, coach);
     });
-    
+
     byCoachSearchData.coaches = Array.from(uniqueNames).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
     byCoachSearchData.coachStatsMap = statsMap;
-    
+
     // Reset selected coach if no longer exists
     if (byCoachSearchData.selectedCoach && !statsMap.has(byCoachSearchData.selectedCoach)) {
         byCoachSearchData.selectedCoach = null;
@@ -14853,9 +14986,9 @@ function updateByCoachSearchData(coachesData) {
     } else if (byCoachSearchData.selectedCoach) {
         renderCoachOverviewStats(byCoachSearchData.selectedCoach, statsMap.get(byCoachSearchData.selectedCoach));
     }
-    
+
     setupByCoachSearch();
-    
+
     if (byCoachSearchData.selectedCoach && byCoachSearchData.coachStatsMap.has(byCoachSearchData.selectedCoach)) {
         let currentSubTab = 'overview';
         const coachTab = document.getElementById('by-coach-tab');
@@ -14877,33 +15010,33 @@ function setupByCoachSearch() {
     const existingInput = document.getElementById('by-coach-search');
     const optionsContainer = document.getElementById('by-coach-search-options');
     if (!existingInput || !optionsContainer) return;
-    
+
     const previousValue = existingInput.value || '';
     const newInput = existingInput.cloneNode(true);
     newInput.value = previousValue;
     existingInput.parentNode.replaceChild(newInput, existingInput);
-    
+
     optionsContainer.innerHTML = '';
     optionsContainer.style.display = 'none';
-    
+
     const hideOptions = () => {
         optionsContainer.style.display = 'none';
         optionsContainer.innerHTML = '';
     };
-    
+
     const renderOptions = term => {
         const searchTerm = (term || '').toLowerCase().trim();
         const names = byCoachSearchData.coaches || [];
-        
+
         optionsContainer.innerHTML = '';
-        
+
         if (!searchTerm) {
             hideOptions();
             return;
         }
-        
+
         const filtered = names.filter(name => name.toLowerCase().includes(searchTerm));
-        
+
         if (filtered.length === 0) {
             const emptyItem = document.createElement('div');
             emptyItem.className = 'option-item no-results';
@@ -14918,21 +15051,21 @@ function setupByCoachSearch() {
                 optionsContainer.appendChild(option);
             });
         }
-        
+
         optionsContainer.style.display = 'block';
     };
-    
-    newInput.addEventListener('input', function() {
+
+    newInput.addEventListener('input', function () {
         renderOptions(this.value);
     });
-    
-    newInput.addEventListener('focus', function() {
+
+    newInput.addEventListener('focus', function () {
         if (this.value && this.value.trim() !== '') {
             renderOptions(this.value);
         }
     });
-    
-    newInput.addEventListener('keydown', function(event) {
+
+    newInput.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
             hideOptions();
             this.blur();
@@ -14950,8 +15083,8 @@ function setupByCoachSearch() {
             }
         }
     });
-    
-    optionsContainer.onclick = function(event) {
+
+    optionsContainer.onclick = function (event) {
         const option = event.target.closest('.option-item');
         if (!option || option.classList.contains('no-results')) return;
         const coachName = option.dataset.value || option.textContent.trim();
@@ -14959,9 +15092,9 @@ function setupByCoachSearch() {
         hideOptions();
         handleCoachSelection(coachName);
     };
-    
+
     if (!optionsContainer._outsideClickHandlerAttached) {
-        document.addEventListener('click', function(event) {
+        document.addEventListener('click', function (event) {
             if (!newInput.contains(event.target) && !optionsContainer.contains(event.target)) {
                 hideOptions();
             }
@@ -14972,15 +15105,15 @@ function setupByCoachSearch() {
 
 function handleCoachSelection(coachName) {
     if (!coachName) return;
-    
+
     byCoachSearchData.selectedCoach = coachName;
     const coachStats = byCoachSearchData.coachStatsMap.get(coachName) || null;
-    
+
     coachTeamFilterState.selected.clear();
     coachTeamFilterState.teams = [];
-    
+
     renderCoachOverviewStats(coachName, coachStats);
-    
+
     let currentSubTab = 'overview';
     const coachTab = document.getElementById('by-coach-tab');
     if (coachTab) {
@@ -14993,7 +15126,7 @@ function handleCoachSelection(coachName) {
             }
         }
     }
-    
+
     showCoachSubTab(currentSubTab);
 }
 
@@ -15014,7 +15147,7 @@ function renderCoachOverviewStats(coachName, coachStats) {
         cleanAgainst: document.getElementById('coach-overview-clean-sheets-against')
     };
     const placeholderEl = document.querySelector('#coach-overview-sub .empty-state-card');
-    
+
     if (!elements.matches || !elements.winRate || !elements.goalDiff) return;
 
     const setValues = (values) => {
@@ -15024,7 +15157,7 @@ function renderCoachOverviewStats(coachName, coachStats) {
             }
         });
     };
-    
+
     const defaultValues = {
         matches: '0',
         wins: '0',
@@ -15040,7 +15173,7 @@ function renderCoachOverviewStats(coachName, coachStats) {
         cleanFor: '0',
         cleanAgainst: '0'
     };
-    
+
     if (!coachStats) {
         setValues(defaultValues);
         if (placeholderEl) {
@@ -15048,7 +15181,7 @@ function renderCoachOverviewStats(coachName, coachStats) {
         }
         return;
     }
-    
+
     const matches = coachStats.matches || 0;
     const wins = coachStats.wins || 0;
     const draws = coachStats.draws || 0;
@@ -15057,7 +15190,7 @@ function renderCoachOverviewStats(coachName, coachStats) {
     const goalsAgainst = coachStats.goalsAgainst || 0;
     const cleanSheets = coachStats.cleanSheetsFor || 0;
     const cleanSheetsAgainst = coachStats.cleanSheetsAgainst || 0;
-    
+
     const values = {
         matches: matches.toString(),
         wins: wins.toString(),
@@ -15073,46 +15206,46 @@ function renderCoachOverviewStats(coachName, coachStats) {
         cleanFor: cleanSheets.toString(),
         cleanAgainst: cleanSheetsAgainst.toString()
     };
-    
+
     setValues(values);
-    
+
     if (placeholderEl) {
         placeholderEl.style.display = 'none';
     }
-    
+
     console.log(`Selected coach: ${coachName}`, coachStats);
 }
 
 function getCoachMatchesRecords(coachName) {
     const normalizedName = normalizeStr(coachName).toLowerCase();
     if (!normalizedName) return [];
-    
+
     const records = getCurrentFilteredRecords() || alAhlyStatsData.allRecords || [];
     if (!Array.isArray(records) || records.length === 0) return [];
-    
+
     const matches = [];
-    
+
     records.forEach(match => {
         const ahlyManager = normalizeStr(match['AHLY MANAGER']).toLowerCase();
         const opponentManager = normalizeStr(match['OPPONENT MANAGER']).toLowerCase();
-        
+
         const isAhlyCoach = ahlyManager === normalizedName;
         const isOpponentCoach = opponentManager === normalizedName;
-        
+
         if (!isAhlyCoach && !isOpponentCoach) return;
-        
+
         const coachTeam = isAhlyCoach ? normalizeStr(match['AHLY TEAM']) : normalizeStr(match['OPPONENT TEAM']);
         const opponentTeam = isAhlyCoach ? normalizeStr(match['OPPONENT TEAM']) : normalizeStr(match['AHLY TEAM']);
-        
+
         const goalsFor = safeInt(isAhlyCoach ? match.GF : match.GA, 0);
         const goalsAgainst = safeInt(isAhlyCoach ? match.GA : match.GF, 0);
         const baseResult = normalizeStr(match['W-D-L'] || '');
         const coachResult = getCoachPerspectiveResult(baseResult, isAhlyCoach);
         const resultType = getCoachResultType(coachResult);
-        
+
         const matchId = normalizeStr(match.MATCH_ID || match['MATCH ID'] || '');
         const timestamp = parseExcelDate(match.DATE || match['DATE']).getTime();
-        
+
         matches.push({
             matchId,
             date: formatExcelDate(match.DATE || match['DATE']),
@@ -15132,7 +15265,7 @@ function getCoachMatchesRecords(coachName) {
             raw: match
         });
     });
-    
+
     return matches.sort((a, b) => b.timestamp - a.timestamp);
 }
 
@@ -15172,56 +15305,56 @@ function computeCoachAggregatedStats(matches = []) {
         cleanSheetsFor: 0,
         cleanSheetsAgainst: 0
     };
-    
+
     matches.forEach(match => {
         stats.matches += 1;
         stats.goalsFor += match.goalsFor || 0;
         stats.goalsAgainst += match.goalsAgainst || 0;
-        
+
         if (match.resultType === 'W') stats.wins += 1;
         else if (match.resultType === 'L') stats.losses += 1;
         else stats.draws += 1;
-        
+
         if ((match.goalsAgainst || 0) === 0) stats.cleanSheetsFor += 1;
         if ((match.goalsFor || 0) === 0) stats.cleanSheetsAgainst += 1;
     });
-    
+
     return stats;
 }
 
 function renderCoachTeamFilter(matches) {
     const container = document.getElementById('coach-team-filter');
     if (!container) return;
-    
+
     const teams = Array.from(new Set((matches || []).map(match => normalizeStr(match.team || '')).filter(team => team))).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-    
+
     coachTeamFilterState.teams = teams;
-    
+
     // Sync selected set with available teams
     const preservedSelection = new Set(Array.from(coachTeamFilterState.selected).filter(team => teams.includes(team)));
     if (preservedSelection.size === 0 && teams.length > 0) {
         teams.forEach(team => preservedSelection.add(team));
     }
     coachTeamFilterState.selected = preservedSelection;
-    
+
     container.innerHTML = '';
-    
+
     if (teams.length === 0) {
         container.innerHTML = '<div class="empty-team-filter" style="color:#888;font-size:0.85rem;">No teams available</div>';
         return;
     }
-    
+
     teams.forEach((team, index) => {
         const checkboxId = `coach-team-checkbox-${index}`;
         const wrapper = document.createElement('label');
         wrapper.className = 'team-checkbox';
-        
+
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = checkboxId;
         checkbox.value = team;
         checkbox.checked = coachTeamFilterState.selected.has(team);
-        
+
         checkbox.addEventListener('change', () => {
             if (checkbox.checked) {
                 coachTeamFilterState.selected.add(team);
@@ -15238,10 +15371,10 @@ function renderCoachTeamFilter(matches) {
                 loadCoachSubTabData(currentSubTab);
             }
         });
-        
+
         const span = document.createElement('span');
         span.textContent = team;
-        
+
         wrapper.appendChild(checkbox);
         wrapper.appendChild(span);
         container.appendChild(wrapper);
@@ -15266,12 +15399,12 @@ function renderCoachMatchesTable(matches) {
     if (!table) return;
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-    
+
     if (!Array.isArray(matches) || matches.length === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No matches found for the selected coach.');
         return;
     }
-    
+
     const totals = {
         matches: matches.length,
         wins: 0,
@@ -15280,21 +15413,21 @@ function renderCoachMatchesTable(matches) {
         goalsFor: 0,
         goalsAgainst: 0
     };
-    
+
     const rowsHtml = matches.map(match => {
         if (match.resultType === 'W') totals.wins++;
         else if (match.resultType === 'L') totals.losses++;
         else if (match.resultType === 'D') totals.draws++;
-        
+
         totals.goalsFor += match.goalsFor;
         totals.goalsAgainst += match.goalsAgainst;
-        
+
         const resultBadgeClass = match.resultType === 'W'
             ? 'color: #10b981; font-weight: 600;'
             : match.resultType === 'L'
                 ? 'color: #ef4444; font-weight: 600;'
                 : 'color: #f59e0b; font-weight: 600;';
-        
+
         return `
             <tr>
                 <td style="text-align:center;">${match.date || '-'}</td>
@@ -15307,7 +15440,7 @@ function renderCoachMatchesTable(matches) {
             </tr>
         `;
     }).join('');
-    
+
     tbody.innerHTML = rowsHtml;
 }
 
@@ -15317,14 +15450,14 @@ function renderCoachChampionshipsTable(matches) {
     if (!table) return;
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-    
+
     if (!Array.isArray(matches) || matches.length === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No championship data available for this coach.');
         return;
     }
-    
+
     const champStats = new Map();
-    
+
     matches.forEach(match => {
         const key = match.competition || match.championSystem || 'Unknown';
         if (!champStats.has(key)) {
@@ -15346,14 +15479,14 @@ function renderCoachChampionshipsTable(matches) {
         else if (match.resultType === 'D') stat.draws++;
         else if (match.resultType === 'L') stat.losses++;
     });
-    
+
     const statsArray = Array.from(champStats.values()).sort((a, b) => b.matches - a.matches || a.name.localeCompare(b.name));
-    
+
     if (statsArray.length === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No championship data available for this coach.');
         return;
     }
-    
+
     const totals = {
         matches: 0,
         wins: 0,
@@ -15362,7 +15495,7 @@ function renderCoachChampionshipsTable(matches) {
         goalsFor: 0,
         goalsAgainst: 0
     };
-    
+
     const rowsHtml = statsArray.map(stat => {
         totals.matches += stat.matches;
         totals.wins += stat.wins;
@@ -15370,7 +15503,7 @@ function renderCoachChampionshipsTable(matches) {
         totals.losses += stat.losses;
         totals.goalsFor += stat.goalsFor;
         totals.goalsAgainst += stat.goalsAgainst;
-        
+
         return `
             <tr>
                 <td style="font-weight: 500;">${stat.name}</td>
@@ -15383,7 +15516,7 @@ function renderCoachChampionshipsTable(matches) {
             </tr>
         `;
     }).join('');
-    
+
     const totalRow = `
         <tr style="font-weight: 600; background: #f8f9fa;">
             <td style="text-align: center;">TOTAL</td>
@@ -15395,7 +15528,7 @@ function renderCoachChampionshipsTable(matches) {
             <td>${totals.goalsAgainst}</td>
         </tr>
     `;
-    
+
     tbody.innerHTML = rowsHtml + totalRow;
 }
 
@@ -15405,14 +15538,14 @@ function renderCoachSeasonsTable(matches) {
     if (!table) return;
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-    
+
     if (!Array.isArray(matches) || matches.length === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No season statistics available for this coach.');
         return;
     }
-    
+
     const seasonStats = new Map();
-    
+
     matches.forEach(match => {
         const key = match.season || 'Unknown';
         if (!seasonStats.has(key)) {
@@ -15434,9 +15567,9 @@ function renderCoachSeasonsTable(matches) {
         else if (match.resultType === 'D') stat.draws++;
         else if (match.resultType === 'L') stat.losses++;
     });
-    
+
     const statsArray = Array.from(seasonStats.values()).sort((a, b) => b.season.localeCompare(a.season));
-    
+
     const totals = {
         matches: 0,
         wins: 0,
@@ -15445,7 +15578,7 @@ function renderCoachSeasonsTable(matches) {
         goalsFor: 0,
         goalsAgainst: 0
     };
-    
+
     const rowsHtml = statsArray.map(stat => {
         totals.matches += stat.matches;
         totals.wins += stat.wins;
@@ -15453,10 +15586,10 @@ function renderCoachSeasonsTable(matches) {
         totals.losses += stat.losses;
         totals.goalsFor += stat.goalsFor;
         totals.goalsAgainst += stat.goalsAgainst;
-        
+
         const points = stat.wins * 3 + stat.draws;
         const goalDiff = stat.goalsFor - stat.goalsAgainst;
-        
+
         return `
             <tr>
                 <td style="font-weight: 500;">${stat.season}</td>
@@ -15469,7 +15602,7 @@ function renderCoachSeasonsTable(matches) {
             </tr>
         `;
     }).join('');
-    
+
     const totalRow = `
         <tr style="font-weight: 600; background: #f8f9fa;">
             <td style="text-align: center;">TOTAL</td>
@@ -15481,7 +15614,7 @@ function renderCoachSeasonsTable(matches) {
             <td>${totals.goalsAgainst}</td>
         </tr>
     `;
-    
+
     tbody.innerHTML = rowsHtml + totalRow;
 }
 
@@ -15491,14 +15624,14 @@ function renderCoachSYTable(matches) {
     if (!table) return;
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-    
+
     if (!Array.isArray(matches) || matches.length === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No SY statistics available for this coach.');
         return;
     }
-    
+
     const syStats = new Map();
-    
+
     matches.forEach(match => {
         const key = match.sy || 'Unknown';
         if (!syStats.has(key)) {
@@ -15520,9 +15653,9 @@ function renderCoachSYTable(matches) {
         else if (match.resultType === 'D') stat.draws++;
         else if (match.resultType === 'L') stat.losses++;
     });
-    
+
     const statsArray = Array.from(syStats.values()).sort((a, b) => b.sy.localeCompare(a.sy));
-    
+
     const totals = {
         matches: 0,
         wins: 0,
@@ -15531,7 +15664,7 @@ function renderCoachSYTable(matches) {
         goalsFor: 0,
         goalsAgainst: 0
     };
-    
+
     const rowsHtml = statsArray.map(stat => {
         totals.matches += stat.matches;
         totals.wins += stat.wins;
@@ -15539,7 +15672,7 @@ function renderCoachSYTable(matches) {
         totals.losses += stat.losses;
         totals.goalsFor += stat.goalsFor;
         totals.goalsAgainst += stat.goalsAgainst;
-        
+
         return `
             <tr>
                 <td style="font-weight: 500;">${stat.sy}</td>
@@ -15552,7 +15685,7 @@ function renderCoachSYTable(matches) {
             </tr>
         `;
     }).join('');
-    
+
     const totalRow = `
         <tr style="font-weight: 600; background: #f8f9fa;">
             <td style="text-align: center;">TOTAL</td>
@@ -15564,7 +15697,7 @@ function renderCoachSYTable(matches) {
             <td>${totals.goalsAgainst}</td>
         </tr>
     `;
-    
+
     tbody.innerHTML = rowsHtml + totalRow;
 }
 
@@ -15574,14 +15707,14 @@ function renderCoachVsTeamsTable(matches) {
     if (!table) return;
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-    
+
     if (!Array.isArray(matches) || matches.length === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No opponent statistics available for this coach.');
         return;
     }
-    
+
     const teamStats = new Map();
-    
+
     matches.forEach(match => {
         const key = match.opponent || 'Unknown';
         if (!teamStats.has(key)) {
@@ -15603,9 +15736,9 @@ function renderCoachVsTeamsTable(matches) {
         else if (match.resultType === 'D') stat.draws++;
         else if (match.resultType === 'L') stat.losses++;
     });
-    
+
     const statsArray = Array.from(teamStats.values()).sort((a, b) => b.matches - a.matches || a.team.localeCompare(b.team));
-    
+
     const totals = {
         matches: 0,
         wins: 0,
@@ -15614,7 +15747,7 @@ function renderCoachVsTeamsTable(matches) {
         goalsFor: 0,
         goalsAgainst: 0
     };
-    
+
     const rowsHtml = statsArray.map(stat => {
         totals.matches += stat.matches;
         totals.wins += stat.wins;
@@ -15622,7 +15755,7 @@ function renderCoachVsTeamsTable(matches) {
         totals.losses += stat.losses;
         totals.goalsFor += stat.goalsFor;
         totals.goalsAgainst += stat.goalsAgainst;
-        
+
         return `
             <tr>
                 <td style="font-weight: 500;">${stat.team}</td>
@@ -15635,7 +15768,7 @@ function renderCoachVsTeamsTable(matches) {
             </tr>
         `;
     }).join('');
-    
+
     const totalRow = `
         <tr style="font-weight: 600; background: #f8f9fa;">
             <td style="text-align: center;">TOTAL</td>
@@ -15647,7 +15780,7 @@ function renderCoachVsTeamsTable(matches) {
             <td>${totals.goalsAgainst}</td>
         </tr>
     `;
-    
+
     tbody.innerHTML = rowsHtml + totalRow;
 }
 
@@ -15657,17 +15790,17 @@ function renderCoachUsePlayersTable(coachName, matches) {
     if (!table) return;
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-    
+
     if (!coachName) {
         renderCoachTablePlaceholder(tableSelector, 'Select a coach to view player usage.');
         return;
     }
-    
+
     if (!Array.isArray(matches) || matches.length === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No matches found for this coach with the current filters.');
         return;
     }
-    
+
     const matchInfo = new Map();
     matches.forEach(match => {
         const matchId = normalizeStr(match.matchId);
@@ -15678,7 +15811,7 @@ function renderCoachUsePlayersTable(coachName, matches) {
             isAhlyCoach: !!match.isAhlyCoach
         });
     });
-    
+
     if (matchInfo.size === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No match data available for this coach.');
         return;
@@ -15686,7 +15819,7 @@ function renderCoachUsePlayersTable(coachName, matches) {
 
     const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
-    
+
     const playerStats = new Map();
     const selectedCoachTeams = getSelectedCoachTeams();
     const selectedTeamKeys = new Set((selectedCoachTeams || [])
@@ -15695,7 +15828,7 @@ function renderCoachUsePlayersTable(coachName, matches) {
     const selectedTeamNames = new Set((selectedCoachTeams || [])
         .map(teamName => normalizeStr(teamName))
         .filter(name => name && name.length));
-    
+
     const ensurePlayerStats = (playerName, teamInfo) => {
         const key = `${playerName}__${teamInfo.teamKey}`;
         if (!playerStats.has(key)) {
@@ -15715,7 +15848,7 @@ function renderCoachUsePlayersTable(coachName, matches) {
         }
         return playerStats.get(key);
     };
-    
+
     // Accumulate matches and minutes from lineup details (available for Al Ahly coaches)
     if (Array.isArray(lineupDetails)) {
         lineupDetails.forEach(row => {
@@ -15726,38 +15859,38 @@ function renderCoachUsePlayersTable(coachName, matches) {
             const normalizedTeamName = normalizeStr(info.teamName || '');
             if (selectedTeamNames.size > 0 && !selectedTeamNames.has(normalizedTeamName)) return;
             if (selectedTeamKeys.size > 0 && !selectedTeamKeys.has(info.teamKey)) return;
-            
+
             const playerName = normalizeStr(row['PLAYER NAME'] || row.PLAYER || '');
             if (!playerName) return;
-            
+
             const stats = ensurePlayerStats(playerName, info);
             stats.hasLineupData = true;
             stats.matchesSet.add(matchId);
             stats.minutes += safeInt(row.MINTOTAL || row.MINUTES || 0, 0);
-            
+
             const status = normalizeStr(row.STATUS || row['STATU'] || row['STATUS?'] || '').toLowerCase();
             const starterFlag = normalizeStr(row['11/BAKEUP'] || row['11/Backup'] || row['11/BAKEUP?'] || '').toUpperCase();
             if (starterFlag === '11' || status === 'اساسي' || status === 'اساسى' || status === 'اساسي ') {
                 stats.starts++;
             }
-            
+
             const subOnValue = normalizeStr(row['SUB/ON'] || row['SUB ON'] || row['SUBON'] || '');
             if ((subOnValue && subOnValue !== '0' && subOnValue !== '-') || status === 'احتياطي' || status === 'احتياطى' || status === 'احتياطي ') {
                 stats.subOn++;
             }
         });
     }
-    
+
     // Accumulate goals and assists from player details
     if (Array.isArray(playerDetails)) {
         playerDetails.forEach(record => {
             const matchId = normalizeStr(record.MATCH_ID || record['MATCH ID'] || '');
             if (!matchInfo.has(matchId)) return;
             const info = matchInfo.get(matchId);
-            
+
             const playerName = normalizeStr(record['PLAYER NAME'] || record.PLAYER || '');
             if (!playerName) return;
-            
+
             const teamValue = record.TEAM || record['AHLY TEAM'] || record['OPPONENT TEAM'] || '';
             const teamKey = normalizeTeamKey(teamValue);
             const normalizedTeamName = normalizeStr(teamValue);
@@ -15769,23 +15902,23 @@ function renderCoachUsePlayersTable(coachName, matches) {
                 const coachTeamNameNormalized = normalizeStr(info.teamName || '');
                 if (coachTeamNameNormalized && normalizedTeamName && coachTeamNameNormalized !== normalizedTeamName) return;
             }
-            
+
             const stats = ensurePlayerStats(playerName, info);
             const ga = normalizeStr(record.GA || '').toUpperCase();
             if (ga === 'GOAL') stats.goals++;
             if (ga === 'ASSIST') stats.assists++;
         });
     }
-    
+
     const playersStatsArray = Array.from(playerStats.values()).filter(stats => {
         return stats.matchesSet.size > 0 || stats.goals > 0 || stats.assists > 0;
     });
-    
+
     if (playersStatsArray.length === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No player usage data found for this coach.');
         return;
     }
-    
+
     const playersArray = playersStatsArray.map(stats => {
         const matchesCount = stats.matchesSet.size;
         return {
@@ -15804,7 +15937,7 @@ function renderCoachUsePlayersTable(coachName, matches) {
         if ((b.minutes || 0) !== (a.minutes || 0)) return (b.minutes || 0) - (a.minutes || 0);
         return a.player.localeCompare(b.player);
     });
-    
+
     const totals = playersArray.reduce((acc, player) => {
         acc.matches += player.matches;
         acc.minutes += player.minutes != null ? player.minutes : 0;
@@ -15814,7 +15947,7 @@ function renderCoachUsePlayersTable(coachName, matches) {
         acc.subOn += player.subOn != null ? player.subOn : 0;
         return acc;
     }, { matches: 0, minutes: 0, goals: 0, assists: 0, starts: 0, subOn: 0, hasLineupData: playersArray.some(p => p.hasLineupData) });
-    
+
     const rowsHtml = playersArray.map(player => `
         <tr>
             <td style="font-weight: 500;">${player.player}</td>
@@ -15826,7 +15959,7 @@ function renderCoachUsePlayersTable(coachName, matches) {
             <td>${player.assists}</td>
         </tr>
     `).join('');
-    
+
     const totalRow = `
         <tr style="font-weight: 600; background: #f8f9fa;">
             <td style="text-align: center;">TOTAL</td>
@@ -15838,14 +15971,14 @@ function renderCoachUsePlayersTable(coachName, matches) {
             <td>${totals.assists}</td>
         </tr>
     `;
-    
+
     tbody.innerHTML = rowsHtml + totalRow;
 }
 
 function loadCoachSubTabData(subTabName) {
     const coachName = byCoachSearchData.selectedCoach;
     const coachStats = coachName ? byCoachSearchData.coachStatsMap.get(coachName) : null;
-    
+
     if (!coachName) {
         if (subTabName === 'overview') {
             renderCoachOverviewStats(null, null);
@@ -15876,7 +16009,7 @@ function loadCoachSubTabData(subTabName) {
         }
         return;
     }
-    
+
     const matches = getCoachMatchesRecords(coachName);
     const teamFilterValue = document.getElementById('coaches-team-filter')?.value || '';
     const mainFilteredMatches = matches.filter(match => {
@@ -15888,15 +16021,15 @@ function loadCoachSubTabData(subTabName) {
         }
         return true;
     });
-    
+
     renderCoachTeamFilter(mainFilteredMatches);
-    
+
     const selectedCoachTeams = getSelectedCoachTeams();
     const filteredMatches = mainFilteredMatches.filter(match => {
         if (!selectedCoachTeams.length) return true;
         return selectedCoachTeams.includes(match.team || '');
     });
-    
+
     switch (subTabName) {
         case 'overview': {
             const aggregateStats = filteredMatches.length > 0
@@ -15937,14 +16070,14 @@ function renderCoachWithTeamsTable(matches) {
     if (!table) return;
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-    
+
     if (!Array.isArray(matches) || matches.length === 0) {
         renderCoachTablePlaceholder(tableSelector, 'No team statistics available for this coach.');
         return;
     }
-    
+
     const teamStats = new Map();
-    
+
     matches.forEach(match => {
         const key = match.team || 'Unknown';
         if (!teamStats.has(key)) {
@@ -15966,9 +16099,9 @@ function renderCoachWithTeamsTable(matches) {
         else if (match.resultType === 'D') stat.draws++;
         else if (match.resultType === 'L') stat.losses++;
     });
-    
+
     const statsArray = Array.from(teamStats.values()).sort((a, b) => b.matches - a.matches || a.team.localeCompare(b.team));
-    
+
     const totals = {
         matches: 0,
         wins: 0,
@@ -15977,7 +16110,7 @@ function renderCoachWithTeamsTable(matches) {
         goalsFor: 0,
         goalsAgainst: 0
     };
-    
+
     const rowsHtml = statsArray.map(stat => {
         totals.matches += stat.matches;
         totals.wins += stat.wins;
@@ -15985,7 +16118,7 @@ function renderCoachWithTeamsTable(matches) {
         totals.losses += stat.losses;
         totals.goalsFor += stat.goalsFor;
         totals.goalsAgainst += stat.goalsAgainst;
-        
+
         return `
             <tr>
                 <td style="font-weight: 500;">${stat.team}</td>
@@ -15998,7 +16131,7 @@ function renderCoachWithTeamsTable(matches) {
             </tr>
         `;
     }).join('');
-    
+
     const totalRow = `
         <tr style="font-weight: 600; background: #f8f9fa;">
             <td style="text-align: center;">TOTAL</td>
@@ -16010,7 +16143,7 @@ function renderCoachWithTeamsTable(matches) {
             <td>${totals.goalsAgainst}</td>
         </tr>
     `;
-    
+
     tbody.innerHTML = rowsHtml + totalRow;
 }
 
@@ -16032,26 +16165,26 @@ let allRefereesData = {
 // Helper function to count penalties for/against Ahly in a specific match
 function countMatchPenalties(matchId, forAhly = true) {
     if (!matchId) return 0;
-    
+
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
     if (!playerDetails || playerDetails.length === 0) return 0;
-    
+
     let count = 0;
-    
+
     playerDetails.forEach(record => {
         if (record.MATCH_ID !== matchId) return;
-        
+
         const playerTeam = (record.TEAM || '').trim().toLowerCase();
         const isAhlyPlayer = playerTeam.includes('أهلي') || playerTeam.includes('ahly') || playerTeam.includes('الأهلي');
-        
+
         // Check if we should count this penalty based on forAhly flag
         if (forAhly && !isAhlyPlayer) return;
         if (!forAhly && isAhlyPlayer) return;
-        
+
         // Normalize TYPE and GA fields
         const typeVal = (record.TYPE || '').replace(/[^A-Z]/gi, '').toUpperCase();
         const gaVal = (record.GA || record['G+A'] || '').replace(/[^A-Z]/gi, '').toUpperCase();
-        
+
         // Count PENGOAL (scored) and PENMISSED (missed) in either TYPE or GA
         if (typeVal === 'PENGOAL' || gaVal === 'PENGOAL') {
             count++;
@@ -16060,20 +16193,20 @@ function countMatchPenalties(matchId, forAhly = true) {
             count++;
         }
     });
-    
+
     return count;
 }
 
 // Load referees list from match data
 function loadRefereesData(filteredRecords = null) {
     console.log('Loading referees list...');
-    
+
     const records = filteredRecords || alAhlyStatsData.allRecords || [];
     if (records.length === 0) {
         console.log('No records available for referees');
         return;
     }
-    
+
     // Get unique referees
     const refereesSet = new Set();
     records.forEach(match => {
@@ -16082,12 +16215,12 @@ function loadRefereesData(filteredRecords = null) {
             refereesSet.add(referee.trim());
         }
     });
-    
+
     // Convert to array and sort
     refereesData.referees = Array.from(refereesSet).sort();
-    
+
     console.log(`Loaded ${refereesData.referees.length} referees`);
-    
+
     // Populate search dropdown
     populateRefereeSearch();
 }
@@ -16096,37 +16229,37 @@ function loadRefereesData(filteredRecords = null) {
 function populateRefereeSearch() {
     const searchInput = document.getElementById('referee-search');
     const optionsDiv = document.getElementById('referee-search-options');
-    
+
     if (!searchInput || !optionsDiv) return;
-    
+
     // Setup search functionality
-    searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', function () {
         const searchTerm = this.value.toLowerCase().trim();
-        
+
         if (searchTerm === '') {
             optionsDiv.style.display = 'none';
             return;
         }
-        
+
         // Filter referees
-        const filteredReferees = refereesData.referees.filter(ref => 
+        const filteredReferees = refereesData.referees.filter(ref =>
             ref.toLowerCase().includes(searchTerm)
         );
-        
+
         // Display options
         if (filteredReferees.length > 0) {
             optionsDiv.innerHTML = filteredReferees
                 .map(ref => `<div class="option-item" data-value="${ref}">${ref}</div>`)
                 .join('');
             optionsDiv.style.display = 'block';
-            
+
             // Add click handlers
             optionsDiv.querySelectorAll('.option-item').forEach(item => {
-                item.addEventListener('click', function() {
+                item.addEventListener('click', function () {
                     const selectedRef = this.getAttribute('data-value');
                     searchInput.value = selectedRef;
                     optionsDiv.style.display = 'none';
-                    
+
                     // Load referee data
                     refereesData.selectedReferee = selectedRef;
                     loadRefereeStats(selectedRef);
@@ -16137,9 +16270,9 @@ function populateRefereeSearch() {
             optionsDiv.style.display = 'block';
         }
     });
-    
+
     // Hide dropdown when clicking outside
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!searchInput.contains(e.target) && !optionsDiv.contains(e.target)) {
             optionsDiv.style.display = 'none';
         }
@@ -16151,20 +16284,20 @@ function showRefereeMainSubTab(event, tabName) {
     // Remove active class from all main sub-tabs
     const mainSubTabs = event.target.closest('.stats-sub-tabs').querySelectorAll('.stats-sub-tab');
     mainSubTabs.forEach(tab => tab.classList.remove('active'));
-    
+
     // Add active class to clicked tab
     event.target.closest('.stats-sub-tab').classList.add('active');
-    
+
     // Hide all main sub-content
     const allMainContent = document.querySelectorAll('.referee-main-sub-content');
     allMainContent.forEach(content => content.classList.remove('active'));
-    
+
     // Show selected main sub-content
     const selectedContent = document.getElementById(tabName + '-sub');
     if (selectedContent) {
         selectedContent.classList.add('active');
     }
-    
+
     // Load data if switching to All Referees
     if (tabName === 'all-referees') {
         const currentFilteredRecords = getCurrentFilteredRecords();
@@ -16174,7 +16307,7 @@ function showRefereeMainSubTab(event, tabName) {
 // Load and display All Referees data
 function loadAllRefereesData(filteredRecords = null) {
     console.log('Loading All Referees data...');
-    
+
     // Use filtered records if provided, otherwise use all records
     const records = filteredRecords || alAhlyStatsData.allRecords || [];
     if (records.length === 0) {
@@ -16182,20 +16315,20 @@ function loadAllRefereesData(filteredRecords = null) {
         renderAllRefereesTable([]);
         return;
     }
-    
+
     console.log(`Processing ${records.length} records for All Referees`);
-    
+
     // Calculate stats for each referee
     const refereesStats = {};
-    
+
     records.forEach(match => {
         const referee = match['REFREE'] || match['REFEREE'] || '';
-        
+
         // Skip empty, -, ?, and Unknown names
         if (!referee || referee.trim() === '' || referee === '-' || referee === '?' || referee === 'Unknown') {
             return;
         }
-        
+
         if (!refereesStats[referee]) {
             refereesStats[referee] = {
                 name: referee,
@@ -16209,15 +16342,15 @@ function loadAllRefereesData(filteredRecords = null) {
                 penaltiesAgainst: 0
             };
         }
-        
+
         const result = match['W-D-L'] || '';
         const goalsFor = parseInt(match['GF'] || 0);
         const goalsAgainst = parseInt(match['GA'] || 0);
-        
+
         refereesStats[referee].matches++;
         refereesStats[referee].goalsFor += goalsFor;
         refereesStats[referee].goalsAgainst += goalsAgainst;
-        
+
         // Count results
         if (result === 'W') {
             refereesStats[referee].wins++;
@@ -16226,7 +16359,7 @@ function loadAllRefereesData(filteredRecords = null) {
         } else if (result === 'L') {
             refereesStats[referee].losses++;
         }
-        
+
         // Count penalties for/against
         const matchId = match['MATCH_ID'] || match['MATCH ID'] || '';
         if (matchId) {
@@ -16234,17 +16367,17 @@ function loadAllRefereesData(filteredRecords = null) {
             refereesStats[referee].penaltiesAgainst += countMatchPenalties(matchId, false);
         }
     });
-    
+
     // Convert to array and sort by matches descending
     const refereesArray = Object.values(refereesStats).sort((a, b) => b.matches - a.matches);
-    
+
     // Store and render
     allRefereesData.referees = refereesArray;
     renderAllRefereesTable(refereesArray);
-    
+
     // Setup search functionality
     setupAllRefereesSearch(refereesArray);
-    
+
     console.log(`Loaded ${refereesArray.length} referees`);
 }
 
@@ -16252,16 +16385,16 @@ function loadAllRefereesData(filteredRecords = null) {
 function renderAllRefereesTable(refereesData) {
     const tbody = document.querySelector('#all-referees-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     if (refereesData.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = '<td colspan="9" style="text-align: center; padding: 2rem; color: #666;">No referees found</td>';
         tbody.appendChild(row);
         return;
     }
-    
+
     refereesData.forEach(referee => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -16277,12 +16410,12 @@ function renderAllRefereesTable(refereesData) {
         `;
         tbody.appendChild(row);
     });
-    
+
     // Add total row
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
     totalRow.style.backgroundColor = '#f8f9fa';
-    
+
     const totals = {
         matches: refereesData.reduce((sum, ref) => sum + ref.matches, 0),
         wins: refereesData.reduce((sum, ref) => sum + ref.wins, 0),
@@ -16293,7 +16426,7 @@ function renderAllRefereesTable(refereesData) {
         penaltiesFor: refereesData.reduce((sum, ref) => sum + ref.penaltiesFor, 0),
         penaltiesAgainst: refereesData.reduce((sum, ref) => sum + ref.penaltiesAgainst, 0)
     };
-    
+
     totalRow.innerHTML = `
         <td>TOTAL</td>
         <td>${totals.matches}</td>
@@ -16306,7 +16439,7 @@ function renderAllRefereesTable(refereesData) {
         <td>${totals.penaltiesAgainst}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log(`All Referees table rendered with ${refereesData.length} referees`);
 }
 
@@ -16314,49 +16447,49 @@ function renderAllRefereesTable(refereesData) {
 function setupAllRefereesSearch(refereesData) {
     const searchInput = document.getElementById('all-referees-search');
     if (!searchInput) return;
-    
+
     // Store referees data for search
     searchInput._refereesData = refereesData;
-    
+
     // Remove existing listener if any
     const newSearchInput = searchInput.cloneNode(true);
     newSearchInput._refereesData = refereesData;
     searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-    
+
     // Add input event listener for real-time search
-    newSearchInput.addEventListener('input', function() {
+    newSearchInput.addEventListener('input', function () {
         const searchTerm = this.value.toLowerCase().trim();
         const currentRefereesData = this._refereesData || refereesData;
-        
+
         if (searchTerm === '') {
             // Show all referees (filtered by main filters)
             renderAllRefereesTable(currentRefereesData);
         } else {
             // Filter referees by search term
-            const filteredReferees = currentRefereesData.filter(referee => 
+            const filteredReferees = currentRefereesData.filter(referee =>
                 referee.name.toLowerCase().includes(searchTerm)
             );
             renderAllRefereesTable(filteredReferees);
         }
     });
-    
+
     console.log('All Referees search functionality initialized');
 }
 
 // Load all stats for a selected referee
 function loadRefereeStats(refereeName) {
     console.log('Loading stats for referee:', refereeName);
-    
+
     const records = alAhlyStatsData.allRecords || [];
-    
+
     // Filter matches by referee
     const refereeMatches = records.filter(match => {
         const referee = match['REFREE'] || match['REFEREE'] || '';
         return referee === refereeName;
     });
-    
+
     console.log(`Found ${refereeMatches.length} matches for referee ${refereeName}`);
-    
+
     // Load sub-tabs data
     loadRefereeMatches(refereeMatches);
     loadRefereeChampionships(refereeMatches);
@@ -16367,40 +16500,40 @@ function loadRefereeStats(refereeName) {
 function loadRefereeMatches(matches) {
     const tbody = document.querySelector('#referee-matches-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     if (matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No matches found</td></tr>';
         return;
     }
-    
+
     // Sort by date (newest first)
     const sortedMatches = [...matches].sort((a, b) => {
         let dateA = a.DATE || a.date || 0;
         let dateB = b.DATE || b.date || 0;
-        
+
         // Convert Excel serial dates if needed
         if (dateA && !isNaN(dateA) && typeof dateA === 'number') {
             dateA = new Date((dateA - 25569) * 86400 * 1000);
         } else {
             dateA = new Date(dateA);
         }
-        
+
         if (dateB && !isNaN(dateB) && typeof dateB === 'number') {
             dateB = new Date((dateB - 25569) * 86400 * 1000);
         } else {
             dateB = new Date(dateB);
         }
-        
+
         return dateB - dateA;
     });
-    
+
     sortedMatches.forEach(match => {
         const row = document.createElement('tr');
         const result = match['W-D-L'] || '';
         let resultBadge = '';
-        
+
         if (result === 'W') {
             resultBadge = '<span class="badge badge-success">W</span>';
         } else if (result === 'D' || result === 'D WITH G' || result === 'D.') {
@@ -16408,33 +16541,33 @@ function loadRefereeMatches(matches) {
         } else if (result === 'L') {
             resultBadge = '<span class="badge badge-danger">L</span>';
         }
-        
+
         // Format date properly
         let dateStr = match.DATE || match.date || '';
         if (dateStr && typeof dateStr === 'number' && !isNaN(dateStr)) {
             // Convert Excel serial date to JavaScript date
             const excelDate = new Date((dateStr - 25569) * 86400 * 1000);
-            dateStr = excelDate.toLocaleDateString('en-GB', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric' 
+            dateStr = excelDate.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
             });
         } else if (dateStr && typeof dateStr === 'string') {
             // Try to parse string date
             const parsedDate = new Date(dateStr);
             if (!isNaN(parsedDate)) {
-                dateStr = parsedDate.toLocaleDateString('en-GB', { 
-                    day: '2-digit', 
-                    month: '2-digit', 
-                    year: 'numeric' 
+                dateStr = parsedDate.toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
                 });
             }
         }
-        
+
         // Count penalties for this match
         const penaltiesFor = countMatchPenalties(match.MATCH_ID, true);
         const penaltiesAgainst = countMatchPenalties(match.MATCH_ID, false);
-        
+
         row.innerHTML = `
             <td>${dateStr}</td>
             <td>${match.SEASON || match.season || ''}</td>
@@ -16448,7 +16581,7 @@ function loadRefereeMatches(matches) {
         `;
         tbody.appendChild(row);
     });
-    
+
     console.log(`Rendered ${sortedMatches.length} referee matches`);
 }
 
@@ -16456,21 +16589,21 @@ function loadRefereeMatches(matches) {
 function loadRefereeChampionships(matches) {
     const tbody = document.querySelector('#referee-championships-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     if (matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No data available</td></tr>';
         return;
     }
-    
+
     // Group by championship
     const champStats = {};
-    
+
     matches.forEach(match => {
         const champ = match.CHAMPION || match.champion || 'Unknown';
         const result = match['W-D-L'] || '';
-        
+
         if (!champStats[champ]) {
             champStats[champ] = {
                 matches: 0,
@@ -16481,9 +16614,9 @@ function loadRefereeChampionships(matches) {
                 penaltiesAgainst: 0
             };
         }
-        
+
         champStats[champ].matches++;
-        
+
         // Count results
         if (result === 'W') {
             champStats[champ].wins++;
@@ -16492,17 +16625,17 @@ function loadRefereeChampionships(matches) {
         } else if (result === 'L') {
             champStats[champ].losses++;
         }
-        
+
         // Count penalties from PLAYERDETAILS
         champStats[champ].penaltiesFor += countMatchPenalties(match.MATCH_ID, true);
         champStats[champ].penaltiesAgainst += countMatchPenalties(match.MATCH_ID, false);
     });
-    
+
     // Convert to array and sort by matches
     const champArray = Object.entries(champStats)
         .map(([name, stats]) => ({ name, ...stats }))
         .sort((a, b) => b.matches - a.matches);
-    
+
     // Calculate totals
     const totals = {
         matches: 0,
@@ -16512,7 +16645,7 @@ function loadRefereeChampionships(matches) {
         penaltiesFor: 0,
         penaltiesAgainst: 0
     };
-    
+
     champArray.forEach(champ => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -16525,7 +16658,7 @@ function loadRefereeChampionships(matches) {
             <td>${champ.penaltiesAgainst}</td>
         `;
         tbody.appendChild(row);
-        
+
         // Add to totals
         totals.matches += champ.matches;
         totals.wins += champ.wins;
@@ -16534,7 +16667,7 @@ function loadRefereeChampionships(matches) {
         totals.penaltiesFor += champ.penaltiesFor;
         totals.penaltiesAgainst += champ.penaltiesAgainst;
     });
-    
+
     // Add totals row
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
@@ -16549,7 +16682,7 @@ function loadRefereeChampionships(matches) {
         <td>${totals.penaltiesAgainst}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log(`Rendered ${champArray.length} championships for referee`);
 }
 
@@ -16557,21 +16690,21 @@ function loadRefereeChampionships(matches) {
 function loadRefereeSeasons(matches) {
     const tbody = document.querySelector('#referee-seasons-table tbody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     if (matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No data available</td></tr>';
         return;
     }
-    
+
     // Group by season
     const seasonStats = {};
-    
+
     matches.forEach(match => {
         const season = match.SEASON || match.season || 'Unknown';
         const result = match['W-D-L'] || '';
-        
+
         if (!seasonStats[season]) {
             seasonStats[season] = {
                 matches: 0,
@@ -16582,9 +16715,9 @@ function loadRefereeSeasons(matches) {
                 penaltiesAgainst: 0
             };
         }
-        
+
         seasonStats[season].matches++;
-        
+
         // Count results
         if (result === 'W') {
             seasonStats[season].wins++;
@@ -16593,17 +16726,17 @@ function loadRefereeSeasons(matches) {
         } else if (result === 'L') {
             seasonStats[season].losses++;
         }
-        
+
         // Count penalties from PLAYERDETAILS
         seasonStats[season].penaltiesFor += countMatchPenalties(match.MATCH_ID, true);
         seasonStats[season].penaltiesAgainst += countMatchPenalties(match.MATCH_ID, false);
     });
-    
+
     // Convert to array and sort by season (descending)
     const seasonArray = Object.entries(seasonStats)
         .map(([name, stats]) => ({ name, ...stats }))
         .sort((a, b) => b.name.localeCompare(a.name));
-    
+
     // Calculate totals
     const totals = {
         matches: 0,
@@ -16613,7 +16746,7 @@ function loadRefereeSeasons(matches) {
         penaltiesFor: 0,
         penaltiesAgainst: 0
     };
-    
+
     seasonArray.forEach(season => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -16626,7 +16759,7 @@ function loadRefereeSeasons(matches) {
             <td>${season.penaltiesAgainst}</td>
         `;
         tbody.appendChild(row);
-        
+
         // Add to totals
         totals.matches += season.matches;
         totals.wins += season.wins;
@@ -16635,7 +16768,7 @@ function loadRefereeSeasons(matches) {
         totals.penaltiesFor += season.penaltiesFor;
         totals.penaltiesAgainst += season.penaltiesAgainst;
     });
-    
+
     // Add totals row
     const totalRow = document.createElement('tr');
     totalRow.style.fontWeight = 'bold';
@@ -16650,7 +16783,7 @@ function loadRefereeSeasons(matches) {
         <td>${totals.penaltiesAgainst}</td>
     `;
     tbody.appendChild(totalRow);
-    
+
     console.log(`Rendered ${seasonArray.length} seasons for referee`);
 }
 
@@ -16660,18 +16793,18 @@ function showRefereeSubTab(evt, subTabName) {
     document.querySelectorAll('#referees-tab .player-sub-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Remove active class from all referee sub-tabs
     document.querySelectorAll('#referees-tab .stats-sub-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Show selected sub-tab content
     const targetContent = document.getElementById('referee-' + subTabName + '-sub');
     if (targetContent) {
         targetContent.classList.add('active');
     }
-    
+
     // Add active class to clicked sub-tab
     if (evt && evt.target) {
         const btn = evt.target.closest('button.stats-sub-tab');
@@ -16687,7 +16820,7 @@ function setupMainStatsFilters() {
     const seasonFilter = document.getElementById('season-filter');
     const syFilter = document.getElementById('sy-filter');
     const championFilter = document.getElementById('champion-filter');
-    
+
     // Remove existing listeners to prevent duplicates
     if (teamFilter && teamFilter.mainStatsListener) {
         teamFilter.removeEventListener('change', teamFilter.mainStatsListener);
@@ -16701,25 +16834,25 @@ function setupMainStatsFilters() {
     if (championFilter && championFilter.mainStatsListener) {
         championFilter.removeEventListener('change', championFilter.mainStatsListener);
     }
-    
+
     // All Main Stats filters will only affect when Apply Filters is clicked, not on change
 }
 // Initialize page when DOM is ready
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async function () {
     console.log('=== DOM LOADED, INITIALIZING AL AHLY STATS PAGE ===');
-    
+
     // Try to auto-load cached data first
     console.log('Attempting to load cached data...');
     await autoLoadCachedExcelData();
     console.log('Cache loading complete');
-    
+
     // Initialize the page
     console.log('Initializing Al Ahly Stats...');
     initializeAlAhlyStats();
-    
+
     // Setup Main Stats filters
     setupMainStatsFilters();
-    
+
     // Setup main filters for all tabs
     setupMainFiltersForAllTabs();
 });
@@ -16727,11 +16860,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 // Setup main filters for all tabs
 function setupMainFiltersForAllTabs() {
     console.log('🔧 Setting up main filters for all tabs...');
-    
+
     // Get all main filter elements
     const filterElements = [
         'match-id-filter',
-        'champion-system-filter', 
+        'champion-system-filter',
         'champion-filter',
         'season-filter',
         'sy-filter',
@@ -16752,11 +16885,11 @@ function setupMainFiltersForAllTabs() {
         'date-from-filter',
         'date-to-filter'
     ];
-    
+
     // Auto-filtering disabled - filters only apply when "Apply Filters" button is clicked
     // This prevents automatic filtering when changing filter values
     console.log('ℹ️ Auto-filtering disabled - filters only apply when "Apply Filters" button is clicked');
-    
+
     filterElements.forEach(filterId => {
         const element = document.getElementById(filterId);
         if (element) {
@@ -16771,33 +16904,33 @@ function setupMainFiltersForAllTabs() {
             console.log(`❌ Filter element not found: ${filterId}`);
         }
     });
-    
+
     console.log('✅ Main filters setup complete');
 }
 // Reload current active tab data
 function reloadCurrentActiveTab() {
     console.log('🔄 reloadCurrentActiveTab() called');
-    
+
     // Check if we're in the BY Player tab
     const playersTab = document.getElementById('players-tab');
     console.log('📊 BY Player tab active:', playersTab && playersTab.classList.contains('active'));
-    
+
     if (playersTab && playersTab.classList.contains('active')) {
         // Check if With Coaches sub-tab is active
         const withCoachesSubTab = document.getElementById('player-with-coaches-sub');
         const overviewSubTab = document.getElementById('player-overview-sub');
         const goalMinuteContent = document.getElementById('goal-minute-content');
         const goalEffectContent = document.getElementById('goal-effect-content');
-        
+
         console.log('👨‍💼 With Coaches sub-tab active:', withCoachesSubTab && withCoachesSubTab.classList.contains('active'));
         console.log('📊 Overview sub-tab active:', overviewSubTab && overviewSubTab.classList.contains('active'));
         console.log('⏰ Goal Minute sub-tab active:', goalMinuteContent && goalMinuteContent.classList.contains('active'));
         console.log('🎯 Goal Effect sub-tab active:', goalEffectContent && goalEffectContent.classList.contains('active'));
-        
+
         if (withCoachesSubTab && withCoachesSubTab.classList.contains('active')) {
             console.log('🔄 Reloading With Coaches tab due to main filter change');
             loadPlayerWithCoachesStats();
-        } 
+        }
         // Check if Overview sub-tab is active
         else if (overviewSubTab && overviewSubTab.classList.contains('active')) {
             console.log('🔄 Reloading Overview tab due to main filter change');
@@ -16824,7 +16957,7 @@ function reloadCurrentActiveTab() {
             }
         }
     }
-    
+
     // Also reload other tabs that use main filters
     const activeTab = document.querySelector('.stats-tab.active');
     if (activeTab) {
@@ -16834,7 +16967,7 @@ function reloadCurrentActiveTab() {
             if (tabName && tabName[1]) {
                 const tabNameValue = tabName[1];
                 console.log(`🔄 Reloading ${tabNameValue} tab due to main filter change`);
-                
+
                 // Reload specific tabs that use main filters
                 if (tabNameValue === 'all-players') {
                     const currentFilteredRecords = getCurrentFilteredRecords();
@@ -16855,7 +16988,7 @@ function reloadCurrentActiveTab() {
             }
         }
     }
-    
+
     // H2H T Details will only update when Apply Filters is clicked
 }
 
@@ -16869,27 +17002,27 @@ function reloadCurrentActiveTab() {
 function loadPlayerTrophies(playerName, teamFilter = '') {
     try {
         console.log(`🏆 Loading trophies for player: ${playerName}, team filter: ${teamFilter}`);
-        
+
         const container = document.getElementById('trophy-cards-container');
         if (!container) {
             return;
         }
-        
+
         // Get trophy data from TROPHY sheet
         const trophySheet = getSheetRowsByCandidates(['TROPHY']);
         if (!trophySheet || trophySheet.length === 0) {
             container.innerHTML = '<p style="text-align: center; color: #666;">No trophy data available</p>';
             return;
         }
-        
+
         // Get all sheets that contain player data
         const lineupSheet = getSheetRowsByCandidates(['LINEUPDETAILS']) || [];
         const playerDetailsSheet = getSheetRowsByCandidates(['PLAYERDETAILS']) || [];
         const gkDetailsSheet = getSheetRowsByCandidates(['GKDETAILS']) || [];
-        
+
         // Get main sheet to get MATCH_ID for filtering
         const mainSheet = getSheetRowsByCandidates(['MATCHDETAILS']) || [];
-        
+
         // Calculate trophies for the player
         // For trophies, we ignore team filter and only show Al Ahly trophies
         const playerTrophies = calculatePlayerTrophies(
@@ -16901,7 +17034,7 @@ function loadPlayerTrophies(playerName, teamFilter = '') {
             gkDetailsSheet,
             mainSheet
         );
-        
+
         // Render trophy cards
         renderTrophyCards(playerTrophies);
     } catch (error) {
@@ -16922,35 +17055,35 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
         const championsMap = {};
         const runnersUpMap = {};
         const thirdPlaceMap = {};
-        
+
         // Helper function to process a trophy position
         const processTrophyPosition = (season, position) => {
             if (!season) return;
-            
+
             // Get all matches in this season from main sheet
             // For trophies, we only care about Al Ahly matches regardless of team filter
             const seasonMatches = mainSheet.filter(m => {
                 const matchSeason = m['SEASON'];
                 return matchSeason === season;
             });
-            
+
             if (seasonMatches.length === 0) return;
-            
+
             // Get trophy name from CHAMPION column in MATCHDETAILS (first match)
             const trophyName = seasonMatches[0]['CHAMPION'] || 'Unknown Trophy';
-            
+
             const seasonMatchIds = seasonMatches.map(m => m['MATCH_ID']);
-            
+
             // Check if player appeared in any match in this season
             let playerFound = false;
-            
+
             for (const matchId of seasonMatchIds) {
                 // Check in LINEUPDETAILS - all players here are with Al Ahly (no team column)
                 const inLineup = lineupSheet.some(row => {
-                    return String(row['MATCH_ID']) === String(matchId) && 
-                           row['PLAYER NAME'] === playerName;
+                    return String(row['MATCH_ID']) === String(matchId) &&
+                        row['PLAYER NAME'] === playerName;
                 });
-                
+
                 // Check in PLAYERDETAILS - only count if player was with Al Ahly
                 const inPlayerDetails = playerDetailsSheet.some(row => {
                     if (String(row['MATCH_ID']) !== String(matchId) || row['PLAYER NAME'] !== playerName) {
@@ -16960,7 +17093,7 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
                     const team = normalizeStr(row['TEAM'] || '');
                     return team === 'الأهلي' || team === 'ahly';
                 });
-                
+
                 // Check in GKDETAILS - only count if player was with Al Ahly
                 const inGKDetails = gkDetailsSheet.some(row => {
                     if (String(row['MATCH_ID']) !== String(matchId) || row['PLAYER NAME'] !== playerName) {
@@ -16970,13 +17103,13 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
                     const team = normalizeStr(row['TEAM'] || '');
                     return team === 'الأهلي' || team === 'ahly';
                 });
-                
+
                 if (inLineup || inPlayerDetails || inGKDetails) {
                     playerFound = true;
                     break;
                 }
             }
-            
+
             if (playerFound) {
                 let trophyMap;
                 if (position === 'champions') {
@@ -16988,7 +17121,7 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
                 } else {
                     return;
                 }
-                
+
                 if (!trophyMap[trophyName]) {
                     trophyMap[trophyName] = {
                         count: 0,
@@ -16999,7 +17132,7 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
                 trophyMap[trophyName].seasons.push(season);
             }
         };
-        
+
         // Process each trophy row from TROPHY sheet
         trophySheet.forEach(trophyRow => {
             // Process Champions (from Champions column)
@@ -17007,20 +17140,20 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
             if (championsSeason && String(championsSeason).trim() !== '') {
                 processTrophyPosition(String(championsSeason).trim(), 'champions');
             }
-            
+
             // Process Runners-Up (from Runners-UP column)
             const runnersUpSeason = trophyRow['Runners-UP'] || trophyRow['RUNNERS-UP'] || trophyRow['Runners-Up'] || trophyRow['runners-up'] || trophyRow['Runners Up'] || trophyRow['RUNNERS UP'];
             if (runnersUpSeason && String(runnersUpSeason).trim() !== '') {
                 processTrophyPosition(String(runnersUpSeason).trim(), 'runners-up');
             }
-            
+
             // Process Third Place (from Third place column)
             const thirdPlaceSeason = trophyRow['Third place'] || trophyRow['THIRD PLACE'] || trophyRow['Third Place'] || trophyRow['third place'] || trophyRow['THIRDPLACE'] || trophyRow['ThirdPlace'];
             if (thirdPlaceSeason && String(thirdPlaceSeason).trim() !== '') {
                 processTrophyPosition(String(thirdPlaceSeason).trim(), 'third-place');
             }
         });
-        
+
         // Helper function to convert map to array
         const mapToArray = (trophyMap, position) => {
             return Object.entries(trophyMap).map(([name, data]) => ({
@@ -17041,21 +17174,21 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
                 })
             })).sort((a, b) => b.count - a.count);
         };
-        
+
         // Convert all maps to arrays
         const championsArray = mapToArray(championsMap, 'champions');
         const runnersUpArray = mapToArray(runnersUpMap, 'runners-up');
         const thirdPlaceArray = mapToArray(thirdPlaceMap, 'third-place');
-        
+
         // Combine all trophies
         const allTrophies = [...championsArray, ...runnersUpArray, ...thirdPlaceArray];
-        
+
         console.log(`🏆 Total trophies calculated: ${allTrophies.length}`, {
             champions: championsArray.length,
             runnersUp: runnersUpArray.length,
             thirdPlace: thirdPlaceArray.length
         });
-        
+
         return allTrophies;
     } catch (error) {
         console.error('❌ Error in calculatePlayerTrophies:', error);
@@ -17068,24 +17201,24 @@ function calculatePlayerTrophies(playerName, teamFilter, trophySheet, lineupShee
  */
 function renderTrophyCards(trophies) {
     const container = document.getElementById('trophy-cards-container');
-    
+
     if (!container) return;
-    
+
     if (!trophies || trophies.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #666; font-size: 1.2rem;">No trophies found for this player</p>';
         return;
     }
-    
+
     // Separate trophies by position
     const champions = trophies.filter(t => t.position === 'champions');
     const runnersUp = trophies.filter(t => t.position === 'runners-up');
     const thirdPlace = trophies.filter(t => t.position === 'third-place');
-    
+
     // Helper function to render cards for a position
     let globalIndex = 0;
     const renderPositionCards = (positionTrophies, positionName, icon, cardClass) => {
         if (positionTrophies.length === 0) return '';
-        
+
         let cardsHtml = '';
         positionTrophies.forEach(trophy => {
             const idx = globalIndex++;
@@ -17104,7 +17237,7 @@ function renderTrophyCards(trophies) {
                 </div>
             `;
         });
-        
+
         return `
             <div class="trophy-position-section">
                 <h3 class="trophy-position-title">${positionName}</h3>
@@ -17114,24 +17247,24 @@ function renderTrophyCards(trophies) {
             </div>
         `;
     };
-    
+
     // Render all positions
     let html = '';
-    
+
     if (champions.length > 0) {
         html += renderPositionCards(champions, 'Champions', '🏆', 'trophy-card-champions');
     }
-    
+
     if (runnersUp.length > 0) {
         html += renderPositionCards(runnersUp, 'Runners-Up', '🥈', 'trophy-card-runners-up');
     }
-    
+
     if (thirdPlace.length > 0) {
         html += renderPositionCards(thirdPlace, 'Third Place', '🥉', 'trophy-card-third-place');
     }
-    
+
     container.innerHTML = html;
-    
+
     // Store trophies data for toggle function (flatten all positions)
     const allTrophiesFlat = [...champions, ...runnersUp, ...thirdPlace];
     window.currentTrophiesData = allTrophiesFlat;
@@ -17143,14 +17276,14 @@ function renderTrophyCards(trophies) {
 function toggleTrophySeasons(index) {
     const seasonsDiv = document.getElementById(`trophy-seasons-${index}`);
     if (!seasonsDiv) return;
-    
+
     // Close all other open seasons
     document.querySelectorAll('.trophy-seasons').forEach((div, i) => {
         if (i !== index) {
             div.style.display = 'none';
         }
     });
-    
+
     // Toggle current seasons
     if (seasonsDiv.style.display === 'none') {
         seasonsDiv.style.display = 'block';
@@ -17217,7 +17350,7 @@ let trophyPlayersSortState = {
 function loadTrophyPlayersData() {
     try {
         console.log('🏆 Loading Trophy Players data...');
-        
+
         // Get trophy data from TROPHY sheet
         const trophySheet = getSheetRowsByCandidates(['TROPHY']);
         if (!trophySheet || trophySheet.length === 0) {
@@ -17225,15 +17358,15 @@ function loadTrophyPlayersData() {
             renderTrophyPlayersTable([]);
             return;
         }
-        
+
         // Get all sheets that contain player data
         const lineupSheet = getSheetRowsByCandidates(['LINEUPDETAILS']) || [];
         const playerDetailsSheet = getSheetRowsByCandidates(['PLAYERDETAILS']) || [];
         const gkDetailsSheet = getSheetRowsByCandidates(['GKDETAILS']) || [];
-        
+
         // Get main sheet to get MATCH_ID for filtering
         const mainSheet = getSheetRowsByCandidates(['MATCHDETAILS']) || [];
-        
+
         // Calculate trophies for all players
         const playersTrophies = calculateAllPlayersTrophies(
             trophySheet,
@@ -17242,7 +17375,7 @@ function loadTrophyPlayersData() {
             gkDetailsSheet,
             mainSheet
         );
-        
+
         // Render trophy players table
         renderTrophyPlayersTable(playersTrophies);
     } catch (error) {
@@ -17258,7 +17391,7 @@ function calculateAllPlayersTrophies(trophySheet, lineupSheet, playerDetailsShee
     try {
         // Map to store player trophies: playerName -> trophyName -> count
         const playersTrophiesMap = new Map();
-        
+
         // Process each trophy row from TROPHY sheet
         trophySheet.forEach(trophyRow => {
             // Process Champions (from Champions column)
@@ -17274,7 +17407,7 @@ function calculateAllPlayersTrophies(trophySheet, lineupSheet, playerDetailsShee
                 );
             }
         });
-        
+
         // Convert map to array
         const playersArray = [];
         playersTrophiesMap.forEach((trophiesMap, playerName) => {
@@ -17297,7 +17430,7 @@ function calculateAllPlayersTrophies(trophySheet, lineupSheet, playerDetailsShee
                 'arab-super': 0,
                 'total': 0
             };
-            
+
             // Count trophies for each trophy type
             trophiesMap.forEach((count, trophyName) => {
                 const trophyKey = TROPHY_NAMES[trophyName];
@@ -17306,10 +17439,10 @@ function calculateAllPlayersTrophies(trophySheet, lineupSheet, playerDetailsShee
                     playerTrophies.total += count;
                 }
             });
-            
+
             playersArray.push(playerTrophies);
         });
-        
+
         // Sort by total (descending) then by player name
         playersArray.sort((a, b) => {
             if (b.total !== a.total) {
@@ -17317,9 +17450,9 @@ function calculateAllPlayersTrophies(trophySheet, lineupSheet, playerDetailsShee
             }
             return a.name.localeCompare(b.name);
         });
-        
+
         console.log(`🏆 Total players with trophies: ${playersArray.length}`);
-        
+
         return playersArray;
     } catch (error) {
         console.error('❌ Error in calculateAllPlayersTrophies:', error);
@@ -17336,17 +17469,17 @@ function processPlayerTrophyForSeason(season, lineupSheet, playerDetailsSheet, g
         const matchSeason = m['SEASON'];
         return matchSeason === season;
     });
-    
+
     if (seasonMatches.length === 0) return;
-    
+
     // Get trophy name from CHAMPION column in MATCHDETAILS (first match)
     const trophyName = seasonMatches[0]['CHAMPION'] || 'Unknown Trophy';
-    
+
     const seasonMatchIds = new Set(seasonMatches.map(m => String(m['MATCH_ID'])));
-    
+
     // Get all players who appeared in this season
     const playersInSeason = new Set();
-    
+
     // Check in LINEUPDETAILS
     lineupSheet.forEach(row => {
         const matchId = String(row['MATCH_ID']);
@@ -17357,7 +17490,7 @@ function processPlayerTrophyForSeason(season, lineupSheet, playerDetailsSheet, g
             }
         }
     });
-    
+
     // Check in PLAYERDETAILS - only count if player was with Al Ahly
     playerDetailsSheet.forEach(row => {
         const matchId = String(row['MATCH_ID']);
@@ -17371,7 +17504,7 @@ function processPlayerTrophyForSeason(season, lineupSheet, playerDetailsSheet, g
             }
         }
     });
-    
+
     // Check in GKDETAILS - only count if player was with Al Ahly
     gkDetailsSheet.forEach(row => {
         const matchId = String(row['MATCH_ID']);
@@ -17385,13 +17518,13 @@ function processPlayerTrophyForSeason(season, lineupSheet, playerDetailsSheet, g
             }
         }
     });
-    
+
     // Update players trophies map
     playersInSeason.forEach(playerName => {
         if (!playersTrophiesMap.has(playerName)) {
             playersTrophiesMap.set(playerName, new Map());
         }
-        
+
         const playerTrophies = playersTrophiesMap.get(playerName);
         const currentCount = playerTrophies.get(trophyName) || 0;
         playerTrophies.set(trophyName, currentCount + 1);
@@ -17404,23 +17537,23 @@ function processPlayerTrophyForSeason(season, lineupSheet, playerDetailsSheet, g
 function renderTrophyPlayersTable(playersData) {
     const tbody = document.querySelector('#trophy-players-table tbody');
     if (!tbody) return;
-    
+
     // Store current data for sorting
     trophyPlayersCurrentData = playersData;
-    
+
     tbody.innerHTML = '';
-    
+
     if (playersData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="17" style="text-align: center; padding: 2rem; color: #6c757d;">No data found</td></tr>';
         return;
     }
-    
+
     // Apply current sort state
     if (trophyPlayersSortState.column) {
         const sortedData = [...playersData].sort((a, b) => {
             let valA = a[trophyPlayersSortState.column];
             let valB = b[trophyPlayersSortState.column];
-            
+
             if (trophyPlayersSortState.column === 'name') {
                 valA = String(valA).toLowerCase();
                 valB = String(valB).toLowerCase();
@@ -17430,17 +17563,17 @@ function renderTrophyPlayersTable(playersData) {
                     return valA.localeCompare(valB);
                 }
             }
-            
+
             valA = Number(valA) || 0;
             valB = Number(valB) || 0;
-            
+
             if (trophyPlayersSortState.direction === 'desc') {
                 return valB - valA;
             } else {
                 return valA - valB;
             }
         });
-        
+
         // Update active header styling
         document.querySelectorAll('#trophy-players-table th.sortable').forEach(th => {
             th.classList.remove('active');
@@ -17449,7 +17582,7 @@ function renderTrophyPlayersTable(playersData) {
                 icon.textContent = '⇅';
             }
         });
-        
+
         const headers = document.querySelectorAll('#trophy-players-table th.sortable');
         const columnMap = {
             'name': 0,
@@ -17470,7 +17603,7 @@ function renderTrophyPlayersTable(playersData) {
             'arab-cup-winners': 15,
             'arab-super': 16
         };
-        
+
         const headerIndex = columnMap[trophyPlayersSortState.column];
         if (headerIndex !== undefined && headers[headerIndex]) {
             headers[headerIndex].classList.add('active');
@@ -17479,10 +17612,10 @@ function renderTrophyPlayersTable(playersData) {
                 icon.textContent = trophyPlayersSortState.direction === 'desc' ? '↓' : '↑';
             }
         }
-        
+
         playersData = sortedData;
     }
-    
+
     // Render rows
     playersData.forEach(player => {
         const row = document.createElement('tr');
@@ -17507,7 +17640,7 @@ function renderTrophyPlayersTable(playersData) {
         `;
         tbody.appendChild(row);
     });
-    
+
     console.log(`Trophy Players table rendered with ${playersData.length} players`);
 }
 
@@ -17516,7 +17649,7 @@ function renderTrophyPlayersTable(playersData) {
  */
 function sortTrophyPlayersTable(column) {
     console.log('Sorting Trophy Players table by:', column);
-    
+
     // Update sort direction
     if (trophyPlayersSortState.column === column) {
         trophyPlayersSortState.direction = trophyPlayersSortState.direction === 'desc' ? 'asc' : 'desc';
@@ -17524,12 +17657,12 @@ function sortTrophyPlayersTable(column) {
         trophyPlayersSortState.column = column;
         trophyPlayersSortState.direction = 'desc';
     }
-    
+
     // Sort the data
     const sortedData = [...trophyPlayersCurrentData].sort((a, b) => {
         let valA = a[column];
         let valB = b[column];
-        
+
         // Handle string comparison for player name
         if (column === 'name') {
             valA = String(valA).toLowerCase();
@@ -17540,18 +17673,18 @@ function sortTrophyPlayersTable(column) {
                 return valA.localeCompare(valB);
             }
         }
-        
+
         // Handle numeric comparison
         valA = Number(valA) || 0;
         valB = Number(valB) || 0;
-        
+
         if (trophyPlayersSortState.direction === 'desc') {
             return valB - valA;
         } else {
             return valA - valB;
         }
     });
-    
+
     // Update active header styling
     document.querySelectorAll('#trophy-players-table th.sortable').forEach(th => {
         th.classList.remove('active');
@@ -17560,7 +17693,7 @@ function sortTrophyPlayersTable(column) {
             icon.textContent = '⇅';
         }
     });
-    
+
     // Find and mark active header
     const headers = document.querySelectorAll('#trophy-players-table th.sortable');
     const columnMap = {
@@ -17582,7 +17715,7 @@ function sortTrophyPlayersTable(column) {
         'arab-cup-winners': 15,
         'arab-super': 16
     };
-    
+
     const headerIndex = columnMap[column];
     if (headerIndex !== undefined && headers[headerIndex]) {
         headers[headerIndex].classList.add('active');
@@ -17591,7 +17724,7 @@ function sortTrophyPlayersTable(column) {
             icon.textContent = trophyPlayersSortState.direction === 'desc' ? '↓' : '↑';
         }
     }
-    
+
     renderTrophyPlayersTable(sortedData);
 }
 
@@ -17617,12 +17750,12 @@ function loadPlayerAssistDetails() {
         });
         const hasActiveFilters = appliedFilters && Object.keys(appliedFilters).length > 0;
         const shouldApplyMatchFilters = hasActiveFilters && matchDetailsMap.size > 0;
-        
+
         if (!selectedPlayer) {
             console.log('⚠️ No player selected for Assist Details');
             return;
         }
-        
+
         console.log(`🎯 Loading Assist Details for player: ${selectedPlayer}, team filter: ${teamFilter}`);
         if (hasActiveFilters) {
             console.log('🔍 Applying main filters for Assist Details:', appliedFilters);
@@ -17630,34 +17763,34 @@ function loadPlayerAssistDetails() {
                 console.warn('⚠️ Match details not available - main filters cannot be applied to Assist Details records');
             }
         }
-        
+
         // Get PLAYERDETAILS sheet
         const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
-        
+
         if (!playerDetails || playerDetails.length === 0) {
             console.log('⚠️ No PLAYERDETAILS data found');
             document.getElementById('assist-details-table').querySelector('tbody').innerHTML = '<tr><td colspan="3" style="text-align: center; color: #666;">No data available</td></tr>';
             return;
         }
-        
+
         // Filter player details by team filter
         const playerNameLower = normalizeStr(selectedPlayer).toLowerCase();
         const teamLower = (teamFilter ? String(teamFilter) : '').toLowerCase();
-        
+
         // Get all player records for filtering
         const filteredDetails = playerDetails.filter(r => {
             const matchId = normalizeStr(r.MATCH_ID || r['MATCH ID'] || '');
             if (!matchId) {
                 return false;
             }
-            
+
             if (teamLower) {
                 const teamVal = r.TEAM || r['AHLY TEAM'] || '';
                 if (!teamMatchesFilter(teamVal, teamFilter)) {
                     return false;
                 }
             }
-            
+
             if (shouldApplyMatchFilters) {
                 const matchDetail = matchDetailsMap.get(matchId);
                 if (!matchDetail) {
@@ -17667,32 +17800,32 @@ function loadPlayerAssistDetails() {
                     return false;
                 }
             }
-            
+
             return true;
         });
-        
+
         console.log(`📊 Assist details records after filtering: ${filteredDetails.length}/${playerDetails.length}`);
-        
+
         // Maps to store assist relationships
         const makeAssistMap = {}; // Player made assists TO which players
         const takeAssistMap = {}; // Player received assists FROM which players
-        
+
         // Group by Match ID and Minute to find assist-goal pairs
         const matchMinuteMap = {};
-        
+
         filteredDetails.forEach(record => {
             const matchId = normalizeStr(record.MATCH_ID || record['MATCH ID'] || '');
             const minute = String(record.MINUTE || '').trim();
             const ga = normalizeStr(record.GA || '').toUpperCase();
             const playerName = normalizeStr(record['PLAYER NAME'] || '');
             const team = normalizeStr(record.TEAM || record['AHLY TEAM'] || '');
-            
+
             // Only process if minute exists and it's Ahly player
             if (!minute || !matchId || !playerName || team !== 'الأهلي') return;
-            
+
             // Create key for match + minute
             const key = `${matchId}_${minute}`;
-            
+
             if (!matchMinuteMap[key]) {
                 matchMinuteMap[key] = {
                     matchId: matchId,
@@ -17701,7 +17834,7 @@ function loadPlayerAssistDetails() {
                     assists: []
                 };
             }
-            
+
             // Categorize as GOAL or ASSIST
             if (ga === 'GOAL') {
                 matchMinuteMap[key].goals.push(playerName);
@@ -17709,7 +17842,7 @@ function loadPlayerAssistDetails() {
                 matchMinuteMap[key].assists.push(playerName);
             }
         });
-        
+
         // Now find assist-goal pairs
         Object.values(matchMinuteMap).forEach(minuteData => {
             // For each ASSIST player and GOAL player in the same minute
@@ -17723,7 +17856,7 @@ function loadPlayerAssistDetails() {
                         }
                         makeAssistMap[goalPlayer]++;
                     }
-                    
+
                     // Check if selected player is the one receiving the assist
                     if (normalizeStr(goalPlayer).toLowerCase() === playerNameLower) {
                         // Selected player received assist from assistPlayer
@@ -17735,20 +17868,20 @@ function loadPlayerAssistDetails() {
                 });
             });
         });
-        
+
         // Combine both maps to create unified player list
         const allPlayers = new Set([...Object.keys(makeAssistMap), ...Object.keys(takeAssistMap)]);
-        
+
         const assistData = Array.from(allPlayers).map(player => ({
             player: player,
             makeAssist: makeAssistMap[player] || 0,
             takeAssist: takeAssistMap[player] || 0,
             total: (makeAssistMap[player] || 0) + (takeAssistMap[player] || 0)
         })).sort((a, b) => b.total - a.total);
-        
+
         // Render unified table
         const tableBody = document.getElementById('assist-details-table').querySelector('tbody');
-        
+
         if (assistData.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #666; padding: 3rem;">No assist relationships found</td></tr>';
         } else {
@@ -17760,26 +17893,26 @@ function loadPlayerAssistDetails() {
                 </tr>
             `).join('');
         }
-        
+
         console.log(`✅ Assist Details loaded - ${assistData.length} players with assist relationships`);
-        
+
         // Calculate and display totals
         const totalMakeAssist = assistData.reduce((sum, d) => sum + d.makeAssist, 0);
         const totalTakeAssist = assistData.reduce((sum, d) => sum + d.takeAssist, 0);
-        
+
         const totalMakeEl = document.getElementById('assist-details-total-make');
         const totalTakeEl = document.getElementById('assist-details-total-take');
-        
+
         if (totalMakeEl) totalMakeEl.textContent = totalMakeAssist;
         if (totalTakeEl) totalTakeEl.textContent = totalTakeAssist;
-        
+
         // Store data for sorting
         window.currentAssistDetailsData = assistData;
-        
+
     } catch (error) {
         console.error('❌ Error in loadPlayerAssistDetails:', error);
         const tableBody = document.getElementById('assist-details-table')?.querySelector('tbody');
-        
+
         if (tableBody) {
             tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #ff0000;">Error loading assist data</td></tr>';
         }
@@ -17799,7 +17932,7 @@ function sortAssistDetailsTable(column) {
         console.log('⚠️ No data to sort');
         return;
     }
-    
+
     // Toggle sort direction if same column, otherwise default to desc
     if (assistDetailsSortState.column === column) {
         assistDetailsSortState.direction = assistDetailsSortState.direction === 'asc' ? 'desc' : 'asc';
@@ -17807,18 +17940,18 @@ function sortAssistDetailsTable(column) {
         assistDetailsSortState.column = column;
         assistDetailsSortState.direction = 'desc';
     }
-    
+
     const data = [...window.currentAssistDetailsData];
-    
+
     // Sort data
     data.sort((a, b) => {
         let valA, valB;
-        
+
         if (column === 'player') {
             valA = a.player.toLowerCase();
             valB = b.player.toLowerCase();
-            return assistDetailsSortState.direction === 'asc' 
-                ? valA.localeCompare(valB) 
+            return assistDetailsSortState.direction === 'asc'
+                ? valA.localeCompare(valB)
                 : valB.localeCompare(valA);
         } else if (column === 'makeAssist') {
             valA = a.makeAssist;
@@ -17827,14 +17960,14 @@ function sortAssistDetailsTable(column) {
             valA = a.takeAssist;
             valB = b.takeAssist;
         }
-        
+
         if (assistDetailsSortState.direction === 'asc') {
             return valA - valB;
         } else {
             return valB - valA;
         }
     });
-    
+
     // Render sorted data
     const tableBody = document.getElementById('assist-details-table').querySelector('tbody');
     tableBody.innerHTML = data.map(d => `
@@ -17844,24 +17977,24 @@ function sortAssistDetailsTable(column) {
             <td style="text-align: center; font-weight: 700; color: #10b981; font-size: 1.2rem;">${d.takeAssist || '-'}</td>
         </tr>
     `).join('');
-    
+
     // Update sort indicators
     document.querySelectorAll('#assist-details-table th.sortable').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     const currentHeader = document.querySelector(`#assist-details-table th.sortable[onclick*="${column}"]`);
     if (currentHeader) {
         currentHeader.classList.add(assistDetailsSortState.direction === 'asc' ? 'sort-asc' : 'sort-desc');
     }
-    
+
     console.log(`✅ Table sorted by ${column} (${assistDetailsSortState.direction})`);
 }
 
 // Helper function to apply main filters to match data
 function applyMainFiltersToMatch(matchDetail, filters) {
     if (!matchDetail) return false;
-    
+
     // Trophy filter - only show matches from trophy-winning seasons
     if (filters.trophy === 'only-trophy') {
         const season = matchDetail['SEASON'] || '';
@@ -17869,82 +18002,82 @@ function applyMainFiltersToMatch(matchDetail, filters) {
             return false;
         }
     }
-    
+
     // Match ID filter
     if (filters.matchId && !normalizeStr(matchDetail.MATCH_ID || matchDetail['MATCH ID'] || '').toLowerCase().includes(filters.matchId.toLowerCase())) {
         return false;
     }
-    
+
     // Champion System filter
     if (filters.championSystem && normalizeStr(matchDetail['CHAMPION SYSTEM'] || '') !== filters.championSystem) {
         return false;
     }
-    
+
     // Champion filter
     if (filters.champion && normalizeStr(matchDetail.CHAMPION || '') !== filters.champion) {
         return false;
     }
-    
+
     // Season filter
     if (filters.season && normalizeStr(matchDetail.SEASON || '') !== filters.season) {
         return false;
     }
-    
+
     // SY filter (sheet uses SY)
     if (filters.sy && normalizeStr(matchDetail.SY || '') !== filters.sy) {
         return false;
     }
-    
+
     // Ahly Manager filter
     if (filters.ahlyManager && normalizeStr(matchDetail['AHLY MANAGER'] || '') !== filters.ahlyManager) {
         return false;
     }
-    
+
     // Opponent Manager filter
     if (filters.opponentManager && normalizeStr(matchDetail['OPPONENT MANAGER'] || '') !== filters.opponentManager) {
         return false;
     }
-    
+
     // Referee filter (sheet uses REFREE)
     if (filters.referee && normalizeStr(matchDetail.REFREE || matchDetail.REFEREE || '') !== filters.referee) {
         return false;
     }
-    
+
     // Round filter
     if (filters.round && normalizeStr(matchDetail.ROUND || '') !== filters.round) {
         return false;
     }
-    
+
     // H-A-N filter (sheet uses H-A-N)
     if (filters.hAN && normalizeStr(matchDetail['H-A-N'] || '') !== filters.hAN) {
         return false;
     }
-    
+
     // Stadium filter (sheet uses STAD)
     if (filters.stadium && normalizeStr(matchDetail.STAD || '') !== filters.stadium) {
         return false;
     }
-    
+
     // Ahly Team filter
     if (filters.ahlyTeam && normalizeStr(matchDetail['AHLY TEAM'] || '') !== filters.ahlyTeam) {
         return false;
     }
-    
+
     // Opponent Team filter
     if (filters.opponentTeam && normalizeStr(matchDetail['OPPONENT TEAM'] || '') !== filters.opponentTeam) {
         return false;
     }
-    
+
     // Goals For filter (sheet uses GF)
     if (filters.goalsFor && safeInt(matchDetail['GF'] || 0) !== safeInt(filters.goalsFor)) {
         return false;
     }
-    
+
     // Goals Against filter (sheet uses GA)
     if (filters.goalsAgainst && safeInt(matchDetail['GA'] || 0) !== safeInt(filters.goalsAgainst)) {
         return false;
     }
-    
+
     // Result filter (sheet uses W-D-L with variants)
     if (filters.result) {
         const recordValue = normalizeStr(matchDetail['W-D-L'] || '');
@@ -17957,22 +18090,22 @@ function applyMainFiltersToMatch(matchDetail, filters) {
             if (recordValue !== filterValue) return false;
         }
     }
-    
+
     // Clean Sheet filter
     if (filters.cleanSheet && normalizeStr(matchDetail['CLEAN SHEET'] || '') !== filters.cleanSheet) {
         return false;
     }
-    
+
     // Extra Time filter (sheet uses ET)
     if (filters.extraTime && normalizeStr(matchDetail['ET'] || '') !== filters.extraTime) {
         return false;
     }
-    
+
     // Penalties filter (sheet uses PEN)
     if (filters.penalties && normalizeStr(matchDetail['PEN'] || '') !== filters.penalties) {
         return false;
     }
-    
+
     // Date From filter
     if (filters.dateFrom) {
         const matchDate = normalizeStr(matchDetail.DATE || matchDetail['MATCH DATE'] || '');
@@ -17980,7 +18113,7 @@ function applyMainFiltersToMatch(matchDetail, filters) {
             return false;
         }
     }
-    
+
     // Date To filter
     if (filters.dateTo) {
         const matchDate = normalizeStr(matchDetail.DATE || matchDetail['MATCH DATE'] || '');
@@ -17988,7 +18121,7 @@ function applyMainFiltersToMatch(matchDetail, filters) {
             return false;
         }
     }
-    
+
     return true;
 }
 // Load Player With Coaches Statistics
@@ -17996,78 +18129,78 @@ function loadPlayerWithCoachesStats() {
     try {
         const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
         const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-        
+
         if (!selectedPlayer) {
             console.log('⚠️ No player selected for With Coaches stats');
             return;
         }
-        
+
         // Get applied filters from the main filter section
         const appliedFilters = getCurrentFilters();
         console.log(`👨‍💼 Loading With Coaches stats for player: ${selectedPlayer}, team filter: ${teamFilter}, applied filters:`, appliedFilters);
-        
+
         // Get data from sheets
         const lineupDetails = getSheetRowsByCandidates(['LINEUPDETAILS']);
         const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
         const matchDetails = getSheetRowsByCandidates(['MATCHDETAILS']);
-        
+
         // Get all player matches from LINEUPDETAILS for minutes calculation
         const playerLineupData = lineupDetails.filter(row => {
             const playerName = normalizeStr(row['PLAYER NAME'] || row.PLAYER || '');
             const nameMatch = playerName.toLowerCase() === selectedPlayer.toLowerCase();
             // LINEUPDETAILS is Ahly-only; if a specific team is selected and it's not Ahly, exclude
             const teamMatch = !teamFilter || normalizeTeamKey(teamFilter) === 'ahly';
-            
+
             // Apply main filters to match data
             const matchId = normalizeStr(row.MATCH_ID || row['MATCH ID'] || '');
-            const matchDetail = matchDetails.find(match => 
+            const matchDetail = matchDetails.find(match =>
                 normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
             );
-            
+
             const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
-            
+
             return nameMatch && teamMatch && filtersMatch;
         });
-        
+
         // Get all player goals and assists from PLAYERDETAILS (regardless of LINEUPDETAILS)
         const playerGoalsAssists = playerDetails.filter(pd => {
             const pdPlayerName = normalizeStr(pd['PLAYER NAME'] || pd.PLAYER || '');
             const pdTeam = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '');
-            
+
             const nameMatch = pdPlayerName.toLowerCase() === selectedPlayer.toLowerCase();
             const teamMatch = !teamFilter || pdTeam.toLowerCase().includes(String(teamFilter || '').toLowerCase());
-            
+
             // Apply main filters to match data
             const matchId = normalizeStr(pd.MATCH_ID || pd['MATCH ID'] || '');
-            const matchDetail = matchDetails.find(match => 
+            const matchDetail = matchDetails.find(match =>
                 normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
             );
-            
+
             const filtersMatch = applyMainFiltersToMatch(matchDetail, appliedFilters);
-            
+
             return nameMatch && teamMatch && filtersMatch;
         });
-        
+
         // Group by coach and calculate stats
         const coachStats = new Map();
-        
+
         // First, add all matches from LINEUPDETAILS (for minutes and match count)
         playerLineupData.forEach(row => {
             const matchId = normalizeStr(row.MATCH_ID || row['MATCH ID'] || '');
             const minutes = safeInt(row.MINTOTAL || row.MINUTES || row.MINUTE || 0);
-            
+
             // Get coach name from MATCHDETAILS using match ID
-            const matchDetail = matchDetails.find(match => 
+            const matchDetail = matchDetails.find(match =>
                 normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
             );
-            
+
             // If player is in LINEUPDETAILS, they are Al Ahly player
             // So their coach is AHLY MANAGER
             let coach = 'Unknown Coach';
             if (matchDetail) {
                 coach = normalizeStr(matchDetail['AHLY MANAGER'] || 'Unknown Coach');
             }
-            
+
             // Initialize coach stats if not exists
             if (!coachStats.has(coach)) {
                 coachStats.set(coach, {
@@ -18078,26 +18211,26 @@ function loadPlayerWithCoachesStats() {
                     assists: 0
                 });
             }
-            
+
             const stats = coachStats.get(coach);
             stats.matches++;
             stats.minutes += minutes;
         });
-        
+
         // Then, add all goals and assists from PLAYERDETAILS
         playerGoalsAssists.forEach(pd => {
             const matchId = normalizeStr(pd.MATCH_ID || pd['MATCH ID'] || '');
             const ga = normalizeStr(pd.GA || '').toUpperCase();
-            
+
             // Get coach name from MATCHDETAILS using match ID
-            const matchDetail = matchDetails.find(match => 
+            const matchDetail = matchDetails.find(match =>
                 normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
             );
-            
+
             // Determine coach based on player's team from PLAYERDETAILS
             const playerTeam = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '').toLowerCase();
             const isAhlyPlayer = playerTeam === 'الأهلي' || playerTeam === 'al ahly' || playerTeam === 'ahly';
-            
+
             let coach = 'Unknown Coach';
             if (matchDetail) {
                 if (isAhlyPlayer) {
@@ -18106,10 +18239,10 @@ function loadPlayerWithCoachesStats() {
                     coach = normalizeStr(matchDetail['OPPONENT MANAGER'] || 'Unknown Coach');
                 }
             }
-            
+
             // Don't add matches from PLAYERDETAILS - only from LINEUPDETAILS
             // This ensures matches are only counted when player was actually in lineup
-            
+
             // Initialize coach stats if not exists
             if (!coachStats.has(coach)) {
                 coachStats.set(coach, {
@@ -18120,22 +18253,22 @@ function loadPlayerWithCoachesStats() {
                     assists: 0
                 });
             }
-            
+
             const stats = coachStats.get(coach);
             if (ga === 'GOAL') stats.goals++;
             if (ga === 'ASSIST') stats.assists++;
         });
-        
+
         // Convert to array and filter by team filter
         let coachStatsArray = Array.from(coachStats.values());
-        
+
         // Apply team filter to coaches
         if (teamFilter) {
             coachStatsArray = coachStatsArray.filter(stat => {
                 // For LINEUPDETAILS (Ahly-only): only include lineup matches when filter is Ahly
                 const hasMatchingMatches = playerLineupData.some(row => {
                     const matchId = normalizeStr(row.MATCH_ID || row['MATCH ID'] || '');
-                    const matchDetail = matchDetails.find(match => 
+                    const matchDetail = matchDetails.find(match =>
                         normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
                     );
                     if (!matchDetail) return false;
@@ -18144,48 +18277,48 @@ function loadPlayerWithCoachesStats() {
                     // lineup contributes only if selected team is Ahly
                     return normalizeTeamKey(teamFilter) === 'ahly';
                 });
-                
+
                 // Also check PLAYERDETAILS for goals/assists
                 const hasMatchingPlayerDetails = playerGoalsAssists.some(pd => {
                     const matchId = normalizeStr(pd.MATCH_ID || pd['MATCH ID'] || '');
-                    const matchDetail = matchDetails.find(match => 
+                    const matchDetail = matchDetails.find(match =>
                         normalizeStr(match.MATCH_ID || match['MATCH ID'] || '') === matchId
                     );
-                    
+
                     if (!matchDetail) return false;
-                    
+
                     const playerTeam = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '').toLowerCase();
                     const isAhlyPlayer = playerTeam === 'الأهلي' || playerTeam === 'al ahly' || playerTeam === 'ahly';
-                    
+
                     let coach = 'Unknown Coach';
                     if (isAhlyPlayer) {
                         coach = normalizeStr(matchDetail['AHLY MANAGER'] || 'Unknown Coach');
                     } else {
                         coach = normalizeStr(matchDetail['OPPONENT MANAGER'] || 'Unknown Coach');
                     }
-                    
+
                     if (coach === stat.coach) {
                         const team = normalizeStr(pd.TEAM || pd['AHLY TEAM'] || '');
                         return team.toLowerCase().includes(String(teamFilter || '').toLowerCase());
                     }
                     return false;
                 });
-                
+
                 return hasMatchingMatches || hasMatchingPlayerDetails;
             });
         }
-        
+
         // Filter out coaches with no stats at all
-        coachStatsArray = coachStatsArray.filter(stat => 
+        coachStatsArray = coachStatsArray.filter(stat =>
             stat.matches > 0 || stat.minutes > 0 || stat.goals > 0 || stat.assists > 0
         );
-        
+
         // Sort by matches (descending)
         coachStatsArray = coachStatsArray.sort((a, b) => b.matches - a.matches);
-        
+
         // Store data globally for sorting
         window.currentWithCoachesData = coachStatsArray;
-        
+
         // Render table
         const tableBody = document.getElementById('with-coaches-table').querySelector('tbody');
         if (coachStatsArray.length === 0) {
@@ -18201,7 +18334,7 @@ function loadPlayerWithCoachesStats() {
                 </tr>
             `).join('');
         }
-        
+
         // Update totals
         const totals = coachStatsArray.reduce((acc, coach) => ({
             matches: acc.matches + coach.matches,
@@ -18209,14 +18342,14 @@ function loadPlayerWithCoachesStats() {
             goals: acc.goals + coach.goals,
             assists: acc.assists + coach.assists
         }), { matches: 0, minutes: 0, goals: 0, assists: 0 });
-        
+
         document.getElementById('with-coaches-total-matches').textContent = totals.matches;
         document.getElementById('with-coaches-total-minutes').textContent = totals.minutes;
         document.getElementById('with-coaches-total-goals').textContent = totals.goals;
         document.getElementById('with-coaches-total-assists').textContent = totals.assists;
-        
+
         console.log(`✅ Loaded With Coaches stats: ${coachStatsArray.length} coaches found`);
-        
+
     } catch (error) {
         console.error('❌ Error loading With Coaches stats:', error);
         const tableBody = document.getElementById('with-coaches-table').querySelector('tbody');
@@ -18231,7 +18364,7 @@ function sortWithCoachesTable(column) {
     if (!window.currentWithCoachesData || window.currentWithCoachesData.length === 0) {
         return;
     }
-    
+
     // Toggle sort direction if same column
     if (withCoachesSortState.column === column) {
         withCoachesSortState.direction = withCoachesSortState.direction === 'asc' ? 'desc' : 'asc';
@@ -18239,18 +18372,18 @@ function sortWithCoachesTable(column) {
         withCoachesSortState.column = column;
         withCoachesSortState.direction = 'asc';
     }
-    
+
     const data = [...window.currentWithCoachesData];
-    
+
     // Sort data
     data.sort((a, b) => {
         let valA, valB;
-        
+
         if (column === 'coach') {
             valA = a.coach.toLowerCase();
             valB = b.coach.toLowerCase();
-            return withCoachesSortState.direction === 'asc' 
-                ? valA.localeCompare(valB) 
+            return withCoachesSortState.direction === 'asc'
+                ? valA.localeCompare(valB)
                 : valB.localeCompare(valA);
         } else if (column === 'matches') {
             valA = a.matches;
@@ -18265,14 +18398,14 @@ function sortWithCoachesTable(column) {
             valA = a.assists;
             valB = b.assists;
         }
-        
+
         if (withCoachesSortState.direction === 'asc') {
             return valA - valB;
         } else {
             return valB - valA;
         }
     });
-    
+
     // Render sorted data
     const tableBody = document.getElementById('with-coaches-table').querySelector('tbody');
     tableBody.innerHTML = data.map(coach => `
@@ -18284,17 +18417,17 @@ function sortWithCoachesTable(column) {
             <td style="text-align: center; font-weight: 700; color: #f59e0b; font-size: 1.2rem;">${coach.assists}</td>
         </tr>
     `).join('');
-    
+
     // Update sort indicators
     document.querySelectorAll('#with-coaches-table th.sortable').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     const currentHeader = document.querySelector(`#with-coaches-table th.sortable[onclick*="${column}"]`);
     if (currentHeader) {
         currentHeader.classList.add(withCoachesSortState.direction === 'asc' ? 'sort-asc' : 'sort-desc');
     }
-    
+
     console.log(`✅ With Coaches table sorted by ${column} (${withCoachesSortState.direction})`);
 }
 
@@ -18305,19 +18438,19 @@ function searchAssistDetailsTable(searchTerm) {
     if (!window.currentAssistDetailsData || window.currentAssistDetailsData.length === 0) {
         return;
     }
-    
+
     const term = searchTerm.toLowerCase().trim();
-    
+
     // Filter data based on search term
-    const filteredData = term === '' 
-        ? window.currentAssistDetailsData 
-        : window.currentAssistDetailsData.filter(d => 
+    const filteredData = term === ''
+        ? window.currentAssistDetailsData
+        : window.currentAssistDetailsData.filter(d =>
             d.player.toLowerCase().includes(term)
         );
-    
+
     // Render filtered data
     const tableBody = document.getElementById('assist-details-table').querySelector('tbody');
-    
+
     if (filteredData.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #999; padding: 2rem;">No players found</td></tr>';
     } else {
@@ -18329,7 +18462,7 @@ function searchAssistDetailsTable(searchTerm) {
             </tr>
         `).join('');
     }
-    
+
     console.log(`🔍 Search results: ${filteredData.length} of ${window.currentAssistDetailsData.length} players`);
 }
 
@@ -18345,26 +18478,26 @@ function switchMainStatsSubTab(event, subTabName) {
     document.querySelectorAll('#main-stats-tab .stats-subtab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Remove active class from all sub-tab contents
     document.querySelectorAll('#main-stats-tab .stats-subtab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Add active class to clicked tab
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
-    
+
     // Show selected content
     const selectedContent = document.getElementById(`main-stats-${subTabName}`);
     if (selectedContent) {
         selectedContent.classList.add('active');
     }
-    
+
     // Setup filters for Main Stats (ensure they're always connected)
     setupMainStatsFilters();
-    
+
     // Load data for the selected sub-tab
     if (subTabName === 'championships') {
         loadChampionshipsStats();
@@ -18379,7 +18512,7 @@ function switchMainStatsSubTab(event, subTabName) {
 function loadChampionshipsStats() {
     try {
         console.log('📊 Loading Championships Statistics...');
-        
+
         // Get filter values from the last applied filter set
         const filters = appliedFilters || {};
         const selectedTeam = filters.ahlyTeam || '';
@@ -18388,9 +18521,9 @@ function loadChampionshipsStats() {
         const selectedChampion = filters.champion || '';
         const dateFrom = filters.dateFrom || '';
         const dateTo = filters.dateTo || '';
-        
+
         console.log('🔍 Championships Filters (from applied filters):', { selectedTeam, selectedSeason, selectedSY, selectedChampion, dateFrom, dateTo });
-        
+
         // Determine the best available dataset to work with
         const currentFilteredRecords = getCurrentFilteredRecords();
         const hasActiveFilters = Object.values(filters).some(value => value !== '');
@@ -18409,13 +18542,13 @@ function loadChampionshipsStats() {
             matches = getSheetRowsByCandidates(['MATCHDETAILS']);
             console.log(`📊 Using ${matches.length} records directly from MATCHDETAILS sheet`);
         }
-        
+
         if (!matches || matches.length === 0) {
-            document.getElementById('main-stats-championships-table').querySelector('tbody').innerHTML = 
+            document.getElementById('main-stats-championships-table').querySelector('tbody').innerHTML =
                 '<tr><td colspan="10" style="text-align: center; color: #666;">No data available</td></tr>';
             return;
         }
-        
+
         // Apply filters
         const normalizedTeamFilter = normalizeStr(selectedTeam).toLowerCase();
         const normalizedSeasonFilter = normalizeStr(selectedSeason);
@@ -18431,22 +18564,22 @@ function loadChampionshipsStats() {
             const seasonMatch = !selectedSeason || normalizeStr(match.SEASON || '') === normalizedSeasonFilter;
             const syMatch = !selectedSY || normalizeStr(match.SY || '') === normalizedSYFilter;
             const championMatch = !selectedChampion || normalizeStr(match.CHAMPION || '') === normalizedChampionFilter;
-            
+
             return teamMatch && seasonMatch && syMatch && championMatch;
         });
-        
+
         console.log(`📊 Filtered matches for championships: ${filteredMatches.length} out of ${matches.length}`);
-        
+
         // Group by Championship
         const championshipStats = {};
-        
+
         filteredMatches.forEach(match => {
             const champion = match.CHAMPION || 'Unknown';
             const result = normalizeStr(match['W-D-L'] || '').toUpperCase();
             const gf = parseInt(match.GF) || 0;
             const ga = parseInt(match.GA) || 0;
             const cs = normalizeStr(match['CLEAN SHEET'] || '').toUpperCase();
-            
+
             if (!championshipStats[champion]) {
                 championshipStats[champion] = {
                     name: champion,
@@ -18460,12 +18593,12 @@ function loadChampionshipsStats() {
                     CSA: 0
                 };
             }
-            
+
             const stats = championshipStats[champion];
             stats.P++;
             stats.GF += gf;
             stats.GA += ga;
-            
+
             // Count results (D includes both D and D.)
             if (result === 'W') {
                 stats.W++;
@@ -18474,7 +18607,7 @@ function loadChampionshipsStats() {
             } else if (result === 'L') {
                 stats.L++;
             }
-            
+
             // Count clean sheets
             if (cs === 'CSF') {
                 stats.CSF++;
@@ -18482,21 +18615,21 @@ function loadChampionshipsStats() {
                 stats.CSA++;
             }
         });
-        
+
         // Convert to array and sort alphabetically
         const championshipsArray = Object.values(championshipStats).map(stat => ({
             ...stat,
             GD: stat.GF - stat.GA
         })).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
-        
+
         // Render table
         renderMainStatsTable('championships', championshipsArray);
-        
+
         console.log(`✅ Championships loaded: ${championshipsArray.length} championships`);
-        
+
     } catch (error) {
         console.error('❌ Error in loadChampionshipsStats:', error);
-        document.getElementById('main-stats-championships-table').querySelector('tbody').innerHTML = 
+        document.getElementById('main-stats-championships-table').querySelector('tbody').innerHTML =
             '<tr><td colspan="10" style="text-align: center; color: #ff0000;">Error loading data</td></tr>';
     }
 }
@@ -18507,7 +18640,7 @@ function loadChampionshipsStats() {
 function loadSeasonsStats() {
     try {
         console.log('📅 Loading Seasons Statistics...');
-        
+
         // Get filter values - only use applied filters, not current DOM values
         const filters = appliedFilters || {};
         const selectedTeam = filters.ahlyTeam || '';
@@ -18516,9 +18649,9 @@ function loadSeasonsStats() {
         const selectedChampion = filters.champion || '';
         const dateFrom = filters.dateFrom || '';
         const dateTo = filters.dateTo || '';
-        
+
         console.log('🔍 Seasons Filters (from applied filters):', { selectedTeam, selectedSeason, selectedSY, selectedChampion, dateFrom, dateTo });
-        
+
         // Determine the best available dataset to work with
         const currentFilteredRecords = getCurrentFilteredRecords();
         const hasActiveFilters = Object.values(filters).some(value => value !== '');
@@ -18537,13 +18670,13 @@ function loadSeasonsStats() {
             matches = getSheetRowsByCandidates(['MATCHDETAILS']);
             console.log(`📅 Using ${matches.length} records directly from MATCHDETAILS sheet`);
         }
-        
+
         if (!matches || matches.length === 0) {
-            document.getElementById('main-stats-seasons-table').querySelector('tbody').innerHTML = 
+            document.getElementById('main-stats-seasons-table').querySelector('tbody').innerHTML =
                 '<tr><td colspan="10" style="text-align: center; color: #666;">No data available</td></tr>';
             return;
         }
-        
+
         // Apply filters
         const normalizedTeamFilter = normalizeStr(selectedTeam).toLowerCase();
         const normalizedSeasonFilter = normalizeStr(selectedSeason);
@@ -18559,22 +18692,22 @@ function loadSeasonsStats() {
             const seasonMatch = !selectedSeason || normalizeStr(match.SEASON || '') === normalizedSeasonFilter;
             const syMatch = !selectedSY || normalizeStr(match.SY || '') === normalizedSYFilter;
             const championMatch = !selectedChampion || normalizeStr(match.CHAMPION || '') === normalizedChampionFilter;
-            
+
             return teamMatch && seasonMatch && syMatch && championMatch;
         });
-        
+
         console.log(`📊 Filtered matches for seasons: ${filteredMatches.length} out of ${matches.length}`);
-        
+
         // Group by Season
         const seasonStats = {};
-        
+
         filteredMatches.forEach(match => {
             const season = match.SEASON || 'Unknown';
             const result = normalizeStr(match['W-D-L'] || '').toUpperCase();
             const gf = parseInt(match.GF) || 0;
             const ga = parseInt(match.GA) || 0;
             const cs = normalizeStr(match['CLEAN SHEET'] || '').toUpperCase();
-            
+
             if (!seasonStats[season]) {
                 seasonStats[season] = {
                     name: season,
@@ -18588,12 +18721,12 @@ function loadSeasonsStats() {
                     CSA: 0
                 };
             }
-            
+
             const stats = seasonStats[season];
             stats.P++;
             stats.GF += gf;
             stats.GA += ga;
-            
+
             // Count results (D includes both D and D.)
             if (result === 'W') {
                 stats.W++;
@@ -18602,7 +18735,7 @@ function loadSeasonsStats() {
             } else if (result === 'L') {
                 stats.L++;
             }
-            
+
             // Count clean sheets
             if (cs === 'CSF') {
                 stats.CSF++;
@@ -18610,14 +18743,14 @@ function loadSeasonsStats() {
                 stats.CSA++;
             }
         });
-        
+
         // Convert to array and sort alphabetically first, then by year
         const seasonsArray = Object.values(seasonStats).map(stat => {
             const yearMatch = stat.name.match(/(\d{4})/);
             const year = yearMatch ? parseInt(yearMatch[1]) : 0;
             // Extract season name without year for grouping
             const nameWithoutYear = stat.name.replace(/\d{4}(-\d{2,4})?/g, '').trim();
-            
+
             return {
                 ...stat,
                 GD: stat.GF - stat.GA,
@@ -18633,15 +18766,15 @@ function loadSeasonsStats() {
             // Second: Sort by year (newest to oldest)
             return b.year - a.year;
         });
-        
+
         // Render table
         renderMainStatsTable('seasons', seasonsArray);
-        
+
         console.log(`✅ Seasons loaded: ${seasonsArray.length} seasons`);
-        
+
     } catch (error) {
         console.error('❌ Error in loadSeasonsStats:', error);
-        document.getElementById('main-stats-seasons-table').querySelector('tbody').innerHTML = 
+        document.getElementById('main-stats-seasons-table').querySelector('tbody').innerHTML =
             '<tr><td colspan="10" style="text-align: center; color: #ff0000;">Error loading data</td></tr>';
     }
 }
@@ -18660,14 +18793,14 @@ function extractYearFromSeason(season) {
 function renderMainStatsTable(type, data) {
     const tableId = type === 'championships' ? 'main-stats-championships-table' : 'main-stats-seasons-table';
     const tableBody = document.getElementById(tableId).querySelector('tbody');
-    
+
     if (!tableBody) return;
-    
+
     if (data.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #666;">No data available</td></tr>';
         return;
     }
-    
+
     // Render rows
     tableBody.innerHTML = data.map(stat => `
         <tr>
@@ -18683,7 +18816,7 @@ function renderMainStatsTable(type, data) {
             <td style="text-align: center;">${stat.CSA}</td>
         </tr>
     `).join('');
-    
+
     // Calculate totals
     const totals = {
         P: data.reduce((sum, s) => sum + s.P, 0),
@@ -18696,7 +18829,7 @@ function renderMainStatsTable(type, data) {
         CSA: data.reduce((sum, s) => sum + s.CSA, 0)
     };
     totals.GD = totals.GF - totals.GA;
-    
+
     // Update footer
     const prefix = type === 'championships' ? 'champ' : 'season';
     document.getElementById(`${prefix}-total-p`).textContent = totals.P;
@@ -18705,14 +18838,14 @@ function renderMainStatsTable(type, data) {
     document.getElementById(`${prefix}-total-l`).textContent = totals.L;
     document.getElementById(`${prefix}-total-gf`).textContent = totals.GF;
     document.getElementById(`${prefix}-total-ga`).textContent = totals.GA;
-    
+
     const gdEl = document.getElementById(`${prefix}-total-gd`);
     gdEl.textContent = (totals.GD >= 0 ? '+' : '') + totals.GD;
     gdEl.style.color = totals.GD >= 0 ? '#10b981' : '#ef4444';
-    
+
     document.getElementById(`${prefix}-total-csf`).textContent = totals.CSF;
     document.getElementById(`${prefix}-total-csa`).textContent = totals.CSA;
-    
+
     // Store data for sorting
     if (type === 'championships') {
         window.currentChampionshipsData = data;
@@ -18731,14 +18864,14 @@ let mainStatsSortState = {
 
 function sortMainStatsTable(type, column) {
     const data = type === 'championships' ? window.currentChampionshipsData : window.currentSeasonsData;
-    
+
     if (!data || data.length === 0) {
         console.log('⚠️ No data to sort');
         return;
     }
-    
+
     const state = mainStatsSortState[type];
-    
+
     // Toggle sort direction
     if (state.column === column) {
         state.direction = state.direction === 'asc' ? 'desc' : 'asc';
@@ -18746,18 +18879,18 @@ function sortMainStatsTable(type, column) {
         state.column = column;
         state.direction = 'desc';
     }
-    
+
     const sortedData = [...data];
-    
+
     // Sort
     sortedData.sort((a, b) => {
         let valA, valB;
-        
+
         if (column === 'name') {
             valA = a.name.toLowerCase();
             valB = b.name.toLowerCase();
-            return state.direction === 'asc' 
-                ? valA.localeCompare(valB, 'ar') 
+            return state.direction === 'asc'
+                ? valA.localeCompare(valB, 'ar')
                 : valB.localeCompare(valA, 'ar');
         } else {
             valA = a[column];
@@ -18765,11 +18898,11 @@ function sortMainStatsTable(type, column) {
             return state.direction === 'asc' ? valA - valB : valB - valA;
         }
     });
-    
+
     // Re-render with sorted data
     const tableId = type === 'championships' ? 'main-stats-championships-table' : 'main-stats-seasons-table';
     const tableBody = document.getElementById(tableId).querySelector('tbody');
-    
+
     tableBody.innerHTML = sortedData.map(stat => `
         <tr>
             <td style="text-align: center; font-weight: 600;">${stat.name}</td>
@@ -18784,22 +18917,22 @@ function sortMainStatsTable(type, column) {
             <td style="text-align: center;">${stat.CSA}</td>
         </tr>
     `).join('');
-    
+
     // Update sort indicators
     document.querySelectorAll(`#${tableId} th.sortable`).forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
+
     const currentHeader = document.querySelector(`#${tableId} th.sortable[onclick*="'${column}'"]`);
     if (currentHeader) {
         currentHeader.classList.add(state.direction === 'asc' ? 'sort-asc' : 'sort-desc');
     }
-    
+
     console.log(`✅ ${type} table sorted by ${column} (${state.direction})`);
 }
 
 // Re-initialize when page is shown (back/forward cache)
-window.addEventListener('pageshow', async function(event) {
+window.addEventListener('pageshow', async function (event) {
     // If the page was restored from bfcache, reload the data
     if (event.persisted) {
         console.log('🔄 Page restored from cache, reloading data...');
@@ -18814,23 +18947,23 @@ window.addEventListener('pageshow', async function(event) {
 function searchMatchById() {
     const searchInput = document.getElementById('match-id-search');
     const matchId = searchInput.value.trim();
-    
+
     if (!matchId) {
-		return false;
+        return false;
     }
-    
+
     console.log('Searching for match:', matchId);
-    
+
     // Get match details from MATCHDETAILS sheet
     const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
     const match = matches.find(m => normalizeStr(m.MATCH_ID || m['MATCH ID']).toLowerCase() === matchId.toLowerCase());
-    
+
     const detailsContainer = document.getElementById('match-details-container');
     const noMatchFound = document.getElementById('no-match-found');
-    
+
     if (match) {
-		// Cache last searched match id for later tab switches
-		try { window.__lastSearchedMatchId = matchId; } catch (e) {}
+        // Cache last searched match id for later tab switches
+        try { window.__lastSearchedMatchId = matchId; } catch (e) { }
 
         // Display match details
         displayMatchDetails(match);
@@ -18838,16 +18971,16 @@ function searchMatchById() {
         displayMatchGoals(matchId);
         displayMatchGoalkeepers(matchId);
         displayMatchPKS(matchId);
-        
+
         detailsContainer.style.display = 'block';
         noMatchFound.style.display = 'none';
-        
+
         // Activate only the first sub-tab content (lineup) and remove active from others
         document.querySelectorAll('#match-details-container .goal-details-tab-content').forEach(content => {
             content.classList.remove('active');
         });
         document.getElementById('match-lineup-content').classList.add('active');
-        
+
         // Also activate the first tab button
         document.querySelectorAll('#match-details-container .goal-details-tab').forEach(tab => {
             tab.classList.remove('active');
@@ -18856,150 +18989,150 @@ function searchMatchById() {
         if (firstTab) {
             firstTab.classList.add('active');
         }
-		return true;
+        return true;
     } else {
         detailsContainer.style.display = 'none';
         noMatchFound.style.display = 'block';
-		return false;
+        return false;
     }
 }
 
 // Normalize a date-like value to 'DD/MM/YYYY'
 function normalizeToDMY(dateVal) {
-	const pad2 = n => String(n).padStart(2, '0');
-	if (dateVal === null || dateVal === undefined) return '';
-	const raw = String(dateVal).trim();
-	if (!raw) return '';
+    const pad2 = n => String(n).padStart(2, '0');
+    if (dateVal === null || dateVal === undefined) return '';
+    const raw = String(dateVal).trim();
+    if (!raw) return '';
 
-	// 1) Excel serial number
-	const asNum = parseFloat(raw);
-	if (!isNaN(asNum) && asNum > 100) {
-		// Adjust Excel leap year bug
-		const adjusted = asNum > 60 ? asNum - 1 : asNum;
-		const excelEpoch = new Date(1899, 11, 30);
-		const dt = new Date(excelEpoch.getTime() + adjusted * 86400 * 1000);
-		if (!isNaN(dt.getTime())) {
-			return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
-		}
-	}
+    // 1) Excel serial number
+    const asNum = parseFloat(raw);
+    if (!isNaN(asNum) && asNum > 100) {
+        // Adjust Excel leap year bug
+        const adjusted = asNum > 60 ? asNum - 1 : asNum;
+        const excelEpoch = new Date(1899, 11, 30);
+        const dt = new Date(excelEpoch.getTime() + adjusted * 86400 * 1000);
+        if (!isNaN(dt.getTime())) {
+            return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+        }
+    }
 
-	// 2) Try common string formats
-	// DD/MM/YYYY or D/M/YYYY
-	let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-	if (m) {
-		const d = parseInt(m[1], 10);
-		const mo = parseInt(m[2], 10);
-		const y = parseInt(m[3], 10);
-		// Basic validity
-		if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && y >= 1900) {
-			return `${pad2(d)}/${pad2(mo)}/${y}`;
-		}
-	}
+    // 2) Try common string formats
+    // DD/MM/YYYY or D/M/YYYY
+    let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) {
+        const d = parseInt(m[1], 10);
+        const mo = parseInt(m[2], 10);
+        const y = parseInt(m[3], 10);
+        // Basic validity
+        if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && y >= 1900) {
+            return `${pad2(d)}/${pad2(mo)}/${y}`;
+        }
+    }
 
-	// 3) Fallback to Date parser then format en-GB
-	const tryDate = new Date(raw);
-	if (!isNaN(tryDate.getTime())) {
-		return `${pad2(tryDate.getDate())}/${pad2(tryDate.getMonth() + 1)}/${tryDate.getFullYear()}`;
-	}
+    // 3) Fallback to Date parser then format en-GB
+    const tryDate = new Date(raw);
+    if (!isNaN(tryDate.getTime())) {
+        return `${pad2(tryDate.getDate())}/${pad2(tryDate.getMonth() + 1)}/${tryDate.getFullYear()}`;
+    }
 
-	return '';
+    return '';
 }
 
 // Search for a match by Date (expects DD/MM/YYYY like 13/10/2025). Accepts optional input string.
 function searchMatchByDate(userTextParam) {
-	const input = document.getElementById('match-id-search');
-	const userText = (typeof userTextParam === 'string' ? userTextParam : (input ? input.value : '')).trim();
-	if (!userText) return false;
+    const input = document.getElementById('match-id-search');
+    const userText = (typeof userTextParam === 'string' ? userTextParam : (input ? input.value : '')).trim();
+    if (!userText) return false;
 
-	// Normalize user input to DMY
-	const targetDMY = normalizeToDMY(userText);
-	if (!targetDMY) {
-		console.log('Invalid date input:', userText);
-		return false;
-	}
+    // Normalize user input to DMY
+    const targetDMY = normalizeToDMY(userText);
+    if (!targetDMY) {
+        console.log('Invalid date input:', userText);
+        return false;
+    }
 
-	// Get matches
-	const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
+    // Get matches
+    const matches = getSheetRowsByCandidates(['MATCHDETAILS']);
 
-	// Find first match where normalized DATE equals target
-	const found = matches.find(m => {
-		const normalized = normalizeToDMY(m.DATE || m['DATE']);
-		return normalized && normalized === targetDMY;
-	});
+    // Find first match where normalized DATE equals target
+    const found = matches.find(m => {
+        const normalized = normalizeToDMY(m.DATE || m['DATE']);
+        return normalized && normalized === targetDMY;
+    });
 
-	const detailsContainer = document.getElementById('match-details-container');
-	const noMatchFound = document.getElementById('no-match-found');
+    const detailsContainer = document.getElementById('match-details-container');
+    const noMatchFound = document.getElementById('no-match-found');
 
-	if (found) {
-		const mid = (found.MATCH_ID || found['MATCH ID'] || '').trim();
-		// Cache last searched match id
-		try { window.__lastSearchedMatchId = mid; } catch (e) {}
+    if (found) {
+        const mid = (found.MATCH_ID || found['MATCH ID'] || '').trim();
+        // Cache last searched match id
+        try { window.__lastSearchedMatchId = mid; } catch (e) { }
 
-		// Show details (reuse existing renderers)
-		displayMatchDetails(found);
-		if (mid) {
-			displayMatchLineup(mid);
-			displayMatchGoals(mid);
-			displayMatchGoalkeepers(mid);
-			displayMatchPKS(mid);
-		}
+        // Show details (reuse existing renderers)
+        displayMatchDetails(found);
+        if (mid) {
+            displayMatchLineup(mid);
+            displayMatchGoals(mid);
+            displayMatchGoalkeepers(mid);
+            displayMatchPKS(mid);
+        }
 
-		detailsContainer.style.display = 'block';
-		noMatchFound.style.display = 'none';
+        detailsContainer.style.display = 'block';
+        noMatchFound.style.display = 'none';
 
-		// Reset to first sub-tab
-		document.querySelectorAll('#match-details-container .goal-details-tab-content').forEach(c => c.classList.remove('active'));
-		document.getElementById('match-lineup-content').classList.add('active');
-		document.querySelectorAll('#match-details-container .goal-details-tab').forEach(t => t.classList.remove('active'));
-		const first = document.querySelector('#match-details-container .goal-details-tab');
-		if (first) first.classList.add('active');
-		return true;
-	} else {
-		detailsContainer.style.display = 'none';
-		noMatchFound.style.display = 'block';
-		return false;
-	}
+        // Reset to first sub-tab
+        document.querySelectorAll('#match-details-container .goal-details-tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('match-lineup-content').classList.add('active');
+        document.querySelectorAll('#match-details-container .goal-details-tab').forEach(t => t.classList.remove('active'));
+        const first = document.querySelector('#match-details-container .goal-details-tab');
+        if (first) first.classList.add('active');
+        return true;
+    } else {
+        detailsContainer.style.display = 'none';
+        noMatchFound.style.display = 'block';
+        return false;
+    }
 }
 
 // Unified search: accept either Match ID or Date in one input
 function searchMatch() {
-	const input = document.getElementById('match-id-search');
-	const raw = (input ? input.value : '').trim();
-	if (!raw) return false;
+    const input = document.getElementById('match-id-search');
+    const raw = (input ? input.value : '').trim();
+    if (!raw) return false;
 
-	const hasLetters = /[a-zA-Z\u0600-\u06FF]/.test(raw); // includes Arabic letters too
-	const hasDateHints = /[\/\-]/.test(raw) || /^\d{6,}$/.test(raw); // dd/mm/yyyy or numeric serial
+    const hasLetters = /[a-zA-Z\u0600-\u06FF]/.test(raw); // includes Arabic letters too
+    const hasDateHints = /[\/\-]/.test(raw) || /^\d{6,}$/.test(raw); // dd/mm/yyyy or numeric serial
 
-	// If it has letters, likely an ID: try ID first, then date
-	if (hasLetters) {
-		const okId = searchMatchById();
-		if (!okId && hasDateHints) {
-			return searchMatchByDate(raw);
-		}
-		return okId;
-	}
+    // If it has letters, likely an ID: try ID first, then date
+    if (hasLetters) {
+        const okId = searchMatchById();
+        if (!okId && hasDateHints) {
+            return searchMatchByDate(raw);
+        }
+        return okId;
+    }
 
-	// If numeric or has separators, try date first, then ID as fallback
-	if (hasDateHints) {
-		const okDate = searchMatchByDate(raw);
-		if (!okDate) {
-			return searchMatchById();
-		}
-		return okDate;
-	}
+    // If numeric or has separators, try date first, then ID as fallback
+    if (hasDateHints) {
+        const okDate = searchMatchByDate(raw);
+        if (!okDate) {
+            return searchMatchById();
+        }
+        return okDate;
+    }
 
-	// Default to ID
-	return searchMatchById();
+    // Default to ID
+    return searchMatchById();
 }
 
 // Display match header details
 function displayMatchDetails(match) {
     const headerContainer = document.getElementById('match-header');
-    
+
     // Format date
-    const monthMap = { 0:'Jan', 1:'Feb', 2:'Mar', 3:'Apr', 4:'May', 5:'Jun', 6:'Jul', 7:'Aug', 8:'Sep', 9:'Oct', 10:'Nov', 11:'Dec' };
+    const monthMap = { 0: 'Jan', 1: 'Feb', 2: 'Mar', 3: 'Apr', 4: 'May', 5: 'Jun', 6: 'Jul', 7: 'Aug', 8: 'Sep', 9: 'Oct', 10: 'Nov', 11: 'Dec' };
     let formattedDate = String(match.DATE || '').trim();
-    
+
     if (/^\d+(\.\d+)?$/.test(formattedDate)) {
         const t = new Date((Number(formattedDate) - 25569) * 86400 * 1000);
         if (!isNaN(t.getTime())) {
@@ -19009,7 +19142,7 @@ function displayMatchDetails(match) {
             formattedDate = `${dd}-${MMM}-${yyyy}`;
         }
     }
-    
+
     const ahlyTeam = match['AHLY TEAM'] || 'Al Ahly';
     const opponentTeam = match['OPPONENT TEAM'] || 'Unknown';
     const ahlyManager = match['AHLY MANAGER'] || match['MANAGER AHLY'] || '';
@@ -19023,7 +19156,7 @@ function displayMatchDetails(match) {
     const champion = match.CHAMPION || '';
     const han = match['H-A-N'] || '';
     const referee = match.REFREE || match.REFEREE || '';
-    
+
     headerContainer.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; gap: 3rem; margin-bottom: 1.5rem;">
             <div style="text-align: center; flex: 1;">
@@ -19057,18 +19190,18 @@ function displayMatchLineup(matchId) {
     const container = document.getElementById('match-lineup-container');
     const lineupRows = getSheetRowsByCandidates(['LINEUPDETAILS']);
     const playerDetailsRows = getSheetRowsByCandidates(['PLAYERDETAILS']);
-    
+
     const matchLineup = lineupRows.filter(l => {
         const mid = normalizeStr(l.MATCH_ID || l['MATCH ID']);
         return mid.toLowerCase() === matchId.toLowerCase();
     });
-    
+
     // Get goals and assists data for this match
     const matchPlayerDetails = playerDetailsRows.filter(p => {
         const mid = normalizeStr(p.MATCH_ID || p['MATCH ID']);
         return mid.toLowerCase() === matchId.toLowerCase();
     });
-    
+
     // Separate Al Ahly goals and assists
     const ahlyGoals = matchPlayerDetails.filter(g => {
         const ga = (g.GA || '').toUpperCase();
@@ -19077,14 +19210,14 @@ function displayMatchLineup(matchId) {
         const isGoalOrAssist = ga === 'GOAL' || ga === 'ASSIST';
         return isAhly && isGoalOrAssist;
     });
-    
+
     if (matchLineup.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No lineup data available for this match</p>';
         return;
     }
-    
+
     // Keep original order from sheet (don't sort)
-    
+
     let html = `
         <div class="stats-table-container">
             <table class="stats-table">
@@ -19099,13 +19232,13 @@ function displayMatchLineup(matchId) {
                 </thead>
                 <tbody>
     `;
-    
+
     matchLineup.forEach((player, index) => {
         const playerName = player.PLAYER || player['PLAYER NAME'] || 'Unknown';
         const minutes = player.MINTOTAL || player['MIN TOTAL'] || player.MINUTES || 0;
         const playerOut = player['PLAYER NAME OUT'] || player.PLAYEROUT || '';
         const minOut = player.MINOUT || player['MIN OUT'] || '';
-        
+
         let status = '';
         if (index < 11) {
             // First 11 players are starters
@@ -19117,46 +19250,46 @@ function displayMatchLineup(matchId) {
                 status += `<br><small style="color: #666;">(Replaced ${playerOut} at ${minOut}')</small>`;
             }
         }
-        
+
         // Calculate goals and assists for this player in this match
         const playerGoalRecords = ahlyGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'GOAL');
         const playerAssistRecords = ahlyGoals.filter(goal => goal['PLAYER NAME'] === playerName && goal.GA === 'ASSIST');
-        
+
         // Sum up GATOTAL for multiple goals/assists
         const playerGoals = playerGoalRecords.reduce((total, goal) => total + (goal.GATOTAL || 1), 0);
         const playerAssists = playerAssistRecords.reduce((total, assist) => total + (assist.GATOTAL || 1), 0);
-        
+
         // Create goals display with icon (only show icon if player scored)
-        const goalsDisplay = playerGoals > 0 ? 
-            `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` : 
+        const goalsDisplay = playerGoals > 0 ?
+            `<span style="color: #28a745; font-weight: bold;">${parseInt(playerGoals)} ⚽</span>` :
             '<span style="color: #999;">-</span>';
-        
+
         // Create assists display with icon (only show icon if player assisted)
-        const assistsDisplay = playerAssists > 0 ? 
-            `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🏈</span>` : 
+        const assistsDisplay = playerAssists > 0 ?
+            `<span style="color: #007bff; font-weight: bold;">${parseInt(playerAssists)} 🏈</span>` :
             '<span style="color: #999;">-</span>';
-        
+
         // Add substitution arrows and GK indicator
         let playerNameWithArrows = `<strong>${playerName}</strong>`;
-        
+
         // Check if this player is a goalkeeper (first player in lineup is usually GK)
         const isGoalkeeper = index === 0;
         if (isGoalkeeper) {
             playerNameWithArrows += ` <span style="color: #6c757d; font-weight: bold; font-size: 0.9em;" title="Goalkeeper">GK 🧤</span>`;
         }
-        
+
         // Check if this player was substituted out (red arrow down)
         const wasSubstitutedOut = matchLineup.some(p => p['PLAYER NAME OUT'] === playerName);
         if (wasSubstitutedOut) {
             playerNameWithArrows += ` <span style="color: #dc3545; font-size: 1.5em;" title="Substituted Out">↓</span>`;
         }
-        
+
         // Check if this player was substituted in (green arrow up)
         const wasSubstitutedIn = index >= 11; // Substitutes start from index 11
         if (wasSubstitutedIn) {
             playerNameWithArrows += ` <span style="color: #28a745; font-size: 1.5em;" title="Substituted In">↑</span>`;
         }
-        
+
         html += `
             <tr>
                 <td>${playerNameWithArrows}</td>
@@ -19167,13 +19300,13 @@ function displayMatchLineup(matchId) {
             </tr>
         `;
     });
-    
+
     html += `
                 </tbody>
             </table>
         </div>
     `;
-    
+
     container.innerHTML = html;
 }
 
@@ -19181,58 +19314,58 @@ function displayMatchLineup(matchId) {
 function displayMatchGoals(matchId) {
     const container = document.getElementById('match-goals-container');
     const playerDetails = getSheetRowsByCandidates(['PLAYERDETAILS']);
-    
+
     const matchGoals = playerDetails.filter(p => {
         const mid = normalizeStr(p.MATCH_ID || p['MATCH ID']);
         const ga = normalizeStr(p.GA || '').toUpperCase();
         return mid.toLowerCase() === matchId.toLowerCase() && ga === 'GOAL';
     });
-    
+
     const matchAssists = playerDetails.filter(p => {
         const mid = normalizeStr(p.MATCH_ID || p['MATCH ID']);
         const ga = normalizeStr(p.GA || '').toUpperCase();
         return mid.toLowerCase() === matchId.toLowerCase() && ga === 'ASSIST';
     });
-    
+
     if (matchGoals.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No goals data available for this match</p>';
         return;
     }
-    
+
     // Sort by minute
     matchGoals.sort((a, b) => {
         const minA = parseMinuteForSort(a.MINUTE || '0');
         const minB = parseMinuteForSort(b.MINUTE || '0');
         return minA - minB;
     });
-    
+
     // Group by team (Al Ahly vs Opponent)
     const ahlyGoals = matchGoals.filter(g => {
         const team = normalizeStr(g.TEAM || g['AHLY TEAM'] || '').toLowerCase();
         return team === 'الأهلي' || team === 'al ahly' || team === 'ahly';
     });
-    
+
     const opponentGoals = matchGoals.filter(g => {
         const team = normalizeStr(g.TEAM || g['AHLY TEAM'] || '').toLowerCase();
         return team !== 'الأهلي' && team !== 'al ahly' && team !== 'ahly';
     });
-    
+
     // Helper function to find assist for a goal
     function findAssist(goal) {
         const goalMinute = goal.MINUTE || '';
         const goalPlayer = normalizeStr(goal['PLAYER NAME'] || goal.PLAYER || '').toLowerCase();
-        
+
         // Try to find assist with same minute
         const assist = matchAssists.find(a => {
             const assistMinute = a.MINUTE || '';
             return assistMinute === goalMinute;
         });
-        
+
         return assist ? (assist['PLAYER NAME'] || assist.PLAYER || '') : null;
     }
-    
+
     let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">';
-    
+
     // Al Ahly Goals
     html += `
         <div>
@@ -19248,13 +19381,13 @@ function displayMatchGoals(matchId) {
                     </thead>
                     <tbody>
     `;
-    
+
     ahlyGoals.forEach(goal => {
         const minute = goal.MINUTE || '-';
         const player = goal['PLAYER NAME'] || goal.PLAYER || 'Unknown';
         const type = goal.TYPE || 'Regular';
         const assist = findAssist(goal);
-        
+
         html += `
             <tr>
                 <td><strong>${minute}'</strong></td>
@@ -19266,18 +19399,18 @@ function displayMatchGoals(matchId) {
             </tr>
         `;
     });
-    
+
     if (ahlyGoals.length === 0) {
         html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
     }
-    
+
     html += `
                     </tbody>
                 </table>
             </div>
         </div>
     `;
-    
+
     // Opponent Goals
     html += `
         <div>
@@ -19293,13 +19426,13 @@ function displayMatchGoals(matchId) {
                     </thead>
                     <tbody>
     `;
-    
+
     opponentGoals.forEach(goal => {
         const minute = goal.MINUTE || '-';
         const player = goal['PLAYER NAME'] || goal.PLAYER || 'Unknown';
         const type = goal.TYPE || 'Regular';
         const assist = findAssist(goal);
-        
+
         html += `
             <tr>
                 <td><strong>${minute}'</strong></td>
@@ -19311,20 +19444,20 @@ function displayMatchGoals(matchId) {
             </tr>
         `;
     });
-    
+
     if (opponentGoals.length === 0) {
         html += '<tr><td colspan="3" style="text-align: center; color: #999;">No goals</td></tr>';
     }
-    
+
     html += `
                     </tbody>
                 </table>
             </div>
         </div>
     `;
-    
+
     html += '</div>';
-    
+
     container.innerHTML = html;
 }
 
@@ -19332,30 +19465,30 @@ function displayMatchGoals(matchId) {
 function displayMatchGoalkeepers(matchId) {
     const container = document.getElementById('match-goalkeepers-container');
     const gkDetails = getSheetRowsByCandidates(['GKDETAILS']);
-    
+
     const matchGKs = gkDetails.filter(gk => {
         const mid = normalizeStr(gk.MATCH_ID || gk['MATCH ID']);
         return mid.toLowerCase() === matchId.toLowerCase();
     });
-    
+
     if (matchGKs.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No goalkeeper data available for this match</p>';
         return;
     }
-    
+
     // Group by team (Al Ahly vs Opponent)
     const ahlyGKs = matchGKs.filter(gk => {
         const team = normalizeStr(gk.TEAM || gk['AHLY TEAM'] || '').toLowerCase();
         return team === 'الأهلي' || team === 'al ahly' || team === 'ahly';
     });
-    
+
     const opponentGKs = matchGKs.filter(gk => {
         const team = normalizeStr(gk.TEAM || gk['AHLY TEAM'] || '').toLowerCase();
         return team !== 'الأهلي' && team !== 'al ahly' && team !== 'ahly';
     });
-    
+
     let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">';
-    
+
     // Al Ahly Goalkeepers
     html += `
         <div>
@@ -19370,11 +19503,11 @@ function displayMatchGoalkeepers(matchId) {
                     </thead>
                     <tbody>
     `;
-    
+
     ahlyGKs.forEach(gk => {
         const gkName = gk['PLAYER NAME'] || gk.PLAYER || 'Unknown';
         const goalsConceded = gk['GOALS CONCEDED'] || 0;
-        
+
         html += `
             <tr>
                 <td><strong>${gkName}</strong></td>
@@ -19382,18 +19515,18 @@ function displayMatchGoalkeepers(matchId) {
             </tr>
         `;
     });
-    
+
     if (ahlyGKs.length === 0) {
         html += '<tr><td colspan="2" style="text-align: center; color: #999;">No data</td></tr>';
     }
-    
+
     html += `
                     </tbody>
                 </table>
             </div>
         </div>
     `;
-    
+
     // Opponent Goalkeepers
     html += `
         <div>
@@ -19408,11 +19541,11 @@ function displayMatchGoalkeepers(matchId) {
                     </thead>
                     <tbody>
     `;
-    
+
     opponentGKs.forEach(gk => {
         const gkName = gk['PLAYER NAME'] || gk.PLAYER || 'Unknown';
         const goalsConceded = gk['GOALS CONCEDED'] || 0;
-        
+
         html += `
             <tr>
                 <td><strong>${gkName}</strong></td>
@@ -19420,20 +19553,20 @@ function displayMatchGoalkeepers(matchId) {
             </tr>
         `;
     });
-    
+
     if (opponentGKs.length === 0) {
         html += '<tr><td colspan="2" style="text-align: center; color: #999;">No data</td></tr>';
     }
-    
+
     html += `
                     </tbody>
                 </table>
             </div>
         </div>
     `;
-    
+
     html += '</div>';
-    
+
     container.innerHTML = html;
 }
 
@@ -19441,12 +19574,12 @@ function displayMatchGoalkeepers(matchId) {
 function displayPKSData(matchId, pksData) {
     console.log('Displaying PKS data for match:', matchId, 'Data:', pksData);
     const container = document.getElementById('match-pks-container');
-    
+
     if (!container) {
         console.error('PKS container not found');
         return;
     }
-    
+
     if (!pksData || pksData.length === 0) {
         console.log('No PKS data to display');
         container.innerHTML = `
@@ -19462,7 +19595,10 @@ function displayPKSData(matchId, pksData) {
         `;
         return;
     }
-    
+
+    // Get who started
+    const whoStart = pksData[0]['WHO START?'] || '';
+
     let html = `
         <div style="background: #f8f9fa; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
             <h3 style="color: #495057; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -19472,13 +19608,14 @@ function displayPKSData(matchId, pksData) {
                     <path d="M12 8v8"/>
                 </svg>
                 Penalty Shootout Data
+                ${whoStart ? `<span style="font-size: 0.85em; background: #e9ecef; color: #495057; padding: 0.25rem 0.75rem; border-radius: 20px; border: 1px solid #dee2e6; margin-left: auto;">Started by: ${whoStart}</span>` : ''}
             </h3>
             <div style="display: grid; gap: 1rem;">
     `;
-    
+
     // Collect goalkeeper statistics
     const goalkeeperStats = {};
-    
+
     pksData.forEach((pks, index) => {
         const ahlyStatus = pks['AHLY STATUS'] || 'Unknown';
         const ahlyPlayer = pks['AHLY PLAYER'] || 'Unknown';
@@ -19489,29 +19626,37 @@ function displayPKSData(matchId, pksData) {
         const opponentGk = pks['OPPONENT GK'] || 'Unknown';
         const opponentHowMiss = pks['HOWMISS OPPONENT'] || '';
         const round = pks['ROUND'] || (index + 1);
-        
+
         // Initialize goalkeeper stats
         if (!goalkeeperStats[ahlyGk]) {
-            goalkeeperStats[ahlyGk] = { shots: 0, saves: 0 };
+            goalkeeperStats[ahlyGk] = { shots: 0, saves: 0, missed: 0 };
         }
         if (!goalkeeperStats[opponentGk]) {
-            goalkeeperStats[opponentGk] = { shots: 0, saves: 0 };
+            goalkeeperStats[opponentGk] = { shots: 0, saves: 0, missed: 0 };
         }
-        
+
         // Count shots and saves
         goalkeeperStats[opponentGk].shots++; // Ahly player shoots at opponent GK
-        if (ahlyStatus === 'MISS' && ahlyHowMiss.includes('الحارس')) {
-            goalkeeperStats[opponentGk].saves++;
+        if (ahlyStatus === 'MISS') {
+            if (ahlyHowMiss && ahlyHowMiss.includes('الحارس')) {
+                goalkeeperStats[opponentGk].saves++;
+            } else {
+                goalkeeperStats[opponentGk].missed++;
+            }
         }
-        
+
         goalkeeperStats[ahlyGk].shots++; // Opponent player shoots at Ahly GK
-        if (opponentStatus === 'MISS' && opponentHowMiss.includes('الحارس')) {
-            goalkeeperStats[ahlyGk].saves++;
+        if (opponentStatus === 'MISS') {
+            if (opponentHowMiss && opponentHowMiss.includes('الحارس')) {
+                goalkeeperStats[ahlyGk].saves++;
+            } else {
+                goalkeeperStats[ahlyGk].missed++;
+            }
         }
-        
+
         const ahlyStatusColor = ahlyStatus === 'GOAL' ? '#28a745' : '#dc3545';
         const opponentStatusColor = opponentStatus === 'GOAL' ? '#28a745' : '#dc3545';
-        
+
         html += `
             <div style="background: white; border-radius: 8px; padding: 1rem; border: 1px solid #dee2e6;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -19539,7 +19684,7 @@ function displayPKSData(matchId, pksData) {
             </div>
         `;
     });
-    
+
     // Add goalkeeper statistics section
     html += `
         </div>
@@ -19550,27 +19695,31 @@ function displayPKSData(matchId, pksData) {
                     <path d="M2 17l10 5 10-5"/>
                     <path d="M2 12l10 5 10-5"/>
                 </svg>
-                إحصائيات الحارسين
+                Goalkeepers Statistics
             </h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
     `;
-    
+
     Object.entries(goalkeeperStats).forEach(([gkName, stats]) => {
         const savePercentage = stats.shots > 0 ? ((stats.saves / stats.shots) * 100).toFixed(1) : '0.0';
         html += `
             <div style="background: white; border-radius: 8px; padding: 1rem; border: 1px solid #dee2e6;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; text-align: center;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.5rem; text-align: center;">
                     <div>
                         <div style="font-size: 1.5rem; font-weight: 700; color: #007bff;">${stats.shots}</div>
-                        <div style="font-size: 0.8rem; color: #6c757d;">الكور</div>
+                        <div style="font-size: 0.8rem; color: #6c757d;">Kicks</div>
                     </div>
                     <div>
                         <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;">${stats.saves}</div>
-                        <div style="font-size: 0.8rem; color: #6c757d;">التصديات</div>
+                        <div style="font-size: 0.8rem; color: #6c757d;">Saves</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #dc3545;">${stats.missed}</div>
+                        <div style="font-size: 0.8rem; color: #6c757d;">Missed</div>
                     </div>
                     <div>
                         <div style="font-size: 1.5rem; font-weight: 700; color: #ffc107;">${savePercentage}%</div>
-                        <div style="font-size: 0.8rem; color: #6c757d;">النسبة</div>
+                        <div style="font-size: 0.8rem; color: #6c757d;">Save %</div>
                     </div>
                 </div>
                 <div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e9ecef;">
@@ -19579,12 +19728,12 @@ function displayPKSData(matchId, pksData) {
             </div>
         `;
     });
-    
+
     html += `
             </div>
         </div>
     `;
-    
+
     container.innerHTML = html;
 }
 
@@ -19592,20 +19741,20 @@ function displayPKSData(matchId, pksData) {
 async function displayMatchPKS(matchId) {
     console.log('Displaying PKS for match:', matchId);
     const container = document.getElementById('match-pks-container');
-    
+
     if (!container) {
         console.error('PKS container not found');
         return;
     }
-    
+
     try {
         console.log('Fetching PKS data from API...');
         // Fetch PKS data from API
         const response = await fetch(`/api/ahly-stats/pks-data?match_id=${encodeURIComponent(matchId)}`);
         const pksData = await response.json();
-        
+
         console.log('PKS API response:', response.status, pksData);
-        
+
         if (response.ok && pksData && pksData.length > 0) {
             displayPKSData(matchId, pksData);
         } else {
@@ -19645,38 +19794,38 @@ function showMatchSubTab(event, tabName) {
     document.querySelectorAll('#match-details-container .goal-details-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Remove active class from all match sub-tab contents
     document.querySelectorAll('#match-details-container .goal-details-tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    
+
     // Add active class to selected tab
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
-    
+
     // Show selected content
     const selectedContent = document.getElementById(`match-${tabName}-content`);
     if (selectedContent) {
         selectedContent.classList.add('active');
     }
-    
+
     // Load data based on selected tab
-	const matchIdInput = document.getElementById('match-id-search');
-	const cachedMatchId = (typeof window !== 'undefined' && window.__lastSearchedMatchId) ? window.__lastSearchedMatchId : '';
-	const inputVal = matchIdInput ? matchIdInput.value.trim() : '';
-	const effectiveMatchId = cachedMatchId || inputVal;
-	if (effectiveMatchId) {
-		const matchId = effectiveMatchId;
+    const matchIdInput = document.getElementById('match-id-search');
+    const cachedMatchId = (typeof window !== 'undefined' && window.__lastSearchedMatchId) ? window.__lastSearchedMatchId : '';
+    const inputVal = matchIdInput ? matchIdInput.value.trim() : '';
+    const effectiveMatchId = cachedMatchId || inputVal;
+    if (effectiveMatchId) {
+        const matchId = effectiveMatchId;
         console.log('Loading data for match ID:', matchId, 'in tab:', tabName);
-        
+
         // Check if data is available
         if (!window.__ahlySheetsJson || Object.keys(window.__ahlySheetsJson).length === 0) {
             console.warn('No data available for tab loading');
             return;
         }
-        
+
         if (tabName === 'lineup') {
             console.log('Loading lineup data...');
             displayMatchLineup(matchId);
@@ -19699,14 +19848,14 @@ function showMatchSubTab(event, tabName) {
 // Show consecutive G+A streak
 function showConsecutiveGAStreak() {
     console.log('Showing consecutive G+A streak');
-    
+
     // Check if player is selected
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     if (!selectedPlayer) {
         alert('Please select a player first');
         return;
     }
-    
+
     // Load and display consecutive G+A streak in popup
     loadConsecutiveGAStreak();
     showStreakPopup('Consecutive G+A Streak', 'consecutive-ga-streak-data');
@@ -19715,14 +19864,14 @@ function showConsecutiveGAStreak() {
 // Show consecutive no G+A streak
 function showConsecutiveNoGAStreak() {
     console.log('Showing consecutive no G+A streak');
-    
+
     // Check if player is selected
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     if (!selectedPlayer) {
         alert('Please select a player first');
         return;
     }
-    
+
     // Load and display consecutive no G+A streak in popup
     loadConsecutiveNoGAStreak();
     showStreakPopup('Consecutive No G+A Streak', 'consecutive-no-ga-streak-data');
@@ -19731,14 +19880,14 @@ function showConsecutiveNoGAStreak() {
 // Show consecutive scoring streak
 function showConsecutiveScoringStreak() {
     console.log('Showing consecutive scoring streak');
-    
+
     // Check if player is selected
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     if (!selectedPlayer) {
         alert('Please select a player first');
         return;
     }
-    
+
     // Load and display consecutive scoring streak in popup
     loadConsecutiveScoringStreak();
     showStreakPopup('Consecutive Scoring Streak', 'consecutive-scoring-streak-data');
@@ -19746,14 +19895,14 @@ function showConsecutiveScoringStreak() {
 // Show consecutive no-goal streak
 function showConsecutiveNoGoalStreak() {
     console.log('Showing consecutive no-goal streak');
-    
+
     // Check if player is selected
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     if (!selectedPlayer) {
         alert('Please select a player first');
         return;
     }
-    
+
     // Load and display consecutive no-goal streak in popup
     loadConsecutiveNoGoalStreak();
     showStreakPopup('Consecutive No-Goal Streak', 'consecutive-no-goal-streak-data');
@@ -19763,27 +19912,27 @@ function showConsecutiveNoGoalStreak() {
 function loadConsecutiveGAStreak() {
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     if (!selectedPlayer) {
         console.log('No player selected');
         return;
     }
-    
+
     // Get applied filters
     const appliedFilters = getCurrentFilters();
-    
+
     // Get all player matches
     const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
+
     // Find the longest consecutive G+A streak
     const streak = findLongestConsecutiveGAStreak(allMatches);
-    
+
     console.log(`Found consecutive G+A streak of ${streak.length} matches for ${selectedPlayer}`);
     console.log('Streak matches:', streak);
-    
+
     // Store streak data globally for popup
     window.currentStreakData = streak;
-    
+
     // Render the table
     renderConsecutiveGAStreakTable(streak);
 }
@@ -19792,27 +19941,27 @@ function loadConsecutiveGAStreak() {
 function loadConsecutiveNoGAStreak() {
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     if (!selectedPlayer) {
         console.log('No player selected');
         return;
     }
-    
+
     // Get applied filters
     const appliedFilters = getCurrentFilters();
-    
+
     // Get all player matches
     const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
+
     // Find the longest consecutive no G+A streak
     const streak = findLongestConsecutiveNoGAStreak(allMatches);
-    
+
     console.log(`Found consecutive no G+A streak of ${streak.length} matches for ${selectedPlayer}`);
     console.log('Streak matches:', streak);
-    
+
     // Store streak data globally for popup
     window.currentStreakData = streak;
-    
+
     // Render the table
     renderConsecutiveNoGAStreakTable(streak);
 }
@@ -19821,27 +19970,27 @@ function loadConsecutiveNoGAStreak() {
 function loadConsecutiveScoringStreak() {
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     if (!selectedPlayer) {
         console.log('No player selected');
         return;
     }
-    
+
     // Get applied filters
     const appliedFilters = getCurrentFilters();
-    
+
     // Get all player matches
     const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
+
     // Find the longest consecutive scoring streak
     const streak = findLongestConsecutiveScoringStreak(allMatches);
-    
+
     console.log(`Found consecutive scoring streak of ${streak.length} matches for ${selectedPlayer}`);
     console.log('Streak matches:', streak);
-    
+
     // Store streak data globally for popup
     window.currentStreakData = streak;
-    
+
     // Render the table
     renderConsecutiveScoringStreakTable(streak);
 }
@@ -19850,27 +19999,27 @@ function loadConsecutiveScoringStreak() {
 function loadConsecutiveNoGoalStreak() {
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     if (!selectedPlayer) {
         console.log('No player selected');
         return;
     }
-    
+
     // Get applied filters
     const appliedFilters = getCurrentFilters();
-    
+
     // Get all player matches
     const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
+
     // Find the longest consecutive no-goal streak
     const streak = findLongestConsecutiveNoGoalStreak(allMatches);
-    
+
     console.log(`Found consecutive no-goal streak of ${streak.length} matches for ${selectedPlayer}`);
     console.log('Streak matches:', streak);
-    
+
     // Store streak data globally for popup
     window.currentStreakData = streak;
-    
+
     // Render the table
     renderConsecutiveNoGoalStreakTable(streak);
 }
@@ -19878,9 +20027,9 @@ function loadConsecutiveNoGoalStreak() {
 // Find longest consecutive G+A streak
 function findLongestConsecutiveGAStreak(matches) {
     if (!matches || matches.length === 0) return [];
-    
+
     // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -19888,7 +20037,7 @@ function findLongestConsecutiveGAStreak(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -19900,12 +20049,12 @@ function findLongestConsecutiveGAStreak(matches) {
         }
         return 0;
     }
-    
+
     const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
+
     let longestStreak = [];
     let currentStreak = [];
-    
+
     for (const match of sortedMatches) {
         if (match.goals > 0 || match.assists > 0) {
             currentStreak.push(match);
@@ -19916,24 +20065,24 @@ function findLongestConsecutiveGAStreak(matches) {
             currentStreak = [];
         }
     }
-    
+
     // Check if the last streak is the longest
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
-    
+
     console.log(`Longest G+A streak: ${longestStreak.length} matches`);
     console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
-    
+
     return longestStreak;
 }
 
 // Find longest consecutive no G+A streak
 function findLongestConsecutiveNoGAStreak(matches) {
     if (!matches || matches.length === 0) return [];
-    
+
     // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -19941,7 +20090,7 @@ function findLongestConsecutiveNoGAStreak(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -19953,12 +20102,12 @@ function findLongestConsecutiveNoGAStreak(matches) {
         }
         return 0;
     }
-    
+
     const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
+
     let longestStreak = [];
     let currentStreak = [];
-    
+
     for (const match of sortedMatches) {
         if (match.goals === 0 && match.assists === 0) {
             currentStreak.push(match);
@@ -19969,24 +20118,24 @@ function findLongestConsecutiveNoGAStreak(matches) {
             currentStreak = [];
         }
     }
-    
+
     // Check if the last streak is the longest
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
-    
+
     console.log(`Longest no G+A streak: ${longestStreak.length} matches`);
     console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
-    
+
     return longestStreak;
 }
 
 // Find longest consecutive scoring streak
 function findLongestConsecutiveScoringStreak(matches) {
     if (!matches || matches.length === 0) return [];
-    
+
     // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -19994,7 +20143,7 @@ function findLongestConsecutiveScoringStreak(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -20006,12 +20155,12 @@ function findLongestConsecutiveScoringStreak(matches) {
         }
         return 0;
     }
-    
+
     const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
+
     let longestStreak = [];
     let currentStreak = [];
-    
+
     for (const match of sortedMatches) {
         if (match.goals > 0) {
             currentStreak.push(match);
@@ -20022,24 +20171,24 @@ function findLongestConsecutiveScoringStreak(matches) {
             currentStreak = [];
         }
     }
-    
+
     // Check if the last streak is the longest
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
-    
+
     console.log(`Longest scoring streak: ${longestStreak.length} matches`);
     console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
-    
+
     return longestStreak;
 }
 
 // Find longest consecutive no-goal streak
 function findLongestConsecutiveNoGoalStreak(matches) {
     if (!matches || matches.length === 0) return [];
-    
+
     // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -20047,7 +20196,7 @@ function findLongestConsecutiveNoGoalStreak(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -20059,12 +20208,12 @@ function findLongestConsecutiveNoGoalStreak(matches) {
         }
         return 0;
     }
-    
+
     const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
+
     let longestStreak = [];
     let currentStreak = [];
-    
+
     for (const match of sortedMatches) {
         if (match.goals === 0) {
             currentStreak.push(match);
@@ -20075,24 +20224,24 @@ function findLongestConsecutiveNoGoalStreak(matches) {
             currentStreak = [];
         }
     }
-    
+
     // Check if the last streak is the longest
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
-    
+
     console.log(`Longest no-goal streak: ${longestStreak.length} matches`);
     console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
-    
+
     return longestStreak;
 }
 
 // Find longest consecutive assist streak
 function findLongestConsecutiveAssistStreak(matches) {
     if (!matches || matches.length === 0) return [];
-    
+
     // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -20100,7 +20249,7 @@ function findLongestConsecutiveAssistStreak(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -20112,12 +20261,12 @@ function findLongestConsecutiveAssistStreak(matches) {
         }
         return 0;
     }
-    
+
     const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
+
     let longestStreak = [];
     let currentStreak = [];
-    
+
     for (const match of sortedMatches) {
         if (match.assists > 0) {
             currentStreak.push(match);
@@ -20128,24 +20277,24 @@ function findLongestConsecutiveAssistStreak(matches) {
             currentStreak = [];
         }
     }
-    
+
     // Check if the last streak is the longest
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
-    
+
     console.log(`Longest assist streak: ${longestStreak.length} matches`);
     console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
-    
+
     return longestStreak;
 }
 
 // Find longest consecutive no-assist streak
 function findLongestConsecutiveNoAssistStreak(matches) {
     if (!matches || matches.length === 0) return [];
-    
+
     // Sort matches by date (oldest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -20153,7 +20302,7 @@ function findLongestConsecutiveNoAssistStreak(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -20165,12 +20314,12 @@ function findLongestConsecutiveNoAssistStreak(matches) {
         }
         return 0;
     }
-    
+
     const sortedMatches = [...matches].sort((a, b) => parseSheetDate(a.date) - parseSheetDate(b.date));
-    
+
     let longestStreak = [];
     let currentStreak = [];
-    
+
     for (const match of sortedMatches) {
         if (match.assists === 0) {
             currentStreak.push(match);
@@ -20181,29 +20330,29 @@ function findLongestConsecutiveNoAssistStreak(matches) {
             currentStreak = [];
         }
     }
-    
+
     // Check if the last streak is the longest
     if (currentStreak.length > longestStreak.length) {
         longestStreak = [...currentStreak];
     }
-    
+
     console.log(`Longest no-assist streak: ${longestStreak.length} matches`);
     console.log('Streak matches:', longestStreak.map(m => ({ date: m.date, opponent: m.opponent, goals: m.goals, assists: m.assists })));
-    
+
     return longestStreak;
 }
 
 // Show consecutive assist streak
 function showConsecutiveAssistStreak() {
     console.log('Showing consecutive assist streak');
-    
+
     // Check if player is selected
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     if (!selectedPlayer) {
         alert('Please select a player first');
         return;
     }
-    
+
     // Load and display consecutive assist streak in popup
     loadConsecutiveAssistStreak();
     showStreakPopup('Consecutive Assist Streak', 'consecutive-assist-streak-data');
@@ -20212,14 +20361,14 @@ function showConsecutiveAssistStreak() {
 // Show consecutive no-assist streak
 function showConsecutiveNoAssistStreak() {
     console.log('Showing consecutive no-assist streak');
-    
+
     // Check if player is selected
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     if (!selectedPlayer) {
         alert('Please select a player first');
         return;
     }
-    
+
     // Load and display consecutive no-assist streak in popup
     loadConsecutiveNoAssistStreak();
     showStreakPopup('Consecutive No-Assist Streak', 'consecutive-no-assist-streak-data');
@@ -20229,27 +20378,27 @@ function showConsecutiveNoAssistStreak() {
 function loadConsecutiveAssistStreak() {
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     if (!selectedPlayer) {
         console.log('No player selected');
         return;
     }
-    
+
     // Get applied filters
     const appliedFilters = getCurrentFilters();
-    
+
     // Get all player matches
     const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
+
     // Find the longest consecutive assist streak
     const streak = findLongestConsecutiveAssistStreak(allMatches);
-    
+
     console.log(`Found consecutive assist streak of ${streak.length} matches for ${selectedPlayer}`);
     console.log('Streak matches:', streak);
-    
+
     // Store streak data globally for popup
     window.currentStreakData = streak;
-    
+
     // Render the table
     renderConsecutiveAssistStreakTable(streak);
 }
@@ -20258,27 +20407,27 @@ function loadConsecutiveAssistStreak() {
 function loadConsecutiveNoAssistStreak() {
     const selectedPlayer = document.getElementById('player-search') ? document.getElementById('player-search').value.trim() : '';
     const teamFilter = document.getElementById('player-team-filter') ? document.getElementById('player-team-filter').value : '';
-    
+
     if (!selectedPlayer) {
         console.log('No player selected');
         return;
     }
-    
+
     // Get applied filters
     const appliedFilters = getCurrentFilters();
-    
+
     // Get all player matches
     const allMatches = getPlayerMatchesFromSheets(selectedPlayer, teamFilter, appliedFilters);
-    
+
     // Find the longest consecutive no-assist streak
     const streak = findLongestConsecutiveNoAssistStreak(allMatches);
-    
+
     console.log(`Found consecutive no-assist streak of ${streak.length} matches for ${selectedPlayer}`);
     console.log('Streak matches:', streak);
-    
+
     // Store streak data globally for popup
     window.currentStreakData = streak;
-    
+
     // Render the table
     renderConsecutiveNoAssistStreakTable(streak);
 }
@@ -20288,12 +20437,12 @@ function renderConsecutiveAssistStreakTable(matches) {
     const tbody = document.querySelector('#consecutive-assist-streak-data tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (!matches || matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5">No consecutive assist streak found</td></tr>';
         return;
     }
-    
+
     matches.forEach(match => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -20312,12 +20461,12 @@ function renderConsecutiveNoAssistStreakTable(matches) {
     const tbody = document.querySelector('#consecutive-no-assist-streak-data tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (!matches || matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5">No consecutive no-assist streak found</td></tr>';
         return;
     }
-    
+
     matches.forEach(match => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -20336,14 +20485,14 @@ function renderConsecutiveGAStreakTable(matches) {
     const tbody = document.querySelector('#consecutive-ga-streak-data tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (!matches || matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6">No consecutive G+A streak found</td></tr>';
         return;
     }
-    
+
     // Sort by date (newest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -20351,7 +20500,7 @@ function renderConsecutiveGAStreakTable(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -20376,9 +20525,9 @@ function renderConsecutiveGAStreakTable(matches) {
         }
         return String(s || '').trim() || 'N/A';
     }
-    
+
     const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-    
+
     sorted.forEach(m => {
         const date = formatSheetDateDisplay(m.date);
         const season = m.season || 'N/A';
@@ -20386,7 +20535,7 @@ function renderConsecutiveGAStreakTable(matches) {
         const minutes = m.minutes || 0;
         const goals = m.goals || 0;
         const assists = m.assists || 0;
-        
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${date}</td>
@@ -20406,14 +20555,14 @@ function renderConsecutiveNoGAStreakTable(matches) {
     const tbody = document.querySelector('#consecutive-no-ga-streak-data tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (!matches || matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6">No consecutive no G+A streak found</td></tr>';
         return;
     }
-    
+
     // Sort by date (newest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -20421,7 +20570,7 @@ function renderConsecutiveNoGAStreakTable(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -20446,9 +20595,9 @@ function renderConsecutiveNoGAStreakTable(matches) {
         }
         return String(s || '').trim() || 'N/A';
     }
-    
+
     const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-    
+
     sorted.forEach(m => {
         const date = formatSheetDateDisplay(m.date);
         const season = m.season || 'N/A';
@@ -20456,7 +20605,7 @@ function renderConsecutiveNoGAStreakTable(matches) {
         const minutes = m.minutes || 0;
         const goals = m.goals || 0;
         const assists = m.assists || 0;
-        
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${date}</td>
@@ -20476,14 +20625,14 @@ function renderConsecutiveScoringStreakTable(matches) {
     const tbody = document.querySelector('#consecutive-scoring-streak-data tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (!matches || matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6">No consecutive scoring streak found</td></tr>';
         return;
     }
-    
+
     // Sort by date (newest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -20491,7 +20640,7 @@ function renderConsecutiveScoringStreakTable(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -20516,9 +20665,9 @@ function renderConsecutiveScoringStreakTable(matches) {
         }
         return String(s || '').trim() || 'N/A';
     }
-    
+
     const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-    
+
     sorted.forEach(m => {
         const date = formatSheetDateDisplay(m.date);
         const season = m.season || 'N/A';
@@ -20526,7 +20675,7 @@ function renderConsecutiveScoringStreakTable(matches) {
         const minutes = m.minutes || 0;
         const goals = m.goals || 0;
         const assists = m.assists || 0;
-        
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${date}</td>
@@ -20560,7 +20709,7 @@ function showStreakPopup(title, tableId) {
         padding: 20px;
         box-sizing: border-box;
     `;
-    
+
     // Create popup content
     const popup = document.createElement('div');
     popup.style.cssText = `
@@ -20574,7 +20723,7 @@ function showStreakPopup(title, tableId) {
         position: relative;
         overflow: auto;
     `;
-    
+
     // Create close button
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '×';
@@ -20595,21 +20744,21 @@ function showStreakPopup(title, tableId) {
         border-radius: 50%;
         transition: all 0.3s ease;
     `;
-    
+
     closeBtn.onmouseover = () => {
         closeBtn.style.background = '#f0f0f0';
         closeBtn.style.color = '#333';
     };
-    
+
     closeBtn.onmouseout = () => {
         closeBtn.style.background = 'none';
         closeBtn.style.color = '#666';
     };
-    
+
     closeBtn.onclick = () => {
         document.body.removeChild(overlay);
     };
-    
+
     // Create title with streak count
     const streakData = window.currentStreakData || [];
     const titleElement = document.createElement('h2');
@@ -20622,7 +20771,7 @@ function showStreakPopup(title, tableId) {
         text-align: center;
         padding-right: 50px;
     `;
-    
+
     // Create table dynamically with streak data
     const table = document.createElement('table');
     table.style.cssText = `
@@ -20630,7 +20779,7 @@ function showStreakPopup(title, tableId) {
         border-collapse: collapse;
         margin: 0;
     `;
-    
+
     // Determine column headers based on table type
     let lastColumnHeader = 'GOALS';
     if (tableId.includes('assist')) {
@@ -20638,7 +20787,7 @@ function showStreakPopup(title, tableId) {
     } else if (tableId.includes('ga')) {
         lastColumnHeader = 'GOALS & ASSISTS';
     }
-    
+
     // Create table header
     const thead = document.createElement('thead');
     if (tableId.includes('ga')) {
@@ -20665,16 +20814,16 @@ function showStreakPopup(title, tableId) {
             </tr>
         `;
     }
-    
+
     // Create table body
     const tbody = document.createElement('tbody');
-    
+
     if (streakData.length === 0) {
         const colspan = tableId.includes('ga') ? '6' : '5';
         tbody.innerHTML = `<tr><td colspan="${colspan}" style="padding: 2rem; text-align: center; color: #999;">No streak data found</td></tr>`;
     } else {
         // Sort by date (newest first)
-        const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+        const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
         function parseSheetDate(s) {
             const str = String(s || '').trim();
             const d1 = Date.parse(str);
@@ -20682,7 +20831,7 @@ function showStreakPopup(title, tableId) {
             const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
             if (m) {
                 const day = parseInt(m[1], 10);
-                const mon = monthMap[m[2].slice(0,3)];
+                const mon = monthMap[m[2].slice(0, 3)];
                 const yr = parseInt(m[3], 10);
                 if (mon != null) {
                     return new Date(yr, mon, day).getTime();
@@ -20707,9 +20856,9 @@ function showStreakPopup(title, tableId) {
             }
             return String(s || '').trim() || 'N/A';
         }
-        
+
         const sorted = [...streakData].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-        
+
         sorted.forEach(m => {
             const date = formatSheetDateDisplay(m.date);
             const season = m.season || 'N/A';
@@ -20717,9 +20866,9 @@ function showStreakPopup(title, tableId) {
             const minutes = m.minutes || 0;
             const goals = m.goals || 0;
             const assists = m.assists || 0;
-            
+
             const row = document.createElement('tr');
-            
+
             if (tableId.includes('ga')) {
                 // For G+A tables, show both goals and assists
                 row.innerHTML = `
@@ -20749,7 +20898,7 @@ function showStreakPopup(title, tableId) {
                     <td style="padding: 0.75rem; text-align: center; border-bottom: 1px solid #eee; ${goals > 0 ? 'color: #dc2626; font-weight: 700; font-size: 1.2em;' : ''}">${goals}</td>
                 `;
             }
-            
+
             // Add hover effect
             row.onmouseover = () => {
                 row.style.background = '#f8f9fa';
@@ -20757,30 +20906,30 @@ function showStreakPopup(title, tableId) {
             row.onmouseout = () => {
                 row.style.background = 'white';
             };
-            
+
             tbody.appendChild(row);
         });
     }
-    
+
     table.appendChild(thead);
     table.appendChild(tbody);
-    
+
     // Assemble popup
     popup.appendChild(closeBtn);
     popup.appendChild(titleElement);
     popup.appendChild(table);
     overlay.appendChild(popup);
-    
+
     // Add to page
     document.body.appendChild(overlay);
-    
+
     // Close on overlay click
     overlay.onclick = (e) => {
         if (e.target === overlay) {
             document.body.removeChild(overlay);
         }
     };
-    
+
     // Close on Escape key
     const handleEscape = (e) => {
         if (e.key === 'Escape') {
@@ -20796,14 +20945,14 @@ function renderConsecutiveNoGoalStreakTable(matches) {
     const tbody = document.querySelector('#consecutive-no-goal-streak-data tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     if (!matches || matches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5">No consecutive no-goal streak found</td></tr>';
         return;
     }
-    
+
     // Sort by date (newest first)
-    const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
     function parseSheetDate(s) {
         const str = String(s || '').trim();
         const d1 = Date.parse(str);
@@ -20811,7 +20960,7 @@ function renderConsecutiveNoGoalStreakTable(matches) {
         const m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
         if (m) {
             const day = parseInt(m[1], 10);
-            const mon = monthMap[m[2].slice(0,3)];
+            const mon = monthMap[m[2].slice(0, 3)];
             const yr = parseInt(m[3], 10);
             if (mon != null) {
                 return new Date(yr, mon, day).getTime();
@@ -20836,16 +20985,16 @@ function renderConsecutiveNoGoalStreakTable(matches) {
         }
         return String(s || '').trim() || 'N/A';
     }
-    
+
     const sorted = [...matches].sort((a, b) => parseSheetDate(b.date) - parseSheetDate(a.date));
-    
+
     sorted.forEach(m => {
         const date = formatSheetDateDisplay(m.date);
         const season = m.season || 'N/A';
         const opponent = m.opponent || 'N/A';
         const minutes = m.minutes || 0;
         const goals = m.goals || 0;
-        
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${date}</td>

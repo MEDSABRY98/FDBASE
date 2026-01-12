@@ -41,7 +41,9 @@ let alAhlyFinalsStatsData = {
     playersData: [],
     lineupData: [],
     playerDatabase: [],
-    selectedUnifiedPlayer: null
+    selectedUnifiedPlayer: null,
+    matchesCurrentPage: 1,
+    matchesRowsPerPage: 50
 };
 
 // ============================================================================
@@ -750,21 +752,43 @@ function updateOverviewCards(stats) {
 /**
  * Update finals matches table
  */
+// Update finals matches table with pagination
 function updateFinalsMatchesTable(records) {
+    // Sort by date (newest first)
+    const sortedRecords = [...records].sort((a, b) => {
+        const dateA = new Date(a['DATE'] || '1900-01-01');
+        const dateB = new Date(b['DATE'] || '1900-01-01');
+        return dateB - dateA; // Newest first
+    });
+
+    // Store sorted records for pagination re-rendering
+    alAhlyFinalsStatsData.currentSortedMatches = sortedRecords;
+
+    // Render current page
+    renderCurrentFinalsMatchesPage();
+}
+
+// Render the current page of matches
+function renderCurrentFinalsMatchesPage() {
     const tbody = document.querySelector('#finals-matches-table tbody');
     if (!tbody) return;
 
     tbody.innerHTML = '';
 
-    // Sort by date (newest first)
-    const sortedRecords = [...records].sort((a, b) => {
-        const dateA = new Date(a['DATE'] || '1900-01-01');
-        const dateB = new Date(b['DATE'] || '1900-01-01');
+    // Get pagination settings
+    const sortedRecords = alAhlyFinalsStatsData.currentSortedMatches || [];
+    const currentPage = alAhlyFinalsStatsData.matchesCurrentPage || 1;
+    const rowsPerPage = alAhlyFinalsStatsData.matchesRowsPerPage || 50;
 
-        return dateB - dateA; // Newest first
-    });
+    // Calculate slice
+    let matchesToRender = sortedRecords;
+    if (rowsPerPage !== 'all') {
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + parseInt(rowsPerPage);
+        matchesToRender = sortedRecords.slice(start, end);
+    }
 
-    sortedRecords.forEach(match => {
+    matchesToRender.forEach(match => {
         const row = document.createElement('tr');
 
         // Status badge based on W-L FINAL
@@ -809,7 +833,7 @@ function updateFinalsMatchesTable(records) {
     });
 
     // Show message if no matches found
-    if (sortedRecords.length === 0) {
+    if (matchesToRender.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td colspan="11" class="empty-state">
@@ -819,13 +843,107 @@ function updateFinalsMatchesTable(records) {
                         <line x1="12" y1="8" x2="12" y2="12"/>
                         <line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
-                    <h3>No Finals Matches Found</h3>
-                    <p>Try adjusting your filters or check if data is available.</p>
+                    <h3>No matches found</h3>
+                    <p>Try adjusting your filters</p>
                 </div>
             </td>
         `;
         tbody.appendChild(row);
     }
+
+    // Render pagination controls
+    renderFinalsPaginationControls(sortedRecords.length);
+}
+
+// ============================================================================
+// PAGINATION FUNCTIONS
+// ============================================================================
+
+function changeFinalsMatchesRowsPerPage(val) {
+    alAhlyFinalsStatsData.matchesRowsPerPage = val;
+    alAhlyFinalsStatsData.matchesCurrentPage = 1; // Reset to first page
+    renderCurrentFinalsMatchesPage();
+}
+
+function changeFinalsMatchesPage(page) {
+    alAhlyFinalsStatsData.matchesCurrentPage = page;
+    renderCurrentFinalsMatchesPage();
+}
+
+function renderFinalsPaginationControls(totalRows) {
+    const container = document.getElementById('finals-matches-pagination');
+    if (!container) return;
+
+    const rowsPerPage = alAhlyFinalsStatsData.matchesRowsPerPage;
+    const currentPage = alAhlyFinalsStatsData.matchesCurrentPage;
+
+    if (rowsPerPage === 'all') {
+        container.innerHTML = '';
+        const info = document.getElementById('finals-matches-pagination-info');
+        if (info) info.textContent = `${totalRows} of ${totalRows}`;
+        return;
+    }
+
+    const start = (currentPage - 1) * rowsPerPage + 1;
+    const end = Math.min(currentPage * rowsPerPage, totalRows);
+    const info = document.getElementById('finals-matches-pagination-info');
+    if (info) info.textContent = `${totalRows > 0 ? start : 0}-${end} of ${totalRows}`;
+
+    const totalPages = Math.ceil(totalRows / parseInt(rowsPerPage));
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    html += `<button class="pagination-btn ${currentPage === 1 ? 'disabled' : ''}" 
+        onclick="if(${currentPage} > 1) changeFinalsMatchesPage(${currentPage - 1})" 
+        ${currentPage === 1 ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${currentPage === 1 ? '#f3f4f6' : 'white'}; cursor: ${currentPage === 1 ? 'not-allowed' : 'pointer'};">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>`;
+
+    // Page Numbers (Show window around current page)
+    const windowSize = 2;
+    let startPage = Math.max(1, currentPage - windowSize);
+    let endPage = Math.min(totalPages, currentPage + windowSize);
+
+    // Adjust window if close to boundaries
+    if (currentPage <= windowSize) {
+        endPage = Math.min(totalPages, 1 + (windowSize * 2));
+    }
+    if (currentPage >= totalPages - windowSize) {
+        startPage = Math.max(1, totalPages - (windowSize * 2));
+    }
+
+    if (startPage > 1) {
+        html += `<button class="pagination-btn" onclick="changeFinalsMatchesPage(1)" style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">1</button>`;
+        if (startPage > 2) html += `<span class="pagination-ellipsis" style="padding: 0 0.25rem;">...</span>`;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        html += `<button class="pagination-btn" 
+            onclick="changeFinalsMatchesPage(${i})"
+            style="padding: 0.25rem 0.75rem; border: 1px solid ${isActive ? '#2563eb' : '#d1d5db'}; border-radius: 0.375rem; background: ${isActive ? '#2563eb' : 'white'}; color: ${isActive ? 'white' : 'black'}; cursor: pointer;">${i}</button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis" style="padding: 0 0.25rem;">...</span>`;
+        html += `<button class="pagination-btn" onclick="changeFinalsMatchesPage(${totalPages})" style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">${totalPages}</button>`;
+    }
+
+    // Next Button
+    html += `<button class="pagination-btn ${currentPage === totalPages ? 'disabled' : ''}" 
+        onclick="if(${currentPage} < ${totalPages}) changeFinalsMatchesPage(${currentPage + 1})" 
+        ${currentPage === totalPages ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${currentPage === totalPages ? '#f3f4f6' : 'white'}; cursor: ${currentPage === totalPages ? 'not-allowed' : 'pointer'};">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>`;
+
+    container.innerHTML = html;
 }
 
 /**

@@ -27,6 +27,10 @@ let currentH2HFileFilter = null;
 let currentH2HSort = { column: 'matches', direction: 'desc' };
 let currentByPlayer = '';
 let currentByPlayerFilter = 'all';
+let matchesCurrentPage = 1;
+let matchesRowsPerPage = 50;
+let currentSortedMatches = [];
+
 
 // Initialize Al Ahly VS Zamalek Stats module
 async function initializeZamalekStats() {
@@ -911,12 +915,23 @@ function updateOverviewStats() {
     document.getElementById('zamalek-loss-streak-period').textContent = zamalekLossPeriod;
 }
 
-// Populate matches table
+// Populate matches table with pagination
 function populateMatchesTable() {
     const matches = getFilteredMatches();
     console.log('📋 Populating matches table with', matches.length, 'matches');
-    const tbody = document.querySelector('#zamalek-matches-table tbody');
 
+    // Sort matches by date (newest first)
+    currentSortedMatches = [...matches].sort((a, b) => {
+        const dateA = new Date(a.DATE);
+        const dateB = new Date(b.DATE);
+        return dateB - dateA; // Descending order (newest first)
+    });
+
+    renderCurrentZamalekMatchesPage();
+}
+
+function renderCurrentZamalekMatchesPage() {
+    const tbody = document.querySelector('#zamalek-matches-table tbody');
     if (!tbody) {
         console.error('❌ Table tbody not found!');
         return;
@@ -924,21 +939,22 @@ function populateMatchesTable() {
 
     tbody.innerHTML = '';
 
-    if (matches.length === 0) {
+    if (currentSortedMatches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #6c757d;">No matches found</td></tr>';
+        renderZamalekPaginationControls(0);
         return;
     }
 
-    // Sort matches by date (newest first)
-    const sortedMatches = [...matches].sort((a, b) => {
-        const dateA = new Date(a.DATE);
-        const dateB = new Date(b.DATE);
-        return dateB - dateA; // Descending order (newest first)
-    });
+    // Apply pagination
+    let matchesToRender = currentSortedMatches;
+    if (matchesRowsPerPage !== 'all') {
+        const start = (matchesCurrentPage - 1) * matchesRowsPerPage;
+        const end = start + parseInt(matchesRowsPerPage);
+        matchesToRender = currentSortedMatches.slice(start, end);
+    }
 
-    sortedMatches.forEach(match => {
+    matchesToRender.forEach(match => {
         const row = document.createElement('tr');
-
         const resultBadge = getResultBadge(match['W-D-L']);
 
         row.innerHTML = `
@@ -955,6 +971,90 @@ function populateMatchesTable() {
 
         tbody.appendChild(row);
     });
+
+    renderZamalekPaginationControls(currentSortedMatches.length);
+}
+
+function changeZamalekMatchesRowsPerPage(val) {
+    matchesRowsPerPage = val;
+    matchesCurrentPage = 1; // Reset to first page
+    renderCurrentZamalekMatchesPage();
+}
+
+function changeZamalekMatchesPage(page) {
+    matchesCurrentPage = page;
+    renderCurrentZamalekMatchesPage();
+}
+
+function renderZamalekPaginationControls(totalRows) {
+    const container = document.getElementById('zamalek-matches-pagination');
+    const info = document.getElementById('zamalek-matches-pagination-info');
+
+    if (!container || !info) return;
+
+    if (matchesRowsPerPage === 'all') {
+        container.innerHTML = '';
+        info.textContent = `${totalRows} of ${totalRows}`;
+        return;
+    }
+
+    const start = (matchesCurrentPage - 1) * matchesRowsPerPage + 1;
+    const end = Math.min(matchesCurrentPage * matchesRowsPerPage, totalRows);
+    info.textContent = `${totalRows > 0 ? start : 0}-${end} of ${totalRows}`;
+
+    const totalPages = Math.ceil(totalRows / parseInt(matchesRowsPerPage));
+
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    html += `<button onclick="if(${matchesCurrentPage} > 1) changeZamalekMatchesPage(${matchesCurrentPage - 1})" 
+        ${matchesCurrentPage === 1 ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === 1 ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === 1 ? 'not-allowed' : 'pointer'}; margin-right: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>`;
+
+    // Page Numbers
+    const windowSize = 2;
+    let startPage = Math.max(1, matchesCurrentPage - windowSize);
+    let endPage = Math.min(totalPages, matchesCurrentPage + windowSize);
+
+    if (startPage > 1) {
+        html += `<button onclick="changeZamalekMatchesPage(1)" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">1</button>`;
+        if (startPage > 2) {
+            html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === matchesCurrentPage;
+        html += `<button onclick="changeZamalekMatchesPage(${i})" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid ${isActive ? '#dc2626' : '#d1d5db'}; border-radius: 0.375rem; background: ${isActive ? '#dc2626' : 'white'}; color: ${isActive ? 'white' : 'black'}; cursor: pointer; margin: 0 1px;">
+            ${i}
+        </button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
+        }
+        html += `<button onclick="changeZamalekMatchesPage(${totalPages})" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">${totalPages}</button>`;
+    }
+
+    // Next Button
+    html += `<button onclick="if(${matchesCurrentPage} < ${totalPages}) changeZamalekMatchesPage(${matchesCurrentPage + 1})" 
+        ${matchesCurrentPage === totalPages ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === totalPages ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === totalPages ? 'not-allowed' : 'pointer'}; margin-left: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>`;
+
+    container.innerHTML = html;
 }
 
 // Get result badge HTML

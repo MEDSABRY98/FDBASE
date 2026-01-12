@@ -33,17 +33,10 @@ function isEgyptTeamName(teamName) {
     return normalized.includes('egypt') || normalized.includes('مصر') || normalized.includes('egy');
 }
 
-// Virtual Scrolling state
-let virtualScrollState = {
-    allData: [],
-    currentViewData: [],
-    startIndex: 0,
-    endIndex: 25,
-    bufferSize: 25,
-    rowHeight: 50,
-    tableContainer: null,
-    scrollHandler: null
-};
+// Pagination state
+let matchesCurrentPage = 1;
+let matchesRowsPerPage = 50;
+let currentSortedMatches = [];
 
 // ============================================================================
 // MAIN DATA LOADING FUNCTION
@@ -221,99 +214,122 @@ function renderMatchRow(match) {
     `;
 }
 
-function renderVisibleMatchRows() {
+// Pagination render function
+function renderCurrentMatchesPage() {
     const tbody = document.getElementById('matches-tbody');
     if (!tbody) return;
 
-    const { allData, startIndex, endIndex } = virtualScrollState;
-    const visibleData = allData.slice(startIndex, endIndex);
+    if (currentSortedMatches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
+        renderPaginationControls(0);
+        return;
+    }
 
-    const topSpacer = `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="10"></td></tr>`;
-    const rowsHtml = visibleData.map(renderMatchRow).join('');
-    const bottomSpacer = `<tr style="height: ${Math.max(0, allData.length - endIndex) * virtualScrollState.rowHeight}px;"><td colspan="10"></td></tr>`;
+    // Apply pagination
+    let matchesToRender = currentSortedMatches;
+    if (matchesRowsPerPage !== 'all') {
+        const start = (matchesCurrentPage - 1) * matchesRowsPerPage;
+        const end = start + parseInt(matchesRowsPerPage);
+        matchesToRender = currentSortedMatches.slice(start, end);
+    }
 
-    tbody.innerHTML = topSpacer + rowsHtml + bottomSpacer;
+    const rowsHtml = matchesToRender.map(renderMatchRow).join('');
+    tbody.innerHTML = rowsHtml;
+
+    renderPaginationControls(currentSortedMatches.length);
 }
 
 function displayMatches() {
     const tbody = document.getElementById('matches-tbody');
     if (!tbody) return;
 
-    const matches = wwEgyptTeamsData.filteredRecords.slice().reverse();
+    // Use current filtered records, reverse to show latest first
+    currentSortedMatches = wwEgyptTeamsData.filteredRecords.slice().reverse();
+    matchesCurrentPage = 1; // Reset to first page
 
-    if (matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
-        if (virtualScrollState.scrollHandler) {
-            const container = document.querySelector('.matches-table-container');
-            if (container) {
-                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
-                virtualScrollState.scrollHandler = null;
-            }
-        }
-        return;
-    }
-
-    if (matches.length <= 1000) {
-        const rowsHtml = matches.map(renderMatchRow).join('');
-        tbody.innerHTML = rowsHtml;
-        if (virtualScrollState.scrollHandler) {
-            const container = document.querySelector('.matches-table-container');
-            if (container) {
-                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
-                virtualScrollState.scrollHandler = null;
-            }
-        }
-        return;
-    }
-
-    virtualScrollState.allData = matches;
-    virtualScrollState.currentViewData = matches;
-    virtualScrollState.startIndex = 0;
-    virtualScrollState.endIndex = Math.min(25, matches.length);
-
-    const container = document.querySelector('.matches-table-container');
-    if (container) {
-        container.scrollTop = 0;
-    }
-
-    renderVisibleMatchRows();
-    setupVirtualScrolling();
+    renderCurrentMatchesPage();
 }
 
-function setupVirtualScrolling() {
-    if (virtualScrollState.scrollHandler) {
-        const container = document.querySelector('.matches-table-container');
-        if (container) {
-            container.removeEventListener('scroll', virtualScrollState.scrollHandler);
+function changeMatchesRowsPerPage(val) {
+    matchesRowsPerPage = val;
+    matchesCurrentPage = 1; // Reset to first page
+    renderCurrentMatchesPage();
+}
+
+function changeMatchesPage(page) {
+    matchesCurrentPage = page;
+    renderCurrentMatchesPage();
+}
+
+function renderPaginationControls(totalRows) {
+    const container = document.getElementById('matches-pagination');
+    const info = document.getElementById('matches-pagination-info');
+
+    if (!container || !info) return;
+
+    if (matchesRowsPerPage === 'all') {
+        container.innerHTML = '';
+        info.textContent = `${totalRows} of ${totalRows}`;
+        return;
+    }
+
+    const start = (matchesCurrentPage - 1) * matchesRowsPerPage + 1;
+    const end = Math.min(matchesCurrentPage * matchesRowsPerPage, totalRows);
+    info.textContent = `${totalRows > 0 ? start : 0}-${end} of ${totalRows}`;
+
+    const totalPages = Math.ceil(totalRows / parseInt(matchesRowsPerPage));
+
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    html += `<button onclick="if(${matchesCurrentPage} > 1) changeMatchesPage(${matchesCurrentPage - 1})" 
+        ${matchesCurrentPage === 1 ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === 1 ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === 1 ? 'not-allowed' : 'pointer'}; margin-right: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>`;
+
+    // Page Numbers
+    const windowSize = 2;
+    let startPage = Math.max(1, matchesCurrentPage - windowSize);
+    let endPage = Math.min(totalPages, matchesCurrentPage + windowSize);
+
+    if (startPage > 1) {
+        html += `<button onclick="changeMatchesPage(1)" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">1</button>`;
+        if (startPage > 2) {
+            html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
         }
     }
 
-    virtualScrollState.scrollHandler = function handleScroll(e) {
-        const container = e.target;
-        if (!container) return;
-
-        const scrollTop = container.scrollTop || 0;
-        const containerHeight = container.clientHeight || 0;
-        const { allData, rowHeight, bufferSize } = virtualScrollState;
-
-        const visibleStart = Math.floor(scrollTop / rowHeight);
-        const visibleEnd = Math.ceil((scrollTop + containerHeight) / rowHeight);
-
-        const bufferStart = Math.max(0, visibleStart - bufferSize);
-        const bufferEnd = Math.min(allData.length, visibleEnd + bufferSize);
-
-        if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 ||
-            Math.abs(bufferEnd - virtualScrollState.endIndex) > 5) {
-            virtualScrollState.startIndex = bufferStart;
-            virtualScrollState.endIndex = bufferEnd;
-            renderVisibleMatchRows();
-        }
-    };
-
-    const container = document.querySelector('.matches-table-container');
-    if (container) {
-        container.addEventListener('scroll', virtualScrollState.scrollHandler);
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === matchesCurrentPage;
+        html += `<button onclick="changeMatchesPage(${i})" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid ${isActive ? '#dc2626' : '#d1d5db'}; border-radius: 0.375rem; background: ${isActive ? '#dc2626' : 'white'}; color: ${isActive ? 'white' : 'black'}; cursor: pointer; margin: 0 1px;">
+            ${i}
+        </button>`;
     }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
+        }
+        html += `<button onclick="changeMatchesPage(${totalPages})" 
+            style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">${totalPages}</button>`;
+    }
+
+    // Next Button
+    html += `<button onclick="if(${matchesCurrentPage} < ${totalPages}) changeMatchesPage(${matchesCurrentPage + 1})" 
+        ${matchesCurrentPage === totalPages ? 'disabled' : ''}
+        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === totalPages ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === totalPages ? 'not-allowed' : 'pointer'}; margin-left: 2px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>`;
+
+    container.innerHTML = html;
 }
 
 function setupDynamicTableSearch() {
@@ -327,51 +343,18 @@ function setupDynamicTableSearch() {
         const searchTerm = newSearchInput.value.toLowerCase().trim();
         const currentMatches = wwEgyptTeamsData.filteredRecords.slice().reverse();
 
-        if (currentMatches.length <= 1000) {
-            if (!searchTerm) {
-                displayMatches();
-                return;
-            } else {
-                const tbody = document.getElementById('matches-tbody');
-                if (!tbody) return;
-
-                const filtered = currentMatches.filter((match) => {
-                    const cols = ['DATE', 'MANAGER EGY', 'SEASON', 'ROUND', 'H-A-N', 'Egypt TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-D-L'];
-                    const rowText = cols.map(c => String(match[c] || '')).join(' ').toLowerCase();
-                    return rowText.includes(searchTerm);
-                });
-
-                if (filtered.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem;">No matches found</td></tr>';
-                } else {
-                    const rowsHtml = filtered.map(renderMatchRow).join('');
-                    tbody.innerHTML = rowsHtml;
-                }
-                return;
-            }
-        }
-
         if (!searchTerm) {
-            virtualScrollState.allData = currentMatches;
-            virtualScrollState.currentViewData = currentMatches;
+            currentSortedMatches = currentMatches;
         } else {
-            const filtered = currentMatches.filter((match) => {
+            currentSortedMatches = currentMatches.filter((match) => {
                 const cols = ['DATE', 'MANAGER EGY', 'SEASON', 'ROUND', 'H-A-N', 'Egypt TEAM', 'GF', 'GA', 'OPPONENT TEAM', 'W-D-L'];
                 const rowText = cols.map(c => String(match[c] || '')).join(' ').toLowerCase();
                 return rowText.includes(searchTerm);
             });
-            virtualScrollState.allData = filtered;
-            virtualScrollState.currentViewData = currentMatches;
         }
 
-        const container = document.querySelector('.matches-table-container');
-        if (container) {
-            container.scrollTop = 0;
-        }
-
-        virtualScrollState.startIndex = 0;
-        virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
-        renderVisibleMatchRows();
+        matchesCurrentPage = 1; // Reset to first page
+        renderCurrentMatchesPage();
     });
 }
 

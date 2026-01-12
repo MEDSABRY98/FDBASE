@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Al Ahly Finals Statistics - Football Data Entry System</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
         .finals-stats-container {
             min-height: 100vh;
             background: #ffffff;
         }
-        
+
         .main-tabs-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -44,13 +45,13 @@
             width: 20px;
             height: 20px;
         }
-        
+
         .finals-stats-content {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             padding: 2rem;
             backdrop-filter: blur(10px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
 
         /* Filters Section */
@@ -59,9 +60,9 @@
             border-radius: 15px;
             padding: 2rem;
             margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
-        
+
         .filters-title {
             font-size: 1.5rem;
             font-weight: 700;
@@ -70,26 +71,26 @@
             padding-bottom: 0.75rem;
             border-bottom: 2px solid #ff0844;
         }
-        
+
         .filter-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
             margin-bottom: 1rem;
         }
-        
+
         .filter-item {
             display: flex;
             flex-direction: column;
         }
-        
+
         .filter-item label {
             font-size: 0.9rem;
             font-weight: 600;
             color: #555;
             margin-bottom: 0.5rem;
         }
-        
+
         .finals-filter-control {
             background: white;
             border: 2px solid #e0e0e0;
@@ -99,12 +100,12 @@
             transition: border-color 0.3s ease;
             width: 100%;
         }
-        
+
         .finals-filter-control:focus {
             outline: none;
             border-color: #ff0844;
         }
-        
+
         .filter-actions {
             display: flex;
             gap: 1rem;
@@ -112,7 +113,7 @@
             justify-content: center;
             flex-wrap: wrap;
         }
-        
+
         .finals-filter-btn {
             background: #007bff;
             color: white;
@@ -125,11 +126,11 @@
             white-space: nowrap;
             min-width: 180px;
         }
-        
+
         .finals-filter-btn:hover {
             background: #0069d9;
         }
-        
+
         .finals-filter-btn {
             background: #28a745;
             color: white;
@@ -154,7 +155,7 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
         }
-        
+
         .clear-filters-btn {
             background: #ff6b35;
             color: white;
@@ -216,8 +217,13 @@
         }
 
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         /* Loading Container */
@@ -240,8 +246,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .loading-container p {
@@ -254,13 +265,13 @@
         .content-tabs {
             /* Content will be shown here after loading */
         }
-        
+
         /* Searchable Select Styles */
         .searchable-select-container {
             position: relative;
             width: 100%;
         }
-        
+
         .searchable-select-container input[type="text"] {
             width: 100%;
             padding: 0.75rem 1rem;
@@ -270,12 +281,12 @@
             background: white;
             transition: border-color 0.3s ease;
         }
-        
+
         .searchable-select-container input[type="text"]:focus {
             outline: none;
             border-color: #ff0844;
         }
-        
+
         .dropdown-options {
             position: absolute;
             top: 100%;
@@ -290,37 +301,37 @@
             overflow-y: auto;
             margin-top: 4px;
         }
-        
+
         .dropdown-options div {
             padding: 0.75rem 1rem;
             cursor: pointer;
             transition: background 0.2s ease;
             border-bottom: 1px solid #f0f0f0;
         }
-        
+
         .dropdown-options div:last-child {
             border-bottom: none;
         }
-        
+
         .dropdown-options div:hover {
             background: #fff0f3;
             color: #ff0844;
         }
-        
+
         .dropdown-options::-webkit-scrollbar {
             width: 8px;
         }
-        
+
         .dropdown-options::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 10px;
         }
-        
+
         .dropdown-options::-webkit-scrollbar-thumb {
             background: #ff0844;
             border-radius: 10px;
         }
-        
+
         .dropdown-options::-webkit-scrollbar-thumb:hover {
             background: #e00739;
         }
@@ -332,28 +343,28 @@
             gap: 2rem;
             margin-bottom: 3rem;
         }
-        
+
         .finals-stat-card {
             background: white;
             border-radius: 15px;
             padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             text-align: center;
             transition: transform 0.3s ease;
             border-left: 5px solid #ff0844;
         }
-        
+
         .finals-stat-card:hover {
             transform: translateY(-5px);
         }
-        
+
         .finals-stat-card h3 {
             margin: 0 0 1rem 0;
             color: #333;
             font-size: 1.2rem;
             font-weight: 600;
         }
-        
+
         .finals-stat-value {
             font-size: 3rem;
             font-weight: 700;
@@ -361,7 +372,7 @@
             margin: 0;
             line-height: 1;
         }
-        
+
         .finals-stat-label {
             color: #666;
             font-size: 1rem;
@@ -372,7 +383,7 @@
         .finals-table-container {
             background: white;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             margin-bottom: 2rem;
         }
@@ -509,24 +520,24 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        
+
         /* Positive/Negative values */
         td.positive {
             color: #28a745;
             font-weight: 600;
         }
-        
+
         td.negative {
             color: #dc3545;
             font-weight: 600;
         }
-        
+
         /* Positive/Negative values in tfoot (override for white background) */
         .finals-table tfoot td.positive {
             color: #90ee90;
             font-weight: 700;
         }
-        
+
         .finals-table tfoot td.negative {
             color: #ffb3ba;
             font-weight: 700;
@@ -535,7 +546,7 @@
         .finals-stats-section {
             margin-bottom: 3rem;
         }
-        
+
         .finals-section-title {
             font-size: 2rem;
             font-weight: 700;
@@ -694,7 +705,7 @@
             padding: 1.5rem;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .player-search-container label {
@@ -774,7 +785,7 @@
             background: white;
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
             text-align: center;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             border-left: 4px solid #ff0844;
@@ -782,7 +793,7 @@
 
         .player-overview-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
         }
 
         .player-overview-card h3 {
@@ -817,6 +828,7 @@
         }
 
         @media (max-width: 768px) {
+
             .finals-table thead th,
             .finals-table tbody td {
                 padding: 0.75rem 1rem;
@@ -835,11 +847,11 @@
             .filter-row {
                 grid-template-columns: 1fr;
             }
-            
+
             .filter-actions {
                 flex-direction: column;
             }
-            
+
             .finals-filter-btn,
             .clear-filters-btn,
             .finals-refresh-btn {
@@ -878,6 +890,7 @@
         }
 
         @media (max-width: 480px) {
+
             .finals-table thead th,
             .finals-table tbody td {
                 padding: 0.5rem 0.75rem;
@@ -928,6 +941,7 @@
         }
     </style>
 </head>
+
 <body class="finals-stats-container">
     <!-- Main Tabs Container -->
     <div class="main-tabs-container">
@@ -935,7 +949,7 @@
         <div class="back-to-main">
             <a href="{{ url_for('index') }}" class="back-btn">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
                 Back to Main Dashboard
             </a>
@@ -946,7 +960,7 @@
             <!-- Filter Controls Section -->
             <div class="filters-section">
                 <h2 class="filters-title">Filters</h2>
-                
+
                 <!-- Row 1: MATCH_ID, CHAMPION System, SEASON, TIMING -->
                 <div class="filter-row">
                     <div class="filter-item">
@@ -998,7 +1012,7 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <!-- Row 3: OPPONENT MANAGER, H/A/N, AHLY TEAM, GF -->
                 <div class="filter-row">
                     <div class="filter-item">
@@ -1086,21 +1100,25 @@
                 <!-- Filter Action Buttons -->
                 <div class="filter-actions">
                     <button class="finals-filter-btn" onclick="applyFinalsFilters()">
-                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                         Apply Filters
                     </button>
                     <button class="clear-filters-btn" onclick="clearFinalsFilters()">
-                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                         Clear All
                     </button>
                     <button class="finals-refresh-btn" onclick="refreshFinalsStats()">
-                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                         </svg>
                         Sync Data
                     </button>
@@ -1125,517 +1143,580 @@
 
             <!-- Content Tabs -->
             <div id="content-tabs" class="content-tabs" style="display: none;">
-            <!-- Tab Contents -->
-            
-            <!-- Overview Tab -->
-            <div id="overview-tab" class="tab-content active">
-                <!-- Sub Tabs for Overview -->
-                <div class="sub-tabs-nav">
-                    <button class="sub-tab-btn active" onclick="switchSubTab('overview-ahly')">Al Ahly</button>
-                    <button class="sub-tab-btn" onclick="switchSubTab('overview-opponents')">Opponents</button>
-                </div>
+                <!-- Tab Contents -->
 
-                <!-- Al Ahly Overview Sub Tab -->
-                <div id="overview-ahly" class="sub-tab-content active">
-                    <div class="finals-stats-section">
-                        <h2 class="finals-section-title">Al Ahly Finals Overview</h2>
-                        <div class="finals-overview">
-                            <div class="finals-stat-card">
-                                <h3>Total Finals</h3>
-                                <p class="finals-stat-value" id="total-finals-matches">0</p>
-                                <p class="finals-stat-label">Finals Played</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Finals Won</h3>
-                                <p class="finals-stat-value" id="finals-won">0</p>
-                                <p class="finals-stat-label">Championships</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Win Rate</h3>
-                                <p class="finals-stat-value" id="final-win-rate">0%</p>
-                                <p class="finals-stat-label">Finals Success</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Finals Won Both</h3>
-                                <p class="finals-stat-value" id="finals-won-both">0</p>
-                                <p class="finals-stat-label">Wins Over Both Legs</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Finals Lost</h3>
-                                <p class="finals-stat-value" id="finals-lost">0</p>
-                                <p class="finals-stat-label">Runner-up</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Total Matches</h3>
-                                <p class="finals-stat-value" id="total-match-outcomes">0</p>
-                                <p class="finals-stat-label">W + D + L</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Match Wins</h3>
-                                <p class="finals-stat-value" id="match-wins">0</p>
-                                <p class="finals-stat-label">Won in 90/120 min</p>
-                            </div>
-                            <div class="finals-stat-card">
-                                <h3>Match Draws</h3>
-                                <p class="finals-stat-value" id="match-draws">0</p>
-                                <p class="finals-stat-label">Draws</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Match Losses</h3>
-                                <p class="finals-stat-value" id="match-losses">0</p>
-                                <p class="finals-stat-label">Lost in 90/120 min</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Goals For</h3>
-                                <p class="finals-stat-value" id="total-goals-for">0</p>
-                                <p class="finals-stat-label">Goals Scored</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Goals Against</h3>
-                                <p class="finals-stat-value" id="total-goals-against">0</p>
-                                <p class="finals-stat-label">Goals Conceded</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Clean Sheets</h3>
-                                <p class="finals-stat-value" id="clean-sheets">0</p>
-                                <p class="finals-stat-label">No Goals Conceded</p>
+                <!-- Overview Tab -->
+                <div id="overview-tab" class="tab-content active">
+                    <!-- Sub Tabs for Overview -->
+                    <div class="sub-tabs-nav">
+                        <button class="sub-tab-btn active" onclick="switchSubTab('overview-ahly')">Al Ahly</button>
+                        <button class="sub-tab-btn" onclick="switchSubTab('overview-opponents')">Opponents</button>
+                    </div>
+
+                    <!-- Al Ahly Overview Sub Tab -->
+                    <div id="overview-ahly" class="sub-tab-content active">
+                        <div class="finals-stats-section">
+                            <h2 class="finals-section-title">Al Ahly Finals Overview</h2>
+                            <div class="finals-overview">
+                                <div class="finals-stat-card">
+                                    <h3>Total Finals</h3>
+                                    <p class="finals-stat-value" id="total-finals-matches">0</p>
+                                    <p class="finals-stat-label">Finals Played</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Finals Won</h3>
+                                    <p class="finals-stat-value" id="finals-won">0</p>
+                                    <p class="finals-stat-label">Championships</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Win Rate</h3>
+                                    <p class="finals-stat-value" id="final-win-rate">0%</p>
+                                    <p class="finals-stat-label">Finals Success</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Finals Won Both</h3>
+                                    <p class="finals-stat-value" id="finals-won-both">0</p>
+                                    <p class="finals-stat-label">Wins Over Both Legs</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Finals Lost</h3>
+                                    <p class="finals-stat-value" id="finals-lost">0</p>
+                                    <p class="finals-stat-label">Runner-up</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Total Matches</h3>
+                                    <p class="finals-stat-value" id="total-match-outcomes">0</p>
+                                    <p class="finals-stat-label">W + D + L</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Match Wins</h3>
+                                    <p class="finals-stat-value" id="match-wins">0</p>
+                                    <p class="finals-stat-label">Won in 90/120 min</p>
+                                </div>
+                                <div class="finals-stat-card">
+                                    <h3>Match Draws</h3>
+                                    <p class="finals-stat-value" id="match-draws">0</p>
+                                    <p class="finals-stat-label">Draws</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Match Losses</h3>
+                                    <p class="finals-stat-value" id="match-losses">0</p>
+                                    <p class="finals-stat-label">Lost in 90/120 min</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Goals For</h3>
+                                    <p class="finals-stat-value" id="total-goals-for">0</p>
+                                    <p class="finals-stat-label">Goals Scored</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Goals Against</h3>
+                                    <p class="finals-stat-value" id="total-goals-against">0</p>
+                                    <p class="finals-stat-label">Goals Conceded</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Clean Sheets</h3>
+                                    <p class="finals-stat-value" id="clean-sheets">0</p>
+                                    <p class="finals-stat-label">No Goals Conceded</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Opponents Overview Sub Tab -->
-                <div id="overview-opponents" class="sub-tab-content">
-                    <div class="finals-stats-section">
-                        <h2 class="finals-section-title">Opponents Finals Overview</h2>
-                        <div class="finals-overview">
-                            <div class="finals-stat-card">
-                                <h3>Total Finals</h3>
-                                <p class="finals-stat-value" id="opponent-total-finals">0</p>
-                                <p class="finals-stat-label">Finals Played</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Finals Won</h3>
-                                <p class="finals-stat-value" id="opponent-finals-won">0</p>
-                                <p class="finals-stat-label">Championships</p>
-                            </div>
-                            
+                    <!-- Opponents Overview Sub Tab -->
+                    <div id="overview-opponents" class="sub-tab-content">
+                        <div class="finals-stats-section">
+                            <h2 class="finals-section-title">Opponents Finals Overview</h2>
+                            <div class="finals-overview">
+                                <div class="finals-stat-card">
+                                    <h3>Total Finals</h3>
+                                    <p class="finals-stat-value" id="opponent-total-finals">0</p>
+                                    <p class="finals-stat-label">Finals Played</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Finals Won</h3>
+                                    <p class="finals-stat-value" id="opponent-finals-won">0</p>
+                                    <p class="finals-stat-label">Championships</p>
+                                </div>
+
                                 <div class="finals-stat-card">
                                     <h3>Win Rate</h3>
                                     <p class="finals-stat-value" id="opponent-win-rate">0%</p>
                                     <p class="finals-stat-label">Finals Success</p>
                                 </div>
-                                
+
                                 <div class="finals-stat-card">
                                     <h3>Finals Won Both</h3>
                                     <p class="finals-stat-value" id="opponent-finals-won-both">0</p>
                                     <p class="finals-stat-label">Wins Over Both Legs</p>
                                 </div>
-                                
-                            <div class="finals-stat-card">
-                                <h3>Finals Lost</h3>
-                                <p class="finals-stat-value" id="opponent-finals-lost">0</p>
-                                <p class="finals-stat-label">Runner-up</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
+
+                                <div class="finals-stat-card">
+                                    <h3>Finals Lost</h3>
+                                    <p class="finals-stat-value" id="opponent-finals-lost">0</p>
+                                    <p class="finals-stat-label">Runner-up</p>
+                                </div>
+
+                                <div class="finals-stat-card">
                                     <h3>Total Matches</h3>
                                     <p class="finals-stat-value" id="opponent-total-match-outcomes">0</p>
                                     <p class="finals-stat-label">W + D + L</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Match Wins</h3>
-                                <p class="finals-stat-value" id="opponent-match-wins">0</p>
-                                <p class="finals-stat-label">Won in 90/120 min</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Match Draws</h3>
-                                <p class="finals-stat-value" id="opponent-match-draws">0</p>
-                                <p class="finals-stat-label">Draws</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Match Losses</h3>
-                                <p class="finals-stat-value" id="opponent-match-losses">0</p>
-                                <p class="finals-stat-label">Lost in 90/120 min</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Goals For</h3>
-                                <p class="finals-stat-value" id="opponent-goals-for">0</p>
-                                <p class="finals-stat-label">Goals Scored</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Goals Against</h3>
-                                <p class="finals-stat-value" id="opponent-goals-against">0</p>
-                                <p class="finals-stat-label">Goals Conceded</p>
-                            </div>
-                            
-                            <div class="finals-stat-card">
-                                <h3>Clean Sheets</h3>
-                                <p class="finals-stat-value" id="opponent-clean-sheets">0</p>
-                                <p class="finals-stat-label">No Goals Conceded</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Match Wins</h3>
+                                    <p class="finals-stat-value" id="opponent-match-wins">0</p>
+                                    <p class="finals-stat-label">Won in 90/120 min</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Match Draws</h3>
+                                    <p class="finals-stat-value" id="opponent-match-draws">0</p>
+                                    <p class="finals-stat-label">Draws</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Match Losses</h3>
+                                    <p class="finals-stat-value" id="opponent-match-losses">0</p>
+                                    <p class="finals-stat-label">Lost in 90/120 min</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Goals For</h3>
+                                    <p class="finals-stat-value" id="opponent-goals-for">0</p>
+                                    <p class="finals-stat-label">Goals Scored</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Goals Against</h3>
+                                    <p class="finals-stat-value" id="opponent-goals-against">0</p>
+                                    <p class="finals-stat-label">Goals Conceded</p>
+                                </div>
+
+                                <div class="finals-stat-card">
+                                    <h3>Clean Sheets</h3>
+                                    <p class="finals-stat-value" id="opponent-clean-sheets">0</p>
+                                    <p class="finals-stat-label">No Goals Conceded</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Matches Tab -->
-            <div id="matches-tab" class="tab-content">
-                <div class="finals-stats-section">
-                    <h2 class="finals-section-title">All Finals Matches</h2>
-                    <div class="finals-table-container">
-                        <div class="table-responsive">
-                            <table class="finals-table" id="finals-matches-table">
-                                <thead>
-                                    <tr>
-                                        <th>Match ID</th>
-                                        <th>Season</th>
-                                        <th>Champion</th>
-                                        <th>Timing</th>
-                                        <th>Opponent</th>
-                                        <th>H/A/N</th>
-                                        <th>Score</th>
-                                        <th>ET</th>
-                                        <th>PEN</th>
-                                        <th>Match</th>
-                                        <th>Final</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Data will be populated by JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- H2H Teams Tab -->
-            <div id="h2h-teams-tab" class="tab-content">
-                <div class="finals-stats-section">
-                    <h2 class="finals-section-title">Head to Head Teams Statistics</h2>
-                    
-                    <!-- Search Box for H2H Teams -->
-                    <div class="search-container" style="margin-bottom: 1rem; text-align: center;">
-                        <input type="text" id="h2h-teams-search" class="search-input" placeholder="Search teams..." style="width: 100%; max-width: 400px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; margin: 0 auto; display: block;">
-                    </div>
-                    
-                    <div class="finals-table-container">
-                        <div class="table-responsive">
-                            <table class="finals-table" id="h2h-teams-table">
-                                <thead>
-                                    <tr>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('team')">Opponent Team <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('finals')">Finals <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('finalsWon')">Finals Won <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('finalsLost')">Finals Lost <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('matches')">Total Matches <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('wins')">W <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('draws')">D <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('losses')">L <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('goalsFor')">GF <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('goalsAgainst')">GA <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsTable('goalDifference')">GD <span class="sort-icon"></span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Data will be populated by JavaScript -->
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td>TOTAL</td>
-                                        <td id="h2h-total-finals">0</td>
-                                        <td id="h2h-total-finals-won">0</td>
-                                        <td id="h2h-total-finals-lost">0</td>
-                                        <td id="h2h-total-matches">0</td>
-                                        <td id="h2h-total-wins">0</td>
-                                        <td id="h2h-total-draws">0</td>
-                                        <td id="h2h-total-losses">0</td>
-                                        <td id="h2h-total-gf">0</td>
-                                        <td id="h2h-total-ga">0</td>
-                                        <td id="h2h-total-gd">0</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Managers Tab -->
-            <div id="managers-tab" class="tab-content">
-                <!-- Sub Tabs for Managers -->
-                <div class="sub-tabs-nav">
-                    <button class="sub-tab-btn active" onclick="switchSubTab('managers-ahly')">Ahly Managers</button>
-                    <button class="sub-tab-btn" onclick="switchSubTab('managers-opponents')">Opponent Managers</button>
-                </div>
-
-                <!-- Ahly Managers Sub Tab -->
-                <div id="managers-ahly" class="sub-tab-content active">
+                <!-- Matches Tab -->
+                <div id="matches-tab" class="tab-content">
                     <div class="finals-stats-section">
-                        <h2 class="finals-section-title">Ahly Managers in Finals</h2>
+                        <h2 class="finals-section-title">All Finals Matches</h2>
                         <div class="finals-table-container">
                             <div class="table-responsive">
-                                <table class="finals-table" id="ahly-managers-table">
+                                <table class="finals-table" id="finals-matches-table">
                                     <thead>
                                         <tr>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('manager')">Manager Name <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('finals')">Finals <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('finalsWon')">Finals Won <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('finalsLost')">Finals Lost <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('matches')">Total Matches <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('wins')">W <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('draws')">D <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('losses')">L <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('goalsFor')">GF <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('goalsAgainst')">GA <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortAhlyManagersTable('goalDifference')">GD <span class="sort-icon"></span></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Data will be populated by JavaScript -->
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td>TOTAL</td>
-                                            <td id="ahly-mgr-total-finals">0</td>
-                                            <td id="ahly-mgr-total-finals-won">0</td>
-                                            <td id="ahly-mgr-total-finals-lost">0</td>
-                                            <td id="ahly-mgr-total-matches">0</td>
-                                            <td id="ahly-mgr-total-wins">0</td>
-                                            <td id="ahly-mgr-total-draws">0</td>
-                                            <td id="ahly-mgr-total-losses">0</td>
-                                            <td id="ahly-mgr-total-gf">0</td>
-                                            <td id="ahly-mgr-total-ga">0</td>
-                                            <td id="ahly-mgr-total-gd">0</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Opponent Managers Sub Tab -->
-                <div id="managers-opponents" class="sub-tab-content">
-                    <div class="finals-stats-section">
-                        <h2 class="finals-section-title">Opponent Managers in Finals</h2>
-                        <div class="finals-table-container">
-                            <div class="table-responsive">
-                                <table class="finals-table" id="opponent-managers-table">
-                                    <thead>
-                                        <tr>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('manager')">Manager Name <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('finals')">Finals <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('finalsWon')">Finals Won <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('finalsLost')">Finals Lost <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('matches')">Total Matches <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('wins')">W <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('draws')">D <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('losses')">L <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('goalsFor')">GF <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('goalsAgainst')">GA <span class="sort-icon"></span></th>
-                                            <th class="sortable" onclick="sortOpponentManagersTable('goalDifference')">GD <span class="sort-icon"></span></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Data will be populated by JavaScript -->
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td>TOTAL</td>
-                                            <td id="opp-mgr-total-finals">0</td>
-                                            <td id="opp-mgr-total-finals-won">0</td>
-                                            <td id="opp-mgr-total-finals-lost">0</td>
-                                            <td id="opp-mgr-total-matches">0</td>
-                                            <td id="opp-mgr-total-wins">0</td>
-                                            <td id="opp-mgr-total-draws">0</td>
-                                            <td id="opp-mgr-total-losses">0</td>
-                                            <td id="opp-mgr-total-gf">0</td>
-                                            <td id="opp-mgr-total-ga">0</td>
-                                            <td id="opp-mgr-total-gd">0</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- All Players Tab -->
-            <div id="all-players-tab" class="tab-content">
-                <!-- Sub Tabs for All Players -->
-                <div class="sub-tabs-nav">
-                    <button class="sub-tab-btn active" onclick="switchSubTab('all-players-ahly')">Al Ahly</button>
-                    <button class="sub-tab-btn" onclick="switchSubTab('all-players-opponents')">Opponents</button>
-                </div>
-
-                <!-- Al Ahly Players Stats -->
-                <div id="all-players-ahly" class="sub-tab-content active">
-                    <div class="finals-stats-section">
-                        <h2 class="finals-section-title">Al Ahly Players in Finals</h2>
-                        <div class="finals-table-container">
-                            <div class="table-responsive">
-                                <table class="finals-table" id="ahly-players-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Player Name</th>
-                                            <th>Finals Played</th>
-                                            <th>Finals Won</th>
-                                            <th>Win Rate</th>
-                                            <th>Finals Lost</th>
-                                            <th>G+A</th>
-                                            <th>Goals</th>
-                                            <th>Assists</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Data will be populated by JavaScript -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Opponent Players Stats -->
-                <div id="all-players-opponents" class="sub-tab-content">
-                    <div class="finals-stats-section">
-                        <h2 class="finals-section-title">Opponent Players in Finals</h2>
-                        <div class="finals-table-container">
-                            <div class="table-responsive">
-                                <table class="finals-table" id="opponent-players-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Player Name</th>
-                                            <th>Finals Played</th>
-                                            <th>Finals Won</th>
-                                            <th>Win Rate</th>
-                                            <th>G+A</th>
-                                            <th>Goals</th>
-                                            <th>Assists</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Data will be populated by JavaScript -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- By Players Tab -->
-            <div id="by-players-tab" class="tab-content">
-                <!-- Player Search with Team Filter -->
-                <div class="player-search-container">
-                    <div style="display: flex; gap: 1rem; align-items: flex-end;">
-                        <div style="flex: 1;">
-                            <label for="unified-player-search">Search Player:</label>
-                            <input type="text" id="unified-player-search" class="player-search-input" placeholder="Search for any player...">
-                            <div id="unified-player-dropdown" class="player-dropdown" style="display: none;"></div>
-                        </div>
-                        <div style="min-width: 200px;">
-                            <label for="player-team-filter">Filter by Team:</label>
-                            <select id="player-team-filter" class="finals-filter-control" style="width: 100%;">
-                                <option value="">All Teams</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Sub Tabs for By Players -->
-                <div class="sub-tabs-nav">
-                    <button class="sub-tab-btn active" onclick="switchSubTab('player-overview')">Player Overview</button>
-                    <button class="sub-tab-btn" onclick="switchSubTab('player-matches')">Matches</button>
-                    <button class="sub-tab-btn" onclick="switchSubTab('player-vs-teams')">VS Teams</button>
-                </div>
-
-                <!-- Player Overview Sub Tab -->
-                <div id="player-overview" class="sub-tab-content active">
-                    <div class="finals-stats-section">
-                        <h2 class="finals-section-title">Player Overview</h2>
-                        
-                        <!-- Player Overview Cards -->
-                        <div id="unified-player-overview-cards" class="player-overview-cards">
-                            <p class="no-player-selected">Please select a player to view their overview</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Player Matches Sub Tab -->
-                <div id="player-matches" class="sub-tab-content">
-                    <div class="finals-stats-section">
-                        <h2 class="finals-section-title">Player Matches</h2>
-                        <div class="finals-table-container">
-                            <div class="table-responsive">
-                                <table class="finals-table" id="player-matches-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
+                                            <th>Match ID</th>
                                             <th>Season</th>
+                                            <th>Champion</th>
+                                            <th>Timing</th>
+                                            <th>Opponent</th>
                                             <th>H/A/N</th>
-                                            <th>Opponent Team</th>
-                                            <th>Final W/L</th>
-                                            <th>Goals</th>
-                                            <th>Assists</th>
+                                            <th>Score</th>
+                                            <th>ET</th>
+                                            <th>PEN</th>
+                                            <th>Match</th>
+                                            <th>Final</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+
+                                <!-- Pagination Controls -->
+                                <div class="pagination-controls"
+                                    style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-top: 1px solid #e5e7eb; background: white;">
+                                    <div class="rows-per-page">
+                                        <label for="finals-matches-rows-per-page"
+                                            style="margin-right: 0.5rem; color: #6b7280; font-size: 0.875rem;">Rows per
+                                            page:</label>
+                                        <select id="finals-matches-rows-per-page"
+                                            onchange="changeFinalsMatchesRowsPerPage(this.value)"
+                                            style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;">
+                                            <option value="50" selected>50</option>
+                                            <option value="100">100</option>
+                                            <option value="200">200</option>
+                                            <option value="all">All</option>
+                                        </select>
+                                        <span id="finals-matches-pagination-info"
+                                            style="margin-left: 1rem; color: #6b7280; font-size: 0.875rem;"></span>
+                                    </div>
+                                    <div id="finals-matches-pagination" class="pagination-pages"
+                                        style="display: flex; gap: 0.25rem;">
+                                        <!-- Pages will be injected here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- H2H Teams Tab -->
+                <div id="h2h-teams-tab" class="tab-content">
+                    <div class="finals-stats-section">
+                        <h2 class="finals-section-title">Head to Head Teams Statistics</h2>
+
+                        <!-- Search Box for H2H Teams -->
+                        <div class="search-container" style="margin-bottom: 1rem; text-align: center;">
+                            <input type="text" id="h2h-teams-search" class="search-input" placeholder="Search teams..."
+                                style="width: 100%; max-width: 400px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; margin: 0 auto; display: block;">
+                        </div>
+
+                        <div class="finals-table-container">
+                            <div class="table-responsive">
+                                <table class="finals-table" id="h2h-teams-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('team')">Opponent Team <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('finals')">Finals <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('finalsWon')">Finals Won
+                                                <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('finalsLost')">Finals Lost
+                                                <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('matches')">Total Matches
+                                                <span class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('wins')">W <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('draws')">D <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('losses')">L <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('goalsFor')">GF <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('goalsAgainst')">GA <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsTable('goalDifference')">GD <span
+                                                    class="sort-icon"></span></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <!-- Data will be populated by JavaScript -->
                                     </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td id="h2h-total-finals">0</td>
+                                            <td id="h2h-total-finals-won">0</td>
+                                            <td id="h2h-total-finals-lost">0</td>
+                                            <td id="h2h-total-matches">0</td>
+                                            <td id="h2h-total-wins">0</td>
+                                            <td id="h2h-total-draws">0</td>
+                                            <td id="h2h-total-losses">0</td>
+                                            <td id="h2h-total-gf">0</td>
+                                            <td id="h2h-total-ga">0</td>
+                                            <td id="h2h-total-gd">0</td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Player VS Teams Sub Tab -->
-                <div id="player-vs-teams" class="sub-tab-content">
-                    <div class="finals-stats-section">
-                        <h2 class="finals-section-title">Player vs Teams</h2>
-                        <div class="finals-table-container">
-                            <div class="table-responsive">
-                                <table class="finals-table" id="player-vs-teams-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Opponent Team</th>
-                                            <th>Matches</th>
-                                            <th>Finals</th>
-                                            <th>Finals Won</th>
-                                            <th>Finals Lost</th>
-                                            <th>G + A</th>
-                                            <th>Goals</th>
-                                            <th>Assists</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Data populated via JavaScript -->
-                                    </tbody>
-                                </table>
+                <!-- Managers Tab -->
+                <div id="managers-tab" class="tab-content">
+                    <!-- Sub Tabs for Managers -->
+                    <div class="sub-tabs-nav">
+                        <button class="sub-tab-btn active" onclick="switchSubTab('managers-ahly')">Ahly
+                            Managers</button>
+                        <button class="sub-tab-btn" onclick="switchSubTab('managers-opponents')">Opponent
+                            Managers</button>
+                    </div>
+
+                    <!-- Ahly Managers Sub Tab -->
+                    <div id="managers-ahly" class="sub-tab-content active">
+                        <div class="finals-stats-section">
+                            <h2 class="finals-section-title">Ahly Managers in Finals</h2>
+                            <div class="finals-table-container">
+                                <div class="table-responsive">
+                                    <table class="finals-table" id="ahly-managers-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('manager')">Manager
+                                                    Name <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('finals')">Finals
+                                                    <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('finalsWon')">Finals
+                                                    Won <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('finalsLost')">
+                                                    Finals Lost <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('matches')">Total
+                                                    Matches <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('wins')">W <span
+                                                        class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('draws')">D <span
+                                                        class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('losses')">L <span
+                                                        class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('goalsFor')">GF
+                                                    <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('goalsAgainst')">GA
+                                                    <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortAhlyManagersTable('goalDifference')">
+                                                    GD <span class="sort-icon"></span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td>TOTAL</td>
+                                                <td id="ahly-mgr-total-finals">0</td>
+                                                <td id="ahly-mgr-total-finals-won">0</td>
+                                                <td id="ahly-mgr-total-finals-lost">0</td>
+                                                <td id="ahly-mgr-total-matches">0</td>
+                                                <td id="ahly-mgr-total-wins">0</td>
+                                                <td id="ahly-mgr-total-draws">0</td>
+                                                <td id="ahly-mgr-total-losses">0</td>
+                                                <td id="ahly-mgr-total-gf">0</td>
+                                                <td id="ahly-mgr-total-ga">0</td>
+                                                <td id="ahly-mgr-total-gd">0</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Opponent Managers Sub Tab -->
+                    <div id="managers-opponents" class="sub-tab-content">
+                        <div class="finals-stats-section">
+                            <h2 class="finals-section-title">Opponent Managers in Finals</h2>
+                            <div class="finals-table-container">
+                                <div class="table-responsive">
+                                    <table class="finals-table" id="opponent-managers-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" onclick="sortOpponentManagersTable('manager')">
+                                                    Manager Name <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortOpponentManagersTable('finals')">
+                                                    Finals <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortOpponentManagersTable('finalsWon')">
+                                                    Finals Won <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortOpponentManagersTable('finalsLost')">
+                                                    Finals Lost <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortOpponentManagersTable('matches')">
+                                                    Total Matches <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortOpponentManagersTable('wins')">W <span
+                                                        class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortOpponentManagersTable('draws')">D
+                                                    <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortOpponentManagersTable('losses')">L
+                                                    <span class="sort-icon"></span></th>
+                                                <th class="sortable" onclick="sortOpponentManagersTable('goalsFor')">GF
+                                                    <span class="sort-icon"></span></th>
+                                                <th class="sortable"
+                                                    onclick="sortOpponentManagersTable('goalsAgainst')">GA <span
+                                                        class="sort-icon"></span></th>
+                                                <th class="sortable"
+                                                    onclick="sortOpponentManagersTable('goalDifference')">GD <span
+                                                        class="sort-icon"></span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td>TOTAL</td>
+                                                <td id="opp-mgr-total-finals">0</td>
+                                                <td id="opp-mgr-total-finals-won">0</td>
+                                                <td id="opp-mgr-total-finals-lost">0</td>
+                                                <td id="opp-mgr-total-matches">0</td>
+                                                <td id="opp-mgr-total-wins">0</td>
+                                                <td id="opp-mgr-total-draws">0</td>
+                                                <td id="opp-mgr-total-losses">0</td>
+                                                <td id="opp-mgr-total-gf">0</td>
+                                                <td id="opp-mgr-total-ga">0</td>
+                                                <td id="opp-mgr-total-gd">0</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+
+                <!-- All Players Tab -->
+                <div id="all-players-tab" class="tab-content">
+                    <!-- Sub Tabs for All Players -->
+                    <div class="sub-tabs-nav">
+                        <button class="sub-tab-btn active" onclick="switchSubTab('all-players-ahly')">Al Ahly</button>
+                        <button class="sub-tab-btn" onclick="switchSubTab('all-players-opponents')">Opponents</button>
+                    </div>
+
+                    <!-- Al Ahly Players Stats -->
+                    <div id="all-players-ahly" class="sub-tab-content active">
+                        <div class="finals-stats-section">
+                            <h2 class="finals-section-title">Al Ahly Players in Finals</h2>
+                            <div class="finals-table-container">
+                                <div class="table-responsive">
+                                    <table class="finals-table" id="ahly-players-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Player Name</th>
+                                                <th>Finals Played</th>
+                                                <th>Finals Won</th>
+                                                <th>Win Rate</th>
+                                                <th>Finals Lost</th>
+                                                <th>G+A</th>
+                                                <th>Goals</th>
+                                                <th>Assists</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Opponent Players Stats -->
+                    <div id="all-players-opponents" class="sub-tab-content">
+                        <div class="finals-stats-section">
+                            <h2 class="finals-section-title">Opponent Players in Finals</h2>
+                            <div class="finals-table-container">
+                                <div class="table-responsive">
+                                    <table class="finals-table" id="opponent-players-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Player Name</th>
+                                                <th>Finals Played</th>
+                                                <th>Finals Won</th>
+                                                <th>Win Rate</th>
+                                                <th>G+A</th>
+                                                <th>Goals</th>
+                                                <th>Assists</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- By Players Tab -->
+                <div id="by-players-tab" class="tab-content">
+                    <!-- Player Search with Team Filter -->
+                    <div class="player-search-container">
+                        <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                            <div style="flex: 1;">
+                                <label for="unified-player-search">Search Player:</label>
+                                <input type="text" id="unified-player-search" class="player-search-input"
+                                    placeholder="Search for any player...">
+                                <div id="unified-player-dropdown" class="player-dropdown" style="display: none;"></div>
+                            </div>
+                            <div style="min-width: 200px;">
+                                <label for="player-team-filter">Filter by Team:</label>
+                                <select id="player-team-filter" class="finals-filter-control" style="width: 100%;">
+                                    <option value="">All Teams</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sub Tabs for By Players -->
+                    <div class="sub-tabs-nav">
+                        <button class="sub-tab-btn active" onclick="switchSubTab('player-overview')">Player
+                            Overview</button>
+                        <button class="sub-tab-btn" onclick="switchSubTab('player-matches')">Matches</button>
+                        <button class="sub-tab-btn" onclick="switchSubTab('player-vs-teams')">VS Teams</button>
+                    </div>
+
+                    <!-- Player Overview Sub Tab -->
+                    <div id="player-overview" class="sub-tab-content active">
+                        <div class="finals-stats-section">
+                            <h2 class="finals-section-title">Player Overview</h2>
+
+                            <!-- Player Overview Cards -->
+                            <div id="unified-player-overview-cards" class="player-overview-cards">
+                                <p class="no-player-selected">Please select a player to view their overview</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Player Matches Sub Tab -->
+                    <div id="player-matches" class="sub-tab-content">
+                        <div class="finals-stats-section">
+                            <h2 class="finals-section-title">Player Matches</h2>
+                            <div class="finals-table-container">
+                                <div class="table-responsive">
+                                    <table class="finals-table" id="player-matches-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Season</th>
+                                                <th>H/A/N</th>
+                                                <th>Opponent Team</th>
+                                                <th>Final W/L</th>
+                                                <th>Goals</th>
+                                                <th>Assists</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Player VS Teams Sub Tab -->
+                    <div id="player-vs-teams" class="sub-tab-content">
+                        <div class="finals-stats-section">
+                            <h2 class="finals-section-title">Player vs Teams</h2>
+                            <div class="finals-table-container">
+                                <div class="table-responsive">
+                                    <table class="finals-table" id="player-vs-teams-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Opponent Team</th>
+                                                <th>Matches</th>
+                                                <th>Finals</th>
+                                                <th>Finals Won</th>
+                                                <th>Finals Lost</th>
+                                                <th>G + A</th>
+                                                <th>Goals</th>
+                                                <th>Assists</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data populated via JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <!-- End Content Tabs -->
 
@@ -1648,4 +1729,5 @@
     <script src="{{ url_for('static', filename='al_ahly_finals/al_ahly_finals.js') }}"></script>
 
 </body>
+
 </html>

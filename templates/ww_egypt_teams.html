@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WW Egypt National Teams - Football Data Entry System</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
         .stats-container {
             min-height: 100vh;
             background: #ffffff;
         }
-        
+
         .main-tabs-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -44,13 +45,13 @@
             width: 20px;
             height: 20px;
         }
-        
+
         .stats-content {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             padding: 2rem;
             backdrop-filter: blur(10px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
 
         .page-header {
@@ -89,8 +90,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .overview-stats {
@@ -104,7 +110,7 @@
             border-radius: 15px;
             padding: 2rem;
             text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
         }
 
@@ -135,7 +141,7 @@
             background: white;
             border-radius: 15px;
             padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .section-title {
@@ -206,30 +212,31 @@
             opacity: 1;
             color: #667eea;
         }
-        
-        .matches-table-container { 
-            max-height: 2000px; 
-            overflow-y: auto; 
-            overflow-x: auto; 
+
+        /* Virtual Scrolling support removed - pagination added */
+        .matches-table-container {
+            /* max-height removed to disable internal scroll */
+            overflow-x: auto;
+            /* Keep horizontal scroll if needed */
             position: relative;
         }
-        
+
         .matches-table-container .matches-table {
             border-collapse: separate;
             border-spacing: 0;
         }
-        
+
         .matches-table-container .matches-table thead th {
             position: sticky;
             top: 0;
             z-index: 10;
             background: #f8f9fa;
         }
-        
+
         .table-search-container {
             margin-bottom: 1rem;
         }
-        
+
         .table-search-input {
             width: 100%;
             max-width: 500px;
@@ -238,7 +245,7 @@
             border-radius: 8px;
             font-size: 1rem;
         }
-        
+
         .table-search-input:focus {
             outline: none;
             border-color: #667eea;
@@ -272,7 +279,7 @@
             border-radius: 15px;
             padding: 2rem;
             margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .filters-title {
@@ -599,20 +606,29 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @media (max-width: 1200px) {
             .filter-row {
                 grid-template-columns: repeat(2, 1fr);
             }
-            
+
             .filter-actions {
                 flex-direction: column;
             }
-            
-            .finals-filter-btn, .clear-filters-btn, .finals-refresh-btn {
+
+            .finals-filter-btn,
+            .clear-filters-btn,
+            .finals-refresh-btn {
                 width: 100%;
             }
         }
@@ -621,15 +637,15 @@
             .filter-row {
                 grid-template-columns: 1fr;
             }
-            
+
             .filters-title {
                 font-size: 1.25rem;
             }
-            
+
             .filter-item label {
                 font-size: 0.85rem;
             }
-            
+
             .filter-control {
                 font-size: 0.9rem;
                 padding: 0.65rem 0.9rem;
@@ -637,13 +653,14 @@
         }
     </style>
 </head>
+
 <body>
     <div class="stats-container">
         <div class="main-tabs-container">
             <div class="back-to-main">
                 <a href="/" class="back-btn">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
                     </svg>
                     Back to Main Dashboard
                 </a>
@@ -653,7 +670,7 @@
                 <!-- Filters Section -->
                 <div class="filters-section" id="filters-section" style="display: none;">
                     <h2 class="filters-title">🔍 Filters</h2>
-                    
+
                     <div class="filter-grid">
                         <!-- Row 0 - Trophy Filter -->
                         <div class="filter-row">
@@ -671,28 +688,32 @@
                             <div class="filter-item">
                                 <label>Match ID</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-match-id" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-match-id" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>System Kind</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-system-kind" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-system-kind" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>AGE</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-age" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-age" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>Champion System</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-champion-system" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-champion-system" class="filter-control"
+                                        placeholder="All" autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
@@ -711,14 +732,16 @@
                             <div class="filter-item">
                                 <label>Manager EGY</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-manager-egy" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-manager-egy" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>Manager Opponent</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-manager-opponent" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-manager-opponent" class="filter-control"
+                                        placeholder="All" autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
@@ -729,28 +752,32 @@
                             <div class="filter-item">
                                 <label>Referee</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-refree" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-refree" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>Champion</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-champion" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-champion" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>Season</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-season" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-season" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>Round</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-round" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-round" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
@@ -761,27 +788,31 @@
                             <div class="filter-item">
                                 <label>Place</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-place" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-place" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>H-A-N</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-han" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-han" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>Egypt Team</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-egypt-team" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-egypt-team" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>Goals For</label>
-                                <input type="number" id="filter-gf" class="filter-control" placeholder="Goals For" min="0">
+                                <input type="number" id="filter-gf" class="filter-control" placeholder="Goals For"
+                                    min="0">
                             </div>
                         </div>
 
@@ -789,26 +820,30 @@
                         <div class="filter-row">
                             <div class="filter-item">
                                 <label>Goals Against</label>
-                                <input type="number" id="filter-ga" class="filter-control" placeholder="Goals Against" min="0">
+                                <input type="number" id="filter-ga" class="filter-control" placeholder="Goals Against"
+                                    min="0">
                             </div>
                             <div class="filter-item">
                                 <label>ET</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-et" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-et" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>PEN</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-pen" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-pen" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>Opponent Team</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-opponent-team" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-opponent-team" class="filter-control"
+                                        placeholder="All" autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
@@ -819,21 +854,24 @@
                             <div class="filter-item">
                                 <label>Result (W-D-L)</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-result" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-result" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>Clean Sheet</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-cs" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-cs" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
                             <div class="filter-item">
                                 <label>W-L Q & F</label>
                                 <div class="searchable-select-container">
-                                    <input type="text" id="filter-wlqf" class="filter-control" placeholder="All" autocomplete="off">
+                                    <input type="text" id="filter-wlqf" class="filter-control" placeholder="All"
+                                        autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
@@ -847,21 +885,25 @@
                     <!-- Filter Actions -->
                     <div class="filter-actions">
                         <button class="finals-filter-btn" onclick="applyFilters()">
-                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="3">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                             Apply Filters
                         </button>
                         <button class="clear-filters-btn" onclick="clearFilters()">
-                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="3">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
                             Clear All
                         </button>
                         <button class="finals-refresh-btn" onclick="loadWWEgyptTeamsData(true)">
-                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                             </svg>
                             Sync Data
                         </button>
@@ -881,34 +923,38 @@
                         <div class="stats-tabs-row">
                             <div class="stats-tabs">
                                 <button class="stats-tab active" onclick="showStatsTab(event, 'overview')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M12 20V10M18 20V4M6 20v-4"/>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M12 20V10M18 20V4M6 20v-4" />
                                     </svg>
                                     Overview
                                 </button>
                                 <button class="stats-tab" onclick="showStatsTab(event, 'matches')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                        <line x1="9" y1="9" x2="15" y2="9"/>
-                                        <line x1="9" y1="15" x2="15" y2="15"/>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                        <line x1="9" y1="9" x2="15" y2="9" />
+                                        <line x1="9" y1="15" x2="15" y2="15" />
                                     </svg>
                                     Matches
                                 </button>
                                 <button class="stats-tab" onclick="showStatsTab(event, 'players')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                        <circle cx="9" cy="7" r="4"/>
-                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                        <circle cx="9" cy="7" r="4" />
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                                     </svg>
                                     All Players
                                 </button>
                                 <button class="stats-tab" onclick="showStatsTab(event, 'elnady')">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                        <line x1="16" y1="2" x2="16" y2="6"/>
-                                        <line x1="8" y1="2" x2="8" y2="6"/>
-                                        <line x1="3" y1="10" x2="21" y2="10"/>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                        <line x1="16" y1="2" x2="16" y2="6" />
+                                        <line x1="8" y1="2" x2="8" y2="6" />
+                                        <line x1="3" y1="10" x2="21" y2="10" />
                                     </svg>
                                     ElNady Stats
                                 </button>
@@ -982,7 +1028,8 @@
                         <div class="matches-section">
                             <h2 class="section-title">Match History</h2>
                             <div class="table-search-container">
-                                <input type="search" id="matches-search-input" class="table-search-input" placeholder="Search in matches table...">
+                                <input type="search" id="matches-search-input" class="table-search-input"
+                                    placeholder="Search in matches table...">
                             </div>
                             <div class="matches-table-container">
                                 <table class="matches-table" id="ww-egypt-teams-matches-table">
@@ -1005,6 +1052,29 @@
                                     </tbody>
                                 </table>
                             </div>
+
+                            <!-- Pagination Controls -->
+                            <div class="pagination-controls"
+                                style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-top: 1px solid #e5e7eb; background: white;">
+                                <div class="rows-per-page">
+                                    <label for="matches-rows-per-page"
+                                        style="margin-right: 0.5rem; color: #6b7280; font-size: 0.875rem;">Rows per
+                                        page:</label>
+                                    <select id="matches-rows-per-page" onchange="changeMatchesRowsPerPage(this.value)"
+                                        style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;">
+                                        <option value="50" selected>50</option>
+                                        <option value="100">100</option>
+                                        <option value="200">200</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                    <span id="matches-pagination-info"
+                                        style="margin-left: 1rem; color: #6b7280; font-size: 0.875rem;"></span>
+                                </div>
+                                <div id="matches-pagination" class="pagination-pages"
+                                    style="display: flex; gap: 0.25rem;">
+                                    <!-- Pages will be injected here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1012,30 +1082,35 @@
                     <div id="players-tab" class="stats-tab-content">
                         <div class="matches-section">
                             <!-- Players Search -->
-                            <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
-                                <input type="text" id="all-players-search" placeholder="🔍 Search in players table..." 
-                                    style="padding: 0.75rem 1rem; width: 400px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;" autocomplete="off">
-                                <select id="all-players-team-filter" 
+                            <div
+                                style="display: flex; justify-content: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+                                <input type="text" id="all-players-search" placeholder="🔍 Search in players table..."
+                                    style="padding: 0.75rem 1rem; width: 400px; max-width: 90%; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;"
+                                    autocomplete="off">
+                                <select id="all-players-team-filter"
                                     style="padding: 0.75rem 1rem; min-width: 220px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; background: #ffffff; color: #374151;">
                                     <option value="all">All Players (Egypt + Opponent)</option>
                                     <option value="egypt">Egypt Players Only</option>
                                     <option value="opponent">Opponent Players Only</option>
                                 </select>
                             </div>
-                            
+
                             <!-- Players Loading -->
-                            <div id="players-loading" class="loading-container" style="display: none; min-height: 200px;">
+                            <div id="players-loading" class="loading-container"
+                                style="display: none; min-height: 200px;">
                                 <div class="spinner"></div>
                                 <p>Loading players data...</p>
                             </div>
-                            
+
                             <div id="players-table-container" style="overflow-x: auto;">
                                 <table class="matches-table">
                                     <thead>
                                         <tr>
                                             <th>#</th>
-                                            <th class="sortable-header" onclick="sortPlayersBy('playerName')">Player Name</th>
-                                            <th class="sortable-header sorted-desc" onclick="sortPlayersBy('totalGA')">G+A</th>
+                                            <th class="sortable-header" onclick="sortPlayersBy('playerName')">Player
+                                                Name</th>
+                                            <th class="sortable-header sorted-desc" onclick="sortPlayersBy('totalGA')">
+                                                G+A</th>
                                             <th class="sortable-header" onclick="sortPlayersBy('goals')">Goals</th>
                                             <th class="sortable-header" onclick="sortPlayersBy('assists')">Assists</th>
                                             <th>Clubs (Goals)</th>
@@ -1064,10 +1139,12 @@
                         <!-- All Clubs Tab -->
                         <div id="elnady-all-clubs-tab" class="tab-content active">
                             <!-- Search Box -->
-                            <div style="margin-bottom: 1.5rem; max-width: 500px; margin-left: auto; margin-right: auto;">
-                                <input type="text" id="all-clubs-search" class="filter-control" placeholder="🔍 Search for a club..." style="width: 100%; text-align: center;">
+                            <div
+                                style="margin-bottom: 1.5rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+                                <input type="text" id="all-clubs-search" class="filter-control"
+                                    placeholder="🔍 Search for a club..." style="width: 100%; text-align: center;">
                             </div>
-                            
+
                             <div style="overflow-x: auto;">
                                 <table class="matches-table">
                                     <thead>
@@ -1088,18 +1165,22 @@
                         <div id="elnady-by-club-tab" class="tab-content">
                             <!-- ELNADY Search Box -->
                             <div style="margin-bottom: 2rem; text-align: center;">
-                                <label style="font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 0.5rem; display: block;">
+                                <label
+                                    style="font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 0.5rem; display: block;">
                                     🔍 Search Club
                                 </label>
                                 <div class="searchable-select-container" style="max-width: 500px; margin: 0 auto;">
-                                    <input type="text" id="elnady-search" class="filter-control" placeholder="Search for a club..." autocomplete="off">
+                                    <input type="text" id="elnady-search" class="filter-control"
+                                        placeholder="Search for a club..." autocomplete="off">
                                     <div class="dropdown-options" style="display: none;"></div>
                                 </div>
                             </div>
 
                             <!-- Club Stats Content -->
                             <div id="elnady-club-content" style="display: none;">
-                                <h3 id="selected-club-name" style="text-align: center; font-size: 1.8rem; color: #333; margin-bottom: 2rem;"></h3>
+                                <h3 id="selected-club-name"
+                                    style="text-align: center; font-size: 1.8rem; color: #333; margin-bottom: 2rem;">
+                                </h3>
 
                                 <!-- Sub Tabs for Club Stats -->
                                 <div class="tabs-header" style="margin-bottom: 2rem;">
@@ -1188,7 +1269,8 @@
 
                             <!-- No Club Selected Message -->
                             <div id="no-club-selected" style="text-align: center; padding: 4rem; color: #666;">
-                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem;">
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" style="margin-bottom: 1rem;">
                                     <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                                 <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Search for a Club</h3>
@@ -1205,42 +1287,42 @@
     <script>
         function showStatsTab(event, tabName) {
             event.preventDefault();
-            
+
             // Hide all tab contents
             const tabContents = document.querySelectorAll('.stats-tab-content');
             tabContents.forEach(content => {
                 content.classList.remove('active');
             });
-            
+
             // Remove active class from all tabs
             const tabs = document.querySelectorAll('.stats-tab');
             tabs.forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             // Show selected tab content
             const selectedTabContent = document.getElementById(tabName + '-tab');
             if (selectedTabContent) {
                 selectedTabContent.classList.add('active');
             }
-            
+
             // Add active class to clicked tab
             if (event.target.closest('.stats-tab')) {
                 event.target.closest('.stats-tab').classList.add('active');
             }
-            
+
             // If players tab is clicked and players not loaded, load them
             if (tabName === 'players') {
                 setupPlayersSearch();
                 setupPlayersTeamFilter();
-                
+
                 if (!wwEgyptTeamsData.playersLoaded) {
                     loadWWEgyptTeamsPlayers();
                 } else {
                     displayPlayers();
                 }
             }
-            
+
             // If elnady tab is clicked
             if (tabName === 'elnady') {
                 // Load players if not loaded (needed for ELNADY data)
@@ -1255,5 +1337,5 @@
         }
     </script>
 </body>
-</html>
 
+</html>

@@ -73,67 +73,36 @@ window.nationalMenWW = (function () {
         return arabCountries.some(country => country.toLowerCase() === normalizedTeam.toLowerCase());
     }
 
-    // Virtual Scrolling state
-    let virtualScrollState = {
-        allData: [],
-        currentViewData: [],
-        startIndex: 0,
-        endIndex: 25, // Render first 25 rows initially
-        bufferSize: 25, // Buffer rows above and below visible area
-        rowHeight: 50, // Estimated row height in pixels
-        tableContainer: null,
-        scrollHandler: null
-    };
+    // Pagination state
+    let matchesCurrentPage = 1;
+    let matchesRowsPerPage = 50;
+    let currentBaseMatches = [];
+    let currentSortedMatches = [];
 
     function setupDynamicTableSearch() {
         const searchInput = document.getElementById('matches-search-input');
         if (!searchInput) return;
 
-        searchInput.addEventListener('keyup', () => {
-            const searchTerm = searchInput.value.toLowerCase().trim();
+        // Clone to remove old listeners
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+
+        newSearchInput.addEventListener('keyup', () => {
+            const searchTerm = newSearchInput.value.toLowerCase().trim();
 
             if (!searchTerm) {
-                // No search term, restore full filtered data
-                virtualScrollState.allData = virtualScrollState.currentViewData || [];
+                currentSortedMatches = currentBaseMatches;
             } else {
-                // Filter data based on search within the already filtered view
-                const filtered = (virtualScrollState.currentViewData || []).filter((rec) => {
+                currentSortedMatches = currentBaseMatches.filter((rec) => {
                     const n = normalizeRecord(rec);
                     const cols = ['GAME', 'AGE', 'Season', 'Round', 'TeamA', 'TeamAScore', 'TeamBScore', 'TeamB'];
                     const rowText = cols.map(c => String(n[c] || '')).join(' ').toLowerCase();
                     return rowText.includes(searchTerm);
                 });
-                virtualScrollState.allData = filtered;
             }
 
-            // Reset scroll position
-            const container = document.querySelector('.matches-table-container');
-            if (container) {
-                container.scrollTop = 0;
-            }
-
-            // For small datasets, render all at once; for large datasets, use virtual scrolling
-            if (virtualScrollState.allData.length <= 1000) {
-                const tbody = document.getElementById('national-men-WW-tbody');
-                if (tbody) {
-                    const cols = ['GAME', 'AGE', 'Season', 'Round', 'TeamA', 'TeamAScore', 'TeamBScore', 'TeamB'];
-                    const rowsHtml = virtualScrollState.allData.map((rec) => {
-                        const n = normalizeRecord(rec);
-                        const tds = cols.map((c) => `<td>${escapeHtml(String(n[c] ?? ''))}</td>`).join('');
-                        const wl = getResultSymbol(n);
-                        const wlClass = getResultClass(wl);
-                        return `<tr>${tds}<td><span class="${wlClass}">${wl}</span></td></tr>`;
-                    }).join('');
-                    tbody.innerHTML = rowsHtml;
-                }
-                virtualScrollState.startIndex = 0;
-                virtualScrollState.endIndex = virtualScrollState.allData.length;
-            } else {
-                // Use virtual scrolling for large datasets
-                virtualScrollState.startIndex = 0;
-                virtualScrollState.endIndex = Math.min(25, virtualScrollState.allData.length);
-                renderVisibleRows();
-            }
+            matchesCurrentPage = 1;
+            renderCurrentMatchesPage();
         });
     }
 
@@ -857,22 +826,111 @@ window.nationalMenWW = (function () {
         return `<tr>${tds}<td><span class="${wlClass}">${wl}</span></td></tr>`;
     }
 
-    // Virtual scrolling render function
-    function renderVisibleRows() {
+    // Pagination functions
+    function renderCurrentMatchesPage() {
         const tbody = document.getElementById('national-men-WW-tbody');
         if (!tbody) return;
 
-        const { allData, startIndex, endIndex } = virtualScrollState;
-        const visibleData = allData.slice(startIndex, endIndex);
+        if (currentSortedMatches.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="100%" class="no-data" style="text-align:center; padding:1rem;">No data available</td></tr>';
+            renderPaginationControls(0);
+            return;
+        }
 
-        // Create spacer row for top (only if startIndex > 0)
-        const topSpacer = startIndex > 0 ? `<tr style="height: ${startIndex * virtualScrollState.rowHeight}px;"><td colspan="9"></td></tr>` : '';
-        // Render visible rows
-        const rowsHtml = visibleData.map(renderRow).join('');
-        // Create spacer row for bottom
-        const bottomSpacer = `<tr style="height: ${Math.max(0, allData.length - endIndex) * virtualScrollState.rowHeight}px;"><td colspan="9"></td></tr>`;
+        // Apply pagination
+        let matchesToRender = currentSortedMatches;
+        if (matchesRowsPerPage !== 'all') {
+            const start = (matchesCurrentPage - 1) * matchesRowsPerPage;
+            const end = start + parseInt(matchesRowsPerPage);
+            matchesToRender = currentSortedMatches.slice(start, end);
+        }
 
-        tbody.innerHTML = topSpacer + rowsHtml + bottomSpacer;
+        const rowsHtml = matchesToRender.map(renderRow).join('');
+        tbody.innerHTML = rowsHtml;
+
+        renderPaginationControls(currentSortedMatches.length);
+    }
+
+    function changeMatchesRowsPerPage(val) {
+        matchesRowsPerPage = val;
+        matchesCurrentPage = 1;
+        renderCurrentMatchesPage();
+    }
+
+    function changeMatchesPage(page) {
+        matchesCurrentPage = page;
+        renderCurrentMatchesPage();
+    }
+
+    function renderPaginationControls(totalRows) {
+        const container = document.getElementById('matches-pagination');
+        const info = document.getElementById('matches-pagination-info');
+
+        if (!container || !info) return;
+
+        if (matchesRowsPerPage === 'all') {
+            container.innerHTML = '';
+            info.textContent = `${totalRows} of ${totalRows}`;
+            return;
+        }
+
+        const start = (matchesCurrentPage - 1) * matchesRowsPerPage + 1;
+        const end = Math.min(matchesCurrentPage * matchesRowsPerPage, totalRows);
+        info.textContent = `${totalRows > 0 ? start : 0}-${end} of ${totalRows}`;
+
+        const totalPages = Math.ceil(totalRows / parseInt(matchesRowsPerPage));
+
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+
+        // Previous Button
+        html += `<button onclick="if(${matchesCurrentPage} > 1) window.nationalMenWW.changeMatchesPage(${matchesCurrentPage - 1})" 
+            ${matchesCurrentPage === 1 ? 'disabled' : ''}
+            style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === 1 ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === 1 ? 'not-allowed' : 'pointer'}; margin-right: 2px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>`;
+
+        // Page Numbers
+        const windowSize = 2;
+        let startPage = Math.max(1, matchesCurrentPage - windowSize);
+        let endPage = Math.min(totalPages, matchesCurrentPage + windowSize);
+
+        if (startPage > 1) {
+            html += `<button onclick="window.nationalMenWW.changeMatchesPage(1)" 
+                style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">1</button>`;
+            if (startPage > 2) {
+                html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const isActive = i === matchesCurrentPage;
+            html += `<button onclick="window.nationalMenWW.changeMatchesPage(${i})" 
+                style="padding: 0.25rem 0.75rem; border: 1px solid ${isActive ? '#dc2626' : '#d1d5db'}; border-radius: 0.375rem; background: ${isActive ? '#dc2626' : 'white'}; color: ${isActive ? 'white' : 'black'}; cursor: pointer; margin: 0 1px;">
+                ${i}
+            </button>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                html += `<span style="padding: 0.25rem 0.5rem; color: #6b7280;">...</span>`;
+            }
+            html += `<button onclick="window.nationalMenWW.changeMatchesPage(${totalPages})" 
+                style="padding: 0.25rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">${totalPages}</button>`;
+        }
+
+        // Next Button
+        html += `<button onclick="if(${matchesCurrentPage} < ${totalPages}) window.nationalMenWW.changeMatchesPage(${matchesCurrentPage + 1})" 
+            ${matchesCurrentPage === totalPages ? 'disabled' : ''}
+            style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: ${matchesCurrentPage === totalPages ? '#f3f4f6' : 'white'}; cursor: ${matchesCurrentPage === totalPages ? 'not-allowed' : 'pointer'}; margin-left: 2px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>`;
+
+        container.innerHTML = html;
     }
 
     function renderTable(records) {
@@ -947,98 +1005,25 @@ window.nationalMenWW = (function () {
             });
         }
 
-        // Always update virtualScrollState to track current data for search functionality
-        virtualScrollState.allData = filteredRecords;
-        virtualScrollState.currentViewData = filteredRecords;
+        // Setup pagination data
+        currentBaseMatches = filteredRecords;
+        currentSortedMatches = filteredRecords;
+        matchesCurrentPage = 1;
 
         // Update team statistics summary if team filter is active
         updateTeamStatsSummary(filteredRecords);
 
-        // Remove old scroll handlers first to prevent conflicts
-        if (virtualScrollState.scrollHandler) {
-            const container = document.querySelector('.matches-table-container');
-            if (container) {
-                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
-                virtualScrollState.scrollHandler = null;
-            }
-        }
-
-        // Reset scroll position to top when filters change
+        // Reset scroll position
         const container = document.querySelector('.matches-table-container');
         if (container) {
             container.scrollTop = 0;
         }
 
-        // For small datasets (< 1000 rows), render everything at once for better compatibility
-        if (filteredRecords.length <= 1000) {
-            const cols = ['GAME', 'AGE', 'Season', 'Round', 'TeamA', 'TeamAScore', 'TeamBScore', 'TeamB'];
-            const rowsHtml = filteredRecords.map((rec) => {
-                const n = normalizeRecord(rec);
-                const tds = cols.map((c) => `<td>${escapeHtml(String(n[c] ?? ''))}</td>`).join('');
-                const wl = getResultSymbol(n);
-                const wlClass = getResultClass(wl);
-                return `<tr>${tds}<td><span class="${wlClass}">${wl}</span></td></tr>`;
-            }).join('');
-            tbody.innerHTML = rowsHtml;
-            // Reset scroll indices for consistency
-            virtualScrollState.startIndex = 0;
-            virtualScrollState.endIndex = filteredRecords.length;
-            return;
-        }
-
-        // For large datasets, use virtual scrolling
-        // Reset scroll state
-        virtualScrollState.startIndex = 0;
-        virtualScrollState.endIndex = Math.min(25, filteredRecords.length);
-
-        // Initial render
-        renderVisibleRows();
-
-        // Setup virtual scrolling
-        setupVirtualScrolling();
+        // Render first page
+        renderCurrentMatchesPage();
     }
 
-    function setupVirtualScrolling() {
-        // Remove old scroll handler if exists
-        if (virtualScrollState.scrollHandler) {
-            const container = document.querySelector('.matches-table-container');
-            if (container) {
-                container.removeEventListener('scroll', virtualScrollState.scrollHandler);
-            }
-        }
 
-        // Create new scroll handler
-        virtualScrollState.scrollHandler = function handleScroll(e) {
-            const container = e.target;
-            if (!container) return;
-
-            const scrollTop = container.scrollTop || 0;
-            const containerHeight = container.clientHeight || 0;
-            const { allData, rowHeight, bufferSize } = virtualScrollState;
-
-            // Calculate which rows should be visible
-            const visibleStart = Math.floor(scrollTop / rowHeight);
-            const visibleEnd = Math.ceil((scrollTop + containerHeight) / rowHeight);
-
-            // Add buffer
-            const bufferStart = Math.max(0, visibleStart - bufferSize);
-            const bufferEnd = Math.min(allData.length, visibleEnd + bufferSize);
-
-            // Only re-render if the visible range has changed significantly
-            if (Math.abs(bufferStart - virtualScrollState.startIndex) > 5 ||
-                Math.abs(bufferEnd - virtualScrollState.endIndex) > 5) {
-                virtualScrollState.startIndex = bufferStart;
-                virtualScrollState.endIndex = bufferEnd;
-                renderVisibleRows();
-            }
-        };
-
-        // Attach scroll listener to the table container
-        const container = document.querySelector('.matches-table-container');
-        if (container) {
-            container.addEventListener('scroll', virtualScrollState.scrollHandler);
-        }
-    }
 
     function computeTeamStats(records) {
         const stats = new Map();
@@ -1596,25 +1581,15 @@ window.nationalMenWW = (function () {
     }
 
     async function loadData(forceRefresh = false, skipLoadingState = false) {
-        const refreshBtn = document.querySelector('.btn-refresh');
+        const syncBtn = document.getElementById('nmww-sync-btn');
+        const syncIcon = document.getElementById('nmww-sync-icon');
+        const syncText = document.getElementById('nmww-sync-text');
 
-        // Set loading state on button
-        if (refreshBtn) {
-            refreshBtn.disabled = true;
-            const icon = refreshBtn.querySelector('svg');
-            if (icon) icon.classList.add('spinning');
-
-            // Handle text node update
-            const textNode = Array.from(refreshBtn.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-            if (textNode) {
-                textNode.textContent = ' Syncing...';
-            } else {
-                // If structure is different, fallback
-                refreshBtn.innerHTML = `
-                    <svg class="icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg> Syncing...`;
-            }
+        // Set loading state on button (only if not skipped)
+        if (!skipLoadingState && syncBtn && syncIcon && syncText) {
+            syncBtn.disabled = true;
+            syncIcon.classList.add('spinning');
+            syncText.textContent = 'Syncing...';
         }
 
         try {
@@ -1650,16 +1625,11 @@ window.nationalMenWW = (function () {
             }
             if (forceRefresh) throw e;
         } finally {
-            // Reset button only if NOT force refresh (initial load)
-            if (!forceRefresh && refreshBtn) {
-                refreshBtn.disabled = false;
-                const icon = refreshBtn.querySelector('svg');
-                if (icon) icon.classList.remove('spinning');
-
-                const textNode = Array.from(refreshBtn.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-                if (textNode) {
-                    textNode.textContent = ' Sync Data';
-                }
+            // Reset button only if NOT force refresh (initial load) and not skipped
+            if (!forceRefresh && !skipLoadingState && syncBtn && syncIcon && syncText) {
+                syncBtn.disabled = false;
+                syncIcon.classList.remove('spinning');
+                syncText.textContent = 'Sync Data';
             }
         }
     }
@@ -1750,33 +1720,31 @@ window.nationalMenWW = (function () {
 
     // Refresh data with visual feedback
     async function refreshData() {
-        const refreshBtn = event.target.closest('button');
-        const refreshIcon = refreshBtn?.querySelector('svg');
-        const originalText = refreshBtn.innerHTML;
+        const syncBtn = document.getElementById('nmww-sync-btn');
+        const syncIcon = document.getElementById('nmww-sync-icon');
+        const syncText = document.getElementById('nmww-sync-text');
 
-        // Show loading state on button only
-        refreshBtn.disabled = true;
-        if (refreshIcon) {
-            refreshIcon.classList.add('spinning');
-        }
-        refreshBtn.innerHTML = '<svg class="spinning" style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
+        if (!syncBtn || !syncIcon || !syncText) return;
+
+        syncBtn.disabled = true;
+        syncIcon.classList.add('spinning');
+        syncText.textContent = 'Syncing...';
 
         try {
             await loadData(true, true); // true = force refresh, true = skip loading state
 
-            // Show success message
-            refreshBtn.innerHTML = '<svg style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Synced!';
-
+            syncText.textContent = 'Synced!';
             setTimeout(() => {
-                refreshBtn.innerHTML = originalText;
-                refreshBtn.disabled = false;
+                syncText.textContent = 'Sync Data';
+                syncIcon.classList.remove('spinning');
+                syncBtn.disabled = false;
             }, 2000);
         } catch (error) {
-            refreshBtn.innerHTML = '<svg style="width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>Error!';
-
+            syncText.textContent = 'Error!';
             setTimeout(() => {
-                refreshBtn.innerHTML = originalText;
-                refreshBtn.disabled = false;
+                syncText.textContent = 'Sync Data';
+                syncIcon.classList.remove('spinning');
+                syncBtn.disabled = false;
             }, 2000);
         }
     }
@@ -1804,7 +1772,9 @@ window.nationalMenWW = (function () {
         toggleGameDetails,
         closeGameDetailsModal,
         applyCurrentFilters,
-        get filtersApplied() { return filtersApplied; }
+        get filtersApplied() { return filtersApplied; },
+        changeMatchesRowsPerPage,
+        changeMatchesPage
     };
 })();
 

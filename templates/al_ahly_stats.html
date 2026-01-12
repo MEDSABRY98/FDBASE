@@ -2437,9 +2437,8 @@
             <!-- Match History Tab -->
             <div id="matches-tab" class="stats-tab-content">
                 <div class="stats-section">
-                    <h2 class="section-title">Match History <span id="match-count-badge" class="badge badge-info">0
-                            matches</span></h2>
-                    <div class="stats-table-container">
+                    <h2 class="section-title">Match History</h2>
+                    <div class="stats-table-container" style="padding: 0; background: transparent; box-shadow: none;">
                         <table class="stats-table" id="all-matches-table">
                             <thead>
                                 <tr>
@@ -2460,6 +2459,28 @@
                                 <!-- Data will be loaded dynamically -->
                             </tbody>
                         </table>
+
+                        <!-- Pagination Controls -->
+                        <div class="pagination-controls"
+                            style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-top: 1px solid #e5e7eb; background: white;">
+                            <div class="rows-per-page">
+                                <label for="matches-rows-per-page"
+                                    style="margin-right: 0.5rem; color: #6b7280; font-size: 0.875rem;">Rows per
+                                    page:</label>
+                                <select id="matches-rows-per-page" onchange="changeMatchesRowsPerPage(this.value)"
+                                    style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;">
+                                    <option value="50" selected>50</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                    <option value="all">All</option>
+                                </select>
+                                <span id="matches-pagination-info"
+                                    style="margin-left: 1rem; color: #6b7280; font-size: 0.875rem;"></span>
+                            </div>
+                            <div id="matches-pagination" class="pagination-pages" style="display: flex; gap: 0.25rem;">
+                                <!-- Pages will be injected here -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
