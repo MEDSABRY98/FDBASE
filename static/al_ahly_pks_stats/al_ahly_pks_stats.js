@@ -103,7 +103,7 @@ async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
             if (contentTabs) contentTabs.style.display = 'none';
             if (mainTabsNav) mainTabsNav.style.display = 'none';
 
-            // Disable Sync Button during initial load
+            // Disable Refresh Button during initial load
             const refreshBtn = document.querySelector('.pks-refresh-btn');
             if (refreshBtn) {
                 refreshBtn.disabled = true;
@@ -176,7 +176,7 @@ async function loadPKSData(forceRefresh = false, skipLoadingState = false) {
         if (!skipLoadingState) {
             showLoadingState(false);
 
-            // Re-enable Sync Button after load
+            // Re-enable Refresh Button after load
             const refreshBtn = document.querySelector('.pks-refresh-btn');
             if (refreshBtn) {
                 refreshBtn.disabled = false;
@@ -476,53 +476,43 @@ function clearPKSFilters() {
 }
 
 /**
- * Refresh PKS data (force refresh from Google Sheets)
+ * Manual Refresh for PKS data
  */
 async function refreshPKSStats() {
-    console.log('🔄 Force refreshing PKS data...');
-
+    console.log('🔄 Refreshing PKS data...');
     const refreshBtn = document.querySelector('.pks-refresh-btn');
-    const refreshIcon = refreshBtn?.querySelector('svg');
 
     try {
-        // Show loading indicator on button
         if (refreshBtn) {
             refreshBtn.disabled = true;
-            if (refreshIcon) {
-                refreshIcon.classList.add('spinning');
-            }
-            const currentHTML = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                </svg>
+                Refreshing...
+            `;
         }
 
-        // Reload data with force refresh (but don't hide content)
-        await loadPKSData(true, true); // true = force refresh, true = skip loading state
+        await loadPKSData(true, true); // forceRefresh=true, skipLoadingState=true
 
-        // Reset button on success
-        if (refreshBtn) {
-            refreshBtn.disabled = false;
-            if (refreshIcon) {
-                refreshIcon.classList.remove('spinning');
-            }
-            const currentHTML = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Synced!');
-            setTimeout(() => {
-                refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Synced!', 'Sync Data');
-            }, 2000);
+        console.log('✅ Data refreshed');
+        if (typeof showSuccess === 'function') {
+            showSuccess('✅ Data refreshed successfully!');
         }
-
-        console.log('✅ Data refreshed successfully');
     } catch (error) {
-        console.error('❌ Error refreshing data:', error);
-
-        // Reset button on error
+        console.error('❌ Refresh failed:', error);
+        if (typeof showError === 'function') {
+            showError('Failed to refresh data. Please try again.');
+        }
+    } finally {
         if (refreshBtn) {
             refreshBtn.disabled = false;
-            if (refreshIcon) {
-                refreshIcon.classList.remove('spinning');
-            }
-            const currentHTML = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Sync Data');
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh Data
+            `;
         }
     }
 }
@@ -958,31 +948,19 @@ function showLoadingState(show) {
         if (show) {
             refreshBtn.disabled = true;
             refreshBtn.innerHTML = `
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
                 </svg>
-                Syncing...
+                Refreshing...
             `;
         } else {
             refreshBtn.disabled = false;
             refreshBtn.innerHTML = `
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 6L9 17l-5-5"/>
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                 </svg>
-                Synced!
+                Refresh Data
             `;
-
-            // Return to original text after 2 seconds
-            setTimeout(() => {
-                if (refreshBtn) {
-                    refreshBtn.innerHTML = `
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-                        </svg>
-                        Sync Data
-                    `;
-                }
-            }, 2000);
         }
     }
 }

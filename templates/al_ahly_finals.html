@@ -142,6 +142,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
             display: inline-flex;
             align-items: center;
@@ -167,6 +168,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
             display: inline-flex;
             align-items: center;
@@ -182,28 +184,41 @@
         }
 
         .finals-refresh-btn {
-            background: #667eea;
+            background: #00BFFF;
             color: white;
             border: none;
             border-radius: 10px;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 191, 255, 0.3);
         }
 
         .finals-refresh-btn:hover {
-            background: #5568d3;
+            background: #009ACD;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 191, 255, 0.4);
+        }
+
+        .finals-refresh-btn:active {
+            transform: translateY(0);
+        }
+
+        .finals-refresh-btn:disabled {
+            background: #00BFFF;
+            opacity: 0.8;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .filter-btn-icon {
@@ -211,8 +226,7 @@
             height: 18px;
         }
 
-        /* Spinning animation for refresh button */
-        .finals-refresh-btn svg.spinning {
+        .spinning {
             animation: spin 1s linear infinite;
         }
 
@@ -261,10 +275,6 @@
             margin: 0;
         }
 
-        /* Content Tabs */
-        .content-tabs {
-            /* Content will be shown here after loading */
-        }
 
         /* Searchable Select Styles */
         .searchable-select-container {
@@ -1114,14 +1124,6 @@
                         </svg>
                         Clear All
                     </button>
-                    <button class="finals-refresh-btn" onclick="refreshFinalsStats()">
-                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path
-                                d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                        </svg>
-                        Sync Data
-                    </button>
                 </div>
             </div>
 
@@ -1388,11 +1390,14 @@
                                             <th class="sortable" onclick="sortH2HTeamsTable('finals')">Finals <span
                                                     class="sort-icon"></span></th>
                                             <th class="sortable" onclick="sortH2HTeamsTable('finalsWon')">Finals Won
-                                                <span class="sort-icon"></span></th>
+                                                <span class="sort-icon"></span>
+                                            </th>
                                             <th class="sortable" onclick="sortH2HTeamsTable('finalsLost')">Finals Lost
-                                                <span class="sort-icon"></span></th>
+                                                <span class="sort-icon"></span>
+                                            </th>
                                             <th class="sortable" onclick="sortH2HTeamsTable('matches')">Total Matches
-                                                <span class="sort-icon"></span></th>
+                                                <span class="sort-icon"></span>
+                                            </th>
                                             <th class="sortable" onclick="sortH2HTeamsTable('wins')">W <span
                                                     class="sort-icon"></span></th>
                                             <th class="sortable" onclick="sortH2HTeamsTable('draws')">D <span
@@ -1453,7 +1458,8 @@
                                                 <th class="sortable" onclick="sortAhlyManagersTable('manager')">Manager
                                                     Name <span class="sort-icon"></span></th>
                                                 <th class="sortable" onclick="sortAhlyManagersTable('finals')">Finals
-                                                    <span class="sort-icon"></span></th>
+                                                    <span class="sort-icon"></span>
+                                                </th>
                                                 <th class="sortable" onclick="sortAhlyManagersTable('finalsWon')">Finals
                                                     Won <span class="sort-icon"></span></th>
                                                 <th class="sortable" onclick="sortAhlyManagersTable('finalsLost')">
@@ -1467,9 +1473,11 @@
                                                 <th class="sortable" onclick="sortAhlyManagersTable('losses')">L <span
                                                         class="sort-icon"></span></th>
                                                 <th class="sortable" onclick="sortAhlyManagersTable('goalsFor')">GF
-                                                    <span class="sort-icon"></span></th>
+                                                    <span class="sort-icon"></span>
+                                                </th>
                                                 <th class="sortable" onclick="sortAhlyManagersTable('goalsAgainst')">GA
-                                                    <span class="sort-icon"></span></th>
+                                                    <span class="sort-icon"></span>
+                                                </th>
                                                 <th class="sortable" onclick="sortAhlyManagersTable('goalDifference')">
                                                     GD <span class="sort-icon"></span></th>
                                             </tr>
@@ -1520,11 +1528,14 @@
                                                 <th class="sortable" onclick="sortOpponentManagersTable('wins')">W <span
                                                         class="sort-icon"></span></th>
                                                 <th class="sortable" onclick="sortOpponentManagersTable('draws')">D
-                                                    <span class="sort-icon"></span></th>
+                                                    <span class="sort-icon"></span>
+                                                </th>
                                                 <th class="sortable" onclick="sortOpponentManagersTable('losses')">L
-                                                    <span class="sort-icon"></span></th>
+                                                    <span class="sort-icon"></span>
+                                                </th>
                                                 <th class="sortable" onclick="sortOpponentManagersTable('goalsFor')">GF
-                                                    <span class="sort-icon"></span></th>
+                                                    <span class="sort-icon"></span>
+                                                </th>
                                                 <th class="sortable"
                                                     onclick="sortOpponentManagersTable('goalsAgainst')">GA <span
                                                         class="sort-icon"></span></th>

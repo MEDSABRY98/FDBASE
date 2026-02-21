@@ -1520,8 +1520,6 @@ window.nationalMenWW = (function () {
             // Reset all buttons
             [btnMatches, btnH2H, btnTeams, btnRanking].forEach(btn => {
                 btn.classList.remove('active');
-                btn.style.background = '#f1f3f5';
-                btn.style.color = '#495057';
             });
             // Hide all tabs
             [tabMatches, tabH2H, tabTeams, tabRanking].forEach(tab => {
@@ -1530,29 +1528,21 @@ window.nationalMenWW = (function () {
 
             if (name === 'matches') {
                 btnMatches.classList.add('active');
-                btnMatches.style.background = '#007bff';
-                btnMatches.style.color = '#fff';
                 tabMatches.style.display = 'block';
                 // Setup continent filter when matches tab is activated
                 setTimeout(() => setupMatchesContinentFilter(), 100);
             } else if (name === 'h2h') {
                 btnH2H.classList.add('active');
-                btnH2H.style.background = '#007bff';
-                btnH2H.style.color = '#fff';
                 tabH2H.style.display = 'block';
                 // Setup H2H continent filters when H2H tab is activated
                 setTimeout(() => setupH2HContinentFilters(), 100);
             } else if (name === 'teams') {
                 btnTeams.classList.add('active');
-                btnTeams.style.background = '#007bff';
-                btnTeams.style.color = '#fff';
                 tabTeams.style.display = 'block';
                 // Setup continent filter when teams tab is activated
                 setTimeout(() => setupContinentFilter(), 100);
             } else if (name === 'ranking') {
                 btnRanking.classList.add('active');
-                btnRanking.style.background = '#007bff';
-                btnRanking.style.color = '#fff';
                 tabRanking.style.display = 'block';
             }
         };
@@ -1589,7 +1579,7 @@ window.nationalMenWW = (function () {
         if (!skipLoadingState && syncBtn && syncIcon && syncText) {
             syncBtn.disabled = true;
             syncIcon.classList.add('spinning');
-            syncText.textContent = 'Syncing...';
+            syncText.textContent = 'Refreshing...';
         }
 
         try {
@@ -1629,7 +1619,7 @@ window.nationalMenWW = (function () {
             if (!forceRefresh && !skipLoadingState && syncBtn && syncIcon && syncText) {
                 syncBtn.disabled = false;
                 syncIcon.classList.remove('spinning');
-                syncText.textContent = 'Sync Data';
+                syncText.textContent = 'Refresh Data';
             }
         }
     }
@@ -1728,21 +1718,21 @@ window.nationalMenWW = (function () {
 
         syncBtn.disabled = true;
         syncIcon.classList.add('spinning');
-        syncText.textContent = 'Syncing...';
+        syncText.textContent = 'Refreshing...';
 
         try {
             await loadData(true, true); // true = force refresh, true = skip loading state
 
-            syncText.textContent = 'Synced!';
+            syncText.textContent = 'Refreshed!';
             setTimeout(() => {
-                syncText.textContent = 'Sync Data';
+                syncText.textContent = 'Refresh Data';
                 syncIcon.classList.remove('spinning');
                 syncBtn.disabled = false;
             }, 2000);
         } catch (error) {
             syncText.textContent = 'Error!';
             setTimeout(() => {
-                syncText.textContent = 'Sync Data';
+                syncText.textContent = 'Refresh Data';
                 syncIcon.classList.remove('spinning');
                 syncBtn.disabled = false;
             }, 2000);
@@ -1871,8 +1861,6 @@ function setupRankingSubTabs() {
         // Reset all buttons
         [btnLastSeason, btnLastAge].forEach(btn => {
             btn.classList.remove('active');
-            btn.style.background = '#f1f3f5';
-            btn.style.color = '#495057';
         });
 
         // Hide all contents
@@ -1882,8 +1870,6 @@ function setupRankingSubTabs() {
 
         if (type === 'last-age') {
             btnLastAge.classList.add('active');
-            btnLastAge.style.background = '#007bff';
-            btnLastAge.style.color = '#fff';
             contentLastAge.style.display = 'block';
             // Recalculate if team is selected
             if (window.__nmww_selected_team) {
@@ -1891,8 +1877,6 @@ function setupRankingSubTabs() {
             }
         } else if (type === 'last-season') {
             btnLastSeason.classList.add('active');
-            btnLastSeason.style.background = '#007bff';
-            btnLastSeason.style.color = '#fff';
             contentLastSeason.style.display = 'block';
             // Recalculate if team is selected
             if (window.__nmww_selected_team) {

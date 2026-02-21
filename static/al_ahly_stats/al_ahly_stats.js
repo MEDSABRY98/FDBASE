@@ -1574,6 +1574,45 @@ async function loadFromGoogleSheetsSync(forceRefresh = false) {
     }
 }
 
+/* Modern Sync Popup Helper */
+function showModernSyncPopup(show, type = 'loading', message = '') {
+    const popup = document.getElementById('modern-sync-popup');
+    if (!popup) return;
+
+    const content = popup.querySelector('.modern-popup-content');
+    const title = document.getElementById('modern-popup-title');
+    const msg = document.getElementById('modern-popup-message');
+    const loader = popup.querySelector('.circular-loader');
+
+    if (show) {
+        popup.classList.add('active');
+
+        if (type === 'success') {
+            content.classList.add('success');
+            if (title) title.textContent = 'Success!';
+            if (msg) msg.textContent = message || 'Data synchronized successfully';
+            if (loader) loader.style.display = 'none';
+        } else if (type === 'error') {
+            // Optional: Add error styling class if needed
+            if (title) title.textContent = 'Error';
+            if (msg) msg.textContent = message || 'Failed to sync data';
+        } else {
+            // Loading state
+            content.classList.remove('success');
+            if (title) title.textContent = 'Syncing Data...';
+            if (msg) msg.textContent = message || 'Fetching latest statistics from Google Sheets';
+            if (loader) loader.style.display = 'block';
+        }
+    } else {
+        popup.classList.remove('active');
+        // Reset after transition
+        setTimeout(() => {
+            content.classList.remove('success');
+            if (loader) loader.style.display = 'block';
+        }, 300);
+    }
+}
+
 async function manualSyncNow() {
     /**
      * Manually trigger sync from Google Sheets
@@ -1586,15 +1625,8 @@ async function manualSyncNow() {
     try {
         console.log('🔄 Triggering manual sync (clearing cache)...');
 
-        // Show loading indicator on button
-        if (syncBtn) {
-            syncBtn.disabled = true;
-            syncIcon.classList.add('spinning');
-            syncBtnText.textContent = 'Syncing...';
-        }
-
-        // Show loading indicator
-        showLoadingState(true);
+        // Show modern popup instead of simple loading state
+        showModernSyncPopup(true, 'loading');
 
         // Clear browser cache for this page
         const browserCache = new BrowserCache('al_ahly_stats');
@@ -1612,21 +1644,14 @@ async function manualSyncNow() {
             // Reload the page display
             await loadAlAhlyStatsData();
 
-            // Show success message on button
-            if (syncBtn && syncBtnText) {
-                syncBtn.disabled = false;
-                syncIcon.classList.remove('spinning');
-                syncBtnText.textContent = 'Synced!';
+            // Show success state in popup
+            showModernSyncPopup(true, 'success', 'Data Synced Successfully!');
 
-                // Return to original text after 2 seconds
-                setTimeout(() => {
-                    if (syncBtnText) {
-                        syncBtnText.textContent = 'Sync Data';
-                    }
-                }, 2000);
-            }
+            // Close popup after 2 seconds
+            setTimeout(() => {
+                showModernSyncPopup(false);
+            }, 2000);
 
-            showLoadingState(false);
             return true;
         } else {
             throw new Error('Sync failed');
@@ -1634,16 +1659,13 @@ async function manualSyncNow() {
 
     } catch (error) {
         console.error('❌ Manual sync failed:', error);
-        alert('❌ Failed to sync data: ' + error.message);
 
-        // Reset button on error
-        if (syncBtn) {
-            syncBtn.disabled = false;
-            syncIcon.classList.remove('spinning');
-            syncBtnText.textContent = 'Sync Data';
-        }
+        // Show error in popup then close
+        showModernSyncPopup(true, 'error', 'Failed to sync data: ' + error.message);
+        setTimeout(() => {
+            showModernSyncPopup(false);
+        }, 3000);
 
-        showLoadingState(false);
         return false;
     }
 }
@@ -17428,7 +17450,10 @@ function calculateAllPlayersTrophies(trophySheet, lineupSheet, playerDetailsShee
                 'arab-champions': 0,
                 'arab-cup-winners': 0,
                 'arab-super': 0,
-                'total': 0
+                'total': 0,
+                'egyptian': 0,
+                'african': 0,
+                'arab': 0
             };
 
             // Count trophies for each trophy type
@@ -17437,6 +17462,14 @@ function calculateAllPlayersTrophies(trophySheet, lineupSheet, playerDetailsShee
                 if (trophyKey && playerTrophies.hasOwnProperty(trophyKey)) {
                     playerTrophies[trophyKey] = count;
                     playerTrophies.total += count;
+
+                    if (['egyptian-league', 'egyptian-cup', 'egyptian-super', 'league-cup', 'club-world-cup', 'intercontinental'].includes(trophyKey)) {
+                        playerTrophies.egyptian += count;
+                    } else if (['african-champions', 'african-league', 'confederation', 'african-super', 'african-cup-winners', 'afro-asian'].includes(trophyKey)) {
+                        playerTrophies.african += count;
+                    } else if (['arab-champions', 'arab-cup-winners', 'arab-super'].includes(trophyKey)) {
+                        playerTrophies.arab += count;
+                    }
                 }
             });
 
@@ -17587,21 +17620,9 @@ function renderTrophyPlayersTable(playersData) {
         const columnMap = {
             'name': 0,
             'total': 1,
-            'african-champions': 2,
-            'african-league': 3,
-            'confederation': 4,
-            'african-super': 5,
-            'african-cup-winners': 6,
-            'afro-asian': 7,
-            'egyptian-league': 8,
-            'egyptian-cup': 9,
-            'egyptian-super': 10,
-            'league-cup': 11,
-            'club-world-cup': 12,
-            'intercontinental': 13,
-            'arab-champions': 14,
-            'arab-cup-winners': 15,
-            'arab-super': 16
+            'egyptian': 2,
+            'african': 3,
+            'arab': 4
         };
 
         const headerIndex = columnMap[trophyPlayersSortState.column];
@@ -17616,29 +17637,78 @@ function renderTrophyPlayersTable(playersData) {
         playersData = sortedData;
     }
 
+    // Add global toggle function if not present
+    if (!window.togglePlayerTrophyDetails) {
+        window.togglePlayerTrophyDetails = function (id) {
+            const row = document.getElementById('trophy-details-' + id);
+            if (row) {
+                row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+            }
+        };
+    }
+
     // Render rows
-    playersData.forEach(player => {
+    playersData.forEach((player, index) => {
         const row = document.createElement('tr');
+        const safeId = 'player-trophy-' + index;
+
         row.innerHTML = `
-            <td><strong>${player.name}</strong></td>
-            <td><strong>${player.total || '-'}</strong></td>
-            <td>${player['african-champions'] || '-'}</td>
-            <td>${player['african-league'] || '-'}</td>
-            <td>${player['confederation'] || '-'}</td>
-            <td>${player['african-super'] || '-'}</td>
-            <td>${player['african-cup-winners'] || '-'}</td>
-            <td>${player['afro-asian'] || '-'}</td>
-            <td>${player['egyptian-league'] || '-'}</td>
-            <td>${player['egyptian-cup'] || '-'}</td>
-            <td>${player['egyptian-super'] || '-'}</td>
-            <td>${player['league-cup'] || '-'}</td>
-            <td>${player['club-world-cup'] || '-'}</td>
-            <td>${player['intercontinental'] || '-'}</td>
-            <td>${player['arab-champions'] || '-'}</td>
-            <td>${player['arab-cup-winners'] || '-'}</td>
-            <td>${player['arab-super'] || '-'}</td>
+            <td><span class="td-player-name" onclick="togglePlayerTrophyDetails('${safeId}')" style="color: #d32f2f; font-weight: bold; cursor: pointer; display: block;">${player.name}</span></td>
+            <td><strong>${player.total || 0}</strong></td>
+            <td>${player.egyptian || 0}</td>
+            <td>${player.african || 0}</td>
+            <td>${player.arab || 0}</td>
         `;
         tbody.appendChild(row);
+
+        const detailRow = document.createElement('tr');
+        detailRow.id = `trophy-details-${safeId}`;
+        detailRow.className = 'trophy-details-row';
+        detailRow.style.display = 'none';
+
+        let egyHtml = '';
+        if (player['egyptian-league']) egyHtml += `<li><span class="t-name">Egyptian Premier League</span> <span class="t-count">${player['egyptian-league']}</span></li>`;
+        if (player['egyptian-cup']) egyHtml += `<li><span class="t-name">Egypt Cup</span> <span class="t-count">${player['egyptian-cup']}</span></li>`;
+        if (player['egyptian-super']) egyHtml += `<li><span class="t-name">Egyptian Super Cup</span> <span class="t-count">${player['egyptian-super']}</span></li>`;
+        if (player['league-cup']) egyHtml += `<li><span class="t-name">EFL Cup</span> <span class="t-count">${player['league-cup']}</span></li>`;
+        if (player['club-world-cup']) egyHtml += `<li><span class="t-name">FIFA Club World Cup</span> <span class="t-count">${player['club-world-cup']}</span></li>`;
+        if (player['intercontinental']) egyHtml += `<li><span class="t-name">Intercontinental Cup</span> <span class="t-count">${player['intercontinental']}</span></li>`;
+
+        let afrHtml = '';
+        if (player['african-champions']) afrHtml += `<li><span class="t-name">CAF Champions League</span> <span class="t-count">${player['african-champions']}</span></li>`;
+        if (player['african-league']) afrHtml += `<li><span class="t-name">African Football League</span> <span class="t-count">${player['african-league']}</span></li>`;
+        if (player['confederation']) afrHtml += `<li><span class="t-name">CAF Confederation Cup</span> <span class="t-count">${player['confederation']}</span></li>`;
+        if (player['african-super']) afrHtml += `<li><span class="t-name">CAF Super Cup</span> <span class="t-count">${player['african-super']}</span></li>`;
+        if (player['african-cup-winners']) afrHtml += `<li><span class="t-name">CAF Cup Winners' Cup</span> <span class="t-count">${player['african-cup-winners']}</span></li>`;
+        if (player['afro-asian']) afrHtml += `<li><span class="t-name">Afro-Asian Club Championship</span> <span class="t-count">${player['afro-asian']}</span></li>`;
+
+        let arabHtml = '';
+        if (player['arab-champions']) arabHtml += `<li><span class="t-name">Arab Club Champions Cup</span> <span class="t-count">${player['arab-champions']}</span></li>`;
+        if (player['arab-cup-winners']) arabHtml += `<li><span class="t-name">Arab Cup Winners' Cup</span> <span class="t-count">${player['arab-cup-winners']}</span></li>`;
+        if (player['arab-super']) arabHtml += `<li><span class="t-name">Arab Super Cup</span> <span class="t-count">${player['arab-super']}</span></li>`;
+
+        detailRow.innerHTML = `
+            <td colspan="5" style="padding: 0; border: none;">
+                <div class="trophy-details-container" style="display: flex; gap: 20px; padding: 20px; background: #f8f9fa; border-bottom: 2px solid #eee; flex-wrap: wrap; justify-content: center;">
+                    ${player.egyptian ? `
+                    <div class="trophy-category-card" style="flex: 1; min-width: 200px; max-width: 300px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 15px;">
+                        <h4 style="color: #d32f2f; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-top: 0; margin-bottom: 15px; font-size: 1.1rem; text-align: center; display: flex; justify-content: space-between; align-items: center;">Egyptian <span style="background: #d32f2f; color: white; border-radius: 50%; padding: 2px 10px; font-size: 0.9rem;">${player.egyptian}</span></h4>
+                        <ul style="list-style: none; padding: 0; margin: 0;">${egyHtml}</ul>
+                    </div>` : ''}
+                    ${player.african ? `
+                    <div class="trophy-category-card" style="flex: 1; min-width: 200px; max-width: 300px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 15px;">
+                        <h4 style="color: #28a745; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-top: 0; margin-bottom: 15px; font-size: 1.1rem; text-align: center; display: flex; justify-content: space-between; align-items: center;">African <span style="background: #28a745; color: white; border-radius: 50%; padding: 2px 10px; font-size: 0.9rem;">${player.african}</span></h4>
+                        <ul style="list-style: none; padding: 0; margin: 0;">${afrHtml}</ul>
+                    </div>` : ''}
+                    ${player.arab ? `
+                    <div class="trophy-category-card" style="flex: 1; min-width: 200px; max-width: 300px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 15px;">
+                        <h4 style="color: #17a2b8; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-top: 0; margin-bottom: 15px; font-size: 1.1rem; text-align: center; display: flex; justify-content: space-between; align-items: center;">Arab <span style="background: #17a2b8; color: white; border-radius: 50%; padding: 2px 10px; font-size: 0.9rem;">${player.arab}</span></h4>
+                        <ul style="list-style: none; padding: 0; margin: 0;">${arabHtml}</ul>
+                    </div>` : ''}
+                </div>
+            </td>
+        `;
+        tbody.appendChild(detailRow);
     });
 
     console.log(`Trophy Players table rendered with ${playersData.length} players`);
@@ -17699,21 +17769,9 @@ function sortTrophyPlayersTable(column) {
     const columnMap = {
         'name': 0,
         'total': 1,
-        'african-champions': 2,
-        'african-league': 3,
-        'confederation': 4,
-        'african-super': 5,
-        'african-cup-winners': 6,
-        'afro-asian': 7,
-        'egyptian-league': 8,
-        'egyptian-cup': 9,
-        'egyptian-super': 10,
-        'league-cup': 11,
-        'club-world-cup': 12,
-        'intercontinental': 13,
-        'arab-champions': 14,
-        'arab-cup-winners': 15,
-        'arab-super': 16
+        'egyptian': 2,
+        'african': 3,
+        'arab': 4
     };
 
     const headerIndex = columnMap[column];
@@ -17756,7 +17814,7 @@ function loadPlayerAssistDetails() {
             return;
         }
 
-        console.log(`🎯 Loading Assist Details for player: ${selectedPlayer}, team filter: ${teamFilter}`);
+        console.log(`🎯 Loading Assist Details for player: ${selectedPlayer}, team filter: ${teamFilter} `);
         if (hasActiveFilters) {
             console.log('🔍 Applying main filters for Assist Details:', appliedFilters);
             if (!shouldApplyMatchFilters) {

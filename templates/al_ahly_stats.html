@@ -470,54 +470,91 @@
             }
         }
 
-        /* Statistics Tabs */
+        /* Modern Statistics Tabs and Cards */
         .stats-tabs-container {
-            margin-bottom: 2rem;
-            width: 100%;
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 10;
         }
 
         .stats-tabs {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0.75rem;
-            /* Reduced gap slightly */
-            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            padding: 0.5rem;
         }
 
         .stats-tab {
-            display: flex;
+            position: relative;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 0.75rem 0.25rem;
-            /* Reduced padding significantly */
-            background: #f8f9fa;
-            color: #495057;
-            border: none;
-            border-radius: 8px;
+            gap: 0.6rem;
+            padding: 0.85rem 1rem;
+            background: white;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
             font-weight: 600;
+            font-size: 0.95rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 170px;
+            /* Fixed uniform width */
+            flex-shrink: 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            letter-spacing: 0.01em;
             text-align: center;
-            width: 100%;
-            height: 100%;
-            font-size: 0.9rem;
-            /* Adjusted font size */
         }
 
+        /* Hover State */
         .stats-tab:hover {
-            background: #e9ecef;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-color: #cbd5e1;
+            color: #334155;
+            background: #f8fafc;
+        }
+
+        /* Active State */
+        .stats-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.5), 0 8px 10px -6px rgba(102, 126, 234, 0.3);
             transform: translateY(-2px);
         }
 
-        .stats-tab.active {
-            background: #667eea;
-            color: white;
-            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+        /* Active State Hover */
+        .stats-tab.active:hover {
+            box-shadow: 0 20px 25px -5px rgba(102, 126, 234, 0.5), 0 10px 10px -5px rgba(102, 126, 234, 0.3);
+            transform: translateY(-4px);
         }
 
         .stats-tab .icon {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
+            opacity: 0.9;
+        }
+
+        .stats-tab.active .icon {
+            opacity: 1;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .stats-tabs {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+
+            .stats-tab {
+                min-width: auto;
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
         }
 
         /* Sub-tabs */
@@ -1683,6 +1720,134 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Modern Sync Popup */
+        .modern-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modern-popup-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modern-popup-content {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3rem;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modern-popup-overlay.active .modern-popup-content {
+            transform: scale(1);
+        }
+
+        .modern-loader {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .circular-loader {
+            animation: rotate 2s linear infinite;
+            height: 100%;
+            transform-origin: center center;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            margin: 0;
+        }
+
+        .loader-path {
+            stroke-dasharray: 1, 200;
+            stroke-dashoffset: 0;
+            animation: dash 1.5s ease-in-out infinite;
+            stroke: #667eea;
+            stroke-linecap: round;
+        }
+
+        @keyframes rotate {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes dash {
+            0% {
+                stroke-dasharray: 1, 200;
+                stroke-dashoffset: 0;
+            }
+
+            50% {
+                stroke-dasharray: 89, 200;
+                stroke-dashoffset: -35px;
+            }
+
+            100% {
+                stroke-dasharray: 89, 200;
+                stroke-dashoffset: -124px;
+            }
+        }
+
+        .modern-popup-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .modern-popup-message {
+            color: #718096;
+            font-size: 1rem;
+        }
+
+        /* Success State */
+        .modern-popup-content.success .circular-loader {
+            display: none;
+        }
+
+        .success-icon {
+            font-size: 3rem;
+            color: #48bb78;
+            display: none;
+            animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modern-popup-content.success .success-icon {
+            display: block;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
@@ -1910,17 +2075,6 @@
                     </svg>
                     Clear All
                 </button>
-
-                <button class="sync-btn" id="sync-data-btn" onclick="manualSyncNow()"
-                    title="Sync data from Google Sheets now">
-                    <svg class="icon" id="sync-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path
-                            d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                    </svg>
-                    <span id="sync-btn-text">Sync Data</span>
-                </button>
-
             </div>
         </div>
 
@@ -3748,6 +3902,38 @@
                         </div>
 
                         <div style="overflow-x: auto;">
+                            <style>
+                                .td-player-name:hover {
+                                    text-decoration: underline !important;
+                                    color: #a02323 !important;
+                                }
+
+                                .trophy-details-container .trophy-category-card li {
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                    padding: 8px 0;
+                                    border-bottom: 1px dashed #eee;
+                                    font-size: 0.95rem;
+                                }
+
+                                .trophy-details-container .trophy-category-card li:last-child {
+                                    border-bottom: none;
+                                }
+
+                                .trophy-details-container .trophy-category-card .t-name {
+                                    font-weight: 600;
+                                    color: #495057;
+                                }
+
+                                .trophy-details-container .trophy-category-card .t-count {
+                                    font-weight: bold;
+                                    color: #212529;
+                                    background: #f1f3f5;
+                                    padding: 2px 8px;
+                                    border-radius: 4px;
+                                }
+                            </style>
                             <table class="stats-table" id="trophy-players-table">
                                 <thead>
                                     <tr>
@@ -3757,50 +3943,14 @@
                                         <th class="sortable" onclick="sortTrophyPlayersTable('total')">
                                             Total <span class="sort-icon">⇅</span>
                                         </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('african-champions')">
-                                            CAF CL <span class="sort-icon">⇅</span>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('egyptian')">
+                                            Local Trophies <span class="sort-icon">⇅</span>
                                         </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('african-league')">
-                                            AFL <span class="sort-icon">⇅</span>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('african')">
+                                            African Trophies <span class="sort-icon">⇅</span>
                                         </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('confederation')">
-                                            CAF CC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('african-super')">
-                                            CAF SC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('african-cup-winners')">
-                                            CAF WC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('afro-asian')">
-                                            AACC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('egyptian-league')">
-                                            EPL <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('egyptian-cup')">
-                                            EC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('egyptian-super')">
-                                            ESC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('league-cup')">
-                                            ELC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('club-world-cup')">
-                                            CWC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('intercontinental')">
-                                            IC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('arab-champions')">
-                                            AR-ACL <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('arab-cup-winners')">
-                                            AR-WC <span class="sort-icon">⇅</span>
-                                        </th>
-                                        <th class="sortable" onclick="sortTrophyPlayersTable('arab-super')">
-                                            AR-ASC <span class="sort-icon">⇅</span>
+                                        <th class="sortable" onclick="sortTrophyPlayersTable('arab')">
+                                            Arab Trophies <span class="sort-icon">⇅</span>
                                         </th>
                                     </tr>
                                 </thead>
@@ -5490,6 +5640,22 @@
 
                 </div>
             </div>
+        </div>
+    </div>
+
+
+    <!-- Modern Sync Popup Overlay -->
+    <div id="modern-sync-popup" class="modern-popup-overlay">
+        <div class="modern-popup-content">
+            <div class="modern-loader">
+                <svg class="circular-loader" viewBox="25 25 50 50">
+                    <circle class="loader-path" cx="50" cy="50" r="20" fill="none" stroke-width="4"
+                        stroke-miterlimit="10" />
+                </svg>
+                <div class="success-icon">✓</div>
+            </div>
+            <h3 class="modern-popup-title" id="modern-popup-title">Syncing Data...</h3>
+            <p class="modern-popup-message" id="modern-popup-message">Fetching latest statistics from Google Sheets</p>
         </div>
     </div>
 

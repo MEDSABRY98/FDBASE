@@ -49,43 +49,19 @@ let currentSortedMatches = [];
 // ============================================================================
 
 async function loadEgyptTeamsData(forceRefresh = false, skipLoadingState = false) {
-    // Disable Sync Button during initial load only if not force refresh (which handles its own state) or if explicitly requested
-    const refreshBtn = document.querySelector('.finals-refresh-btn');
-    const refreshIcon = refreshBtn ? refreshBtn.querySelector('svg') : null;
-    const originalText = refreshBtn ? refreshBtn.innerHTML : '';
+    // Disable Refresh Button during loading
+    const refreshBtn = document.querySelector('.egypt-refresh-btn');
 
     if (!skipLoadingState && refreshBtn) {
         refreshBtn.disabled = true;
-        refreshBtn.style.opacity = '0.6';
-        refreshBtn.style.cursor = 'not-allowed';
 
-        // Add syncing state
-        if (refreshIcon) {
-            refreshIcon.classList.add('spinning');
-        }
-        // Change text to 'Syncing...' while keeping the icon if possible, but innerHTML replace might kill it.
-        // Actually, the button usually contains just SVG and text.
-        // Let's modify the text node if possible, or just rebuild innerHTML carefully.
-        // The simplest way that matches previous implementation:
-        // refreshBtn.innerHTML = `...svg... Syncing...`;
-        // But we don't have the svg string handy easily unless we grab outerHTML of icon.
-        // Let's assume the previous implementation was:
-        /*
-            refreshBtn.innerHTML = `
-                <svg class="filter-btn-icon spinning" ...>...</svg>
-                Syncing...
-            `;
-        */
-        // Let's just use the logic from al_ahly_vs_zamalek.js reference:
-        // Replace "Sync Data" with "Syncing..." in innerHTML
-        refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Sync Data', 'Syncing...');
-        // re-query icon because innerHTML replacement might have recreated it? No, replace on string preserves structure if simply replacing text.
-        // Actually modifying innerHTML usually destroys references to child elements.
-        // So we should re-query icon after innerHTML update or update class before?
-        // If we update innerHTML, the old icon reference is dead.
-        // Better:
-        const currentIcon = refreshBtn.querySelector('svg');
-        if (currentIcon) currentIcon.classList.add('spinning');
+        // Add syncing state with spinner
+        refreshBtn.innerHTML = `
+            <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+            Refreshing...
+        `;
     }
 
     try {
@@ -152,18 +128,15 @@ async function loadEgyptTeamsData(forceRefresh = false, skipLoadingState = false
         }
         showError('No Data Available');
     } finally {
-        // Re-enable Sync Button after load
+        // Re-enable Refresh Button after load
         if (refreshBtn) {
             refreshBtn.disabled = false;
-            refreshBtn.style.opacity = '1';
-            refreshBtn.style.cursor = 'pointer';
-
-            // Remove spinning class
-            const icon = refreshBtn.querySelector('svg');
-            if (icon) icon.classList.remove('spinning');
-
-            // Restore text
-            refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Syncing...', 'Sync Data');
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh Data
+            `;
         }
     }
 }

@@ -33,7 +33,7 @@ async function loadEgyptianClubsData(forceRefresh = false, skipLoadingState = fa
     if (syncBtn && syncIcon && syncText) {
         syncBtn.disabled = true;
         syncIcon.classList.add('spinning');
-        syncText.textContent = 'Syncing...';
+        syncText.textContent = 'Refreshing...';
     }
 
     try {
@@ -119,7 +119,7 @@ async function loadEgyptianClubsData(forceRefresh = false, skipLoadingState = fa
         if (!forceRefresh && syncBtn && syncIcon && syncText) {
             syncBtn.disabled = false;
             syncIcon.classList.remove('spinning');
-            syncText.textContent = 'Sync Data';
+            syncText.textContent = 'Refresh Data';
         }
     }
 }
@@ -750,20 +750,20 @@ async function syncData() {
 
     syncBtn.disabled = true;
     syncIcon.classList.add('spinning');
-    syncText.textContent = 'Syncing...';
+    syncText.textContent = 'Refreshing...';
 
     try {
         await loadEgyptianClubsData(true, true); // true = force refresh, true = skip loading state
-        syncText.textContent = 'Synced!';
+        syncText.textContent = 'Refreshed!';
         setTimeout(() => {
-            syncText.textContent = 'Sync Data';
+            syncText.textContent = 'Refresh Data';
             syncIcon.classList.remove('spinning');
             syncBtn.disabled = false;
         }, 2000);
     } catch (error) {
-        syncText.textContent = 'Sync Failed';
+        syncText.textContent = 'Error!';
         setTimeout(() => {
-            syncText.textContent = 'Sync Data';
+            syncText.textContent = 'Refresh Data';
             syncIcon.classList.remove('spinning');
             syncBtn.disabled = false;
         }, 2000);

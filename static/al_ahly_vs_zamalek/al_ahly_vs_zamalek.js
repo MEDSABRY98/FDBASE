@@ -56,7 +56,7 @@ async function initializeZamalekStats() {
         contentTabs.style.display = 'none';
     }
 
-    // Disable Sync Button during initial load and show loading state
+    // Disable Refresh Button during initial load and show loading state
     const refreshBtn = document.querySelector('.zamalek-refresh-btn');
     if (refreshBtn) {
         refreshBtn.disabled = true;
@@ -67,9 +67,13 @@ async function initializeZamalekStats() {
         if (refreshIcon) {
             refreshIcon.classList.add('spinning');
         }
-        // Update text to Syncing...
-        const currentHTML = refreshBtn.innerHTML;
-        refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
+        // Update text to Refreshing...
+        refreshBtn.innerHTML = `
+            <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+            Refreshing...
+        `;
     }
 
     try {
@@ -137,19 +141,18 @@ async function initializeZamalekStats() {
             mainTabsNav.style.display = 'flex';
         }
     } finally {
-        // Re-enable Sync Button after load
+        // Re-enable Refresh Button after load
         if (refreshBtn) {
             refreshBtn.disabled = false;
             refreshBtn.style.opacity = '1';
             refreshBtn.style.cursor = 'pointer';
 
-            const refreshIcon = refreshBtn.querySelector('svg');
-            if (refreshIcon) {
-                refreshIcon.classList.remove('spinning');
-            }
-            // Restore text to Sync Data
-            const currentHTML = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Sync Data');
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh Data
+            `;
         }
     }
 }
@@ -518,71 +521,47 @@ function clearZamalekFilters() {
     applyZamalekFilters();
 }
 
-// Refresh data
+/**
+ * Manual Refresh for Ahly VS Zamalek data
+ */
 async function refreshZamalekStats() {
-    console.log('🔄 Force refreshing Ahly VS Zamalek data...');
-
+    console.log('🔄 Refreshing Ahly VS Zamalek data...');
     const refreshBtn = document.querySelector('.zamalek-refresh-btn');
-    const refreshIcon = refreshBtn?.querySelector('svg');
 
     try {
-        // Show loading indicator on button
         if (refreshBtn) {
             refreshBtn.disabled = true;
-            if (refreshIcon) {
-                refreshIcon.classList.add('spinning');
-            }
-            const currentHTML = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                </svg>
+                Refreshing...
+            `;
         }
 
-        // Reload data with force refresh (but don't hide content)
+        // Reload data with force refresh
         await loadAllZamalekData(true);
 
         // Repopulate filters
         populateFilters();
 
         // Update displays
-        updateOverviewStats();
-        populateMatchesTable();
-        populateChampionshipsTable();
-        populateSeasonsTable();
-        populateManagersTable();
-        populateManagersCountriesTable();
-        populateRefereesAhlyTable();
-        populateRefereesZamalekTable();
-        populateRefereesAhlyCountriesTable();
-        populateRefereesZamalekCountriesTable();
-        populatePlayersTable();
-        populateH2HTable();
+        applyZamalekFilters(); // This handles all table updates
         populateH2HPlayersList();
+        populateByPlayerList();
 
-        // Reset button on success
-        if (refreshBtn) {
-            refreshBtn.disabled = false;
-            if (refreshIcon) {
-                refreshIcon.classList.remove('spinning');
-            }
-            const currentHTML = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Synced!');
-            setTimeout(() => {
-                refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Synced!', 'Sync Data');
-            }, 2000);
-        }
-
-        console.log('✅ Data refreshed successfully');
-
+        console.log('✅ Data refreshed');
     } catch (error) {
-        console.error('❌ Error refreshing data:', error);
-
-        // Reset button on error
+        console.error('❌ Refresh failed:', error);
+    } finally {
         if (refreshBtn) {
             refreshBtn.disabled = false;
-            if (refreshIcon) {
-                refreshIcon.classList.remove('spinning');
-            }
-            const currentHTML = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Sync Data');
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh Data
+            `;
         }
     }
 }
@@ -594,18 +573,18 @@ function showLoadingState(show) {
         if (show) {
             refreshBtn.disabled = true;
             refreshBtn.innerHTML = `
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; animation: spin 1s linear infinite;">
+                <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
                 </svg>
-                Syncing...
+                Refreshing...
             `;
         } else {
             refreshBtn.disabled = false;
             refreshBtn.innerHTML = `
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
-                    <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                 </svg>
-                Sync Data
+                Refresh Data
             `;
         }
     }

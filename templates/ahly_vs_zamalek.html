@@ -119,16 +119,23 @@
             color: white;
             border: none;
             border-radius: 10px;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s ease;
+            transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
 
         .zamalek-filter-btn:hover {
             background: #5568d3;
+            transform: translateY(-2px);
         }
 
         .finals-filter-btn {
@@ -136,12 +143,13 @@
             color: white;
             border: none;
             border-radius: 10px;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
             display: inline-flex;
             align-items: center;
@@ -161,12 +169,13 @@
             color: white;
             border: none;
             border-radius: 10px;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
             display: inline-flex;
             align-items: center;
@@ -182,28 +191,37 @@
         }
 
         .zamalek-refresh-btn {
-            background: #667eea;
+            background: #00BFFF;
             color: white;
             border: none;
             border-radius: 10px;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 191, 255, 0.3);
         }
 
         .zamalek-refresh-btn:hover {
-            background: #5568d3;
+            background: #009ACD;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 191, 255, 0.4);
+        }
+
+        .zamalek-refresh-btn:disabled {
+            background: #00BFFF;
+            opacity: 0.8;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .filter-btn-icon {
@@ -212,7 +230,7 @@
         }
 
         /* Spinning animation for refresh button */
-        .zamalek-refresh-btn svg.spinning {
+        .spinning {
             animation: spin 1s linear infinite;
         }
 
@@ -261,10 +279,6 @@
             margin: 0;
         }
 
-        /* Content Tabs */
-        .content-tabs {
-            /* Content will be shown here after loading */
-        }
 
         /* Searchable Select Styles */
         .searchable-select-container {
@@ -642,50 +656,84 @@
             text-align: center;
         }
 
-        /* Main Tabs Navigation */
+        /* Main Tabs Navigation - Modern Style */
         .main-tabs-nav {
             display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            padding: 0.5rem;
+            margin-bottom: 2.5rem;
+            border-bottom: none;
             width: 100%;
-            margin-left: auto;
-            margin-right: auto;
+            position: relative;
+            z-index: 10;
         }
 
         .main-tabs-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 0.5rem;
-            width: 100%;
+            display: contents;
         }
 
         .main-tab-btn {
-            flex: 1;
-            padding: 1rem 1.5rem;
-            background: #f8f9fa;
-            border: none;
-            border-radius: 10px 10px 0 0;
-            cursor: pointer;
-            font-weight: 600;
-            color: #6c757d;
-            transition: all 0.3s ease;
             position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            padding: 0.85rem 1rem;
+            background: white;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 170px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            letter-spacing: 0.01em;
             text-align: center;
             min-width: 0;
         }
 
+        /* Hover State */
+        .main-tab-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-color: #cbd5e1;
+            color: #334155;
+            background: #f8fafc;
+        }
+
+        /* Active State */
         .main-tab-btn.active {
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            border-color: transparent;
+            box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.5), 0 8px 10px -6px rgba(102, 126, 234, 0.3);
             transform: translateY(-2px);
         }
 
-        .main-tab-btn:hover:not(.active) {
-            background: #e9ecef;
-            color: #495057;
+        /* Active State Hover */
+        .main-tab-btn.active:hover {
+            box-shadow: 0 20px 25px -5px rgba(102, 126, 234, 0.5), 0 10px 10px -5px rgba(102, 126, 234, 0.3);
+            transform: translateY(-4px);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .main-tabs-nav {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+
+            .main-tab-btn {
+                width: 100%;
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
         }
 
         /* Sub Tabs Navigation */
@@ -1105,37 +1153,22 @@
                         </svg>
                         Clear All
                     </button>
-                    <button class="zamalek-refresh-btn" onclick="refreshZamalekStats()">
-                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path
-                                d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                        </svg>
-                        Sync Data
-                    </button>
                 </div>
             </div>
 
             <!-- Main Tabs Navigation -->
             <div class="main-tabs-nav" style="display: none;">
-                <!-- First Row (6 tabs) -->
-                <div class="main-tabs-row">
-                    <button class="main-tab-btn active" onclick="switchMainTab('search-match')">Search Match</button>
-                    <button class="main-tab-btn" onclick="switchMainTab('overview')">Overview</button>
-                    <button class="main-tab-btn" onclick="switchMainTab('how-win')">HOW WIN</button>
-                    <button class="main-tab-btn" onclick="switchMainTab('matches')">Matches</button>
-                    <button class="main-tab-btn" onclick="switchMainTab('championships')">Championships</button>
-                    <button class="main-tab-btn" onclick="switchMainTab('seasons')">Seasons</button>
-                </div>
-
-                <!-- Second Row (5 tabs) -->
-                <div class="main-tabs-row">
-                    <button class="main-tab-btn" onclick="switchMainTab('managers')">Coaches</button>
-                    <button class="main-tab-btn" onclick="switchMainTab('referees')">Referees</button>
-                    <button class="main-tab-btn" onclick="switchMainTab('players')">All Players</button>
-                    <button class="main-tab-btn" onclick="switchMainTab('h2h-player')">H2H Player</button>
-                    <button class="main-tab-btn" onclick="switchMainTab('by-player')">BY Player</button>
-                </div>
+                <button class="main-tab-btn active" onclick="switchMainTab('search-match')">Search Match</button>
+                <button class="main-tab-btn" onclick="switchMainTab('overview')">Overview</button>
+                <button class="main-tab-btn" onclick="switchMainTab('matches')">Matches</button>
+                <button class="main-tab-btn" onclick="switchMainTab('how-win')">HOW WIN</button>
+                <button class="main-tab-btn" onclick="switchMainTab('championships')">Championships</button>
+                <button class="main-tab-btn" onclick="switchMainTab('seasons')">Seasons</button>
+                <button class="main-tab-btn" onclick="switchMainTab('managers')">Coaches</button>
+                <button class="main-tab-btn" onclick="switchMainTab('referees')">Referees</button>
+                <button class="main-tab-btn" onclick="switchMainTab('players')">All Players</button>
+                <button class="main-tab-btn" onclick="switchMainTab('h2h-player')">H2H Player</button>
+                <button class="main-tab-btn" onclick="switchMainTab('by-player')">BY Player</button>
             </div>
 
             <!-- Loading Container -->

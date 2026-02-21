@@ -96,7 +96,7 @@ async function loadWWEgyptTeamsData(forceRefresh = false) {
 
         if (forceRefresh) {
             setRefreshButtonLoading(false, true);
-            showSuccess('✅ Data synced successfully!');
+            showSuccess('✅ Data refreshed successfully!');
         } else {
             hideLoading();
         }
@@ -108,7 +108,7 @@ async function loadWWEgyptTeamsData(forceRefresh = false) {
 
         if (forceRefresh) {
             setRefreshButtonLoading(false, false);
-            showError('Failed to sync data. Please try again.');
+            showError('Failed to refresh data. Please try again.');
         } else {
             hideLoading();
             showError('No Data Available');
@@ -742,64 +742,32 @@ if (!document.getElementById('ww-egypt-teams-animations')) {
 }
 
 function setRefreshButtonLoading(isLoading, success = true, showFeedback = true) {
-    const refreshBtn = document.querySelector('.finals-refresh-btn');
+    const refreshBtn = document.querySelector('.ww-refresh-btn');
     if (!refreshBtn) return;
 
     if (isLoading) {
         refreshBtn.disabled = true;
-        refreshBtn.style.opacity = '0.7';
-        refreshBtn.style.cursor = 'not-allowed';
 
-        // Change icon to spinner with spinning class
-        const icon = refreshBtn.querySelector('svg');
-        if (icon) {
-            icon.classList.add('spinning');
-        }
-
-        // Change text
-        const textSpan = refreshBtn.childNodes[refreshBtn.childNodes.length - 1];
-        if (textSpan && textSpan.nodeType === Node.TEXT_NODE) {
-            refreshBtn.setAttribute('data-original-text', textSpan.textContent.trim());
-            textSpan.textContent = ' Syncing...';
-        } else {
-            // If text is not a direct child, find it differently
-            const btnText = refreshBtn.textContent.trim();
-            refreshBtn.setAttribute('data-original-text', btnText);
-            refreshBtn.innerHTML = `
-                <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                </svg>
-                Syncing...
-            `;
-        }
+        // Change text to Refreshing... with spinner
+        refreshBtn.innerHTML = `
+            <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+            Refreshing...
+        `;
     } else {
         refreshBtn.disabled = false;
-        refreshBtn.style.opacity = '1';
-        refreshBtn.style.cursor = 'pointer';
-
-        // Remove spinning class
-        const icon = refreshBtn.querySelector('svg');
-        if (icon) {
-            icon.classList.remove('spinning');
-        }
 
         // If no feedback needed, just reset immediately
         if (!showFeedback) {
-            const icon = refreshBtn.querySelector('svg');
-            if (icon) icon.classList.remove('spinning');
-            const originalText = refreshBtn.getAttribute('data-original-text') || 'Sync Data';
-
             refreshBtn.innerHTML = `
                 <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                 </svg>
-                ${originalText}
+                Refresh Data
             `;
             return;
         }
-
-        // Get original text
-        const originalText = refreshBtn.getAttribute('data-original-text') || 'Sync Data';
 
         // Show message based on success status
         if (success) {
@@ -807,7 +775,7 @@ function setRefreshButtonLoading(isLoading, success = true, showFeedback = true)
                 <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M20 6L9 17l-5-5"/>
                 </svg>
-                Synced!
+                Refreshed!
             `;
         } else {
             refreshBtn.innerHTML = `
@@ -824,9 +792,9 @@ function setRefreshButtonLoading(isLoading, success = true, showFeedback = true)
             if (refreshBtn) {
                 refreshBtn.innerHTML = `
                     <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                     </svg>
-                    ${originalText}
+                    Refresh Data
                 `;
             }
         }, 2000);

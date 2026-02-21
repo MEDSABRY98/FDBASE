@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Al Ahly PKS Statistics - Football Data Entry System</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
         .pks-stats-container {
             min-height: 100vh;
             background: #ffffff;
         }
-        
-        
+
+
         .main-tabs-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -45,14 +46,14 @@
             width: 20px;
             height: 20px;
         }
-        
-        
+
+
         .pks-stats-content {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             padding: 2rem;
             backdrop-filter: blur(10px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
 
         /* Main Tabs Navigation */
@@ -153,7 +154,7 @@
         .pks-table-container {
             background: white;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             margin-bottom: 2rem;
         }
@@ -280,7 +281,7 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        
+
         /* Table footer styling */
         .pks-table tfoot {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -301,6 +302,7 @@
         }
 
         @media (max-width: 768px) {
+
             .pks-table thead th,
             .pks-table tbody td {
                 padding: 0.75rem 1rem;
@@ -318,6 +320,7 @@
         }
 
         @media (max-width: 480px) {
+
             .pks-table thead th,
             .pks-table tbody td {
                 padding: 0.5rem 0.75rem;
@@ -328,35 +331,35 @@
                 font-size: 0.75rem;
             }
         }
-        
+
         .pks-overview {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 2rem;
             margin-bottom: 3rem;
         }
-        
+
         .pks-stat-card {
             background: white;
             border-radius: 15px;
             padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             text-align: center;
             transition: transform 0.3s ease;
             border-left: 5px solid #667eea;
         }
-        
+
         .pks-stat-card:hover {
             transform: translateY(-5px);
         }
-        
+
         .pks-stat-card h3 {
             margin: 0 0 1rem 0;
             color: #333;
             font-size: 1.2rem;
             font-weight: 600;
         }
-        
+
         .pks-stat-value {
             font-size: 3rem;
             font-weight: 700;
@@ -364,25 +367,25 @@
             margin: 0;
             line-height: 1;
         }
-        
+
         .pks-stat-label {
             color: #666;
             font-size: 1rem;
             margin: 0.5rem 0 0 0;
         }
-        
+
         .pks-stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 2rem;
             margin-bottom: 2rem;
         }
-        
-        
+
+
         .pks-stats-section {
             margin-bottom: 3rem;
         }
-        
+
         .pks-section-title {
             font-size: 2rem;
             font-weight: 700;
@@ -392,46 +395,46 @@
             border-bottom: 3px solid #667eea;
             padding-bottom: 0.5rem;
         }
-        
+
         .pks-table-container {
             background: white;
             border-radius: 15px;
             padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             overflow-x: auto;
         }
-        
+
         .pks-stats-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
         }
-        
+
         .pks-stats-table th,
         .pks-stats-table td {
             padding: 1rem;
             text-align: left;
             border-bottom: 1px solid #eee;
         }
-        
+
         .pks-stats-table th {
             background: #667eea;
             color: white;
             font-weight: 600;
         }
-        
+
         .pks-stats-table tr:hover {
             background: #f8f9ff;
         }
-        
+
         .filters-section {
             background: white;
             border-radius: 15px;
             padding: 2rem;
             margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
-        
+
         .filters-title {
             font-size: 1.5rem;
             font-weight: 700;
@@ -440,26 +443,26 @@
             padding-bottom: 0.75rem;
             border-bottom: 2px solid #667eea;
         }
-        
+
         .filter-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
             margin-bottom: 1rem;
         }
-        
+
         .filter-item {
             display: flex;
             flex-direction: column;
         }
-        
+
         .filter-item label {
             font-size: 0.9rem;
             font-weight: 600;
             color: #555;
             margin-bottom: 0.5rem;
         }
-        
+
         .pks-filter-control {
             background: white;
             border: 2px solid #e0e0e0;
@@ -469,12 +472,12 @@
             transition: border-color 0.3s ease;
             width: 100%;
         }
-        
+
         .pks-filter-control:focus {
             outline: none;
             border-color: #667eea;
         }
-        
+
         .filter-actions {
             display: flex;
             gap: 1rem;
@@ -482,7 +485,7 @@
             justify-content: center;
             flex-wrap: wrap;
         }
-        
+
         .pks-filter-btn {
             background: #667eea;
             color: white;
@@ -495,22 +498,23 @@
             white-space: nowrap;
             min-width: 180px;
         }
-        
+
         .pks-filter-btn:hover {
             background: #5a6fd8;
         }
-        
+
         .finals-filter-btn {
             background: #28a745;
             color: white;
             border: none;
             border-radius: 10px;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
             display: inline-flex;
             align-items: center;
@@ -524,18 +528,19 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
         }
-        
+
         .clear-filters-btn {
             background: #ff6b35;
             color: white;
             border: none;
             border-radius: 10px;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
             display: inline-flex;
             align-items: center;
@@ -551,28 +556,37 @@
         }
 
         .pks-refresh-btn {
-            background: #667eea;
+            background: #00BFFF;
             color: white;
             border: none;
             border-radius: 10px;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             white-space: nowrap;
+            width: 180px;
             min-width: 180px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 191, 255, 0.3);
         }
 
         .pks-refresh-btn:hover {
-            background: #5568d3;
+            background: #009ACD;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 191, 255, 0.4);
+        }
+
+        .pks-refresh-btn:disabled {
+            background: #00BFFF;
+            opacity: 0.8;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .filter-btn-icon {
@@ -586,8 +600,13 @@
         }
 
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         /* Loading Container */
@@ -610,8 +629,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .loading-container p {
@@ -620,17 +644,13 @@
             margin: 0;
         }
 
-        /* Content Tabs */
-        .content-tabs {
-            /* Content will be shown here after loading */
-        }
-        
+
         /* Searchable Select Styles */
         .searchable-select-container {
             position: relative;
             width: 100%;
         }
-        
+
         .searchable-select-container input[type="text"] {
             width: 100%;
             padding: 0.75rem 1rem;
@@ -640,12 +660,12 @@
             background: white;
             transition: border-color 0.3s ease;
         }
-        
+
         .searchable-select-container input[type="text"]:focus {
             outline: none;
             border-color: #667eea;
         }
-        
+
         .dropdown-options {
             position: absolute;
             top: 100%;
@@ -660,59 +680,59 @@
             overflow-y: auto;
             margin-top: 4px;
         }
-        
+
         .dropdown-options div {
             padding: 0.75rem 1rem;
             cursor: pointer;
             transition: background 0.2s ease;
             border-bottom: 1px solid #f0f0f0;
         }
-        
+
         .dropdown-options div:last-child {
             border-bottom: none;
         }
-        
+
         .dropdown-options div:hover {
             background: #f8f9ff;
             color: #667eea;
         }
-        
+
         .dropdown-options::-webkit-scrollbar {
             width: 8px;
         }
-        
+
         .dropdown-options::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 10px;
         }
-        
+
         .dropdown-options::-webkit-scrollbar-thumb {
             background: #667eea;
             border-radius: 10px;
         }
-        
+
         .dropdown-options::-webkit-scrollbar-thumb:hover {
             background: #5a6fd8;
         }
-        
-        
+
+
         @media (max-width: 768px) {
             .pks-stats-title h1 {
                 font-size: 2rem;
             }
-            
+
             .pks-stats-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .filter-row {
                 grid-template-columns: 1fr;
             }
-            
+
             .filter-actions {
                 flex-direction: column;
             }
-            
+
             .pks-filter-btn,
             .clear-filters-btn,
             .pks-refresh-btn {
@@ -778,7 +798,7 @@
             overflow-x: auto;
             background: white;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
         }
 
         .matches-table {
@@ -849,7 +869,7 @@
             background: white;
             border-radius: 15px;
             padding: 1.5rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
         }
 
         .matches-subtitle {
@@ -899,6 +919,7 @@
         }
     </style>
 </head>
+
 <body class="pks-stats-container">
     <!-- Flash Messages -->
     {# Flash messages disabled #}
@@ -910,7 +931,7 @@
         <div class="back-to-main">
             <a href="{{ url_for('index') }}" class="back-btn">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
                 Back to Main Dashboard
             </a>
@@ -922,7 +943,7 @@
             <!-- Filter Controls Section -->
             <div class="filters-section">
                 <h2 class="filters-title">Filters</h2>
-                
+
                 <!-- Row 1: 4 filters -->
                 <div class="filter-row">
                     <div class="filter-item">
@@ -1066,23 +1087,19 @@
                 <!-- Filter Action Buttons -->
                 <div class="filter-actions">
                     <button class="finals-filter-btn" onclick="applyPKSFilters()">
-                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                         Apply Filters
                     </button>
                     <button class="clear-filters-btn" onclick="clearPKSFilters()">
-                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                         Clear All
-                    </button>
-                    <button class="pks-refresh-btn" onclick="refreshPKSStats()">
-                        <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                        </svg>
-                        Sync Data
                     </button>
                 </div>
             </div>
@@ -1104,328 +1121,273 @@
 
             <!-- Content Tabs -->
             <div id="content-tabs" class="content-tabs" style="display: none;">
-            <!-- Tab Contents -->
-            
-            <!-- Overview Tab -->
-            <div id="overview-tab" class="tab-content active">
-                <!-- Sub Tabs for Overview -->
-                <div class="sub-tabs-nav">
-                    <button class="sub-tab-btn active" onclick="switchSubTab('overview-ahly')">Al Ahly</button>
-                    <button class="sub-tab-btn" onclick="switchSubTab('overview-opponents')">Opponents</button>
-                </div>
+                <!-- Tab Contents -->
 
-                <!-- Al Ahly Overview Sub Tab -->
-                <div id="overview-ahly" class="sub-tab-content active">
-                    <div class="pks-stats-section">
-                        <h2 class="pks-section-title">Al Ahly PKS Overview</h2>
-                        <div class="pks-overview">
-                            <div class="pks-stat-card">
-                                <h3>Total PKS Matches</h3>
-                                <p class="pks-stat-value" id="total-pks-matches">0</p>
-                                <p class="pks-stat-label">Penalty Shootouts</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>PKS Wins</h3>
-                                <p class="pks-stat-value" id="pks-wins">0</p>
-                                <p class="pks-stat-label">Shootouts Won</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Win Rate</h3>
-                                <p class="pks-stat-value" id="pks-win-rate">0%</p>
-                                <p class="pks-stat-label">Shootout Success</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>PKS Losses</h3>
-                                <p class="pks-stat-value" id="pks-losses">0</p>
-                                <p class="pks-stat-label">Shootouts Lost</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Total Penalties</h3>
-                                <p class="pks-stat-value" id="total-penalties">0</p>
-                                <p class="pks-stat-label">Penalties Taken</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Goals Scored</h3>
-                                <p class="pks-stat-value" id="penalty-goals">0</p>
-                                <p class="pks-stat-label">Penalties Converted</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Goals Missed</h3>
-                                <p class="pks-stat-value" id="penalty-misses">0</p>
-                                <p class="pks-stat-label">Penalties Missed</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Success Rate</h3>
-                                <p class="pks-stat-value" id="pks-success-rate">0%</p>
-                                <p class="pks-stat-label">Penalty Conversion</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Opponents Overview Sub Tab -->
-                <div id="overview-opponents" class="sub-tab-content">
-                    <div class="pks-stats-section">
-                        <h2 class="pks-section-title">Opponents PKS Overview</h2>
-                        <div class="pks-overview">
-                            <div class="pks-stat-card">
-                                <h3>Total PKS Matches</h3>
-                                <p class="pks-stat-value" id="opponent-total-pks-matches">0</p>
-                                <p class="pks-stat-label">Penalty Shootouts</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>PKS Wins</h3>
-                                <p class="pks-stat-value" id="opponent-pks-wins">0</p>
-                                <p class="pks-stat-label">Shootouts Won</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Win Rate</h3>
-                                <p class="pks-stat-value" id="opponent-pks-win-rate">0%</p>
-                                <p class="pks-stat-label">Shootout Success</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>PKS Losses</h3>
-                                <p class="pks-stat-value" id="opponent-pks-losses">0</p>
-                                <p class="pks-stat-label">Shootouts Lost</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Total Penalties</h3>
-                                <p class="pks-stat-value" id="opponent-total-penalties">0</p>
-                                <p class="pks-stat-label">Penalties Taken</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Goals Scored</h3>
-                                <p class="pks-stat-value" id="opponent-goals">0</p>
-                                <p class="pks-stat-label">Penalties Converted</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Goals Missed</h3>
-                                <p class="pks-stat-value" id="opponent-misses">0</p>
-                                <p class="pks-stat-label">Penalties Missed</p>
-                            </div>
-                            
-                            <div class="pks-stat-card">
-                                <h3>Success Rate</h3>
-                                <p class="pks-stat-value" id="opponent-success-rate">0%</p>
-                                <p class="pks-stat-label">Penalty Conversion</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Matches Tab -->
-            <div id="matches-tab" class="tab-content">
-                <div class="pks-stats-section">
-                    <h2 class="pks-section-title">Penalty Shootout Attempts</h2>
-
+                <!-- Overview Tab -->
+                <div id="overview-tab" class="tab-content active">
+                    <!-- Sub Tabs for Overview -->
                     <div class="sub-tabs-nav">
-                        <button class="sub-tab-btn active" onclick="switchSubTab('matches-ahly')">Al Ahly</button>
-                        <button class="sub-tab-btn" onclick="switchSubTab('matches-opponents')">Opponents</button>
+                        <button class="sub-tab-btn active" onclick="switchSubTab('overview-ahly')">Al Ahly</button>
+                        <button class="sub-tab-btn" onclick="switchSubTab('overview-opponents')">Opponents</button>
                     </div>
 
-                    <div id="matches-ahly" class="sub-tab-content active">
-                        <div class="matches-table-card">
-                            <h3 class="matches-subtitle">Al Ahly Penalties</h3>
-                            <div class="players-table-wrapper">
-                                <table class="matches-table" id="ahly-matches-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Season</th>
-                                            <th>Opponent Team</th>
-                                            <th>Al Ahly Player</th>
-                                            <th>Status</th>
-                                            <th>How Miss (Ahly)</th>
-                                            <th>Opponent GK</th>
-                                            <th>Result</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="ahly-matches-tbody">
-                                        <!-- Data will be populated by JavaScript -->
-                                    </tbody>
-                                </table>
+                    <!-- Al Ahly Overview Sub Tab -->
+                    <div id="overview-ahly" class="sub-tab-content active">
+                        <div class="pks-stats-section">
+                            <h2 class="pks-section-title">Al Ahly PKS Overview</h2>
+                            <div class="pks-overview">
+                                <div class="pks-stat-card">
+                                    <h3>Total PKS Matches</h3>
+                                    <p class="pks-stat-value" id="total-pks-matches">0</p>
+                                    <p class="pks-stat-label">Penalty Shootouts</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>PKS Wins</h3>
+                                    <p class="pks-stat-value" id="pks-wins">0</p>
+                                    <p class="pks-stat-label">Shootouts Won</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Win Rate</h3>
+                                    <p class="pks-stat-value" id="pks-win-rate">0%</p>
+                                    <p class="pks-stat-label">Shootout Success</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>PKS Losses</h3>
+                                    <p class="pks-stat-value" id="pks-losses">0</p>
+                                    <p class="pks-stat-label">Shootouts Lost</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Total Penalties</h3>
+                                    <p class="pks-stat-value" id="total-penalties">0</p>
+                                    <p class="pks-stat-label">Penalties Taken</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Goals Scored</h3>
+                                    <p class="pks-stat-value" id="penalty-goals">0</p>
+                                    <p class="pks-stat-label">Penalties Converted</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Goals Missed</h3>
+                                    <p class="pks-stat-value" id="penalty-misses">0</p>
+                                    <p class="pks-stat-label">Penalties Missed</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Success Rate</h3>
+                                    <p class="pks-stat-value" id="pks-success-rate">0%</p>
+                                    <p class="pks-stat-label">Penalty Conversion</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="matches-opponents" class="sub-tab-content">
-                        <div class="matches-table-card">
-                            <h3 class="matches-subtitle">Opponent Penalties</h3>
-                            <div class="players-table-wrapper">
-                                <table class="matches-table" id="opponent-matches-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Season</th>
-                                            <th>Opponent Team</th>
-                                            <th>Opponent Player</th>
-                                            <th>Status</th>
-                                            <th>How Miss (Opponent)</th>
-                                            <th>Al Ahly GK</th>
-                                            <th>Result</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="opponent-matches-tbody">
-                                        <!-- Data will be populated by JavaScript -->
-                                    </tbody>
-                                </table>
+                    <!-- Opponents Overview Sub Tab -->
+                    <div id="overview-opponents" class="sub-tab-content">
+                        <div class="pks-stats-section">
+                            <h2 class="pks-section-title">Opponents PKS Overview</h2>
+                            <div class="pks-overview">
+                                <div class="pks-stat-card">
+                                    <h3>Total PKS Matches</h3>
+                                    <p class="pks-stat-value" id="opponent-total-pks-matches">0</p>
+                                    <p class="pks-stat-label">Penalty Shootouts</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>PKS Wins</h3>
+                                    <p class="pks-stat-value" id="opponent-pks-wins">0</p>
+                                    <p class="pks-stat-label">Shootouts Won</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Win Rate</h3>
+                                    <p class="pks-stat-value" id="opponent-pks-win-rate">0%</p>
+                                    <p class="pks-stat-label">Shootout Success</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>PKS Losses</h3>
+                                    <p class="pks-stat-value" id="opponent-pks-losses">0</p>
+                                    <p class="pks-stat-label">Shootouts Lost</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Total Penalties</h3>
+                                    <p class="pks-stat-value" id="opponent-total-penalties">0</p>
+                                    <p class="pks-stat-label">Penalties Taken</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Goals Scored</h3>
+                                    <p class="pks-stat-value" id="opponent-goals">0</p>
+                                    <p class="pks-stat-label">Penalties Converted</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Goals Missed</h3>
+                                    <p class="pks-stat-value" id="opponent-misses">0</p>
+                                    <p class="pks-stat-label">Penalties Missed</p>
+                                </div>
+
+                                <div class="pks-stat-card">
+                                    <h3>Success Rate</h3>
+                                    <p class="pks-stat-value" id="opponent-success-rate">0%</p>
+                                    <p class="pks-stat-label">Penalty Conversion</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- H2H Teams Tab -->
-            <div id="h2h-teams-tab" class="tab-content">
-                <div class="pks-stats-section">
-                    <h2 class="pks-section-title">Head to Head Teams Statistics</h2>
-                    <div class="pks-table-container">
-                        <div class="table-responsive">
-                            <table class="pks-table" id="h2h-teams-pks-table">
-                                <thead>
-                                    <tr>
-                                        <th class="sortable" onclick="sortH2HTeamsPKSTable('team')">Opponent Team <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsPKSTable('matches')">Matches <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsPKSTable('wins')">Wins <span class="sort-icon"></span></th>
-                                        <th class="sortable" onclick="sortH2HTeamsPKSTable('losses')">Losses <span class="sort-icon"></span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Data will be populated by JavaScript -->
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td>TOTAL</td>
-                                        <td id="h2h-pks-total-matches">0</td>
-                                        <td id="h2h-pks-total-wins">0</td>
-                                        <td id="h2h-pks-total-losses">0</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Players Tab -->
-            <div id="players-tab" class="tab-content">
-                <!-- Sub Tabs for Players -->
-                <div class="sub-tabs-nav players-sub-tabs">
-                    <button class="sub-tab-btn active" onclick="switchSubTab('players-ahly')">Al Ahly</button>
-                    <button class="sub-tab-btn" onclick="switchSubTab('players-opponents')">Opponents</button>
-                </div>
-
-                <!-- Al Ahly Players Sub Tab -->
-                <div id="players-ahly" class="sub-tab-content active">
-                    <div class="players-section">
-                        <h2 class="pks-section-title">Al Ahly Penalty Takers</h2>
-                        <div class="players-table-wrapper">
-                            <table class="matches-table">
-                                <thead>
-                                    <tr>
-                                        <th>Player Name</th>
-                                        <th>Total Penalties</th>
-                                        <th>Goals</th>
-                                        <th>Success Rate</th>
-                                        <th>Misses</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ahly-players-tbody">
-                                    <!-- Data will be populated by JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Opponents Players Sub Tab -->
-                <div id="players-opponents" class="sub-tab-content">
-                    <div class="players-section">
-                        <h2 class="pks-section-title">Opponent Penalty Takers</h2>
-                        <div class="players-table-wrapper">
-                            <table class="matches-table">
-                                <thead>
-                                    <tr>
-                                        <th>Player Name</th>
-                                        <th>Total Penalties</th>
-                                        <th>Goals</th>
-                                        <th>Success Rate</th>
-                                        <th>Misses</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="opponent-players-tbody">
-                                    <!-- Data will be populated by JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Goalkeepers Tab -->
-            <div id="goalkeepers-tab" class="tab-content">
-                <!-- Sub Tabs for Goalkeepers -->
-                <div class="sub-tabs-nav">
-                    <button class="sub-tab-btn active" onclick="switchSubTab('goalkeepers-ahly')">Al Ahly</button>
-                    <button class="sub-tab-btn" onclick="switchSubTab('goalkeepers-opponents')">Opponents</button>
-                </div>
-
-                <!-- Al Ahly Goalkeepers Sub Tab -->
-                <div id="goalkeepers-ahly" class="sub-tab-content active">
+                <!-- Matches Tab -->
+                <div id="matches-tab" class="tab-content">
                     <div class="pks-stats-section">
-                        <h2 class="pks-section-title">Al Ahly Goalkeepers PKS Stats</h2>
+                        <h2 class="pks-section-title">Penalty Shootout Attempts</h2>
+
+                        <div class="sub-tabs-nav">
+                            <button class="sub-tab-btn active" onclick="switchSubTab('matches-ahly')">Al Ahly</button>
+                            <button class="sub-tab-btn" onclick="switchSubTab('matches-opponents')">Opponents</button>
+                        </div>
+
+                        <div id="matches-ahly" class="sub-tab-content active">
+                            <div class="matches-table-card">
+                                <h3 class="matches-subtitle">Al Ahly Penalties</h3>
+                                <div class="players-table-wrapper">
+                                    <table class="matches-table" id="ahly-matches-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Season</th>
+                                                <th>Opponent Team</th>
+                                                <th>Al Ahly Player</th>
+                                                <th>Status</th>
+                                                <th>How Miss (Ahly)</th>
+                                                <th>Opponent GK</th>
+                                                <th>Result</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="ahly-matches-tbody">
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="matches-opponents" class="sub-tab-content">
+                            <div class="matches-table-card">
+                                <h3 class="matches-subtitle">Opponent Penalties</h3>
+                                <div class="players-table-wrapper">
+                                    <table class="matches-table" id="opponent-matches-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Season</th>
+                                                <th>Opponent Team</th>
+                                                <th>Opponent Player</th>
+                                                <th>Status</th>
+                                                <th>How Miss (Opponent)</th>
+                                                <th>Al Ahly GK</th>
+                                                <th>Result</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="opponent-matches-tbody">
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- H2H Teams Tab -->
+                <div id="h2h-teams-tab" class="tab-content">
+                    <div class="pks-stats-section">
+                        <h2 class="pks-section-title">Head to Head Teams Statistics</h2>
                         <div class="pks-table-container">
                             <div class="table-responsive">
-                                <table class="pks-table" id="goalkeeper-pks-table">
+                                <table class="pks-table" id="h2h-teams-pks-table">
                                     <thead>
                                         <tr>
-                                            <th>Goalkeeper</th>
-                                            <th>PKS Matches</th>
-                                            <th>Penalties Faced</th>
-                                            <th>Penalties Saved</th>
-                                            <th>Save Rate</th>
-                                            <th>Goals Conceded</th>
+                                            <th class="sortable" onclick="sortH2HTeamsPKSTable('team')">Opponent Team
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                            <th class="sortable" onclick="sortH2HTeamsPKSTable('matches')">Matches <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsPKSTable('wins')">Wins <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="sortable" onclick="sortH2HTeamsPKSTable('losses')">Losses <span
+                                                    class="sort-icon"></span></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <!-- Data will be populated by JavaScript -->
                                     </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>TOTAL</td>
+                                            <td id="h2h-pks-total-matches">0</td>
+                                            <td id="h2h-pks-total-wins">0</td>
+                                            <td id="h2h-pks-total-losses">0</td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Opponents Goalkeepers Sub Tab -->
-                <div id="goalkeepers-opponents" class="sub-tab-content">
-                    <div class="pks-stats-section">
-                        <h2 class="pks-section-title">Opponent Goalkeepers PKS Stats</h2>
-                        <div class="pks-table-container">
-                            <div class="table-responsive">
-                                <table class="pks-table" id="opponent-goalkeeper-pks-table">
+                <!-- Players Tab -->
+                <div id="players-tab" class="tab-content">
+                    <!-- Sub Tabs for Players -->
+                    <div class="sub-tabs-nav players-sub-tabs">
+                        <button class="sub-tab-btn active" onclick="switchSubTab('players-ahly')">Al Ahly</button>
+                        <button class="sub-tab-btn" onclick="switchSubTab('players-opponents')">Opponents</button>
+                    </div>
+
+                    <!-- Al Ahly Players Sub Tab -->
+                    <div id="players-ahly" class="sub-tab-content active">
+                        <div class="players-section">
+                            <h2 class="pks-section-title">Al Ahly Penalty Takers</h2>
+                            <div class="players-table-wrapper">
+                                <table class="matches-table">
                                     <thead>
                                         <tr>
-                                            <th>Goalkeeper</th>
-                                            <th>PKS Matches</th>
-                                            <th>Penalties Faced</th>
-                                            <th>Penalties Saved</th>
-                                            <th>Save Rate</th>
-                                            <th>Goals Conceded</th>
+                                            <th>Player Name</th>
+                                            <th>Total Penalties</th>
+                                            <th>Goals</th>
+                                            <th>Success Rate</th>
+                                            <th>Misses</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="ahly-players-tbody">
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Opponents Players Sub Tab -->
+                    <div id="players-opponents" class="sub-tab-content">
+                        <div class="players-section">
+                            <h2 class="pks-section-title">Opponent Penalty Takers</h2>
+                            <div class="players-table-wrapper">
+                                <table class="matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Player Name</th>
+                                            <th>Total Penalties</th>
+                                            <th>Goals</th>
+                                            <th>Success Rate</th>
+                                            <th>Misses</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opponent-players-tbody">
                                         <!-- Data will be populated by JavaScript -->
                                     </tbody>
                                 </table>
@@ -1433,7 +1395,67 @@
                         </div>
                     </div>
                 </div>
-            </div>
+
+                <!-- Goalkeepers Tab -->
+                <div id="goalkeepers-tab" class="tab-content">
+                    <!-- Sub Tabs for Goalkeepers -->
+                    <div class="sub-tabs-nav">
+                        <button class="sub-tab-btn active" onclick="switchSubTab('goalkeepers-ahly')">Al Ahly</button>
+                        <button class="sub-tab-btn" onclick="switchSubTab('goalkeepers-opponents')">Opponents</button>
+                    </div>
+
+                    <!-- Al Ahly Goalkeepers Sub Tab -->
+                    <div id="goalkeepers-ahly" class="sub-tab-content active">
+                        <div class="pks-stats-section">
+                            <h2 class="pks-section-title">Al Ahly Goalkeepers PKS Stats</h2>
+                            <div class="pks-table-container">
+                                <div class="table-responsive">
+                                    <table class="pks-table" id="goalkeeper-pks-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Goalkeeper</th>
+                                                <th>PKS Matches</th>
+                                                <th>Penalties Faced</th>
+                                                <th>Penalties Saved</th>
+                                                <th>Save Rate</th>
+                                                <th>Goals Conceded</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Opponents Goalkeepers Sub Tab -->
+                    <div id="goalkeepers-opponents" class="sub-tab-content">
+                        <div class="pks-stats-section">
+                            <h2 class="pks-section-title">Opponent Goalkeepers PKS Stats</h2>
+                            <div class="pks-table-container">
+                                <div class="table-responsive">
+                                    <table class="pks-table" id="opponent-goalkeeper-pks-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Goalkeeper</th>
+                                                <th>PKS Matches</th>
+                                                <th>Penalties Faced</th>
+                                                <th>Penalties Saved</th>
+                                                <th>Save Rate</th>
+                                                <th>Goals Conceded</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <!-- End Content Tabs -->
 
@@ -1446,4 +1468,5 @@
     <script src="{{ url_for('static', filename='al_ahly_pks_stats/al_ahly_pks_stats.js') }}"></script>
 
 </body>
+
 </html>

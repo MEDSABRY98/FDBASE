@@ -53,20 +53,19 @@ let currentSortedMatches = [];
 // ============================================================================
 
 async function loadAfconEgyptTeamsData(forceRefresh = false, skipLoadingState = false) {
-    // Disable Sync Button during initial load only if not force refresh (which handles its own state) or if explicitly requested
-    const refreshBtn = document.querySelector('.finals-refresh-btn');
+    // Disable Refresh Button during loading
+    const refreshBtn = document.querySelector('.afcon-refresh-btn');
 
     if (!skipLoadingState && refreshBtn) {
         refreshBtn.disabled = true;
-        refreshBtn.style.opacity = '0.6';
-        refreshBtn.style.cursor = 'not-allowed';
 
-        // Update to Syncing state
-        refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Sync Data', 'Syncing...');
-        const currentIcon = refreshBtn.querySelector('svg');
-        if (currentIcon) {
-            currentIcon.classList.add('spinning');
-        }
+        // Add syncing state with spinner
+        refreshBtn.innerHTML = `
+            <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+            Refreshing...
+        `;
     }
 
     try {
@@ -133,16 +132,15 @@ async function loadAfconEgyptTeamsData(forceRefresh = false, skipLoadingState = 
         }
         showError('No Data Available');
     } finally {
-        // Re-enable Sync Button after load ONLY if we are controlling the state locally (not skipped)
-        if (!skipLoadingState && refreshBtn) {
+        // Re-enable Refresh Button after load
+        if (refreshBtn) {
             refreshBtn.disabled = false;
-            refreshBtn.style.opacity = '1';
-            refreshBtn.style.cursor = 'pointer';
-
-            // Restore text and remove spinning class
-            refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Syncing...', 'Sync Data');
-            const icon = refreshBtn.querySelector('svg');
-            if (icon) icon.classList.remove('spinning');
+            refreshBtn.innerHTML = `
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh Data
+            `;
         }
     }
 }

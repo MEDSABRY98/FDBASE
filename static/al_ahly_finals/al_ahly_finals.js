@@ -207,7 +207,7 @@ async function loadFinalsData(forceRefresh = false, skipLoadingState = false) {
         initializeUnifiedPlayerSearch();
 
         // Finals data loaded successfully
-
+        showLoadingState(false);
     } catch (error) {
         console.error('Error loading Finals data:', error);
         // Failed to load Finals data
@@ -566,77 +566,56 @@ function updateAllSearchableInputs() {
 }
 
 /**
- * Refresh Finals data (force refresh from Google Sheets)
+ * Manual Refresh for Finals data
  */
 async function refreshFinalsStats() {
-    console.log('🔄 Force refreshing Finals data...');
-
+    console.log('🔄 Refreshing Finals data...');
     const refreshBtn = document.querySelector('.finals-refresh-btn');
-    const refreshIcon = refreshBtn?.querySelector('svg');
+
+    if (!refreshBtn) return;
+
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = `
+        <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+        </svg>
+        Refreshing...
+    `;
 
     try {
-        // Show loading indicator on button
-        if (refreshBtn) {
-            refreshBtn.disabled = true;
-            if (refreshIcon) {
-                refreshIcon.classList.add('spinning');
-            }
-            const btnText = refreshBtn.querySelector('span') || refreshBtn.childNodes[refreshBtn.childNodes.length - 1];
-            if (btnText && btnText.textContent) {
-                btnText.textContent = 'Syncing...';
-            } else {
-                // If no span, update innerHTML
-                const currentHTML = refreshBtn.innerHTML;
-                refreshBtn.innerHTML = currentHTML.replace('Sync Data', 'Syncing...');
-            }
-        }
+        await loadFinalsData(true, true); // forceRefresh=true, skipLoadingState=true
+        console.log('✅ Data refreshed');
 
-        // Reload data with force refresh (but don't hide content)
-        await loadFinalsData(true, true); // true = force refresh, true = skip loading state
-
-        // Reset button on success
-        if (refreshBtn) {
-            refreshBtn.disabled = false;
-            if (refreshIcon) {
-                refreshIcon.classList.remove('spinning');
-            }
-            const btnText = refreshBtn.querySelector('span') || refreshBtn.childNodes[refreshBtn.childNodes.length - 1];
-            if (btnText && btnText.textContent) {
-                btnText.textContent = 'Synced!';
-                setTimeout(() => {
-                    if (btnText) {
-                        btnText.textContent = 'Sync Data';
-                    }
-                }, 2000);
-            } else {
-                const currentHTML = refreshBtn.innerHTML;
-                refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Synced!');
-                setTimeout(() => {
-                    refreshBtn.innerHTML = refreshBtn.innerHTML.replace('Synced!', 'Sync Data');
-                }, 2000);
-            }
-        }
-
-        console.log('✅ Data refreshed successfully');
+        refreshBtn.innerHTML = `
+            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            Refreshed!
+        `;
     } catch (error) {
-        console.error('❌ Error refreshing data:', error);
-
-        // Reset button on error
-        if (refreshBtn) {
-            refreshBtn.disabled = false;
-            if (refreshIcon) {
-                refreshIcon.classList.remove('spinning');
+        console.error('❌ Refresh failed:', error);
+        refreshBtn.innerHTML = `
+            <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            Error!
+        `;
+    } finally {
+        setTimeout(() => {
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = `
+                    <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                    Refresh Data
+                `;
             }
-            const btnText = refreshBtn.querySelector('span') || refreshBtn.childNodes[refreshBtn.childNodes.length - 1];
-            if (btnText && btnText.textContent) {
-                btnText.textContent = 'Sync Data';
-            } else {
-                const currentHTML = refreshBtn.innerHTML;
-                refreshBtn.innerHTML = currentHTML.replace('Syncing...', 'Sync Data');
-            }
-        }
+        }, 2000);
     }
 }
+
 
 // ============================================================================
 // STATISTICS CALCULATION AND DISPLAY
@@ -1293,31 +1272,19 @@ function showLoadingState(show) {
         if (show) {
             refreshBtn.disabled = true;
             refreshBtn.innerHTML = `
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
                 </svg>
-                Syncing...
+                Refreshing...
             `;
         } else {
             refreshBtn.disabled = false;
             refreshBtn.innerHTML = `
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 6L9 17l-5-5"/>
+                <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                 </svg>
-                Synced!
+                Refresh Data
             `;
-
-            // Return to original text after 2 seconds
-            setTimeout(() => {
-                if (refreshBtn) {
-                    refreshBtn.innerHTML = `
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-                        </svg>
-                        Sync Data
-                    `;
-                }
-            }, 2000);
         }
     }
 }

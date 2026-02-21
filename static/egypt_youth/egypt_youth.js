@@ -50,18 +50,19 @@ let currentSortedMatches = [];
 // ============================================================================
 
 async function loadYouthEgyptData(forceRefresh = false, skipLoadingState = false) {
-    const refreshBtn = document.querySelector('.finals-refresh-btn');
+    const refreshBtn = document.querySelector('.youth-refresh-btn');
 
     // Set loading state on button
     if (refreshBtn) {
         refreshBtn.disabled = true;
-        refreshBtn.style.opacity = '0.7';
-        refreshBtn.style.cursor = 'not-allowed';
-        const icon = refreshBtn.querySelector('svg');
-        if (icon) icon.classList.add('spinning');
 
-        // Change text to Syncing...
-        refreshBtn.innerHTML = '<svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Syncing...';
+        // Add syncing state with spinner
+        refreshBtn.innerHTML = `
+            <svg class="filter-btn-icon spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+            </svg>
+            Refreshing...
+        `;
     }
 
     try {
@@ -98,7 +99,7 @@ async function loadYouthEgyptData(forceRefresh = false, skipLoadingState = false
             renderMatchesTable();
 
             // Add filter event listeners
-            addFilterListeners();
+            addFilterEventListeners();
 
             // Load youth players data
             loadYouthPlayersData();
@@ -119,19 +120,13 @@ async function loadYouthEgyptData(forceRefresh = false, skipLoadingState = false
         }
         if (forceRefresh) throw error;
     } finally {
-        // Reset button only if NOT force refresh (initial load)
-        if (!forceRefresh && refreshBtn) {
+        if (refreshBtn) {
             refreshBtn.disabled = false;
-            refreshBtn.style.opacity = '1';
-            refreshBtn.style.cursor = 'pointer';
-            const icon = refreshBtn.querySelector('svg');
-            if (icon) icon.classList.remove('spinning');
-
             refreshBtn.innerHTML = `
                 <svg class="filter-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                 </svg>
-                Sync Data
+                Refresh Data
             `;
         }
     }
@@ -636,9 +631,9 @@ function getResultBadgeClass(result) {
 // ============================================================================
 
 function switchTab(tabName) {
-    // Remove active class from all modern tab buttons
-    const modernTabButtons = document.querySelectorAll('.modern-tab-button');
-    modernTabButtons.forEach(button => button.classList.remove('active'));
+    // Remove active class from all stats tab buttons
+    const statsTabButtons = document.querySelectorAll('.stats-tab');
+    statsTabButtons.forEach(button => button.classList.remove('active'));
 
     // Remove active class from all legacy tab buttons (for other sections)
     const legacyTabButtons = document.querySelectorAll('.tabs-header > .tab-button');
@@ -651,25 +646,25 @@ function switchTab(tabName) {
     // Show selected tab
     if (tabName === 'overview') {
         document.getElementById('overview-tab').classList.add('active');
-        const overviewButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'overview\')"]');
+        const overviewButton = document.querySelector('.stats-tab[onclick="switchTab(\'overview\')"]');
         if (overviewButton) overviewButton.classList.add('active');
     } else if (tabName === 'matches') {
         document.getElementById('matches-tab').classList.add('active');
-        const matchesButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'matches\')"]');
+        const matchesButton = document.querySelector('.stats-tab[onclick="switchTab(\'matches\')"]');
         if (matchesButton) matchesButton.classList.add('active');
     } else if (tabName === 'h2h') {
         document.getElementById('h2h-tab').classList.add('active');
-        const h2hButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'h2h\')"]');
+        const h2hButton = document.querySelector('.stats-tab[onclick="switchTab(\'h2h\')"]');
         if (h2hButton) h2hButton.classList.add('active');
         loadH2HStats();
     } else if (tabName === 'managers') {
         document.getElementById('managers-tab').classList.add('active');
-        const managersButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'managers\')"]');
+        const managersButton = document.querySelector('.stats-tab[onclick="switchTab(\'managers\')"]');
         if (managersButton) managersButton.classList.add('active');
         loadManagersStats();
     } else if (tabName === 'players') {
         document.getElementById('players-tab').classList.add('active');
-        const playersButton = document.querySelector('.modern-tab-button[onclick="switchTab(\'players\')"]');
+        const playersButton = document.querySelector('.stats-tab[onclick="switchTab(\'players\')"]');
         if (playersButton) playersButton.classList.add('active');
 
         // Load players data first, then show stats
@@ -903,14 +898,14 @@ function loadYouthPlayersStats() {
 
 function switchPlayersTab(tabType) {
     // Remove active class from all sub-tab buttons
-    document.querySelectorAll('#players-tab .modern-tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('#players-tab .stats-tab').forEach(btn => btn.classList.remove('active'));
 
     // Hide all sub-tab contents
     document.querySelectorAll('#players-tab .tab-content').forEach(content => content.classList.remove('active'));
 
     if (tabType === 'by-player') {
         document.getElementById('by-player-tab').classList.add('active');
-        document.querySelector('#players-tab .modern-tab-button[onclick="switchPlayersTab(\'by-player\')"]').classList.add('active');
+        document.querySelector('#players-tab .stats-tab[onclick="switchPlayersTab(\'by-player\')"]').classList.add('active');
 
         // Make sure data is loaded first
         if (youthEgyptData.youthPlayersLoaded) {
@@ -922,7 +917,7 @@ function switchPlayersTab(tabType) {
         }
     } else if (tabType === 'by-elnady') {
         document.getElementById('by-elnady-tab').classList.add('active');
-        document.querySelector('#players-tab .modern-tab-button[onclick="switchPlayersTab(\'by-elnady\')"]').classList.add('active');
+        document.querySelector('#players-tab .stats-tab[onclick="switchPlayersTab(\'by-elnady\')"]').classList.add('active');
 
         // Make sure data is loaded first
         if (youthEgyptData.youthPlayersLoaded) {
