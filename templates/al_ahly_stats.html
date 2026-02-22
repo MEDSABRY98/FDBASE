@@ -122,8 +122,8 @@
         .filter-field input:focus,
         .filter-field select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #d32f2f;
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15);
         }
 
         /* Ensure consistent field heights and prevent layout shifts */
@@ -311,7 +311,7 @@
         }
 
         .refresh-btn {
-            background: #667eea;
+            background: #d32f2f;
             color: white;
             border: none;
             border-radius: 10px;
@@ -326,17 +326,17 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 15px rgba(211, 47, 47, 0.3);
         }
 
         .refresh-btn:hover {
-            background: #5568d3;
+            background: #b71c1c;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(183, 28, 28, 0.4);
         }
 
         .sync-btn {
-            background: #667eea;
+            background: #212529;
             color: white;
             border: none;
             border-radius: 10px;
@@ -351,13 +351,13 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 15px rgba(33, 37, 41, 0.3);
         }
 
         .sync-btn:hover {
-            background: #5568d3;
+            background: #000000;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
         }
 
         .filter-btn .icon,
@@ -519,16 +519,16 @@
 
         /* Active State */
         .stats-tab.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #d32f2f 0%, #8b0000 100%);
             color: white;
             border-color: transparent;
-            box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.5), 0 8px 10px -6px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 25px -5px rgba(211, 47, 47, 0.5), 0 8px 10px -6px rgba(211, 47, 47, 0.3);
             transform: translateY(-2px);
         }
 
         /* Active State Hover */
         .stats-tab.active:hover {
-            box-shadow: 0 20px 25px -5px rgba(102, 126, 234, 0.5), 0 10px 10px -5px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 20px 25px -5px rgba(211, 47, 47, 0.5), 0 10px 10px -5px rgba(211, 47, 47, 0.3);
             transform: translateY(-4px);
         }
 
@@ -644,7 +644,7 @@
         .stat-value {
             font-size: 2.5rem;
             font-weight: 700;
-            color: #667eea;
+            color: #d32f2f;
             margin-bottom: 0.5rem;
         }
 
@@ -712,10 +712,20 @@
             border-bottom: 1px solid #eee;
         }
 
+        .stats-table table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+        }
+
         .stats-table th {
-            background: #f8f9fa;
+            background: #111;
             font-weight: 600;
-            color: #333;
+            color: #fff;
+            padding: 1.2rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .stats-table th.sortable {
@@ -725,11 +735,12 @@
         }
 
         .stats-table th.sortable:hover {
-            background: #e9ecef;
+            background: #2a2a2a;
         }
 
         .stats-table th.sortable.active {
-            background: #dee2e6;
+            background: #d32f2f;
+            color: white;
         }
 
         .stats-table th .sort-icon {
@@ -743,7 +754,13 @@
         }
 
         .stats-table tr:hover {
-            background: #f8f9fa;
+            background: #fff5f5;
+        }
+
+        .stats-table td {
+            text-align: center;
+            padding: 1.2rem 1rem;
+            border-bottom: 1px solid #eee;
         }
 
         .highlight-value {
